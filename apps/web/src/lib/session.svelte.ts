@@ -1,0 +1,54 @@
+export interface SessionUser {
+  sub: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  warehouseScopes: string[];
+  mfa?: boolean;
+  /** Tài khoản quản trị gốc. */
+  root?: boolean;
+  /** Bước bắt buộc còn thiếu: đổi mật khẩu tạm, bật MFA. */
+  pending?: Array<'PASSWORD' | 'MFA'>;
+}
+
+/** Phiên đăng nhập hiện tại, được AppShell nạp từ /auth/me và dùng chung cho các trang. */
+export const session = $state<{ user: SessionUser | null }>({ user: null });
+
+const WORKSPACE_KEY = 'erp.workspace';
+
+/** Nơi làm việc chọn ở màn hình đăng nhập (văn phòng hoặc kho). */
+export interface SavedWorkspace {
+  id: string;
+  code: string;
+  name: string;
+  kind: 'OFFICE' | 'WAREHOUSE';
+  /** Kho dùng mặc định trên các form (văn phòng → kho mặc định của văn phòng). */
+  defaultWarehouseId: string | null;
+}
+
+export function savedWorkspace(): SavedWorkspace | null {
+  try {
+    const raw = localStorage.getItem(WORKSPACE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<SavedWorkspace>;
+    return value && typeof value.id === 'string' && typeof value.name === 'string' ? (value as SavedWorkspace) : null;
+  } catch {
+    // Bản cũ chỉ lưu id kho dạng chuỗi, hoặc trình duyệt chặn lưu trữ.
+    return null;
+  }
+}
+export function saveWorkspace(workspace: SavedWorkspace): void {
+  try {
+    localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace));
+  } catch {
+    // Trình duyệt chặn lưu trữ: bỏ qua, form sẽ dùng kho đầu tiên.
+  }
+}
+/** Id nơi làm việc đã chọn (để chọn lại ở lần đăng nhập sau). */
+export function workspaceId(): string | null {
+  return savedWorkspace()?.id ?? null;
+}
+/** Kho mặc định trên các form theo nơi làm việc đang chọn. */
+export function defaultWarehouseId(): string | null {
+  return savedWorkspace()?.defaultWarehouseId ?? null;
+}

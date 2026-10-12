@@ -1,0 +1,16 @@
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/contracts/package.json packages/contracts/tsconfig.json ./packages/contracts/
+COPY apps/web/package.json apps/web/tsconfig.json apps/web/svelte.config.js apps/web/vite.config.ts ./apps/web/
+RUN npm ci
+COPY packages/contracts ./packages/contracts
+COPY apps/web ./apps/web
+RUN npm run build -w @inoxpran/contracts && npm run build -w @inoxpran/web
+
+FROM nginx:1.28-alpine AS runtime
+# Bỏ trang chào mặc định của nginx (index.html, 50x.html) để "/" luôn trả về ứng dụng.
+RUN rm -rf /usr/share/nginx/html/*
+COPY infra/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/web/build /usr/share/nginx/html
+EXPOSE 8080

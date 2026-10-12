@@ -1,0 +1,7 @@
+# Sao chép thành staging.tfvars (file này bị .gitignore chặn) rồi điền giá trị thật.
+domain_name = "erp-staging.inoxpran.com"
+alert_email = "it@inoxpran.com"
+
+# Mặc định: t3a.small, bật 07:00–20:00 thứ 2–7 (giờ Việt Nam). Muốn chạy 24/7: office_hours_only = false.
+# Dữ liệu demo (tài khoản không MFA): enforce_mfa = false.
+# office_hours_only = true

@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.svelte-kit/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+.terraform/
+.terraform-check/
+*.tfstate
+*.tfstate.*
+# Biến môi trường thật và bản plan có thể chứa thông tin nhạy cảm
+infra/*/*.tfvars
+!infra/*/*.tfvars.example
+*.tfplan
+.terraform.lock.hcl.bak
+.vite/
+.playwright-cli/
+.tmp/
+output/
+
+# Mã sinh tự động bởi Paraglide (biên dịch từ apps/web/messages)
+apps/web/src/lib/paraglide/
+apps/web/project.inlang/cache/

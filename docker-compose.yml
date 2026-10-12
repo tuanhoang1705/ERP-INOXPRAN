@@ -1,0 +1,68 @@
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval \"try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3 giả lập cho máy dev (ảnh bằng chứng đối chiếu); API tự tạo bucket khi S3_AUTO_CREATE_BUCKET=true.
+  # Môi trường thật dùng AWS S3 — bucket do infra/terraform tạo.
+  s3:
+    image: adobe/s3mock:4.2.0
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAINFILESONEXIT: "true"
+    ports:
+      - "9090:9090"
+    volumes:
+      - s3_data:/s3mockroot
+
+  # Quét mã độc file tải lên (ClamAV clamd, cổng 3310). Image chính thức đã kèm bộ nhận diện, freshclam tự cập nhật.
+  # Cần ~1,5 GB RAM; tắt bằng MALWARE_SCAN_MODE=off nếu máy dev yếu (production luôn bắt buộc quét).
+  clamav:
+    image: clamav/clamav:1.4
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_db:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  mongo_data:
+  redis_data:
+  s3_data:
+  clamav_db:

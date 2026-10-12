@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, development]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        # staging: một máy EC2 (~15 USD/tháng); terraform: phương án ECS Fargate cho production.
+        stack: [infra/staging, infra/terraform]
+    defaults:
+      run:
+        working-directory: ${{ matrix.stack }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+      - run: terraform fmt -check -diff
+      - run: terraform init -backend=false
+      - run: terraform validate
+      - name: tflint
+        run: docker run --rm -v "$PWD:/data" -w /data ghcr.io/terraform-linters/tflint:v0.53.0 --format compact
+      - name: Trivy — lỗi cấu hình bảo mật (MEDIUM trở lên)
+        run: docker run --rm -v "$PWD:/tf" aquasec/trivy:0.56.2 config --skip-check-update --quiet --severity MEDIUM,HIGH,CRITICAL --skip-dirs /tf/.terraform --exit-code 1 /tf
+
+  images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [verify, terraform]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.api
+          push: false
+          tags: inoxpran-erp-api:${{ github.sha }}
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.web
+          push: false
+          tags: inoxpran-erp-web:${{ github.sha }}

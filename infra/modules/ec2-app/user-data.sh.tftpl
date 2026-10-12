@@ -1,0 +1,142 @@
+#!/bin/bash
+# Khởi tạo máy lần đầu (Amazon Linux 2023). File vận hành (compose, start.sh, sao lưu...) nằm trên S3 (ops/server/),
+# bootstrap.sh đồng bộ mỗi lần khởi động / deploy → sửa các file đó không phải thay máy. Đổi file này → Terraform thay máy mới.
+set -euxo pipefail
+
+# Bộ nhớ hoán đổi 2 GB: dự phòng khi ClamAV (~1 GB) nạp lại bộ nhận diện.
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  echo '/swapfile none swap defaults 0 0' >> /etc/fstab
+fi
+swapon -a
+echo 'vm.swappiness=10' > /etc/sysctl.d/90-inoxpran.conf
+sysctl --system
+
+# Ổ dữ liệu MongoDB (EBS riêng, giữ nguyên khi thay máy). Terraform gắn ổ sau khi máy chạy → chờ thiết bị xuất hiện.
+data_device="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${data_volume_serial}"
+for attempt in $(seq 1 120); do
+  [ -e "$data_device" ] && break
+  sleep 5
+done
+[ -e "$data_device" ] || { echo "Không thấy ổ dữ liệu ${data_volume_serial}" >&2; exit 1; }
+# Chỉ định dạng khi ổ còn trống (lần đầu); ổ đã có dữ liệu thì giữ nguyên.
+blkid "$data_device" || mkfs.xfs "$data_device"
+mkdir -p /data
+uuid="$(blkid -s UUID -o value "$data_device")"
+grep -q "$uuid" /etc/fstab || echo "UUID=$uuid /data xfs defaults,nofail 0 2" >> /etc/fstab
+mount -a
+mountpoint -q /data
+mkdir -p /data/mongo /data/backup
+# Container mongo chạy bằng user mongodb (uid 999).
+chown 999:999 /data/mongo
+
+dnf install -y docker amazon-ecr-credential-helper amazon-cloudwatch-agent
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose \
+  "https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-x86_64"
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+# Kéo image từ ECR bằng quyền của máy (IAM role), không lưu mật khẩu registry.
+mkdir -p /root/.docker
+echo '{"credHelpers":{"${registry}":"ecr-login"}}' > /root/.docker/config.json
+systemctl enable --now docker
+
+mkdir -p /opt/inoxpran
+cd /opt/inoxpran
+cat > base.env <<'ENV'
+AWS_REGION=${aws_region}
+PARAM_PREFIX=${param_prefix}
+APP_ENV=${app_env}
+SITE_DOMAIN=${site_domain}
+ACME_EMAIL=${acme_email}
+MFA_ENFORCE_PRIVILEGED=${enforce_mfa}
+S3_BUCKET=${s3_bucket}
+API_IMAGE=${api_image}
+WEB_IMAGE=${web_image}
+MONGO_CACHE_GB=${mongo_cache_gb}
+API_HEAP_MB=${api_heap_mb}
+ENV
+
+cat > bootstrap.sh <<'BOOT'
+#!/bin/bash
+# Đồng bộ file vận hành từ S3 (Terraform cập nhật) rồi chạy start.sh — khi khởi động máy và mỗi lần deploy.
+set -euo pipefail
+cd /opt/inoxpran
+. ./base.env
+aws s3 cp --recursive --only-show-errors --region "$AWS_REGION" "s3://$S3_BUCKET/ops/server/" /opt/inoxpran/
+chmod 700 start.sh backup.sh health.sh restore-drill.sh
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/inoxpran/cloudwatch-agent.json > /dev/null
+exec ./start.sh
+BOOT
+chmod 700 bootstrap.sh
+
+cat > /etc/systemd/system/inoxpran.service <<'UNIT'
+[Unit]
+Description=INOXPRAN ERP (docker compose)
+After=docker.service network-online.target
+RequiresMountsFor=/data
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/inoxpran
+ExecStart=/opt/inoxpran/bootstrap.sh
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+cat > /etc/systemd/system/inoxpran-backup.service <<'UNIT'
+[Unit]
+Description=INOXPRAN ERP: sao lưu MongoDB lên S3
+After=inoxpran.service
+RequiresMountsFor=/data
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/inoxpran
+ExecStart=/opt/inoxpran/backup.sh
+UNIT
+
+cat > /etc/systemd/system/inoxpran-backup.timer <<'UNIT'
+[Unit]
+Description=INOXPRAN ERP: sao lưu mỗi giờ (phút 05)
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+cat > /etc/systemd/system/inoxpran-health.service <<'UNIT'
+[Unit]
+Description=INOXPRAN ERP: đẩy trạng thái ứng dụng lên CloudWatch
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/inoxpran
+ExecStart=/opt/inoxpran/health.sh
+UNIT
+
+cat > /etc/systemd/system/inoxpran-health.timer <<'UNIT'
+[Unit]
+Description=INOXPRAN ERP: kiểm tra ứng dụng mỗi 5 phút
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable inoxpran-backup.timer inoxpran-health.timer
+systemctl start inoxpran-backup.timer inoxpran-health.timer
+systemctl enable --now inoxpran.service

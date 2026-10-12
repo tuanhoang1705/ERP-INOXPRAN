@@ -1,0 +1,11 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# Caddy tự xin và gia hạn chứng thư Let's Encrypt, tự chuyển HTTP → HTTPS.
+# web (nginx) chạy chung network với api nên địa chỉ là api:8080.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy api:8080
+}

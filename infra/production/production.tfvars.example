@@ -1,0 +1,8 @@
+# Sao chép thành production.tfvars (file này bị .gitignore chặn) rồi điền giá trị thật.
+domain_name = "erp.inoxpran.com"
+alert_email = "it@inoxpran.com"
+
+# Mặc định: t3a.small (2 GB RAM), ổ hệ thống 16 GB, ổ dữ liệu 10 GB, snapshot giữ 7 ngày, ngân sách 55 USD/tháng (cả account, gồm staging).
+# instance_type      = "t3a.small"
+# data_volume_gb     = 10
+# monthly_budget_usd = 55

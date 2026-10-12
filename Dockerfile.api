@@ -1,0 +1,30 @@
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/contracts/package.json packages/contracts/tsconfig.json ./packages/contracts/
+COPY apps/api/package.json apps/api/tsconfig.json apps/api/nest-cli.json ./apps/api/
+RUN npm ci
+COPY packages/contracts ./packages/contracts
+COPY apps/api ./apps/api
+RUN npm run build -w @inoxpran/contracts
+RUN npm run build -w @inoxpran/api
+
+FROM node:24-bookworm-slim AS production-dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages/contracts/package.json ./packages/contracts/
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+RUN groupadd --system erp && useradd --system --gid erp --home-dir /app erp
+COPY --from=production-dependencies --chown=erp:erp /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=erp:erp /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=build --chown=erp:erp /app/packages/contracts ./packages/contracts
+COPY --from=build --chown=erp:erp /app/apps/api/dist ./apps/api/dist
+USER erp
+EXPOSE 3000
+CMD ["node", "apps/api/dist/main.js"]

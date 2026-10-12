@@ -1,0 +1,31 @@
+{
+  "name": "inoxpran-erp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ERP van hanh mua hang, kho, ban B2B va cong no cho INOXPRAN",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@fastify/static": "^10.1.2",
+    "fastify": "5.12.5",
+    "js-yaml": "5.4.2"
+  },
+  "scripts": {
+    "build": "npm run build -w @inoxpran/contracts && npm run build -w @inoxpran/api && npm run build -w @inoxpran/web",
+    "dev:api": "npm run dev -w @inoxpran/api",
+    "dev:web": "npm run dev -w @inoxpran/web",
+    "dev:worker": "npm run worker:dev -w @inoxpran/api",
+    "test": "npm run test -w @inoxpran/contracts && npm run test -w @inoxpran/api && npm run test -w @inoxpran/web",
+    "check": "npm run build -w @inoxpran/contracts && npm run check -w @inoxpran/api && npm run check -w @inoxpran/web",
+    "seed:admin": "npm run seed:admin -w @inoxpran/api",
+    "seed:demo": "npm run seed:demo -w @inoxpran/api",
+    "seed:demo:reset": "npm run seed:demo:reset -w @inoxpran/api",
+    "smoke:api": "npm run smoke:api -w @inoxpran/api",
+    "smoke:worker": "npm run smoke:worker -w @inoxpran/api"
+  }
+}

@@ -1,0 +1,7 @@
+environment     = "staging"
+domain_name     = "erp-staging.inoxpran.vn"
+certificate_arn = "arn:aws:acm:ap-southeast-1:123456789012:certificate/replace-me"
+api_image       = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/inoxpran-erp-staging-api:commit-sha"
+web_image       = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/inoxpran-erp-staging-web:commit-sha"
+alert_email     = "it@inoxpran.vn"
+desired_count   = 2

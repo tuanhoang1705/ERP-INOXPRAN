@@ -1,0 +1,5 @@
+# Script và cấu hình chạy trên máy Linux (Terraform nhúng nguyên văn vào user data) phải giữ LF.
+*.sh text eol=lf
+*.tftpl text eol=lf
+
+infra/modules/ec2-app/server/* text eol=lf

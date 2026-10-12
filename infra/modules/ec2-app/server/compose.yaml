@@ -1,0 +1,132 @@
+# INOXPRAN ERP (staging / production) trên một máy EC2 (infra/staging/README.md, infra/production/README.md).
+# Biến ${...} lấy từ /opt/inoxpran/.env do start.sh sinh; bí mật (JWT, MFA, chuỗi kết nối MongoDB có mật khẩu)
+# nằm trong secrets.env (đọc từ SSM Parameter Store).
+name: inoxpran
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  # HTTPS tự động (Let's Encrypt) cho tên miền của môi trường, chuyển tiếp vào web.
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web]
+    logging: *logging
+
+  api:
+    image: ${API_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    env_file: [secrets.env]
+    environment:
+      NODE_ENV: production
+      APP_ENV: ${APP_ENV}
+      APP_VERSION: ${IMAGE_TAG}
+      PORT: "3000"
+      WEB_ORIGIN: https://${SITE_DOMAIN}
+      MONGODB_DATABASE: inoxpran_erp
+      COOKIE_SECURE: "true"
+      MFA_ENFORCE_PRIVILEGED: ${MFA_ENFORCE_PRIVILEGED:-true}
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET: ${S3_BUCKET}
+      MALWARE_SCAN_MODE: clamav
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      REDIS_URL: redis://redis:6379
+      NODE_OPTIONS: --max-old-space-size=${API_HEAP_MB:-384}
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_started }
+      # File tải lên luôn được quét: API chỉ chạy khi ClamAV đã nạp xong bộ nhận diện.
+      clamav: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  # Nginx của image web gọi API qua 127.0.0.1:3000 (như task ECS) → dùng chung network với api.
+  web:
+    image: ${WEB_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    network_mode: service:api
+    depends_on:
+      api: { condition: service_healthy }
+    logging: *logging
+
+  worker:
+    image: ${API_IMAGE}:${IMAGE_TAG}
+    restart: unless-stopped
+    command: ["node", "apps/api/dist/worker.js"]
+    env_file: [secrets.env]
+    environment:
+      NODE_ENV: production
+      APP_ENV: ${APP_ENV}
+      APP_VERSION: ${IMAGE_TAG}
+      MONGODB_DATABASE: inoxpran_erp
+      AWS_REGION: ${AWS_REGION}
+      AWS_S3_BUCKET: ${S3_BUCKET}
+      REDIS_URL: redis://redis:6379
+      NODE_OPTIONS: --max-old-space-size=256
+    depends_on:
+      api: { condition: service_healthy }
+    logging: *logging
+
+  # MongoDB một node dạng replica set (ứng dụng cần transaction), không mở cổng ra ngoài, bật xác thực
+  # (keyFile + tài khoản root / erpapp do start.sh và mongo-init.js tạo). Dữ liệu trên ổ EBS riêng gắn ở /data
+  # (giữ nguyên khi thay máy, snapshot hằng ngày, mongodump mỗi giờ lên S3). Bộ nhớ đệm theo cỡ máy (MONGO_CACHE_GB).
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo/keyfile", "--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-0.25}"]
+    volumes:
+      - /data/mongo:/data/db
+      - ./mongo-keyfile:/etc/mongo/keyfile:ro
+      - ./mongo-init.js:/opt/mongo-init.js:ro
+    healthcheck:
+      # ping không cần đăng nhập; khởi tạo replica set và tài khoản do start.sh (mongo-init.js) lo.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    logging: *logging
+
+  # Hàng đợi BullMQ: noeviction theo khuyến nghị của BullMQ, AOF để không mất job khi máy tắt theo lịch.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction"]
+    volumes: [redis-data:/data]
+    logging: *logging
+
+  # Máy 2 GB RAM: tắt nạp song song khi cập nhật bộ nhận diện để clamd không cần gấp đôi bộ nhớ.
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    entrypoint: ["sh", "-c", "grep -q '^ConcurrentDatabaseReload' /etc/clamav/clamd.conf || echo 'ConcurrentDatabaseReload no' >> /etc/clamav/clamd.conf; exec /init"]
+    volumes: [clamav-db:/var/lib/clamav]
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:
+  redis-data:
+  clamav-db:
