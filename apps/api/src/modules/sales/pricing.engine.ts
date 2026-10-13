@@ -21,6 +21,8 @@ export interface PricingInput {
   taxRate: string;
   pricesIncludeTax?: boolean;
   gift?: boolean;
+  /** Đơn giá chưa VAT sửa tay (đã được cấp quyền) — bỏ chiết khấu, dùng đúng giá này. */
+  unitPriceOverride?: string | undefined;
 }
 
 export interface PricingResult {
@@ -56,7 +58,7 @@ export interface PromotionRule {
 }
 
 export function calculatePrice(input: PricingInput): PricingResult {
-  const discountRate = input.gift
+  const discountRate = input.gift || input.unitPriceOverride
     ? new Decimal(0)
     : Decimal.min(
         new Decimal(input.tierDiscountRate).add(input.salesTierDiscountRate).add(input.promotionDiscountRate),
@@ -69,6 +71,7 @@ export function calculatePrice(input: PricingInput): PricingResult {
       baseUnitPrice: input.baseUnitPrice,
       discountRate: discountRate.toFixed(),
       gift: input.gift,
+      unitPriceOverride: input.gift ? undefined : input.unitPriceOverride,
     },
     { vatRate: input.taxRate, pricesIncludeTax: Boolean(input.pricesIncludeTax) },
   );

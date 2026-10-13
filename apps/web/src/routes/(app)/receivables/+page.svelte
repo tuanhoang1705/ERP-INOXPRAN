@@ -13,7 +13,7 @@
 
   type Receivable = {
     id: string; code: string; partnerId: string; partnerName: string; partnerCode: string; partnerStatus: string; province?: string;
-    salesOrderId?: string; salesOrderCode?: string; openingDocumentNo?: string; warrantyTicketId?: string; warrantyCode?: string; payerName?: string; payerPhone?: string; amount: string; paidAmount: string; outstandingAmount: string; dueDate: string;
+    salesOrderId?: string; salesOrderCode?: string; openingDocumentNo?: string; sourceType?: string; note?: string; warrantyTicketId?: string; warrantyCode?: string; payerName?: string; payerPhone?: string; amount: string; paidAmount: string; outstandingAmount: string; dueDate: string;
     daysOverdue: number; overdueLevel: string | null; status: string; createdAt: string;
   };
   let rows = $state<Receivable[]>([]);
@@ -129,16 +129,17 @@
           {#each rows as row (row.id)}
             {@const info = receivableStatus[row.status] ?? { label: row.status, tone: '' }}
             {@const level = row.overdueLevel ? overdueLevel[row.overdueLevel] : null}
+            {@const credit = row.sourceType === 'SALES_VOID_CREDIT'}
             <tr>
-              <td><span class="code">{row.code}</span>{#if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small><a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a></small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
+              <td><span class="code">{row.code}</span>{#if row.sourceType === 'SALES_VOID_CREDIT'}<small class="credit">{m.cn_khach_tra_truoc({ code: row.salesOrderCode ?? '' })}</small>{:else if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small><a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a></small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
               <td>{row.partnerName}<small>{row.partnerCode}{row.province ? ` · ${row.province}` : ''}{row.payerName ? ` · ${row.payerName}${row.payerPhone ? ` (${row.payerPhone})` : ''}` : ''}</small></td>
               <td class="muted">{date(row.createdAt)}</td>
-              <td>{date(row.dueDate)}{#if level}<small class={`late ${level.tone}`}>{m.qua_han()} {row.daysOverdue} {m.ngay()}</small>{/if}</td>
+              <td>{credit ? '—' : date(row.dueDate)}{#if level && !credit}<small class={`late ${level.tone}`}>{m.qua_han()} {row.daysOverdue} {m.ngay()}</small>{/if}</td>
               <td class="num">{num(row.amount)}</td>
               <td class="num muted">{num(row.paidAmount)}</td>
               <td class="num"><b>{num(row.outstandingAmount)}</b></td>
-              <td>{#if level}<span class={`pill ${level.tone}`}>{level.label}</span>{:else}<span class={`pill ${info.tone}`}>{info.label}</span>{/if}</td>
-              <td>{#if row.status !== 'PAID' && canCollect}<button class="btn small" onclick={() => openPayment(row)}>{m.thu_tien()}</button>{/if}</td>
+              <td>{#if credit}<span class="pill success">{m.cn_tra_truoc()}</span>{:else if level}<span class={`pill ${level.tone}`}>{level.label}</span>{:else}<span class={`pill ${info.tone}`}>{info.label}</span>{/if}</td>
+              <td>{#if row.status !== 'PAID' && row.status !== 'VOIDED' && !credit && canCollect}<button class="btn small" onclick={() => openPayment(row)}>{m.thu_tien()}</button>{/if}</td>
             </tr>
           {/each}
         {:else}<tr class="empty-row"><td colspan="9">{m.khong_co_chung_tu_phu_hop()}</td></tr>{/if}

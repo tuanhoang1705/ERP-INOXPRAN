@@ -22,8 +22,9 @@ export class ReceivablesService {
   ) {}
 
   /** Mặc định chỉ trả khoản còn dư nợ (sắp theo hạn); includePaid trả cả khoản đã thu, mới nhất trước. */
-  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null) {
-    const filter: Document = includePaid ? {} : { status: { $in: OPEN_RECEIVABLE_STATUSES } };
+  /** `hidden`: điều kiện bỏ công nợ ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
+  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null, hidden: Document = {}) {
+    const filter: Document = { ...(includePaid ? {} : { status: { $in: OPEN_RECEIVABLE_STATUSES } }), ...hidden };
     if (partnerId) filter.partnerId = toObjectId(partnerId, 'partnerId');
     if (overdueOnly) {
       filter.dueDate = { $lt: new Date() };

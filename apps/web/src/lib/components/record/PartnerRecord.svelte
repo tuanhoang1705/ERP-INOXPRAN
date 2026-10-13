@@ -450,7 +450,7 @@
           { label: m.crm_han_tra(), value: (row: Row) => date(text(row.dueDate)) },
           { label: m.crm_so_tien(), value: (row: Row) => vnd(text(row.amount)), num: true },
           { label: m.crm_da_thu(), value: (row: Row) => vnd(text(row.paidAmount)), num: true },
-          { label: m.trang_thai(), value: (row: Row) => receivableStatus[text(row.status)]?.label ?? text(row.status), tone: (row: Row) => receivableStatus[text(row.status)]?.tone ?? '' },
+          { label: m.trang_thai(), value: (row: Row) => (row.sourceType === 'SALES_VOID_CREDIT' ? m.cn_tra_truoc() : receivableStatus[text(row.status)]?.label ?? text(row.status)), tone: (row: Row) => (row.sourceType === 'SALES_VOID_CREDIT' ? 'success' : receivableStatus[text(row.status)]?.tone ?? '') },
         ]} />
       {:else if active === 'warranty' && isCustomer}
         <RelatedTable endpoint={`/warranty/tickets?customerId=${partner.id}`} empty={m.crm_chua_bao_hanh()} columns={[

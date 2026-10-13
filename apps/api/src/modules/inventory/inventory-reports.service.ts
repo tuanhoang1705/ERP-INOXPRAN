@@ -94,11 +94,14 @@ export class InventoryReportsService {
     };
   }
 
-  async monthly(month: string, warehouseId?: string): Promise<InventoryMonthlyReport> {
+  /** `hidden`: điều kiện bỏ dòng thẻ kho ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
+  async monthly(month: string, warehouseId?: string, hidden: Document = {}): Promise<InventoryMonthlyReport> {
     const range = this.range(month);
-    const { filter, warehouse } = await this.scope(warehouseId);
+    const scoped = await this.scope(warehouseId);
+    const filter: Document = { ...scoped.filter, ...hidden };
+    const { warehouse } = scoped;
     const movements = this.db.collection('inventory_movements');
-    const [grouped, openings, rollbacks] = await Promise.all([
+    const [grouped, openings, rollbacks, rolledBackBatches] = await Promise.all([
       movements.aggregate([
         { $match: { ...filter, occurredAt: { $lt: range.end } } },
         {
@@ -110,6 +113,8 @@ export class InventoryReportsService {
       ]).toArray(),
       movements.find({ ...filter, movementType: 'OPENING', occurredAt: { $lt: range.end } }, { projection: { productId: 1, referenceId: 1, initialQuantity: 1 } }).toArray(),
       movements.distinct('referenceId', { movementType: 'REVERSAL', referenceType: 'ImportBatchRollback', occurredAt: { $lt: range.end } }),
+      // Lô điều chỉnh chỉ đổi số nhập ban đầu thì hoàn tác không sinh dòng REVERSAL — lấy thêm theo trạng thái lô.
+      this.db.collection('import_batches').distinct('code', { status: 'ROLLED_BACK', rolledBackAt: { $lt: range.end } }),
     ]);
 
     type Acc = { opening: number; amounts: Partial<Record<InventoryCategory, number>>; purchased: number; initialOpening: number; unknownInitial: boolean };
@@ -133,7 +138,7 @@ export class InventoryReportsService {
       else entry.amounts[category] = round((entry.amounts[category] ?? 0) + categoryAmount(category, id.direction, quantity));
     }
     // Số nhập ban đầu (初始入库): khai ở tồn đầu kỳ (Excel) + hàng mua đã nhập; tồn đầu kỳ không khai số này thì không tính %.
-    const rolledBack = new Set(rollbacks.map(String));
+    const rolledBack = new Set([...rollbacks, ...rolledBackBatches].map(String));
     for (const opening of openings) {
       if (rolledBack.has(String(opening.referenceId))) continue;
       const entry = acc(opening.productId as ObjectId);
@@ -199,8 +204,8 @@ export class InventoryReportsService {
     };
   }
 
-  async monthlyWorkbook(month: string, warehouseId: string | undefined, preparedBy: string): Promise<Buffer> {
-    const report = await this.monthly(month, warehouseId);
+  async monthlyWorkbook(month: string, warehouseId: string | undefined, preparedBy: string, hidden: Document = {}): Promise<Buffer> {
+    const report = await this.monthly(month, warehouseId, hidden);
     const range = this.range(month);
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'INOXPRAN ERP';

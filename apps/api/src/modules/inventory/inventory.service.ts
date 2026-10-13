@@ -102,8 +102,9 @@ export class InventoryService {
     return paging ? pageOf(rows, counts.total, paging, { lowCount: counts.low }) : rows;
   }
 
-  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null) {
-    const filter: Document = {};
+  /** `hidden`: điều kiện bỏ dòng thẻ kho ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
+  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null, hidden: Document = {}) {
+    const filter: Document = { ...hidden };
     if (productId) filter.productId = toObjectId(productId, 'productId');
     if (warehouseId) filter.warehouseId = toObjectId(warehouseId, 'warehouseId');
     const cursor = this.db.collection('inventory_movements').find(filter).sort({ occurredAt: -1, _id: -1 });
@@ -113,7 +114,7 @@ export class InventoryService {
     // Thẻ kho một mã: tồn sau dòng đầu trang = tồn hiện tại − phát sinh của các dòng mới hơn (các trang trước).
     const signed = { $cond: [{ $eq: ['$direction', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }] };
     const [stock, newer] = await Promise.all([
-      this.db.collection('inventory_balances').aggregate([{ $match: filter }, { $group: { _id: null, onHand: { $sum: '$onHand' } } }]).toArray(),
+      this.db.collection('inventory_balances').aggregate([{ $match: { productId: filter.productId, ...(filter.warehouseId ? { warehouseId: filter.warehouseId } : {}) } }, { $group: { _id: null, onHand: { $sum: '$onHand' } } }]).toArray(),
       paging.skip
         ? this.db.collection('inventory_movements').aggregate([{ $match: filter }, { $sort: { occurredAt: -1, _id: -1 } }, { $limit: paging.skip }, { $group: { _id: null, net: { $sum: signed } } }]).toArray()
         : Promise.resolve([]),

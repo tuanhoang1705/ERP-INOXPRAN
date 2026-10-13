@@ -538,7 +538,7 @@ async function seedDemo(): Promise<void> {
     for (const order of shippedOrders) {
       const shippedAt = order.shippedAt as Date;
       const shipmentId = new ObjectId();
-      const shipmentCode = nextCode('SWK', shippedAt, 4, true);
+      const shipmentCode = `SWK${String(order.code).slice(2)}`; // phiếu kho cùng số phiếu BH
       (order as GeneratedOrder & { shipmentCode?: string }).shipmentCode = shipmentCode;
       shipments.push({
         _id: shipmentId, code: shipmentCode, salesOrderId: order._id, warehouseId, customerId: order.customerId,

@@ -12,7 +12,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
-  import { CircleAlert, CircleCheck, Gift, Info, Plus, ScanLine, X } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Clock, Gift, Info, Lock, Pencil, Plus, RotateCcw, ScanLine, X } from 'lucide-svelte';
+  import Dialog from './Dialog.svelte';
   import { api } from '$lib/api';
   import { num, todayIso, vnd } from '$lib/format';
   import { hasRole, tierLabel } from '$lib/labels';
@@ -22,22 +23,25 @@
   import { defaultWarehouseId, session } from '$lib/session.svelte';
   import { vndInWords } from '$lib/vnd-words';
   import { isVatRate, roundDong, VAT_RATE_OPTIONS, vatPercent, type VatRate } from '$shared/sales-math';
-  import { normalizeSalesOrderCode, salesIssueTemplate, salesOrderCodeProblem } from '$shared/sales-templates';
+  import { expandSalesOrderCode, normalizeSalesOrderCode, periodOfDate, salesIssueTemplate, salesOrderCodeProblem } from '$shared/sales-templates';
   import NumberInput from './NumberInput.svelte';
+  import CustomerPicker from './CustomerPicker.svelte';
 
-  type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
+  type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
   type CatalogProduct = Product & { available?: string; categoryName?: string };
   type Dealer = {
     id: string; code: string; name: string; province?: string; address?: string; phone?: string; taxCode?: string; customerTier?: string;
     status: string; holdReason?: string; creditLimit: string; paymentTermDays: number; salesRepId?: string; outstanding: string; periodRevenue: string;
   };
   type Employee = { id: string; code: string; name: string; role: string };
-  type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean };
+  type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; overrideUnitPrice?: string | undefined };
+  type Grant = { id: string; code?: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decidedByName?: string; decisionNote?: string };
 
   let { existing = null }: { existing?: ExistingOrder | null } = $props();
 
   let dealers = $state<Dealer[]>([]);
   let dealerCodes = $state<string[]>([]);
+  let dealersLoaded = $state(false);
   let customerDialogOpen = $state(false);
   const canCreateCustomer = $derived(hasRole(session.user?.roles, CUSTOMER_CREATE_ROLES));
   let products = $state<CatalogProduct[]>([]);
@@ -48,9 +52,11 @@
   let codeMode = $state<'AUTO' | 'MANUAL'>('AUTO');
   let manualCode = $state('');
   let codeInput = $state<HTMLInputElement>();
+  /** Số sẽ lưu: chỉ gõ số hóa đơn ("104") → BH + năm + tháng của ngày chứng từ + 0104. */
+  const expandedCode = $derived.by(() => (manualCode.trim() ? expandSalesOrderCode(normalizeSalesOrderCode(manualCode), periodOfDate(orderDate)) : ''));
   const manualCodeError = $derived.by(() => {
     if (codeMode !== 'MANUAL' || !manualCode.trim()) return '';
-    const problem = salesOrderCodeProblem(normalizeSalesOrderCode(manualCode));
+    const problem = salesOrderCodeProblem(expandedCode);
     return problem === 'FORMAT' ? m.bh_so_phieu_khong_hop_le() : problem === 'RESERVED' ? m.bh_so_phieu_trung_kieu_chung_tu_khac() : '';
   });
   async function chooseCodeMode(mode: 'AUTO' | 'MANUAL') {
@@ -62,6 +68,18 @@
       codeInput?.select();
     }
   }
+
+  /**
+   * Sửa đơn giá: kế toán bấm vào đơn giá → xin quyền kèm lý do → Admin / Giám đốc duyệt từ xa → ô giá mở khóa.
+   * Quyền chỉ dùng cho phiên lập phiếu này (mã phiên bên dưới) hoặc phiếu nháp đang sửa; lập phiếu khác phải xin lại.
+   */
+  const formSessionId = crypto.randomUUID();
+  let grant = $state<Grant | null>(null);
+  let priceRequestOpen = $state(false);
+  let priceRequestReason = $state('');
+  let priceRequesting = $state(false);
+  let editingPrice = $state<number | null>(null);
+  let priceDraft = $state('');
 
   let customerId = $state('');
   let channel = $state<'B2B' | 'B2C'>('B2B');
@@ -112,7 +130,76 @@
   const price2 = (value: string | number) => Number(value).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dong = (value: string) => num(roundDong(value));
 
+  const grantApproved = $derived(grant?.status === 'APPROVED');
+  /** Quản trị gốc đang sửa phiếu đã phát hành: lưu qua /root, tồn kho / công nợ tự điều chỉnh theo chênh lệch. */
+  const rootEdit = $derived(Boolean(existing && existing.status !== 'DRAFT' && session.user?.root));
+  const shippedOrder = $derived(Boolean(existing && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(existing.status)));
+  /** Đơn giá chưa thuế dạng tiền 2 số lẻ gửi máy chủ ("480000", "123456.78"). */
+  const money = (value: string) => String(Math.round(Number(value) * 100) / 100);
+
+  function clickPrice(index: number, current: string) {
+    if (!isAccountant) return;
+    if (grantApproved) {
+      editingPrice = index;
+      priceDraft = lines[index]?.overrideUnitPrice ?? current;
+      return;
+    }
+    if (grant?.status === 'PENDING') return;
+    priceRequestReason = '';
+    priceRequestOpen = true;
+  }
+  function applyPrice(index: number) {
+    const line = lines[index];
+    if (line && Number(priceDraft) > 0) line.overrideUnitPrice = money(priceDraft);
+    editingPrice = null;
+  }
+  function resetPrice(index: number) {
+    const line = lines[index];
+    if (line) line.overrideUnitPrice = undefined;
+  }
+  async function requestPriceOverride() {
+    if (priceRequestReason.trim().length < 5) return;
+    priceRequesting = true;
+    error = '';
+    try {
+      grant = await api<Grant>('/price-override-requests', {
+        method: 'POST',
+        idempotentCommand: true,
+        body: JSON.stringify({ reason: priceRequestReason.trim(), formSessionId, ...(customerId ? { customerId } : {}), ...(existing ? { salesOrderId: existing.id } : {}) }),
+      });
+      priceRequestOpen = false;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_the_hoan_tat_thao_tac();
+    } finally {
+      priceRequesting = false;
+    }
+  }
+  async function cancelPriceRequest() {
+    if (!grant) return;
+    try {
+      await api(`/price-override-requests/${grant.id}/cancel`, { method: 'POST', body: '{}' });
+    } catch {
+      // Đã được xử lý trước đó: tải lại trạng thái ở lần hỏi kế tiếp.
+    }
+    grant = null;
+  }
+  // Đang chờ duyệt: hỏi lại mỗi 4 giây; Admin / Giám đốc duyệt xong thì ô giá tự mở khóa.
+  $effect(() => {
+    if (grant?.status !== 'PENDING') return;
+    const id = grant.id;
+    const timer = setInterval(async () => {
+      try {
+        const latest = await api<Grant>(`/price-override-requests/${id}`);
+        if (latest.status !== 'PENDING' && grant?.id === id) grant = latest;
+      } catch {
+        // Mạng chập chờn: thử lại ở nhịp sau.
+      }
+    }, 4000);
+    return () => clearInterval(timer);
+  });
+
   onMount(async () => {
+    if (existing?.priceOverrideRequestId) grant = { id: existing.priceOverrideRequestId, status: 'APPROVED', decidedByName: existing.priceOverrideApprovedByName ?? '' };
     // Đặt chế độ số phiếu ngay khi mở form (trước khi tải danh mục) để ô số không nháy "Tự sinh" rồi mới đổi.
     if (existing?.codeMode === 'MANUAL') {
       codeMode = 'MANUAL';
@@ -146,7 +233,10 @@
           vatRate = existing.taxRate;
           vatTouched = true;
         }
-        lines = existing.lines.map((line) => ({ productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift) }));
+        lines = existing.lines.map((line) => ({
+          productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift),
+          ...(line.pricingSource === 'MANUAL_PRICE' && !line.gift ? { overrideUnitPrice: money(String(line.unitPrice)) } : {}),
+        }));
         await Promise.all([loadSheet(), loadKeepers()]);
       } else {
         warehouseId = warehouses.find((row) => row.id === defaultWarehouseId())?.id ?? warehouses[0]?.id ?? '';
@@ -207,6 +297,7 @@
   function setDealers(rows: Dealer[]) {
     dealers = rows.filter((row) => row.status !== 'INACTIVE');
     dealerCodes = rows.map((row) => row.code);
+    dealersLoaded = true;
   }
 
   /** Khách vừa tạo ở hộp thoại: tải lại danh sách (có dư nợ, doanh số) rồi chọn luôn khách đó. */
@@ -259,6 +350,7 @@
       error = m.da_co_tren_phieu_da_cong({ sku: product.sku });
       return;
     }
+    if (line.productId !== product.id) line.overrideUnitPrice = undefined;
     line.productId = product.id;
     line.skuInput = product.sku;
     line.unit = line.gift ? product.baseUnit : unit ?? product.baseUnit;
@@ -326,10 +418,12 @@
   }
 
   function payload() {
-    const code = normalizeSalesOrderCode(manualCode);
+    const code = expandedCode;
     return {
       ...(codeMode === 'MANUAL' && code !== existing?.code ? { code } : {}),
       ...(codeMode === 'AUTO' && existing?.codeMode === 'MANUAL' ? { codeMode: 'AUTO' } : {}),
+      formSessionId,
+      ...(grantApproved && grant && calc.lines.some((line) => line?.overridden) ? { priceOverrideRequestId: grant.id } : {}),
       templateCode: template.code, customerId, warehouseId, channel, orderDate, paymentTermDays, taxRate: vatRate,
       ...(warehouseKeeperId ? { warehouseKeeperId } : {}),
       ...(salesRepId ? { salesRepId } : {}),
@@ -340,7 +434,7 @@
       ...(note.trim() ? { note: note.trim() } : {}),
       lines: calc.lines.flatMap((computed) => {
         const line = computed ? lines[computed.index] : undefined;
-        return computed && line ? [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift }] : [];
+        return computed && line ? [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift, ...(computed.overridden && line.overrideUnitPrice ? { overrideUnitPrice: line.overrideUnitPrice } : {}) }] : [];
       }),
     };
   }
@@ -381,14 +475,14 @@
     const expectedTotal = summary.grandTotal;
     try {
       const order = existing
-        ? await api<SalesOrder>(`/sales-orders/${existing.id}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
+        ? await api<SalesOrder>(`/sales-orders/${existing.id}${rootEdit ? '/root' : ''}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
         : await api<SalesOrder>('/sales-orders', { method: 'POST', idempotentCommand: true, body: JSON.stringify(payload()) });
       if (issue) {
         await api(`/sales-orders/${order.id}/submit`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: order.version }) });
       }
       // Máy chủ tính lại bằng cùng công thức; chỉ lệch khi bảng giá/khuyến mãi vừa đổi trong lúc đang lập phiếu.
       const repriced = String(Number(order.grandTotal)) !== expectedTotal ? `&repriced=${expectedTotal}` : '';
-      await goto(`/sales/orders/${order.id}?created=${issue ? 'issued' : isAccountant ? 'draft' : 'requested'}${repriced}`);
+      await goto(`/sales/orders/${order.id}?created=${rootEdit ? 'root-edited' : issue ? 'issued' : isAccountant ? 'draft' : 'requested'}${repriced}`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_the_luu_phieu();
     } finally {
@@ -408,7 +502,9 @@
   </div>
   <div class="actions">
     <a class="btn" href={existing ? `/sales/orders/${existing.id}` : '/sales/orders'}>{m.huy_bo()}</a>
-    {#if isAccountant}
+    {#if rootEdit}
+      <button class="btn primary" disabled={saving} onclick={() => save(false)}>{saving ? m.dang_xu_ly() : m.root_luu_thay_doi()}</button>
+    {:else if isAccountant}
       <button class="btn soft" disabled={saving} onclick={() => save(false)}>{m.luu_nhap()}</button>
       <button class="btn primary" disabled={saving || blocked} onclick={() => save(true)}>{saving ? m.dang_xu_ly() : m.phat_hanh_phieu_bh()}</button>
     {:else}
@@ -421,6 +517,7 @@
 {#if existing?.confirmationStatus === 'REVISION_REQUESTED' && existing.confirmationNote}
   <div class="banner warning"><CircleAlert size={17} /><span><b>{m.kinh_doanh_yeu_cau_sua()}</b> {existing.confirmationNote}</span></div>
 {/if}
+{#if rootEdit}<div class="banner warning"><CircleAlert size={17} /><span>{shippedOrder ? m.root_sua_phieu_da_xuat() : m.root_sua_phieu_da_phat_hanh()}</span></div>{/if}
 {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span><button class="close" onclick={() => (error = '')} aria-label={m.dong()}><X size={15} /></button></div>{/if}
 {#if blocked}<div class="banner error"><CircleAlert size={17} /><span><b>{dealer?.name}</b> {m.dang_tam_khoa_dat_hang()}{dealer?.holdReason === 'OVERDUE_60' ? m.do_co_cong_no_qua_han() : ''}{m.can_thu_hoi_cong_no_truoc()}</span></div>{/if}
 
@@ -430,14 +527,14 @@
     <div class="field">
       <div class="code-head">
         <label for="code">{m.so_phieu()}{#if codeMode === 'MANUAL' && isAccountant} <span class="req">*</span>{/if}</label>
-        {#if isAccountant}<div class="code-mode" role="radiogroup" aria-label={m.bh_che_do_so_phieu()}>
+        {#if isAccountant && !shippedOrder}<div class="code-mode" role="radiogroup" aria-label={m.bh_che_do_so_phieu()}>
           <button type="button" role="radio" aria-checked={codeMode === 'AUTO'} class:on={codeMode === 'AUTO'} onclick={() => chooseCodeMode('AUTO')}>{m.bh_che_do_tu_sinh()}</button>
           <button type="button" role="radio" aria-checked={codeMode === 'MANUAL'} class:on={codeMode === 'MANUAL'} onclick={() => chooseCodeMode('MANUAL')}>{m.bh_che_do_tu_nhap()}</button>
         </div>{/if}
       </div>
       {#if codeMode === 'MANUAL' && isAccountant}
-        <input id="code" bind:this={codeInput} bind:value={manualCode} maxlength="40" autocomplete="off" spellcheck="false" placeholder={m.bh_vi_du_so_phieu()} class="code-manual" aria-invalid={Boolean(manualCodeError)} />
-        {#if manualCodeError}<small class="error">{manualCodeError}</small>{/if}
+        <input id="code" bind:this={codeInput} bind:value={manualCode} maxlength="40" autocomplete="off" spellcheck="false" placeholder={m.bh_vi_du_so_phieu_ngan()} class="code-manual" aria-invalid={Boolean(manualCodeError)} />
+        {#if manualCodeError}<small class="error">{manualCodeError}</small>{:else if expandedCode && expandedCode !== normalizeSalesOrderCode(manualCode)}<small class="field-hint code-preview">{m.bh_so_se_la({ code: expandedCode })}</small>{/if}
       {:else}
         <input id="code" value={codeMode === 'MANUAL' ? (existing?.code ?? '') : autoCodeText} readonly />
       {/if}
@@ -445,10 +542,7 @@
     <div class="field"><label for="date">{m.ngay_chung_tu()} <span class="req">*</span></label><input id="date" type="date" max={todayIso()} bind:value={orderDate} /></div>
     <div class="field wide">
       <label for="customer">{m.nguoi_mua_ma_khach_hang()} <span class="req">*</span></label>
-      <select id="customer" value={customerId} onchange={(event) => chooseCustomer(event.currentTarget.value)}>
-        <option value="">{m.chon_khach_hang()}</option>
-        {#each dealers as row}<option value={row.id}>{row.code} — {row.name}{row.province ? ` (${row.province})` : ''}{row.status === 'ON_HOLD' ? m.tam_khoa() : ''}</option>{/each}
-      </select>
+      <CustomerPicker options={dealers} value={customerId} onchoose={chooseCustomer} loading={!dealersLoaded && !loadError} />
       {#if canCreateCustomer}<button type="button" class="add-customer" onclick={() => (customerDialogOpen = true)}><Plus size={14} />{m.them_khach_hang_moi()}</button>
       {:else if !existing}<small class="field-hint">{m.kh_khong_co_quyen_tao({ path: `${m.danh_muc()} → ${m.ho_so_dai_ly_khach_hang()}` })}</small>{/if}
     </div>
@@ -472,7 +566,7 @@
     </div>
     <div class="field">
       <label for="warehouse">{m.kho_xuat()} <span class="req">*</span></label>
-      <select id="warehouse" bind:value={warehouseId} onchange={changeWarehouse}>{#each warehouses as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}</select>
+      <select id="warehouse" bind:value={warehouseId} onchange={changeWarehouse} disabled={shippedOrder} title={shippedOrder ? m.root_khong_doi_kho() : ''}>{#each warehouses as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}</select>
     </div>
     <div class="field">
       <label for="keeper">{m.thu_kho_xuat_hang()} {#if isAccountant}<span class="req">*</span>{/if}</label>
@@ -499,6 +593,13 @@
     <button class="btn soft small" onclick={() => addLine(false)}><Plus size={15} />{m.them_dong()}</button>
     <button class="btn small" onclick={() => addLine(true)}><Gift size={15} />{m.them_hang_tang()}</button>
   </header>
+  {#if isAccountant && grant?.status === 'PENDING'}
+    <div class="banner warning price-grant"><Clock size={16} /><span>{m.gia_dang_cho_duyet({ code: grant.code ?? '' })}</span><button type="button" class="link" onclick={cancelPriceRequest}>{m.gia_huy_yeu_cau()}</button></div>
+  {:else if grantApproved}
+    <div class="banner success price-grant"><Pencil size={16} /><span>{m.gia_da_duoc_cap_quyen({ by: grant?.decidedByName || '—' })}</span></div>
+  {:else if isAccountant && grant?.status === 'REJECTED'}
+    <div class="banner error price-grant"><CircleAlert size={16} /><span>{m.gia_bi_tu_choi({ by: grant.decidedByName ?? '—', note: grant.decisionNote ?? '' })}</span><button type="button" class="link" onclick={() => (grant = null)}>{m.gia_xin_lai()}</button></div>
+  {/if}
   <datalist id="sku-list">{#each products as product}<option value={product.sku}>{product.name}</option>{/each}</datalist>
   <div class="table-wrap">
     <table class="table lines">
@@ -516,7 +617,7 @@
             <td class="name">{product?.name ?? ''}{#if line.gift}<span class="pill orange gift-tag">{m.hang_tang()}</span>{/if}</td>
             <td>
               {#if product}
-                <select class="input unit" bind:value={line.unit} disabled={line.gift} aria-label={m.don_vi_dong({ p0: index + 1 })}>
+                <select class="input unit" bind:value={line.unit} onchange={() => (line.overrideUnitPrice = undefined)} disabled={line.gift} aria-label={m.don_vi_dong({ p0: index + 1 })}>
                   {#each unitsOf(product) as unit}<option value={unit.value}>{unit.label}</option>{/each}
                 </select>
               {/if}
@@ -526,8 +627,19 @@
               <NumberInput class={lineError ? 'input qty invalid' : 'input qty'} decimals={4} bind:value={line.quantity} onkeydown={quantityKey} disabled={!product} aria-label={m.so_luong_dong({ p0: index + 1 })} aria-invalid={Boolean(lineError)} title={lineError ?? ''} />
             </td>
             <td class="num price">
-              {#if computed}
+              {#if computed && editingPrice === index}
+                <NumberInput class="input price-input" decimals={2} bind:value={priceDraft} autofocus aria-label={m.gia_nhap_don_gia({ p0: index + 1 })}
+                  onkeydown={(event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); applyPrice(index); } else if (event.key === 'Escape') editingPrice = null; }}
+                  onblur={() => applyPrice(index)} />
+              {:else if computed && isAccountant && !line.gift}
+                <button type="button" class="price-btn" class:overridden={computed.overridden} onclick={() => clickPrice(index, computed.unitPrice)}
+                  title={grantApproved ? m.gia_bam_de_sua() : grant?.status === 'PENDING' ? m.gia_dang_cho_duyet_ngan() : m.gia_bam_de_xin_quyen()}>
+                  {price2(computed.unitPrice)}{#if grantApproved}<Pencil size={11} />{:else}<Lock size={11} />{/if}
+                </button>
+                {#if computed.overridden}<small class="orig">{m.gia_bang_gia({ price: price2(computed.originalUnitPrice) })}<button type="button" class="reset" onclick={() => resetPrice(index)} title={m.gia_ve_bang_gia()} aria-label={m.gia_ve_bang_gia()}><RotateCcw size={11} /></button></small>{/if}
+              {:else if computed}
                 <span title={line.gift ? m.hang_tang_don_gia_0() : m.gia_niem_yet_1({ p0: price2(computed.listPrice), p1: sheet?.pricesIncludeTax ? m.da_gom_thue() : '', discountRate: computed.discountRate, p3: sheet?.pricesIncludeTax && taxPercent ? ` ÷ ${taxDivisor}` : '', p4: price2(computed.unitPrice) })}>{price2(computed.unitPrice)}</span>
+                {#if computed.overridden}<small class="orig">{m.gia_sua_tay()}</small>{/if}
               {:else if product && (sheetLoading || calc.pending)}<span class="muted">{m.dang_tai_2()}</span>{/if}
             </td>
             <td class="num">{#if computed && !line.gift}<span class="ck" title={m.bac_doanh_so_khuyen_mai_tran({ salesTierDiscountRate: computed.basis.salesTierDiscountRate, promotionDiscountRate: computed.basis.promotionDiscountRate, p2: computed.basis.promotionCode ? ` (${computed.basis.promotionCode})` : '', discountCapRate: sheet?.discountCapRate ?? "—" })}>{computed.discountRate}</span>{/if}</td>
@@ -603,6 +715,19 @@
   </aside>
 </section>
 
+<Dialog bind:open={priceRequestOpen} title={m.gia_xin_quyen_tieu_de()}>
+  <p class="lead">{m.gia_xin_quyen_giai_thich()}</p>
+  <div class="field">
+    <label for="price-reason">{m.gia_ly_do()} <span class="req">*</span></label>
+    <textarea id="price-reason" rows="3" maxlength="300" bind:value={priceRequestReason} placeholder={m.gia_ly_do_placeholder()}></textarea>
+    {#if priceRequestReason.trim() && priceRequestReason.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}
+  </div>
+  {#snippet footer()}
+    <button class="btn" onclick={() => (priceRequestOpen = false)}>{m.dong()}</button>
+    <button class="btn primary" disabled={priceRequestReason.trim().length < 5 || priceRequesting} onclick={requestPriceOverride}>{m.gia_gui_yeu_cau()}</button>
+  {/snippet}
+</Dialog>
+
 <CustomerCreateDialog bind:open={customerDialogOpen} existingCodes={dealerCodes} oncreated={customerCreated} />
 
 <style>
@@ -643,6 +768,15 @@
   td :global(.qty.invalid) { border-color: var(--red); background: var(--red-soft); }
   .name { min-width: 190px; }
   .price span[title] { cursor: help; }
+  .price-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px dashed transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+  .price-btn:hover { border-color: var(--line); background: var(--surface-2); }
+  .price-btn :global(svg) { color: var(--subtle); }
+  .price-btn.overridden { border-color: var(--orange); background: var(--orange-soft); color: var(--orange); font-weight: 600; }
+  .price small.orig { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--subtle); font-size: 11px; }
+  .price .reset { display: inline-grid; padding: 0; border: 0; background: transparent; color: var(--navy-2); cursor: pointer; }
+  :global(.input.price-input) { width: 130px; text-align: right; }
+  .price-grant { margin: 0 18px 12px; }
+  .price-grant .link { margin-left: auto; border: 0; background: transparent; color: var(--navy-2); font-weight: 600; cursor: pointer; }
   .gift-row { background: #fffaf6; }
   .gift-tag { margin-left: 8px; }
   .stock { color: var(--green); font-weight: 600; }

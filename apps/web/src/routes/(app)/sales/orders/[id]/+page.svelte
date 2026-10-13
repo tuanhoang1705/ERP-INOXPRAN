@@ -55,6 +55,16 @@
   const isAssignedKeeper = $derived(Boolean(order && (roles.includes('ADMIN') || (isWarehouse && order.warehouseKeeperId === session.user?.sub))));
   const evidence = $derived(order?.confirmationEvidence ?? []);
   const canDelete = $derived(Boolean(order && order.status === 'DRAFT' && isAccountant));
+  const isRoot = $derived(Boolean(session.user?.root));
+  const shippedStage = $derived(Boolean(order && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(order.status)));
+  let voidOpen = $state(false);
+  let voidReason = $state('');
+  async function voidOrder() {
+    if (!order || voidReason.trim().length < 5) return;
+    voidOpen = false;
+    await command('void', { reason: voidReason.trim() }, m.root_da_huy_phieu_da_giao());
+    voidReason = '';
+  }
   const canCancel = $derived(Boolean(order && ['PENDING_APPROVAL', 'APPROVED', 'RESERVED'].includes(order.status) && !order.warehouseSlipNo && isAccountant));
   const netTotal = $derived(order ? order.netTotal ?? String(Number(order.subtotal) - Number(order.discountTotal)) : '0');
   const steps = $derived.by((): Step[] => {
@@ -106,6 +116,7 @@
     if (created === 'draft') success = m.da_luu_nhap_phieu_kiem_tra();
     if (created === 'requested') success = m.da_gui_de_nghi_ke_toan();
     if (created === 'issued') success = m.da_phat_hanh_phieu_bh_va();
+    if (created === 'root-edited') success = m.root_da_luu_thay_doi();
     const repriced = page.url.searchParams.get('repriced');
     if (repriced) repricedNote = m.bang_gia_hoac_khuyen_mai_vua({ p0: vnd(repriced) });
     warehouses = await api<Warehouse[]>('/warehouses').catch(() => []);
@@ -185,7 +196,7 @@
   {#if order}
     <div class="actions">
       {#if order.status !== 'DRAFT' && order.status !== 'CANCELLED'}<button class="btn" onclick={() => printSlip('BH')}><Printer size={16} />{m.in_phieu_bh()}</button>{/if}
-      {#if order.warehouseSlipNo}<button class="btn" onclick={() => printSlip('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>{/if}
+      {#if order.warehouseSlipNo && order.status !== 'CANCELLED'}<button class="btn" onclick={() => printSlip('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>{/if}
       {#if order.status === 'DRAFT' && (isAccountant || isSales)}<a class="btn soft" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.sua_phieu()}</a>{/if}
       {#if order.status === 'DRAFT' && isAccountant}<button class="btn primary" disabled={working} onclick={issue}>{m.phat_hanh_phieu_bh()}</button>{/if}
       {#if order.status === 'PENDING_APPROVAL' && hasRole(roles, ['SALES_MANAGER', 'DIRECTOR'])}<button class="btn primary" disabled={working} onclick={approve}>{m.duyet_giu_hang()}</button>{/if}
@@ -197,6 +208,8 @@
       {#if order.status === 'SHIPPED' && isAssignedKeeper}<button class="btn navy" disabled={working} onclick={deliver}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
+      {#if isRoot && order.status !== 'DRAFT' && order.status !== 'CANCELLED'}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
+      {#if isRoot && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
     </div>
   {/if}
 </section>
@@ -219,8 +232,14 @@
     {/each}
   </ol>
 
+  {#if order.priceOverrideApprovedByName && order.lines.some((line) => line.pricingSource === 'MANUAL_PRICE')}
+    <div class="banner info"><Pencil size={17} /><span>{m.gia_phieu_co_sua_gia({ by: order.priceOverrideApprovedByName, reason: order.priceOverrideReason ?? '—' })}</span></div>
+  {/if}
+  {#if order.rootEditedAt && order.status !== 'CANCELLED'}
+    <div class="banner info"><Pencil size={17} /><span>{m.root_da_sua_luc({ at: dateTime(order.rootEditedAt), by: order.rootEditedByName ?? '—' })}</span></div>
+  {/if}
   {#if order.status === 'CANCELLED'}
-    <div class="banner error"><Ban size={17} /><span>{m.bh_phieu_da_huy({ at: order.cancelledAt ? dateTime(order.cancelledAt) : '—', by: order.cancelledByName ?? '—' })} <b>{m.bh_ly_do()}:</b> {order.cancelReason ?? '—'}</span></div>
+    <div class="banner error"><Ban size={17} /><span>{m.bh_phieu_da_huy({ at: order.cancelledAt ? dateTime(order.cancelledAt) : '—', by: order.cancelledByName ?? '—' })} <b>{m.bh_ly_do()}:</b> {order.cancelReason ?? '—'}{#if order.staffHidden} <span class="pill neutral">{m.bh_an_voi_nhan_vien()}</span>{/if}</span></div>
   {/if}
   {#if order.confirmationStatus === 'REVISION_REQUESTED' && order.confirmationNote && order.status !== 'CANCELLED'}
     <div class="banner warning"><MessageSquareWarning size={17} /><span><b>{order.revisionRequestedByName ?? 'Kinh doanh'} {m.yeu_cau_sua_2()}{order.revisionRequestedAt ? ` (${dateTime(order.revisionRequestedAt)})` : ''}:</b> {order.confirmationNote}</span></div>
@@ -304,7 +323,7 @@
                   <td>{line.productName}{#if line.gift}<span class="pill orange gift-tag">{m.hang_tang()}</span>{/if}{#if line.promotionCode}<small>{m.khuyen_mai()} {line.promotionCode}</small>{/if}</td>
                   <td>{line.unit}</td>
                   <td class="num">{num(line.quantity)}</td>
-                  <td class="num">{Number(line.unitPrice).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td class="num">{Number(line.unitPrice).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{#if line.pricingSource === 'MANUAL_PRICE'}<small class="manual-price">{m.gia_dong_sua_tay({ price: Number(line.originalUnitPrice ?? 0).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</small>{/if}</td>
                   <td class="num" title={m.bac_doanh_so_khuyen_mai({ p0: line.salesTierDiscountRate ?? 0, p1: line.promotionDiscountRate ?? 0 })}>{line.gift ? '' : Number(line.discountRate).toLocaleString(intlLocale())}</td>
                   <td class="num"><b>{num(line.netAmount ?? line.lineTotal)}</b></td>
                 </tr>
@@ -344,6 +363,7 @@
 
 <Dialog bind:open={discardOpen} title={order?.status === 'DRAFT' ? m.bh_xoa_tieu_de({ code: order?.code ?? '' }) : m.bh_huy_tieu_de({ code: order?.code ?? '' })}>
   <p class="lead">{order?.status === 'DRAFT' ? m.bh_xoa_giai_thich() : m.bh_huy_giai_thich()}</p>
+  {#if isRoot}<p class="lead root-note">{order?.status === 'DRAFT' ? m.root_xoa_nhap_ghi_chu() : m.root_an_nhan_vien_ghi_chu()}</p>{/if}
   <div class="field">
     <label for="discard-reason">{m.bh_ly_do()} <span class="req">*</span></label>
     <textarea id="discard-reason" rows="3" maxlength="300" bind:value={discardReason} placeholder={m.bh_ly_do_placeholder()}></textarea>
@@ -352,6 +372,20 @@
   {#snippet footer()}
     <button class="btn" onclick={() => (discardOpen = false)}>{m.dong()}</button>
     <button class="btn danger" disabled={discardReason.trim().length < 5 || working} onclick={discard}>{order?.status === 'DRAFT' ? m.bh_xoa_phieu() : m.bh_huy_phieu()}</button>
+  {/snippet}
+</Dialog>
+
+<Dialog bind:open={voidOpen} title={m.root_huy_tieu_de({ code: order?.code ?? '' })}>
+  <p class="lead">{m.root_huy_giai_thich()}</p>
+  <p class="lead root-note">{m.root_an_nhan_vien_ghi_chu()}</p>
+  <div class="field">
+    <label for="void-reason">{m.bh_ly_do()} <span class="req">*</span></label>
+    <textarea id="void-reason" rows="3" maxlength="300" bind:value={voidReason} placeholder={m.root_huy_ly_do_placeholder()}></textarea>
+    {#if voidReason.trim() && voidReason.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}
+  </div>
+  {#snippet footer()}
+    <button class="btn" onclick={() => (voidOpen = false)}>{m.dong()}</button>
+    <button class="btn danger" disabled={voidReason.trim().length < 5 || working} onclick={voidOrder}>{m.root_huy_phieu_da_giao()}</button>
   {/snippet}
 </Dialog>
 
@@ -366,6 +400,8 @@
   .slip b { color: var(--navy); }
   .btn.danger-soft { border-color: #f3c9c9; background: var(--red-soft); color: var(--red); }
   .timeline li.cancelled b { color: var(--red); }
+  .btn.root { border-color: var(--navy-2); color: var(--navy); }
+  .manual-price { display: block; color: var(--orange); font-size: 11px; font-weight: 600; white-space: nowrap; }
   .timeline li.cancelled span { border-color: var(--red) !important; background: var(--red) !important; color: #fff; }
   .banner.info { background: #eaf2fb; color: var(--navy); }
   .evidence h2 { display: flex; align-items: center; gap: 8px; }
@@ -418,4 +454,5 @@
   .lead { margin: 0; color: var(--muted); font-size: 13.5px; }
   @media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } .summary { position: static; } .info dl { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 640px) { .summary dd { white-space: normal; text-align: right; } .timeline { grid-template-columns: 1fr; gap: 10px; } .timeline li::before { display: none; } .info dl { grid-template-columns: 1fr; } .info .wide2 { grid-column: auto; } }
+  .root-note { padding: 8px 10px; border-radius: 6px; background: var(--amber-soft); color: #8a6508; }
 </style>

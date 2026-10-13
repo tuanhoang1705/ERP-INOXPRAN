@@ -1,13 +1,15 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, NotificationTemplate, SalesPriceSheet, SalesQuote, SalesQuoteRequest, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
-import { CANCELLABLE_SALES_STATUSES, salesIssueTemplate } from '@inoxpran/contracts';
+import { CANCELLABLE_SALES_STATUSES, cancelledCode, expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { Decimal128, ObjectId } from 'mongodb';
 import { assertWarehouseAccess } from '../../common/access';
 import { AuditService } from '../../common/audit.service';
-import { decimal, decimalString, serializeDocument, toObjectId, vnDayStart } from '../../common/domain';
+import { decimal, decimalString, serializeDocument, toObjectId, vnDayStart, vnParts } from '../../common/domain';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
+import { PriceOverridesService } from './price-overrides.service';
+import { releaseHoldIfCleared } from '../receivables/overdue-review';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import type { AuthenticatedRequest, RequestUser } from '../../common/request-context';
@@ -16,7 +18,7 @@ import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { InventoryService } from '../inventory/inventory.service';
 import { evaluateApproval } from './approval.engine';
-import { isAssignedKeeper, KEEPER_ROLES, salesOrderScope } from './keeper-scope';
+import { isAssignedKeeper, KEEPER_ROLES, salesOrderScope, seesStaffHidden } from './keeper-scope';
 
 const EVIDENCE_PURPOSE = 'CONFIRMATION_EVIDENCE';
 /** Ảnh tải lên nhưng chưa gắn vào lần xác nhận nào: worker xóa cả file S3 và bản ghi sau 24 giờ. */
@@ -38,11 +40,25 @@ export class SalesService {
     private readonly idempotency: IdempotencyService,
     private readonly outbox: OutboxService,
     private readonly evidence: EvidenceIntakeService,
+    private readonly priceOverrides: PriceOverridesService,
   ) {}
+
+  /** Có dòng (không phải hàng tặng) mang đơn giá sửa tay → cần quyền sửa giá đã duyệt cho phiếu này. */
+  private hasPriceOverride(input: CreateSalesOrder): boolean {
+    return input.lines.some((line) => Boolean(line.overrideUnitPrice) && !line.gift);
+  }
+
+  private priceOverrideFields(grant: Document | null) {
+    return grant
+      ? { priceOverrideRequestId: (grant._id as ObjectId).toHexString(), priceOverrideApprovedByName: String(grant.decidedByName ?? ''), priceOverrideReason: String(grant.reason) }
+      : {};
+  }
 
   async list(user: RequestUser, status?: string, search?: string, channel?: string, customerId?: string, confirmation?: string, paging: PageRequest | null = null) {
     const filter: Document = {};
-    if (status) filter.status = status;
+    if (status) filter.status = status.includes(',') ? { $in: status.split(',').map((value) => value.trim()).filter(Boolean) } : status;
+    // Danh sách mặc định không hiện phiếu đã hủy; lọc "Đã hủy" hoặc tìm theo số / khách vẫn thấy.
+    else if (!search) filter.status = { $ne: 'CANCELLED' };
     if (confirmation) filter.confirmationStatus = confirmation;
     if (channel) filter.channel = channel;
     if (customerId) filter.customerId = toObjectId(customerId, 'customerId');
@@ -255,14 +271,14 @@ export class SalesService {
   }
 
   /** Dựng nội dung phiếu xuất kho bán hàng từ dữ liệu nhập: thông tin người mua, nhân viên, giá và tổng tiền. */
-  private async composeOrder(input: CreateSalesOrder, session: ClientSession) {
+  private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean } = {}) {
     const customerId = toObjectId(input.customerId, 'customerId');
     const warehouseId = toObjectId(input.warehouseId, 'warehouseId');
     const [customer, warehouse] = await Promise.all([
       this.loadCustomer(customerId, session),
       this.db.collection('warehouses').findOne({ _id: warehouseId, active: true, purpose: { $ne: 'DEFECTIVE' } }, { session }),
     ]);
-    this.assertCustomerCanOrder(customer);
+    if (!options.allowBlockedCustomer) this.assertCustomerCanOrder(customer);
     if (!warehouse) throw new NotFoundException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không tìm thấy kho hoạt động' });
     const now = new Date();
     const orderDate = input.orderDate ? new Date(`${input.orderDate}T00:00:00+07:00`) : now;
@@ -322,6 +338,7 @@ export class SalesService {
           gift: line.gift,
           pricingSource: line.pricingSource,
           ...(line.promotionCode ? { promotionCode: line.promotionCode } : {}),
+          ...(line.originalUnitPrice ? { originalUnitPrice: decimal(line.originalUnitPrice) } : {}),
           quantity: decimal(line.quantity),
           baseQuantity: decimal(line.baseQuantity),
           listUnitPrice: decimal(line.listUnitPrice),
@@ -366,10 +383,31 @@ export class SalesService {
     throw error;
   }
 
+  /** Số tự nhập sau khi ghép: chỉ gõ số hóa đơn ("104") → BH + năm + tháng của ngày chứng từ + 0104. */
+  private manualCode(code: string, orderDate: Date): string {
+    const expanded = expandSalesOrderCode(code, vnParts(orderDate));
+    if (salesOrderCodeProblem(expanded)) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Số phiếu không hợp lệ', details: [{ path: ['code'] }] });
+    }
+    return expanded;
+  }
+
+  /** Số phiếu kho SWK trùng số phiếu BH (SWK2026100104 ↔ BH2026100104); nếu (hiếm) đã có thì thêm hậu tố -2, -3… */
+  private async warehouseSlipCode(orderCode: string, session: ClientSession): Promise<string> {
+    const base = warehouseSlipNumber(orderCode);
+    for (let attempt = 1; attempt <= 20; attempt += 1) {
+      const candidate = attempt === 1 ? base : `${base}-${attempt}`;
+      if (!(await this.db.collection('shipments').findOne({ code: candidate }, { session, projection: { _id: 1 } }))) return candidate;
+    }
+    throw new ConflictException({ code: 'SHIPMENT_CODE_EXISTS', message: `Không cấp được số phiếu kho cho ${orderCode}` });
+  }
+
   /** Số phiếu tự nhập không được trùng phiếu BH khác (kể cả phiếu đã hủy). */
-  private async assertCodeFree(code: string, session: ClientSession, exceptId?: ObjectId): Promise<string> {
-    const taken = await this.db.collection('sales_orders').findOne({ code, ...(exceptId ? { _id: { $ne: exceptId } } : {}) }, { session, projection: { _id: 1 } });
-    if (taken) throw new ConflictException({ code: 'SALES_ORDER_CODE_EXISTS', message: `Số phiếu ${code} đã được dùng cho phiếu BH khác`, details: { code } });
+  private async assertCodeFree(code: string, session: ClientSession, request: AuthenticatedRequest, exceptId?: ObjectId): Promise<string> {
+    const taken = await this.db.collection('sales_orders').findOne({ code, ...(exceptId ? { _id: { $ne: exceptId } } : {}) }, { session });
+    // Phiếu đã hủy từ trước (còn giữ số gốc): nhả số ngay để dùng lại.
+    if (taken?.status === 'CANCELLED' && !taken.originalCode) await this.releaseNumber(taken, request, session);
+    else if (taken) throw new ConflictException({ code: 'SALES_ORDER_CODE_EXISTS', message: `Số phiếu ${code} đã được dùng cho phiếu BH khác`, details: { code } });
     return code;
   }
 
@@ -391,13 +429,77 @@ export class SalesService {
     }
   }
 
-  /** Số tự sinh BHyyyymm####; bỏ qua số đã bị dùng bởi phiếu tự nhập trùng định dạng. */
-  private async nextAutoCode(orderDate: Date, session: ClientSession): Promise<string> {
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      const code = await this.sequences.next('BH', session, 4, orderDate, 'compact');
-      if (!(await this.db.collection('sales_orders').findOne({ code }, { session, projection: { _id: 1 } }))) return code;
+  /**
+   * Số tự sinh BH + năm + tháng + 4 số (đánh lại mỗi tháng), **nối tiếp số lớn nhất đã có trong tháng** — kể cả số
+   * kế toán tự nhập (vd. nhập tay 104 → phiếu tự sinh sau là 0105). Vẫn bỏ qua số đã bị dùng nếu có.
+   */
+  private async nextAutoCode(orderDate: Date, session: ClientSession, request: AuthenticatedRequest): Promise<string> {
+    const prefix = salesOrderPeriodPrefix(vnParts(orderDate));
+    const pattern = { $regex: `^${prefix}\\d{4}$` };
+    // Số cuối đang dùng (phiếu hủy đã đổi sang đuôi -H nên tự bị loại; phiếu nháp xóa thì không còn).
+    const [highest] = await this.db.collection('sales_orders').find({ code: pattern, status: { $ne: 'CANCELLED' } }, { session, projection: { code: 1 } }).sort({ code: -1 }).limit(1).toArray();
+    // Số đầu tiên của tháng: bộ đếm, hoặc suy từ dữ liệu cũ (kể cả số gốc của phiếu đã hủy).
+    const [lowest] = await this.db.collection('sales_orders')
+      .find({ $or: [{ code: pattern }, { originalCode: pattern }] }, { session, projection: { code: 1, originalCode: 1 } })
+      .sort({ code: 1 })
+      .limit(50)
+      .toArray()
+      .then((rows) => [rows.map((row) => salesOrderSequence(String(row.originalCode ?? row.code), prefix)).filter((value): value is number => value !== null).sort((a, b) => a - b)[0]]);
+    const tracked = await this.sequences.floor('BH', orderDate, session);
+    const floor = [tracked, lowest ?? null].filter((value): value is number => typeof value === 'number').sort((a, b) => a - b)[0] ?? null;
+    let sequence = nextSalesOrderSequence(highest ? salesOrderSequence(String(highest.code), prefix) : null, floor);
+    for (let attempt = 0; attempt < 50; attempt += 1, sequence += 1) {
+      const code = `${prefix}${String(sequence).padStart(4, '0')}`;
+      const holder = await this.db.collection('sales_orders').findOne({ code }, { session });
+      // Phiếu đã hủy từ trước khi có quy tắc nhả số vẫn giữ số gốc: nhả số ngay rồi dùng lại.
+      const legacyCancelled = holder?.status === 'CANCELLED' && !holder.originalCode;
+      if (legacyCancelled) await this.releaseNumber(holder, request, session);
+      if (!holder || legacyCancelled) {
+        await this.sequences.track('BH', orderDate, sequence, session);
+        return code;
+      }
     }
     throw new ConflictException({ code: 'SALES_ORDER_CODE_EXISTS', message: 'Không sinh được số phiếu BH mới, vui lòng thử lại' });
+  }
+
+  /** Số tự nhập đúng dạng BH + tháng + 4 số: ghi nhận làm số đầu tiên / số cuối của tháng. */
+  private async trackManualCode(code: string, orderDate: Date, session: ClientSession) {
+    const sequence = salesOrderSequence(code, salesOrderPeriodPrefix(vnParts(orderDate)));
+    if (sequence !== null) await this.sequences.track('BH', orderDate, sequence, session);
+  }
+
+  /**
+   * Phiếu hủy nhả số cho phiếu mới: BH2026100104 → BH2026100104-H1, SWK2026100104 → SWK2026100104-H1. Đổi luôn ký hiệu
+   * tham chiếu của phiếu trên thẻ kho, công nợ, trả hàng, yêu cầu sửa giá (không đổi số lượng / tiền) để không lẫn với phiếu mới.
+   */
+  private async releaseNumber(order: Document, request: AuthenticatedRequest, session: ClientSession): Promise<Document> {
+    const orderId = order._id as ObjectId;
+    const oldCode = String(order.code);
+    const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const taken = await this.db.collection('sales_orders').find({ code: { $regex: `^${escape(oldCode)}-H\\d+$` } }, { session, projection: { code: 1 } }).toArray();
+    const newCode = cancelledCode(oldCode, new Set(taken.map((row) => String(row.code))));
+    const suffix = newCode.slice(oldCode.length);
+    const oldSlip = order.warehouseSlipNo ? String(order.warehouseSlipNo) : null;
+    const newSlip = oldSlip ? `${oldSlip}${suffix}` : null;
+    const updated = await this.db.collection('sales_orders').findOneAndUpdate(
+      { _id: orderId },
+      { $set: { code: newCode, originalCode: oldCode, ...(newSlip ? { warehouseSlipNo: newSlip, originalWarehouseSlipNo: oldSlip } : {}), updatedAt: new Date() } },
+      { session, returnDocument: 'after' },
+    );
+    if (oldSlip && newSlip) {
+      await this.db.collection('shipments').updateMany({ salesOrderId: orderId, code: oldSlip }, { $set: { code: newSlip, originalCode: oldSlip } }, { session });
+      await this.db.collection('inventory_movements').updateMany({ referenceType: 'Shipment', referenceId: oldSlip }, { $set: { referenceId: newSlip } }, { session });
+    }
+    await this.db.collection('inventory_movements').updateMany({ salesOrderCode: oldCode }, { $set: { salesOrderCode: newCode } }, { session });
+    await this.db.collection('receivables').updateMany({ salesOrderId: orderId }, { $set: { salesOrderCode: newCode } }, { session });
+    await this.db.collection('stock_returns').updateMany({ kind: 'CUSTOMER', salesOrderCode: oldCode }, { $set: { salesOrderCode: newCode } }, { session });
+    await this.db.collection('price_override_requests').updateMany({ salesOrderId: orderId }, { $set: { salesOrderCode: newCode } }, { session });
+    await this.audit.record({
+      actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+      action: 'SALES_ORDER_NUMBER_RELEASED', entityType: 'SalesOrder', entityId: orderId.toHexString(),
+      metadata: { from: oldCode, to: newCode, ...(oldSlip ? { slipFrom: oldSlip, slipTo: newSlip } : {}) },
+    }, session);
+    return updated as Document;
   }
 
   /**
@@ -410,19 +512,23 @@ export class SalesService {
       idempotencyKey,
       input,
       async (session) => {
+        const grant = this.hasPriceOverride(input) ? await this.priceOverrides.assertUsable(input.priceOverrideRequestId, input.formSessionId, null, request, session) : null;
         const { fields, orderDate } = await this.composeOrder(input, session);
         const now = new Date();
         const requestedBySales = !request.user.roles.some((role) => ['ACCOUNTANT', 'ADMIN'].includes(role));
-        if (input.code) {
+        const manualCode = input.code ? this.manualCode(input.code, orderDate) : undefined;
+        if (manualCode) {
           this.assertCanNumber(request);
-          await this.assertNotOpeningDocument(input.code, toObjectId(input.customerId, 'customerId'), session);
+          await this.assertNotOpeningDocument(manualCode, toObjectId(input.customerId, 'customerId'), session);
         }
-        const code = input.code ? await this.assertCodeFree(input.code, session) : await this.nextAutoCode(orderDate, session);
+        const code = manualCode ? await this.assertCodeFree(manualCode, session, request) : await this.nextAutoCode(orderDate, session, request);
+        if (manualCode) await this.trackManualCode(manualCode, orderDate, session);
         const document = {
           _id: new ObjectId(),
           code,
-          codeMode: input.code ? 'MANUAL' : 'AUTO',
+          codeMode: manualCode ? 'MANUAL' : 'AUTO',
           ...fields,
+          ...this.priceOverrideFields(grant),
           status: 'DRAFT',
           approvalStatus: 'NOT_REQUIRED',
           ...(requestedBySales ? { requestedBy: toObjectId(request.user.sub), requestedByName: request.user.displayName } : {}),
@@ -433,6 +539,7 @@ export class SalesService {
           updatedAt: now,
         };
         await this.db.collection('sales_orders').insertOne(document, { session }).catch((error: unknown) => this.codeConflict(error, code));
+        if (grant) await this.priceOverrides.bind(grant, { _id: document._id, code }, session);
         if (requestedBySales) {
           await this.notify(session, document._id.toHexString(), {
             targetRoles: ['ACCOUNTANT'],
@@ -472,16 +579,21 @@ export class SalesService {
         const before = await this.db.collection('sales_orders').findOne({ _id: orderId, version: input.version, status: 'DRAFT' }, { session });
         if (!before) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật hoặc không còn ở trạng thái nháp' });
         const { version: _version, codeMode: _codeMode, ...payload } = input;
+        const grant = this.hasPriceOverride(input)
+          ? await this.priceOverrides.assertUsable(input.priceOverrideRequestId ?? (before.priceOverrideRequestId as string | undefined), input.formSessionId, orderId, request, session)
+          : null;
         const { fields, keeper, orderDate } = await this.composeOrder(payload, session);
         // Số phiếu khi sửa: bỏ trống = giữ số cũ; nhập số khác = đổi sang số tự nhập (kiểm tra trùng);
         // chọn lại "Tự sinh" trên phiếu đang mang số tự nhập = cấp số tự sinh mới.
         let codeChange: { code?: string; codeMode?: 'AUTO' | 'MANUAL' } = {};
-        if (input.code && input.code !== before.code) {
+        const manualCode = input.code ? this.manualCode(input.code, orderDate) : undefined;
+        if (manualCode && manualCode !== before.code) {
           this.assertCanNumber(request);
-          codeChange = { code: await this.assertCodeFree(input.code, session, orderId), codeMode: 'MANUAL' };
-        } else if (!input.code && input.codeMode === 'AUTO' && before.codeMode === 'MANUAL') {
+          codeChange = { code: await this.assertCodeFree(manualCode, session, request, orderId), codeMode: 'MANUAL' };
+          await this.trackManualCode(manualCode, orderDate, session);
+        } else if (!manualCode && input.codeMode === 'AUTO' && before.codeMode === 'MANUAL') {
           this.assertCanNumber(request);
-          codeChange = { code: await this.nextAutoCode(orderDate, session), codeMode: 'AUTO' };
+          codeChange = { code: await this.nextAutoCode(orderDate, session, request), codeMode: 'AUTO' };
         }
         // Số tự nhập (mới đặt, hoặc giữ nguyên nhưng đổi sang khách khác) không được trùng chứng từ công nợ đầu kỳ của khách.
         const finalManualCode = codeChange.codeMode === 'MANUAL' ? codeChange.code : !codeChange.code && before.codeMode === 'MANUAL' ? String(before.code) : undefined;
@@ -491,13 +603,14 @@ export class SalesService {
         const updated = await this.db.collection('sales_orders').findOneAndUpdate(
           { _id: orderId, version: input.version, status: 'DRAFT' },
           {
-            $set: { ...fields, ...codeChange, updatedAt: new Date(), updatedByName: request.user.displayName },
+            $set: { ...fields, ...codeChange, ...this.priceOverrideFields(grant), updatedAt: new Date(), updatedByName: request.user.displayName },
             ...(keeper ? {} : { $unset: { warehouseKeeperId: '', warehouseKeeperName: '' } }),
             $inc: { version: 1 },
           },
           { session, returnDocument: 'after' },
         ).catch((error: unknown) => this.codeConflict(error, codeChange.code ?? ''));
         if (!updated) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật' });
+        if (grant) await this.priceOverrides.bind(grant, { _id: orderId, code: String(updated.code) }, session);
         await this.audit.record(
           {
             actorId: request.user.sub,
@@ -514,6 +627,37 @@ export class SalesService {
         return serializeDocument(updated);
       },
     );
+  }
+
+  /**
+   * Quản trị gốc hủy phiếu (ROOT-DEL-02): phiếu và mọi thứ gắn với phiếu ẩn với NVKD / thủ kho / mua hàng (cờ `staffHidden`);
+   * kế toán, Giám đốc, Admin vẫn thấy. Thông báo cũ về phiếu trong hộp thư của nhân viên đó được gỡ. Dòng thẻ kho chỉ ẩn khi
+   * xuất / nhập của phiếu bù trừ hết theo từng kho + mã (để thẻ kho nhân viên xem vẫn khớp tồn).
+   */
+  private async hideFromStaff(order: Document, session: ClientSession): Promise<void> {
+    const orderId = order._id as ObjectId;
+    const id = orderId.toHexString();
+    const code = String(order.code);
+    const hidden = { $set: { staffHidden: true } };
+    const shipments = await this.db.collection('shipments').find({ salesOrderId: orderId }, { session, projection: { code: 1 } }).toArray();
+    await this.db.collection('sales_orders').updateOne({ _id: orderId }, hidden, { session });
+    await this.db.collection('shipments').updateMany({ salesOrderId: orderId }, hidden, { session });
+    await this.db.collection('receivables').updateMany({ salesOrderId: orderId }, hidden, { session });
+    await this.db.collection('approval_requests').updateMany({ entityType: 'SalesOrder', entityId: orderId }, hidden, { session });
+    await this.db.collection('price_override_requests').updateMany({ salesOrderId: orderId }, hidden, { session });
+    const movementFilter: Document = { $or: [{ salesOrderCode: code }, { referenceType: 'Shipment', referenceId: { $in: shipments.map((row) => String(row.code)) } }] };
+    const movements = await this.db.collection('inventory_movements').find(movementFilter, { session, projection: { warehouseId: 1, productId: 1, direction: 1, quantity: 1 } }).toArray();
+    const net = new Map<string, Decimal>();
+    for (const row of movements) {
+      const key = `${String(row.warehouseId)}|${String(row.productId)}`;
+      const quantity = new Decimal(decimalString(row.quantity));
+      net.set(key, (net.get(key) ?? new Decimal(0)).add(row.direction === 'OUT' ? quantity.neg() : quantity));
+    }
+    if (movements.length && [...net.values()].every((value) => value.isZero())) await this.db.collection('inventory_movements').updateMany(movementFilter, hidden, { session });
+    const notices = await this.db.collection('notifications').find({ entityType: 'SalesOrder', entityId: id }, { session, projection: { userId: 1 } }).toArray();
+    const recipients = await this.db.collection('users').find({ _id: { $in: notices.map((row) => row.userId as ObjectId) } }, { session, projection: { roles: 1, root: 1 } }).toArray();
+    const staff = recipients.filter((user) => !seesStaffHidden({ roles: (user.roles as string[] | undefined) ?? [], root: Boolean(user.root) })).map((user) => user._id as ObjectId);
+    if (staff.length) await this.db.collection('notifications').deleteMany({ entityType: 'SalesOrder', entityId: id, userId: { $in: staff } }, { session });
   }
 
   /** Người cần biết khi phiếu bị bỏ: NVKD đề nghị, NVKD phụ trách (tài khoản liên kết), thủ kho được giao — trừ chính người thao tác. */
@@ -565,8 +709,10 @@ export class SalesService {
         { $set: { status: 'CANCELLED', decidedAt: now, decidedBy: toObjectId(request.user.sub) } },
         { session },
       );
-      const targetUserIds = await this.discardAudience(before, request, session);
-      const targetRoles = before.status === 'PENDING_APPROVAL' ? ['SALES_MANAGER'] : [];
+      // Quản trị gốc hủy: ẩn với nhân viên, không báo NVKD / thủ kho / trưởng KD.
+      if (request.user.root) await this.hideFromStaff(updated, session);
+      const targetUserIds = request.user.root ? [] : await this.discardAudience(before, request, session);
+      const targetRoles = before.status === 'PENDING_APPROVAL' && !request.user.root ? ['SALES_MANAGER'] : [];
       if (targetUserIds.length || targetRoles.length) {
         await this.notify(session, id, {
           ...(targetUserIds.length ? { targetUserIds } : {}),
@@ -589,11 +735,11 @@ export class SalesService {
           entityId: id,
           before: serializeDocument(before),
           after: serializeDocument(updated),
-          metadata: { reason: input.reason },
+          metadata: { reason: input.reason, ...(request.user.root ? { hiddenFromStaff: true } : {}) },
         },
         session,
       );
-      return serializeDocument(updated);
+      return serializeDocument(await this.releaseNumber(updated, request, session));
     });
   }
 
@@ -619,12 +765,20 @@ export class SalesService {
       await this.inventory.release(orderId, session);
       const deleted = await this.db.collection('sales_orders').deleteOne({ _id: orderId, version: input.version, status: 'DRAFT' }, { session });
       if (deleted.deletedCount !== 1) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
-      await this.db.collection('approval_requests').updateMany(
-        { entityType: 'SalesOrder', entityId: orderId, status: 'PENDING' },
-        { $set: { status: 'CANCELLED', decidedAt: new Date(), decidedBy: toObjectId(request.user.sub) } },
-        { session },
-      );
-      const targetUserIds = await this.discardAudience(before, request, session);
+      if (request.user.root) {
+        // Quản trị gốc xóa nháp: xóa hẳn cả yêu cầu duyệt / sửa giá / thông báo gắn với phiếu, không báo ai.
+        await this.db.collection('approval_requests').deleteMany({ entityType: 'SalesOrder', entityId: orderId }, { session });
+        await this.db.collection('price_override_requests').deleteMany({ salesOrderId: orderId }, { session });
+        await this.db.collection('notifications').deleteMany({ entityType: 'SalesOrder', entityId: id }, { session });
+        await this.db.collection('outbox_events').deleteMany({ aggregateType: 'SalesOrder', aggregateId: id, status: { $ne: 'SENT' } }, { session });
+      } else {
+        await this.db.collection('approval_requests').updateMany(
+          { entityType: 'SalesOrder', entityId: orderId, status: 'PENDING' },
+          { $set: { status: 'CANCELLED', decidedAt: new Date(), decidedBy: toObjectId(request.user.sub) } },
+          { session },
+        );
+      }
+      const targetUserIds = request.user.root ? [] : await this.discardAudience(before, request, session);
       if (targetUserIds.length) {
         await this.notify(session, id, {
           targetUserIds,
@@ -649,7 +803,237 @@ export class SalesService {
         },
         session,
       );
+      if (request.user.root) await this.evidence.removeAllFor('SalesOrder', orderId);
       return { id, code: String(before.code), deleted: true };
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------
+  // Quản trị gốc: hủy phiếu đã giao bằng bút toán đảo, sửa phiếu ở mọi giai đoạn (chênh lệch tự vào thẻ kho / công nợ).
+
+  private assertRoot(request: AuthenticatedRequest) {
+    if (!request.user.root) throw new ForbiddenException({ code: 'ROOT_ONLY', message: 'Chỉ tài khoản quản trị gốc (root) được làm thao tác này' });
+  }
+
+  /** Tổng số lượng (đơn vị cơ sở, gồm hàng tặng) theo mã hàng. */
+  private quantitiesOf(lines: Array<{ productId: unknown; baseQuantity: unknown }>): Map<string, Decimal> {
+    const result = new Map<string, Decimal>();
+    for (const line of lines) {
+      const key = String(line.productId);
+      result.set(key, (result.get(key) ?? new Decimal(0)).add(decimalString(line.baseQuantity)));
+    }
+    return result;
+  }
+
+  /** Số lượng khách đã trả lại theo phiếu BH này (phiếu nhập trả hàng TH…). */
+  private async returnedQuantities(orderCode: string, session: ClientSession): Promise<Map<string, Decimal>> {
+    const returns = await this.db.collection('stock_returns').find({ kind: 'CUSTOMER', salesOrderCode: orderCode }, { session }).toArray();
+    return this.quantitiesOf(returns.flatMap((row) => (row.lines as Array<{ productId: unknown; quantity: unknown }>).map((line) => ({ productId: line.productId, baseQuantity: line.quantity }))));
+  }
+
+  /**
+   * Hủy phiếu đã xuất kho / đã giao (chỉ root): nhập lại kho phần hàng khách chưa trả, công nợ của phiếu chuyển "Đã hủy";
+   * tiền đã thu thành dòng "khách trả trước" (công nợ âm) để dư nợ / hạn mức của khách đúng. Giữ số, có nhật ký.
+   */
+  async rootVoid(id: string, input: DiscardSalesOrder, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    this.assertRoot(request);
+    return this.idempotency.execute(`sales-order-void:${id}`, idempotencyKey, input, async (session) => {
+      const orderId = toObjectId(id);
+      const before = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
+      if (!before) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+      if (!['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status))) {
+        throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu chưa xuất kho — dùng "Hủy phiếu" / "Xóa phiếu" thông thường' });
+      }
+      if (before.version !== input.version) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      const code = String(before.code);
+      const shipment = await this.db.collection('shipments').findOne({ salesOrderId: orderId }, { session });
+      const shipped = this.quantitiesOf(before.lines as Array<{ productId: unknown; baseQuantity: unknown }>);
+      const returned = await this.returnedQuantities(code, session);
+      const back = [...shipped].map(([productId, quantity]) => ({ productId, quantity: quantity.sub(returned.get(productId) ?? 0) })).filter((line) => line.quantity.gt(0));
+      if (back.length) {
+        await this.inventory.applyPhysicalMovement({
+          warehouseId: (before.warehouseId as ObjectId).toHexString(),
+          referenceType: 'Shipment',
+          referenceId: String(shipment?.code ?? before.warehouseSlipNo ?? code),
+          movementType: 'SALES_VOID',
+          direction: 'IN',
+          category: 'SALES_REVERSAL_IN',
+          lines: back.map((line) => ({ productId: line.productId, quantity: line.quantity.toString() })),
+          reason: `Hủy phiếu ${code} sau khi giao: ${input.reason}`,
+          actorId: request.user.sub,
+          extra: { salesOrderCode: code },
+        }, session);
+      }
+      const now = new Date();
+      if (shipment) await this.db.collection('shipments').updateOne({ _id: shipment._id }, { $set: { status: 'CANCELLED', cancelledAt: now, cancelReason: input.reason, updatedAt: now } }, { session });
+      const receivables = await this.db.collection('receivables').find({ salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } }, { session }).toArray();
+      let credited = new Decimal(0);
+      for (const receivable of receivables) {
+        const paid = new Decimal(decimalString(receivable.paidAmount));
+        await this.db.collection('receivables').updateOne(
+          { _id: receivable._id },
+          { $set: { status: 'VOIDED', statusBeforeVoid: receivable.status, voidedAt: now, voidReason: input.reason, updatedAt: now }, $inc: { version: 1 } },
+          { session },
+        );
+        if (paid.gt(0)) {
+          credited = credited.add(paid);
+          const farFuture = new Date(now);
+          farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 10);
+          await this.db.collection('receivables').insertOne({
+            _id: new ObjectId(),
+            code: await this.sequences.next('AR', session),
+            partnerId: receivable.partnerId,
+            salesOrderId: orderId,
+            salesOrderCode: code,
+            sourceType: 'SALES_VOID_CREDIT',
+            amount: decimal(`-${paid.toString()}`),
+            paidAmount: decimal('0'),
+            status: 'OPEN',
+            dueDate: farFuture,
+            note: `Tiền đã thu của phiếu ${code} (đã hủy sau khi giao) — khách trả trước`,
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+          }, { session });
+        }
+      }
+      const updated = await this.db.collection('sales_orders').findOneAndUpdate(
+        { _id: orderId, version: input.version },
+        {
+          $set: {
+            status: 'CANCELLED', statusBeforeCancel: before.status, cancelReason: input.reason,
+            cancelledAt: now, cancelledBy: toObjectId(request.user.sub), cancelledByName: request.user.displayName, voidedAfterShipment: true, updatedAt: now,
+          },
+          $inc: { version: 1 },
+        },
+        { session, returnDocument: 'after' },
+      );
+      if (!updated) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      await releaseHoldIfCleared(this.db, before.customerId as ObjectId, session, now);
+      // Ẩn với NVKD / thủ kho; chỉ báo kế toán (công nợ của phiếu đã hủy).
+      await this.hideFromStaff(updated, session);
+      await this.notify(session, id, {
+        targetRoles: ['ACCOUNTANT'],
+        level: 'WARNING',
+        title: `Phiếu ${code} đã bị hủy`,
+        message: `${request.user.displayName} hủy phiếu ${code} (${String(before.customerName)}) sau khi giao: ${input.reason}`,
+        href: `/sales/orders/${id}`,
+        template: 'SALES_ORDER_CANCELLED',
+        params: { code, customer: String(before.customerName), actor: request.user.displayName, reason: input.reason },
+      });
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+        action: 'SALES_ORDER_VOIDED', entityType: 'SalesOrder', entityId: id,
+        before: serializeDocument(before), after: serializeDocument(updated),
+        metadata: { reason: input.reason, restocked: back.map((line) => ({ productId: line.productId, quantity: line.quantity.toString() })), credited: credited.toString() },
+      }, session);
+      return serializeDocument(await this.releaseNumber(updated, request, session));
+    });
+  }
+
+  /**
+   * Quản trị gốc sửa phiếu đã phát hành (chờ duyệt / giữ hàng / đã xuất / đã giao): tính lại phiếu; giữ chỗ được làm lại;
+   * phiếu đã xuất kho thì chênh lệch số lượng vào thẻ kho ("Nhập lại / Xuất bổ sung do sửa phiếu BH") và công nợ theo tổng mới.
+   */
+  async rootUpdate(id: string, input: UpdateSalesOrder, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    this.assertRoot(request);
+    return this.idempotency.execute(`sales-order-root-edit:${id}`, idempotencyKey, input, async (session) => {
+      const orderId = toObjectId(id);
+      const before = await this.db.collection('sales_orders').findOne({ _id: orderId, version: input.version }, { session });
+      if (!before) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      if (before.status === 'DRAFT') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu nháp sửa theo cách thông thường' });
+      if (before.status === 'CANCELLED') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã hủy không sửa được' });
+      const shipped = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status));
+      const { version: _version, codeMode: _codeMode, ...payload } = input;
+      const { fields, keeper, orderDate } = await this.composeOrder(payload, session, { allowBlockedCustomer: true });
+      const warehouseChanged = String(fields.warehouseId) !== String(before.warehouseId);
+      const customerChanged = String(fields.customerId) !== String(before.customerId);
+      if (shipped && warehouseChanged) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã xuất kho: không đổi kho xuất (hủy phiếu rồi lập lại)' });
+      let codeChange: { code?: string; codeMode?: 'AUTO' | 'MANUAL' } = {};
+      const manualCode = input.code ? this.manualCode(input.code, orderDate) : undefined;
+      if (manualCode && manualCode !== before.code) {
+        if (shipped) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã xuất kho: không đổi số phiếu (số SWK, thẻ kho, công nợ đang dùng số này)' });
+        codeChange = { code: await this.assertCodeFree(manualCode, session, request, orderId), codeMode: 'MANUAL' };
+      }
+      const code = codeChange.code ?? String(before.code);
+      const now = new Date();
+      const newLines = fields.lines as Array<{ productId: ObjectId; baseQuantity: unknown; gift?: boolean }>;
+      if (before.status === 'RESERVED') {
+        await this.inventory.release(orderId, session);
+        await this.inventory.reserve(orderId, String(fields.warehouseId), newLines.map((line) => ({ productId: line.productId.toHexString(), baseQuantity: decimalString(line.baseQuantity), gift: Boolean(line.gift) })), request.user.sub, session);
+      }
+      if (shipped) {
+        const oldQty = this.quantitiesOf(before.lines as Array<{ productId: unknown; baseQuantity: unknown }>);
+        const newQty = this.quantitiesOf(newLines);
+        const returned = await this.returnedQuantities(code, session);
+        for (const [productId, quantity] of returned) {
+          if ((newQty.get(productId) ?? new Decimal(0)).lt(quantity)) {
+            const sku = (before.lines as Array<{ productId: unknown; sku: string }>).find((line) => String(line.productId) === productId)?.sku ?? productId;
+            throw new ConflictException({ code: 'ORDER_RETURNED_EXCEEDS', message: `Khách đã trả ${quantity.toString()} ${sku} theo phiếu này — số lượng mới không được nhỏ hơn` });
+          }
+        }
+        const deltas = [...new Set([...oldQty.keys(), ...newQty.keys()])].map((productId) => ({ productId, delta: (newQty.get(productId) ?? new Decimal(0)).sub(oldQty.get(productId) ?? 0) }));
+        const shipment = await this.db.collection('shipments').findOne({ salesOrderId: orderId }, { session });
+        const movement = (direction: 'IN' | 'OUT', lines: Array<{ productId: string; delta: Decimal }>) => this.inventory.applyPhysicalMovement({
+          warehouseId: (before.warehouseId as ObjectId).toHexString(),
+          referenceType: 'Shipment',
+          referenceId: String(shipment?.code ?? before.warehouseSlipNo ?? code),
+          movementType: 'SALES_ADJUSTMENT',
+          direction,
+          category: direction === 'IN' ? 'SALES_REVERSAL_IN' : 'SALES_EXTRA_OUT',
+          lines: lines.map((line) => ({ productId: line.productId, quantity: line.delta.abs().toString() })),
+          reason: `Quản trị gốc sửa phiếu ${code}`,
+          actorId: request.user.sub,
+          extra: { salesOrderCode: code },
+        }, session);
+        const backIn = deltas.filter((line) => line.delta.lt(0));
+        const extraOut = deltas.filter((line) => line.delta.gt(0));
+        if (backIn.length) await movement('IN', backIn);
+        if (extraOut.length) await movement('OUT', extraOut);
+        if (shipment) await this.db.collection('shipments').updateOne({ _id: shipment._id }, { $set: { lines: fields.lines, customerId: fields.customerId, updatedAt: now } }, { session });
+        const receivable = await this.db.collection('receivables').findOne({ salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } }, { session });
+        if (receivable) {
+          const paid = new Decimal(decimalString(receivable.paidAmount));
+          const amount = new Decimal(decimalString(fields.grandTotal));
+          if (paid.gt(amount)) throw new ConflictException({ code: 'ORDER_PAID_EXCEEDS_TOTAL', message: `Đã thu ${paid.toFixed(0)} đ, lớn hơn tổng mới ${amount.toFixed(0)} đ — xử lý phiếu thu trước` });
+          if (customerChanged && paid.gt(0)) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã thu tiền: không đổi khách hàng' });
+          const status = paid.eq(amount) ? 'PAID' : paid.gt(0) ? 'PARTIALLY_PAID' : receivable.status === 'OVERDUE' ? 'OVERDUE' : 'OPEN';
+          await this.db.collection('receivables').updateOne(
+            { _id: receivable._id },
+            { $set: { amount: decimal(amount.toString()), status, partnerId: fields.customerId, salesOrderCode: code, updatedAt: now }, $inc: { version: 1 } },
+            { session },
+          );
+        }
+      }
+      const overridden = this.hasPriceOverride(input) && !before.priceOverrideRequestId
+        ? { priceOverrideApprovedByName: request.user.displayName, priceOverrideReason: 'Quản trị gốc sửa phiếu' }
+        : {};
+      const updated = await this.db.collection('sales_orders').findOneAndUpdate(
+        { _id: orderId, version: input.version },
+        {
+          $set: { ...fields, ...codeChange, ...overridden, rootEditedAt: now, rootEditedByName: request.user.displayName, updatedAt: now, updatedByName: request.user.displayName },
+          ...(keeper ? {} : { $unset: { warehouseKeeperId: '', warehouseKeeperName: '' } }),
+          $inc: { version: 1 },
+        },
+        { session, returnDocument: 'after' },
+      ).catch((error: unknown) => this.codeConflict(error, codeChange.code ?? ''));
+      if (!updated) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      if (customerChanged) await releaseHoldIfCleared(this.db, before.customerId as ObjectId, session, now);
+      await this.notify(session, id, {
+        targetRoles: ['ACCOUNTANT'],
+        level: 'WARNING',
+        title: `Quản trị gốc đã sửa phiếu ${code}`,
+        message: `${request.user.displayName} sửa phiếu ${code} (${String(fields.customerName)})${shipped ? ' — tồn kho và công nợ đã điều chỉnh theo chênh lệch' : ''}.`,
+        href: `/sales/orders/${id}`,
+        template: 'SALES_ORDER_ROOT_EDITED',
+        params: { code, customer: String(fields.customerName), actor: request.user.displayName },
+      });
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+        action: 'SALES_ORDER_ROOT_EDITED', entityType: 'SalesOrder', entityId: id,
+        before: serializeDocument(before), after: serializeDocument(updated),
+      }, session);
+      return serializeDocument(updated);
     });
   }
 
@@ -850,7 +1234,8 @@ export class SalesService {
           }
           const customer = await this.db.collection('partners').findOne({ _id: order.customerId }, { session });
           if (!customer) throw new NotFoundException({ code: 'CUSTOMER_NOT_FOUND', message: 'Không tìm thấy khách hàng' });
-          const shipmentCode = await this.sequences.next('SWK', session, 4, new Date(), 'compact');
+          // Phiếu kho cùng số với phiếu BH (yêu cầu của Ban Giám đốc 12/10/2026): BH2026100104 → SWK2026100104.
+          const shipmentCode = await this.warehouseSlipCode(String(order.code), session);
           await this.inventory.shipReserved(
             orderId,
             (order.warehouseId as ObjectId).toHexString(),

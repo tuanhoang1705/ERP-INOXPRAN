@@ -37,6 +37,16 @@ describe('computeIssue', () => {
     expect(kct.summary).toMatchObject({ netTotal: '13990000', taxTotal: '0', grandTotal: '13990000' });
   });
 
+  it('đơn giá sửa tay (đã được cấp quyền): dùng đúng giá, CK 0, vẫn nhớ giá bảng giá; hàng tặng bỏ qua', () => {
+    const result = computeIssue([
+      { productId: 'p3', unit: 'Cái', quantity: '2', gift: false, overrideUnitPrice: '1400000' },
+      { productId: 'p1', unit: 'Cái', quantity: '1', gift: true, overrideUnitPrice: '999' },
+    ], products, sheet(), '8');
+    expect(result.lines[0]).toMatchObject({ unitPrice: '1400000.00', listUnitPrice: '1400000.00', discountRate: '0', overridden: true, originalUnitPrice: '1401296.30', netAmount: '2800000.00' });
+    expect(result.lines[1]).toMatchObject({ unitPrice: '0.00', overridden: false });
+    expect(result.summary).toMatchObject({ netTotal: '2800000', taxTotal: '224000', grandTotal: '3024000' });
+  });
+
   it('cộng cả hàng tặng vào nhu cầu xuất và cảnh báo tồn', () => {
     const result = computeIssue([...lines, { productId: 'p3', unit: 'Thùng', quantity: '2', gift: false }], products, sheet(), '8');
     expect(result.demandByProduct.get('p1')).toBe(16);

@@ -27,6 +27,11 @@
 .EXAMPLE
   .\infra\deploy.ps1 -Profile inoxpran-admin -Environment production -ConfirmProduction -SkipBuild -BackupNow
   Sao lưu MongoDB ngay lên S3. -RestoreDrill: diễn tập khôi phục bản mới nhất vào MongoDB tạm và so số bản ghi.
+
+.EXAMPLE
+  .\infra\deploy.ps1 -Profile inoxpran-admin -Environment production -ConfirmProduction -SkipBuild -ResetBusinessData
+  Làm sạch dữ liệu dùng thử trước khi chạy thật (RESET-01): mặc định CHẠY THỬ — chỉ liệt kê chứng từ sẽ xóa / dữ liệu giữ lại.
+  Thêm -Execute để xóa thật (hỏi gõ lại mã xác nhận). Giữ tài khoản, cấu hình, kho, danh mục, khách hàng, nhật ký hệ thống.
 #>
 param(
   [Parameter(Mandatory = $true)][string]$Profile,
@@ -38,6 +43,8 @@ param(
   [switch]$ShowDemoPassword,
   [switch]$BackupNow,
   [switch]$RestoreDrill,
+  [switch]$ResetBusinessData,
+  [switch]$Execute,
   [ValidatePattern('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')][string]$SeedAdmin
 )
 
@@ -236,6 +243,22 @@ try {
   if ($RestoreDrill) {
     Write-Host '== Diễn tập khôi phục từ bản sao lưu mới nhất' -ForegroundColor Cyan
     Invoke-Remote '/opt/inoxpran/restore-drill.sh' 1800
+  }
+
+  # Làm sạch dữ liệu dùng thử trước khi chạy thật (RESET-01): mặc định chỉ chạy thử (liệt kê, không ghi);
+  # -Execute mới xóa và hỏi gõ lại mã xác nhận. Giữ tài khoản, cấu hình, kho, danh mục, khách hàng, nhật ký hệ thống.
+  if ($ResetBusinessData) {
+    $resetConfirm = 'XOA-DU-LIEU-GIAO-DICH'
+    if (-not $Execute) {
+      Write-Host '== Làm sạch dữ liệu dùng thử — CHẠY THỬ (không thay đổi gì)' -ForegroundColor Cyan
+      Invoke-Remote 'cd /opt/inoxpran && docker compose run --rm --no-deps api node apps/api/dist/scripts/reset-business-data.js' 600
+      Write-Host 'Kiểm tra danh sách trên. Chạy thật: thêm -Execute.' -ForegroundColor Yellow
+    } else {
+      Write-Host "== Làm sạch dữ liệu dùng thử — CHẠY THẬT trên $Environment" -ForegroundColor Yellow
+      $typed = Read-Host "Mọi chứng từ (phiếu BH, thẻ kho, tồn, công nợ, kiểm kê…) sẽ bị xóa. Gõ $resetConfirm để tiếp tục"
+      if ($typed -ne $resetConfirm) { throw 'Đã hủy — mã xác nhận không đúng.' }
+      Invoke-Remote ('cd /opt/inoxpran && docker compose run --rm --no-deps -e RESET_CONFIRM={0} api node apps/api/dist/scripts/reset-business-data.js --execute' -f $resetConfirm) 1200
+    }
   }
 } finally {
   Remove-Item -Recurse -Force $work

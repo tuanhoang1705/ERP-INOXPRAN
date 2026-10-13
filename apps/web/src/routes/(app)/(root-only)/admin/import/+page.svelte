@@ -2,6 +2,7 @@
   /**
    * Nhập dữ liệu ban đầu từ Excel (giai đoạn 5): tải file mẫu → chạy thử (báo lỗi theo dòng / cột) → ghi vào hệ thống
    * → đối chiếu số liệu → kế toán và Giám đốc xác nhận. Mỗi lần ghi là một lô, hoàn tác được khi chưa phát sinh chứng từ.
+   * Chế độ "Điều chỉnh tồn đầu kỳ đã nhập" (IMP-ADJ-01): thay số tồn đầu kỳ bằng số trong file khi lô cũ không hoàn tác được.
    */
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, Download, FileSpreadsheet, RotateCcw, ShieldCheck, Upload } from 'lucide-svelte';
@@ -15,9 +16,12 @@
 
   type SheetSummary = { name: string; title: string; rows: number; create: number; update: number; errors: number };
   type Totals = { stockQuantity: string; stockValue: string; stockWithoutCost: number; receivablesAmount: string; receivablesByCustomer: Array<{ code: string; amount: string }> };
-  type DryRun = { ok: boolean; fileName: string; sha256: string; sheets: SheetSummary[]; totals: Totals; errors: Array<{ sheet: string; row: number; column: string; message: string }>; truncated: boolean };
+  type AdjustmentRow = { row: number; warehouseCode: string; sku: string; previous: string; next: string; delta: string; previousInitial: string | null; nextInitial: string | null; initialDelta: string | null; available: string; existed: boolean };
+  type Adjustment = { increased: number; decreased: number; unchanged: number; previousTotal: string; nextTotal: string; rows?: AdjustmentRow[] };
+  type Mode = 'NORMAL' | 'ADJUST_OPENING';
+  type DryRun = { ok: boolean; mode: Mode; fileName: string; sha256: string; sheets: SheetSummary[]; totals: Totals; adjustment?: Adjustment; errors: Array<{ sheet: string; row: number; column: string; message: string }>; truncated: boolean };
   type Batch = {
-    id: string; code: string; fileName: string; status: 'COMMITTED' | 'ROLLED_BACK'; sheets: SheetSummary[]; totals: Totals;
+    id: string; code: string; fileName: string; status: 'COMMITTED' | 'ROLLED_BACK'; mode: Mode; adjustment?: Adjustment; sheets: SheetSummary[]; totals: Totals;
     createdCount: number; updatedCount: number; openingCount: number; receivableCount: number; createdByName: string; createdAt: string;
     confirmations: Array<{ role: string; name: string; at: string }>; rolledBackAt?: string; rolledBackByName?: string;
   };
@@ -25,6 +29,7 @@
     batch: Batch;
     records: Array<{ collection: string; expected: number; actual: number; ok: boolean }>;
     stock: Array<{ warehouse: string; lines: number; importedQuantity: string; currentQuantity: string; importedValue: string; ok: boolean }>;
+    adjustments?: Array<{ warehouse: string; sku: string; previous: string; next: string; delta: string }>;
     receivables: { fileTotal: string; imported: string; outstanding: string; documents: number; ok: boolean; byCustomer: Array<{ code: string; amount: string }> };
   };
 
@@ -33,6 +38,7 @@
   // Trang chỉ dành cho quản trị gốc: quản trị gốc ghi nhận đã đối chiếu.
   const canConfirm = $derived(Boolean(session.user?.root) || roles.includes('DIRECTOR') || roles.includes('ACCOUNTANT'));
   let file = $state<File | null>(null);
+  let adjustMode = $state(false);
   let result = $state<DryRun | null>(null);
   let busy = $state('');
   let error = $state('');
@@ -44,6 +50,7 @@
   let report = $state<Report | null>(null);
   let reportOpen = $state(false);
   const collectionLabel = (value: string) => ({ product_categories: m.imp_nhom_hang(), regions: m.imp_khu_vuc(), employees: m.imp_nvkd(), partners: m.imp_doi_tac(), products: m.imp_san_pham() })[value] ?? value;
+  const signed = (value: string) => (Number(value) > 0 ? `+${num(value)}` : num(value));
   const roleLabel = (value: string) => (value === 'ROOT' ? m.imp_role_root() : value === 'DIRECTOR' ? m.ban_giam_doc() : m.imp_ke_toan());
 
   async function loadBatches() {
@@ -65,7 +72,10 @@
     const response = await fetch(`/api/v1${path}`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-file-name': encodeURIComponent(file.name), 'x-csrf-token': csrf(), 'idempotency-key': crypto.randomUUID() },
+      headers: {
+        'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-file-name': encodeURIComponent(file.name), 'x-csrf-token': csrf(), 'idempotency-key': crypto.randomUUID(),
+        ...(adjustMode ? { 'x-import-mode': 'adjust-opening' } : {}),
+      },
       body: file,
     });
     const payload = await response.json().catch(() => ({ code: '', message: m.rw_loi_tai_len() }));
@@ -87,7 +97,7 @@
     }
   }
   async function commit() {
-    if (!result?.ok || !confirm(m.imp_ghi_hoi())) return;
+    if (!result?.ok || !confirm(result.mode === 'ADJUST_OPENING' ? m.imp_dc_hoi() : m.imp_ghi_hoi())) return;
     busy = 'commit';
     error = '';
     try {
@@ -166,6 +176,10 @@
         <FileSpreadsheet size={16} />{file ? file.name : m.imp_chon_file()}
         <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange={(event) => { file = event.currentTarget.files?.[0] ?? null; result = null; }} />
       </label>
+      <label class="mode" class:on={adjustMode}>
+        <input type="checkbox" bind:checked={adjustMode} onchange={() => (result = null)} />
+        <span><b>{m.imp_dc_che_do()}</b><small>{m.imp_dc_che_do_mo_ta()}</small></span>
+      </label>
       <button class="btn navy" disabled={!file || busy !== ''} onclick={check}><ShieldCheck size={16} />{busy === 'check' ? m.imp_dang_kiem_tra() : m.imp_kiem_tra()}</button>
       <button class="btn primary" disabled={!result?.ok || busy !== ''} onclick={commit}><Upload size={16} />{busy === 'commit' ? m.imp_dang_ghi() : m.imp_ghi()}</button>
     </div>
@@ -188,6 +202,29 @@
         {#if result.totals.stockWithoutCost}<span class="warn">{m.imp_ton_chua_gia_von({ count: result.totals.stockWithoutCost })}</span>{/if}
         <span>{m.imp_tong_cong_no({ amount: vnd(result.totals.receivablesAmount), customers: result.totals.receivablesByCustomer.length })}</span>
       </div>
+      {#if result.adjustment}
+        <div class="adjust">
+          <p><span class="pill warning">{m.imp_dc_nhan()}</span> {m.imp_dc_tong({ increased: result.adjustment.increased, decreased: result.adjustment.decreased, unchanged: result.adjustment.unchanged, previous: num(result.adjustment.previousTotal), next: num(result.adjustment.nextTotal) })}</p>
+          {#if result.adjustment.rows?.length}
+            <div class="table-wrap adjust-rows">
+              <table class="table">
+                <thead><tr><th class="num">{m.imp_dong()}</th><th>{m.kho()}</th><th>{m.ma_sp()}</th><th class="num">{m.imp_dc_dang_co()}</th><th class="num">{m.imp_dc_theo_file()}</th><th class="num">{m.imp_dc_chenh_lech()}</th><th class="num">{m.imp_dc_kha_dung()}</th><th></th></tr></thead>
+                <tbody>
+                  {#each result.adjustment.rows as row (row.row)}
+                    <tr>
+                      <td class="num">{row.row}</td><td>{row.warehouseCode}</td><td class="code">{row.sku}</td>
+                      <td class="num">{num(row.previous)}</td><td class="num"><b>{num(row.next)}</b></td>
+                      <td class="num" class:up={Number(row.delta) > 0} class:bad={Number(row.delta) < 0}>{signed(row.delta)}</td>
+                      <td class="num muted">{num(row.available)}</td>
+                      <td><small>{#if !row.existed}{m.imp_dc_ma_moi()}{:else if row.initialDelta !== null && row.initialDelta !== '0'}{m.imp_dc_ban_dau({ from: row.previousInitial === null ? '—' : num(row.previousInitial), to: row.nextInitial === null ? '—' : num(row.nextInitial) })}{/if}</small></td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}<p class="hint">{m.imp_dc_khong_doi()}</p>{/if}
+        </div>
+      {/if}
       {#if result.errors.length}
         <div class="table-wrap errors">
           <table class="table">
@@ -210,7 +247,7 @@
         {#each batches as batch (batch.id)}
           <tr class:muted={batch.status === 'ROLLED_BACK'}>
             <td class="code">{batch.code}</td>
-            <td>{batch.fileName}<small>{dateTime(batch.createdAt)}</small></td>
+            <td>{batch.fileName}{#if batch.mode === 'ADJUST_OPENING'} <span class="pill warning">{m.imp_dc_nhan()}</span>{/if}<small>{dateTime(batch.createdAt)}</small></td>
             <td class="num">{num(batch.createdCount)}</td>
             <td class="num">{num(batch.updatedCount)}</td>
             <td class="num">{num(batch.openingCount)}</td>
@@ -243,10 +280,19 @@
       </table>
       <h3>{m.imp_ton_dau_ky()}</h3>
       <table class="table">
-        <thead><tr><th>{m.kho()}</th><th class="num">{m.imp_so_ma()}</th><th class="num">{m.imp_sl_nhap()}</th><th class="num">{m.imp_sl_hien_tai()}</th><th class="num">{m.imp_gia_tri()}</th><th></th></tr></thead>
+        <thead><tr><th>{m.kho()}</th><th class="num">{m.imp_so_ma()}</th><th class="num">{report.adjustments ? m.imp_dc_sl_file() : m.imp_sl_nhap()}</th><th class="num">{report.adjustments ? m.imp_dc_sl_hieu_luc() : m.imp_sl_hien_tai()}</th><th class="num">{m.imp_gia_tri()}</th><th></th></tr></thead>
         <tbody>{#each report.stock as row}<tr><td>{row.warehouse}</td><td class="num">{num(row.lines)}</td><td class="num">{num(row.importedQuantity)}</td><td class="num">{num(row.currentQuantity)}</td><td class="num">{vnd(row.importedValue)}</td><td>{#if row.ok}<span class="pill success">{m.imp_khop()}</span>{:else}<span class="pill warning">{m.imp_da_phat_sinh()}</span>{/if}</td></tr>
         {:else}<tr class="empty-row"><td colspan="6">{m.imp_khong_co_ton()}</td></tr>{/each}</tbody>
       </table>
+      {#if report.adjustments?.length}
+        <h3>{m.imp_dc_chi_tiet()}</h3>
+        <div class="table-wrap adjust-rows">
+          <table class="table compact">
+            <thead><tr><th>{m.kho()}</th><th>{m.ma_sp()}</th><th class="num">{m.imp_dc_dang_co()}</th><th class="num">{m.imp_dc_theo_file()}</th><th class="num">{m.imp_dc_chenh_lech()}</th></tr></thead>
+            <tbody>{#each report.adjustments as row}<tr><td>{row.warehouse}</td><td class="code">{row.sku}</td><td class="num">{num(row.previous)}</td><td class="num">{num(row.next)}</td><td class="num" class:up={Number(row.delta) > 0} class:bad={Number(row.delta) < 0}>{signed(row.delta)}</td></tr>{/each}</tbody>
+          </table>
+        </div>
+      {/if}
       <h3>{m.imp_cong_no_dau_ky()}</h3>
       <p class="line">{m.imp_cong_no_doi_chieu({ file: vnd(report.receivables.fileTotal), imported: vnd(report.receivables.imported), outstanding: vnd(report.receivables.outstanding), documents: report.receivables.documents })} {#if report.receivables.ok}<span class="pill success">{m.imp_khop()}</span>{:else}<span class="pill danger">{m.imp_lech()}</span>{/if}</p>
       {#if report.receivables.byCustomer.length}
@@ -270,6 +316,16 @@
   .upload { display: flex; flex-wrap: wrap; gap: 10px; }
   .upload label { position: relative; cursor: pointer; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
   .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload .mode { display: flex; flex: 1 1 100%; align-items: flex-start; gap: 10px; max-width: none; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; overflow: visible; }
+  .upload .mode.on { border-color: var(--amber); background: var(--amber-soft); }
+  .upload .mode input { position: static; flex: none; width: 16px; height: 16px; margin-top: 2px; opacity: 1; }
+  .upload .mode span { display: grid; gap: 2px; min-width: 0; }
+  .upload .mode small { color: var(--muted); line-height: 1.45; white-space: normal; }
+  .adjust { padding: 12px 20px; border-top: 1px solid var(--line-soft); font-size: 13px; }
+  .adjust p { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+  .adjust .hint { padding: 0; }
+  .adjust-rows { max-height: 420px; overflow-y: auto; }
+  .up { color: var(--green); font-weight: 600; }
   .result { margin-bottom: 16px; }
   .totals { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 12px 20px; border-top: 1px solid var(--line-soft); font-size: 13px; }
   .warn { color: var(--amber); }

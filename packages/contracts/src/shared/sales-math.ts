@@ -120,6 +120,11 @@ export interface LineBasis {
   discountRate: string | number;
   /** Hàng tặng: đơn giá 0, không chiết khấu, vẫn xuất kho. */
   gift?: boolean | undefined;
+  /**
+   * Đơn giá chưa thuế sửa tay cho 1 đơn vị bán (đã được cấp quyền): thay cho giá bảng giá, không chiết khấu
+   * (đơn giá trước CK = sau CK = giá sửa). Giá niêm yết (`listPrice`) vẫn là giá bảng giá để đối chiếu.
+   */
+  unitPriceOverride?: string | number | undefined;
 }
 
 export interface TaxOptions {
@@ -164,8 +169,10 @@ export function priceLine(line: LineBasis, options: TaxOptions): LineAmounts {
   // Đơn vị trung gian: "xu" = 1/100 đồng. price / 10^8 đồng = price / 10^6 xu.
   const taxDivisor = options.pricesIncludeTax ? PERCENT_BASE + tax : PERCENT_BASE;
   const listPrice = roundDiv(price, PERCENT_BASE);
-  const listUnitPrice = roundDiv(price, taxDivisor);
-  const unitPrice = roundDiv(price * (PERCENT_BASE - discount), taxDivisor * PERCENT_BASE);
+  const override = line.unitPriceOverride === undefined || line.unitPriceOverride === '' ? null : roundDiv(toScaled(line.unitPriceOverride), 100n);
+  if (override !== null && override <= 0n) throw new Error('Đơn giá sửa tay phải lớn hơn 0');
+  const listUnitPrice = override ?? roundDiv(price, taxDivisor);
+  const unitPrice = override ?? roundDiv(price * (PERCENT_BASE - discount), taxDivisor * PERCENT_BASE);
 
   const subtotal = roundDiv(quantity * listUnitPrice, E);
   const netAmount = roundDiv(quantity * unitPrice, E);

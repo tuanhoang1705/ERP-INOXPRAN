@@ -42,6 +42,7 @@ export const sections: NavSection[] = [
           { label: m.phieu_xuat_kho_ban_hang(), href: '/sales/orders' },
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', roles: ['DIRECTOR'] },
           { label: m.canh_bao_cong_no(), href: '/receivables/overdue' },
         ],
       },
@@ -93,6 +94,7 @@ export const sections: NavSection[] = [
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
           { label: m.cho_kho_lap_phieu_swk(), href: '/sales/orders?stage=warehouse' },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', roles: ['DIRECTOR'] },
         ],
       },
       {

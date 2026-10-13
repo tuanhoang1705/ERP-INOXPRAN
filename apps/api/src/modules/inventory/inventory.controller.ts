@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { staffHiddenFilter } from '../sales/keeper-scope';
 import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateStockReturnSchema, isInventoryCategory, StockReturnAccountingSchema } from '@inoxpran/contracts';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
@@ -53,8 +54,8 @@ export class InventoryController {
   }
 
   @Get('movements')
-  movements(@Query('productId') productId?: string, @Query('warehouseId') warehouseId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    return this.inventory.listMovements(productId, warehouseId, pageRequest(page, pageSize));
+  movements(@Req() request: AuthenticatedRequest, @Query('productId') productId?: string, @Query('warehouseId') warehouseId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.inventory.listMovements(productId, warehouseId, pageRequest(page, pageSize), staffHiddenFilter(request.user));
   }
 
   @Roles(...WAREHOUSE_EDITOR_ROLES)
@@ -85,13 +86,13 @@ export class InventoryController {
   // ---- Báo cáo kho theo mẫu công ty (月库存明细单 / 出库汇总) ----
 
   @Get('reports/monthly')
-  monthly(@Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
-    return this.reports.monthly(month, warehouseId || undefined);
+  monthly(@Req() request: AuthenticatedRequest, @Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
+    return this.reports.monthly(month, warehouseId || undefined, staffHiddenFilter(request.user));
   }
 
   @Get('reports/monthly/export')
   async monthlyExport(@Query('month') month: string, @Query('warehouseId') warehouseId: string | undefined, @Req() request: AuthenticatedRequest) {
-    const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined, request.user.displayName || request.user.email);
+    const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined, request.user.displayName || request.user.email, staffHiddenFilter(request.user));
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       disposition: `attachment; filename="TonKhoThang_${month}.xlsx"`,

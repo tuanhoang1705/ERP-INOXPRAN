@@ -27,6 +27,25 @@ export const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 const MAX_ERRORS = 500;
 type Row = { row: number; values: Record<string, ParsedValue> };
 export interface ImportIssue { sheet: string; row: number; column: string; message: string }
+/** NORMAL: tồn đầu kỳ chỉ nhập cho mã chưa có; ADJUST_OPENING: thay số tồn đầu kỳ đã nhập bằng số trong file (ghi phần chênh lệch). */
+export type ImportMode = 'NORMAL' | 'ADJUST_OPENING';
+export const importModeOf = (value: string | undefined): ImportMode => (value === 'adjust-opening' ? 'ADJUST_OPENING' : 'NORMAL');
+/** Một dòng TON_DAU_KY ở chế độ điều chỉnh: đầu kỳ đang có → theo file. */
+export interface OpeningAdjustment {
+  row: number;
+  warehouseCode: string;
+  sku: string;
+  previous: string;
+  next: string;
+  delta: string;
+  previousInitial: string | null;
+  nextInitial: string | null;
+  /** Chênh lệch số nhập ban đầu ghi lên thẻ kho; null = mã mới chưa khai số này. */
+  initialDelta: string | null;
+  available: string;
+  existed: boolean;
+}
+const changed = (row: OpeningAdjustment) => row.delta !== '0' || (row.initialDelta !== null && row.initialDelta !== '0');
 interface Parsed {
   sha256: string;
   sheets: Map<string, Row[]>;
@@ -190,7 +209,7 @@ export class ImportService {
   }
 
   /** Kiểm tra chéo giữa các sheet và với dữ liệu đang có; trả về kế hoạch ghi. */
-  private async plan(parsed: Parsed, session?: ClientSession) {
+  private async plan(parsed: Parsed, session?: ClientSession, mode: ImportMode = 'NORMAL') {
     const { sheets, errors } = parsed;
     const rows = (name: string) => sheets.get(name) ?? [];
     const issue = (sheet: string, row: number, key: string, message: string) => pushIssue(errors, { sheet, row, column: label(sheet, key), message });
@@ -281,9 +300,12 @@ export class ImportService {
       }, errors);
     }
     // Tồn đầu kỳ: kho có thật, mã có trong file hoặc hệ thống, chưa có tồn đầu kỳ của lô khác.
-    const openings = await this.db.collection('inventory_movements').find({ movementType: 'OPENING' }, { projection: { warehouseId: 1, productId: 1, referenceId: 1 }, ...(session ? { session } : {}) }).toArray();
-    const reversed = new Set((await this.db.collection('import_batches').find({ status: 'ROLLED_BACK' }, { projection: { code: 1 }, ...(session ? { session } : {}) }).toArray()).map((row) => String(row.code)));
-    const openingKeys = new Map(openings.filter((row) => !reversed.has(String(row.referenceId))).map((row) => [`${String(row.warehouseId)}|${String(row.productId)}`, String(row.referenceId)]));
+    // Chế độ điều chỉnh (IMP-ADJ-01): mã đã có tồn đầu kỳ thì ghi phần chênh lệch; giảm thì tồn khả dụng phải đủ.
+    const openingState = await this.openingState(session);
+    const balances = mode === 'ADJUST_OPENING'
+      ? new Map((await this.db.collection('inventory_balances').find({}, session ? { session } : {}).toArray()).map((row) => [`${String(row.warehouseId)}|${String(row.productId)}`, new Decimal(decimalString(row.onHand)).sub(decimalString(row.reserved))]))
+      : new Map<string, Decimal>();
+    const adjustments: OpeningAdjustment[] = [];
     for (const row of rows('TON_DAU_KY')) {
       const warehouse = warehouses.get(String(row.values.warehouseCode));
       if (!warehouse) {
@@ -291,12 +313,39 @@ export class ImportService {
         continue;
       }
       if (!productCodes.has(String(row.values.sku))) issue('TON_DAU_KY', row.row, 'sku', 'Không có mã sản phẩm này');
-      if (row.values.quantity !== undefined && !(Number(row.values.quantity) > 0)) issue('TON_DAU_KY', row.row, 'quantity', 'Số lượng phải lớn hơn 0');
+      if (row.values.quantity !== undefined && mode === 'NORMAL' && !(Number(row.values.quantity) > 0)) issue('TON_DAU_KY', row.row, 'quantity', 'Số lượng phải lớn hơn 0');
       if (row.values.initialQuantity !== undefined && Number(row.values.initialQuantity) < Number(row.values.quantity ?? 0)) issue('TON_DAU_KY', row.row, 'initialQuantity', 'Số lượng nhập ban đầu không được nhỏ hơn số tồn');
       if (row.values.locationCode && !locationKeys.has(`${String(warehouse._id)}|${String(row.values.locationCode)}`)) issue('TON_DAU_KY', row.row, 'locationCode', 'Vị trí chưa khai báo trong kho (Kho & vị trí lưu)');
       const product = products.get(String(row.values.sku));
-      const existingOpening = product ? openingKeys.get(`${String(warehouse._id)}|${String(product._id)}`) : undefined;
-      if (existingOpening) issue('TON_DAU_KY', row.row, 'sku', `Mã này đã có tồn đầu kỳ ở kho (lô ${existingOpening}) — hoàn tác lô đó trước`);
+      const key = product ? `${String(warehouse._id)}|${String(product._id)}` : '';
+      const current = product ? openingState.get(key) : undefined;
+      if (mode === 'NORMAL') {
+        if (current) issue('TON_DAU_KY', row.row, 'sku', `Mã này đã có tồn đầu kỳ ở kho (lô ${[...current.codes].join(', ')}) — hoàn tác lô đó trước, hoặc chọn "Điều chỉnh tồn đầu kỳ đã nhập"`);
+        continue;
+      }
+      if (row.values.quantity === undefined) continue;
+      const previous = current?.quantity ?? new Decimal(0);
+      const next = new Decimal(String(row.values.quantity));
+      const delta = next.sub(previous);
+      const nextInitial = row.values.initialQuantity !== undefined ? new Decimal(String(row.values.initialQuantity)) : null;
+      const previousInitial = current?.initialKnown ? current.initial : null;
+      const available = balances.get(key) ?? new Decimal(0);
+      if (delta.isNegative() && available.lt(delta.abs())) {
+        issue('TON_DAU_KY', row.row, 'quantity', `Cần giảm tồn đầu kỳ ${delta.abs().toString()} (${previous.toString()} → ${next.toString()}) nhưng tồn khả dụng chỉ còn ${available.toString()} — nhập các phiếu nhập kho còn thiếu trước rồi kiểm tra lại`);
+      }
+      adjustments.push({
+        row: row.row,
+        warehouseCode: String(row.values.warehouseCode),
+        sku: String(row.values.sku),
+        previous: previous.toString(),
+        next: next.toString(),
+        delta: delta.toString(),
+        previousInitial: previousInitial?.toString() ?? null,
+        nextInitial: nextInitial?.toString() ?? null,
+        initialDelta: nextInitial ? nextInitial.sub(previousInitial ?? 0).toString() : current ? '0' : null,
+        available: available.toString(),
+        existed: Boolean(current),
+      });
     }
     // Công nợ đầu kỳ: khách có thật, chứng từ chưa nhập.
     const openingReceivables = new Set((await this.db.collection('receivables').find({ sourceType: 'OPENING_BALANCE' }, { projection: { partnerId: 1, openingDocumentNo: 1 }, ...(session ? { session } : {}) }).toArray()).map((row) => `${String(row.partnerId)}|${String(row.openingDocumentNo)}`));
@@ -308,7 +357,30 @@ export class ImportService {
       if (partner && openingReceivables.has(`${String(partner._id)}|${String(row.values.documentNo)}`)) issue('CONG_NO_DAU_KY', row.row, 'documentNo', 'Chứng từ này đã nhập công nợ đầu kỳ');
       if (row.values.documentDate && row.values.dueDate && String(row.values.dueDate) < String(row.values.documentDate)) issue('CONG_NO_DAU_KY', row.row, 'dueDate', 'Hạn thanh toán trước ngày chứng từ');
     }
-    return { categories, regions, employees, partners, products, warehouses, priceBooks };
+    return { categories, regions, employees, partners, products, warehouses, priceBooks, adjustments };
+  }
+
+  /** Tồn đầu kỳ đang hiệu lực theo kho + mã: cộng các dòng thẻ kho OPENING (tăng / giảm) của các lô chưa hoàn tác. */
+  private async openingState(session?: ClientSession) {
+    const options = session ? { session } : {};
+    const [movements, reversed] = await Promise.all([
+      this.db.collection('inventory_movements').find({ movementType: 'OPENING' }, { projection: { warehouseId: 1, productId: 1, referenceId: 1, direction: 1, quantity: 1, initialQuantity: 1 }, ...options }).toArray(),
+      this.db.collection('import_batches').find({ status: 'ROLLED_BACK' }, { projection: { code: 1 }, ...options }).toArray(),
+    ]);
+    const rolledBack = new Set(reversed.map((row) => String(row.code)));
+    const state = new Map<string, { codes: Set<string>; quantity: Decimal; initial: Decimal; initialKnown: boolean }>();
+    for (const row of movements) {
+      if (rolledBack.has(String(row.referenceId))) continue;
+      const key = `${String(row.warehouseId)}|${String(row.productId)}`;
+      const entry = state.get(key) ?? { codes: new Set<string>(), quantity: new Decimal(0), initial: new Decimal(0), initialKnown: true };
+      entry.codes.add(String(row.referenceId));
+      const quantity = new Decimal(decimalString(row.quantity));
+      entry.quantity = row.direction === 'OUT' ? entry.quantity.sub(quantity) : entry.quantity.add(quantity);
+      if (row.initialQuantity === undefined || row.initialQuantity === null) entry.initialKnown = false;
+      else entry.initial = entry.initial.add(decimalString(row.initialQuantity));
+      state.set(key, entry);
+    }
+    return state;
   }
 
   /** Bảng giá đang dùng của từng cấp (ưu tiên cao nhất, bản mới nhất) — nơi sheet BANG_GIA ghi vào. */
@@ -323,7 +395,7 @@ export class ImportService {
     return result;
   }
 
-  private summary(parsed: Parsed, existing: Awaited<ReturnType<ImportService['plan']>>) {
+  private summary(parsed: Parsed, existing: Awaited<ReturnType<ImportService['plan']>>, mode: ImportMode = 'NORMAL') {
     const count = (sheet: string, field: string, map: Existing) => {
       const rows = parsed.sheets.get(sheet) ?? [];
       const update = rows.filter((row) => map.has(String(row.values[field]))).length;
@@ -337,6 +409,7 @@ export class ImportService {
       const cost = row.values.unitCost ?? fileProducts.get(sku)?.standardCost ?? (existing.products.get(sku)?.standardCost !== undefined ? decimalString(existing.products.get(sku)?.standardCost) : undefined);
       return cost === undefined ? null : String(cost);
     };
+    const existed = existing.adjustments.filter((row) => row.existed).length;
     const byCustomer = new Map<string, Decimal>();
     for (const row of receivables) byCustomer.set(String(row.values.customerCode), (byCustomer.get(String(row.values.customerCode)) ?? new Decimal(0)).add(String(row.values.amount ?? 0)));
     return {
@@ -348,7 +421,7 @@ export class ImportService {
         count('SAN_PHAM', 'sku', existing.products),
         this.priceCount(parsed, existing),
         count('KHACH_HANG', 'code', existing.partners),
-        { name: 'TON_DAU_KY', title: sheetDef('TON_DAU_KY').title, rows: stock.length, create: stock.length, update: 0, errors: parsed.errors.filter((error) => error.sheet === 'TON_DAU_KY').length },
+        { name: 'TON_DAU_KY', title: sheetDef('TON_DAU_KY').title, rows: stock.length, create: stock.length - existed, update: existed, errors: parsed.errors.filter((error) => error.sheet === 'TON_DAU_KY').length },
         { name: 'CONG_NO_DAU_KY', title: sheetDef('CONG_NO_DAU_KY').title, rows: receivables.length, create: receivables.length, update: 0, errors: parsed.errors.filter((error) => error.sheet === 'CONG_NO_DAU_KY').length },
       ].filter((sheet) => sheet.rows > 0 || sheet.errors > 0),
       totals: {
@@ -358,6 +431,20 @@ export class ImportService {
         receivablesAmount: sumAmounts(receivables.map((row) => String(row.values.amount ?? 0))),
         receivablesByCustomer: [...byCustomer].map(([code, amount]) => ({ code, amount: amount.toFixed(2) })).sort((a, b) => a.code.localeCompare(b.code)),
       },
+      ...(mode === 'ADJUST_OPENING' ? { adjustment: this.adjustmentSummary(existing.adjustments) } : {}),
+    };
+  }
+
+  /** Tổng hợp điều chỉnh tồn đầu kỳ: số mã tăng / giảm / không đổi, tổng đầu kỳ trước → sau (chỉ các mã trong file). */
+  private adjustmentSummary(rows: OpeningAdjustment[]) {
+    const sum = (pick: (row: OpeningAdjustment) => string) => rows.reduce((total, row) => total.add(pick(row)), new Decimal(0)).toString();
+    return {
+      increased: rows.filter((row) => Number(row.delta) > 0).length,
+      decreased: rows.filter((row) => Number(row.delta) < 0).length,
+      unchanged: rows.filter((row) => !changed(row)).length,
+      previousTotal: sum((row) => row.previous),
+      nextTotal: sum((row) => row.next),
+      rows: rows.filter(changed),
     };
   }
 
@@ -370,19 +457,19 @@ export class ImportService {
     return { name: 'BANG_GIA', title: sheetDef('BANG_GIA').title, rows: rows.length, create: rows.length - update, update, errors: parsed.errors.filter((error) => error.sheet === 'BANG_GIA').length };
   }
 
-  async dryRun(body: unknown, fileName: string | undefined) {
+  async dryRun(body: unknown, fileName: string | undefined, mode: ImportMode = 'NORMAL') {
     const { workbook, sha256 } = await this.readWorkbook(body);
     const parsed = this.parse(workbook, sha256);
-    const existing = await this.plan(parsed);
+    const existing = await this.plan(parsed, undefined, mode);
     const committed = await this.db.collection('import_batches').findOne({ sha256, status: 'COMMITTED' }, { projection: { code: 1 } });
     if (committed) parsed.errors.unshift({ sheet: '—', row: 0, column: '—', message: `File này đã được ghi ở lô ${String(committed.code)} — hoàn tác lô đó trước khi ghi lại` });
-    const summary = this.summary(parsed, existing);
-    return { ok: parsed.errors.length === 0 && summary.sheets.length > 0, fileName: fileName ?? 'du-lieu.xlsx', sha256, ...summary, errors: parsed.errors, truncated: parsed.errors.length >= MAX_ERRORS };
+    const summary = this.summary(parsed, existing, mode);
+    return { ok: parsed.errors.length === 0 && summary.sheets.length > 0, mode, fileName: fileName ?? 'du-lieu.xlsx', sha256, ...summary, errors: parsed.errors, truncated: parsed.errors.length >= MAX_ERRORS };
   }
 
   // ---------- ghi thật ----------
 
-  async commit(body: unknown, fileName: string | undefined, request: AuthenticatedRequest) {
+  async commit(body: unknown, fileName: string | undefined, request: AuthenticatedRequest, mode: ImportMode = 'NORMAL') {
     const { workbook, sha256 } = await this.readWorkbook(body);
     if (await this.db.collection('import_batches').findOne({ sha256, status: 'COMMITTED' }, { projection: { _id: 1 } })) {
       throw new ConflictException({ code: 'IMPORT_ALREADY_COMMITTED', message: 'File này đã được ghi — hoàn tác lô cũ trước khi ghi lại' });
@@ -392,9 +479,9 @@ export class ImportService {
       let batch: Document | null = null;
       await session.withTransaction(async () => {
         const parsed = this.parse(workbook, sha256);
-        const existing = await this.plan(parsed, session);
+        const existing = await this.plan(parsed, session, mode);
         if (parsed.errors.length) throw new UnprocessableEntityException({ code: 'IMPORT_HAS_ERRORS', message: `File còn ${parsed.errors.length} lỗi — chạy kiểm tra và sửa trước khi ghi`, details: parsed.errors.slice(0, 50) });
-        const summary = this.summary(parsed, existing);
+        const summary = this.summary(parsed, existing, mode);
         const batchId = new ObjectId();
         const code = await this.sequences.next('IMP', session, 3);
         const now = new Date();
@@ -550,21 +637,50 @@ export class ImportService {
           }
         }
         // Tồn đầu kỳ: một phiếu thẻ kho OPENING cho mỗi kho; đặt giá vốn nếu mã chưa có.
-        const openings: Array<{ warehouseId: ObjectId; productId: ObjectId; quantity: string; locationCode?: string }> = [];
+        // Chế độ điều chỉnh: ghi phần chênh lệch — tăng là OPENING nhập, giảm là OPENING xuất (vẫn tính vào cột "Tồn đầu kỳ nhập hệ thống").
+        const openings: Array<{ warehouseId: ObjectId; productId: ObjectId; quantity: string; locationCode?: string; direction?: 'IN' | 'OUT'; previous?: string; next?: string }> = [];
+        const adjustmentOf = new Map(existing.adjustments.map((row) => [row.row, row]));
         const stockByWarehouse = new Map<string, Row[]>();
         for (const row of rows('TON_DAU_KY')) stockByWarehouse.set(String(row.values.warehouseCode), [...(stockByWarehouse.get(String(row.values.warehouseCode)) ?? []), row]);
         for (const [warehouseCode, stockRows] of stockByWarehouse) {
           const warehouse = existing.warehouses.get(warehouseCode) as Document;
-          const lines = stockRows.map((row) => {
-            const product = existing.products.get(String(row.values.sku)) as Document;
-            return {
-              productId: (product._id as ObjectId).toHexString(), quantity: String(row.values.quantity),
-              ...(row.values.locationCode ? { locationCode: String(row.values.locationCode) } : {}),
-              ...(row.values.initialQuantity !== undefined ? { initialQuantity: String(row.values.initialQuantity) } : {}),
-            };
-          });
-          await this.inventory.applyPhysicalMovement({ warehouseId: (warehouse._id as ObjectId).toHexString(), referenceType: 'ImportBatch', referenceId: code, movementType: 'OPENING', direction: 'IN', lines, reason: `Tồn đầu kỳ — lô nhập ${code}`, actorId: request.user.sub }, session);
-          for (const line of lines) openings.push({ warehouseId: warehouse._id as ObjectId, productId: new ObjectId(line.productId), quantity: line.quantity, ...(line.locationCode ? { locationCode: line.locationCode } : {}) });
+          const warehouseId = (warehouse._id as ObjectId).toHexString();
+          if (mode === 'ADJUST_OPENING') {
+            const lines = stockRows.flatMap((row) => {
+              const adjustment = adjustmentOf.get(row.row);
+              if (!adjustment) return [];
+              const product = existing.products.get(String(row.values.sku)) as Document;
+              const delta = new Decimal(adjustment.delta);
+              return [{
+                adjustment,
+                direction: delta.isNegative() ? 'OUT' as const : 'IN' as const,
+                productId: (product._id as ObjectId).toHexString(),
+                quantity: delta.abs().toString(),
+                ...(row.values.locationCode ? { locationCode: String(row.values.locationCode) } : {}),
+                ...(adjustment.initialDelta !== null ? { initialQuantity: adjustment.initialDelta } : {}),
+              }];
+            });
+            // Mã không đổi chỉ ghi vào lô (để đối chiếu đủ số trong file), không ghi thẻ kho.
+            for (const direction of ['IN', 'OUT'] as const) {
+              const group = lines.filter((line) => line.direction === direction && changed(line.adjustment));
+              if (!group.length) continue;
+              await this.inventory.applyPhysicalMovement({ warehouseId, referenceType: 'ImportBatch', referenceId: code, movementType: 'OPENING', direction, lines: group.map(({ adjustment: _a, direction: _d, ...line }) => line), reason: `Điều chỉnh tồn đầu kỳ — lô nhập ${code}`, actorId: request.user.sub }, session);
+            }
+            for (const line of lines) {
+              openings.push({ warehouseId: warehouse._id as ObjectId, productId: new ObjectId(line.productId), quantity: line.quantity, direction: line.direction, previous: line.adjustment.previous, next: line.adjustment.next, ...(line.locationCode ? { locationCode: line.locationCode } : {}) });
+            }
+          } else {
+            const lines = stockRows.map((row) => {
+              const product = existing.products.get(String(row.values.sku)) as Document;
+              return {
+                productId: (product._id as ObjectId).toHexString(), quantity: String(row.values.quantity),
+                ...(row.values.locationCode ? { locationCode: String(row.values.locationCode) } : {}),
+                ...(row.values.initialQuantity !== undefined ? { initialQuantity: String(row.values.initialQuantity) } : {}),
+              };
+            });
+            await this.inventory.applyPhysicalMovement({ warehouseId, referenceType: 'ImportBatch', referenceId: code, movementType: 'OPENING', direction: 'IN', lines, reason: `Tồn đầu kỳ — lô nhập ${code}`, actorId: request.user.sub }, session);
+            for (const line of lines) openings.push({ warehouseId: warehouse._id as ObjectId, productId: new ObjectId(line.productId), quantity: line.quantity, ...(line.locationCode ? { locationCode: line.locationCode } : {}) });
+          }
           for (const row of stockRows) {
             const product = existing.products.get(String(row.values.sku)) as Document;
             if (row.values.unitCost !== undefined && product.standardCost === undefined && !created.products?.some((id) => id.equals(product._id as ObjectId))) {
@@ -606,6 +722,7 @@ export class ImportService {
           fileName: fileName ?? 'du-lieu.xlsx',
           sha256,
           status: 'COMMITTED',
+          ...(mode === 'ADJUST_OPENING' && summary.adjustment ? { mode, adjustment: (({ rows: _rows, ...totals }) => totals)(summary.adjustment) } : {}),
           sheets: summary.sheets,
           totals: summary.totals,
           created,
@@ -618,7 +735,7 @@ export class ImportService {
           confirmations: [],
         };
         await this.db.collection('import_batches').insertOne(batch, { session });
-        await this.audit.record({ ...this.actor(request), action: 'IMPORT_COMMITTED', entityType: 'ImportBatch', entityId: batchId.toHexString(), metadata: { code, fileName, sha256, sheets: summary.sheets, totals: { ...summary.totals, receivablesByCustomer: undefined } } }, session);
+        await this.audit.record({ ...this.actor(request), action: 'IMPORT_COMMITTED', entityType: 'ImportBatch', entityId: batchId.toHexString(), metadata: { code, fileName, sha256, mode, sheets: summary.sheets, totals: { ...summary.totals, receivablesByCustomer: undefined } } }, session);
       });
       return this.present(batch as unknown as Document);
     } finally {
@@ -635,6 +752,8 @@ export class ImportService {
       code: batch.code,
       fileName: batch.fileName,
       status: batch.status,
+      mode: (batch.mode as ImportMode | undefined) ?? 'NORMAL',
+      ...(batch.adjustment ? { adjustment: batch.adjustment } : {}),
       sheets: batch.sheets,
       totals: batch.totals,
       createdCount: Object.values(created).reduce((sum, ids) => sum + ids.length, 0),
@@ -678,14 +797,18 @@ export class ImportService {
     const warehouseName = new Map(warehouses.map((row) => [String(row._id), `${String(row.code)} — ${String(row.name)}`]));
     const productById = new Map(products.map((row) => [String(row._id), row]));
     const balanceOf = new Map(balances.map((row) => [`${String(row.warehouseId)}|${String(row.productId)}`, decimalString(row.onHand)]));
+    // Lô điều chỉnh: so tồn đầu kỳ theo file (sau điều chỉnh) với tồn đầu kỳ đang hiệu lực, không so với tồn hiện tại.
+    const adjusting = batch.mode === 'ADJUST_OPENING';
+    const openingNow = adjusting ? await this.openingState() : null;
     const stockByWarehouse = new Map<string, { imported: Decimal; current: Decimal; value: Decimal; lines: number }>();
     for (const row of openings) {
       const key = String(row.warehouseId);
       const entry = stockByWarehouse.get(key) ?? { imported: new Decimal(0), current: new Decimal(0), value: new Decimal(0), lines: 0 };
       const cost = productById.get(String(row.productId))?.standardCost;
-      entry.imported = entry.imported.add(String(row.quantity));
-      entry.current = entry.current.add(balanceOf.get(`${key}|${String(row.productId)}`) ?? '0');
-      entry.value = entry.value.add(new Decimal(String(row.quantity)).mul(cost !== undefined ? decimalString(cost) : 0));
+      const quantity = adjusting ? String(row.next) : String(row.quantity);
+      entry.imported = entry.imported.add(quantity);
+      entry.current = entry.current.add(adjusting ? openingNow?.get(`${key}|${String(row.productId)}`)?.quantity ?? 0 : balanceOf.get(`${key}|${String(row.productId)}`) ?? '0');
+      entry.value = entry.value.add(new Decimal(quantity).mul(cost !== undefined ? decimalString(cost) : 0));
       entry.lines += 1;
       stockByWarehouse.set(key, entry);
     }
@@ -701,6 +824,15 @@ export class ImportService {
         importedValue: entry.value.toFixed(0),
         ok: entry.imported.eq(entry.current),
       })),
+      ...(adjusting ? {
+        adjustments: openings.filter((row) => String(row.previous) !== String(row.next)).map((row) => ({
+          warehouse: warehouseName.get(String(row.warehouseId)) ?? String(row.warehouseId),
+          sku: String(productById.get(String(row.productId))?.sku ?? ''),
+          previous: String(row.previous),
+          next: String(row.next),
+          delta: (row.direction === 'OUT' ? new Decimal(String(row.quantity)).neg() : new Decimal(String(row.quantity))).toString(),
+        })).sort((a, b) => a.sku.localeCompare(b.sku, 'vi', { numeric: true })),
+      } : {}),
       receivables: {
         fileTotal: String((batch.totals as Document)?.receivablesAmount ?? '0'),
         imported: sumAmounts(receivables.map((row) => decimalString(row.amount))),
@@ -767,6 +899,14 @@ export class ImportService {
         }
         if (created.employees?.length) await used('partners', { salesRepId: { $in: created.employees }, _id: { $nin: partners } }, 'NVKD mới đang phụ trách khách khác');
         await used('receivables', { _id: { $in: receivableIds }, paidAmount: { $gt: decimal('0') } }, 'công nợ đầu kỳ đã thu tiền');
+        // Lô điều chỉnh tồn đầu kỳ ghi sau, cùng kho + mã: hoàn tác lô điều chỉnh trước (nó tính chênh lệch trên số của lô này).
+        const ownKeys = new Set(((batch.openings as Document[]) ?? []).map((row) => `${String(row.warehouseId)}|${String(row.productId)}`));
+        if (ownKeys.size) {
+          const later = await this.db.collection('import_batches').find({ status: 'COMMITTED', mode: 'ADJUST_OPENING', createdAt: { $gt: batch.createdAt } }, { session, projection: { code: 1, openings: 1 } }).toArray();
+          for (const row of later) {
+            if (((row.openings as Document[]) ?? []).some((line) => ownKeys.has(`${String(line.warehouseId)}|${String(line.productId)}`))) blockers.push(`tồn đầu kỳ đã được điều chỉnh ở lô ${String(row.code)} (hoàn tác lô đó trước)`);
+          }
+        }
         for (const row of (batch.updated as Document[]) ?? []) {
           const current = await this.db.collection(String(row.collection)).findOne({ _id: row.id as ObjectId }, { session, projection: { updatedAt: 1 } });
           if (current && (current.updatedAt as Date | undefined)?.getTime() !== (batch.createdAt as Date).getTime()) {
@@ -781,9 +921,12 @@ export class ImportService {
         const byWarehouse = new Map<string, Document[]>();
         for (const row of (batch.openings as Document[]) ?? []) byWarehouse.set(String(row.warehouseId), [...(byWarehouse.get(String(row.warehouseId)) ?? []), row]);
         for (const [warehouseId, rows] of byWarehouse) {
-          const keep = rows.filter((row) => !products.some((productId) => productId.equals(row.productId as ObjectId)));
-          if (keep.length) {
-            await this.inventory.applyPhysicalMovement({ warehouseId, referenceType: 'ImportBatchRollback', referenceId: String(batch.code), movementType: 'REVERSAL', direction: 'OUT', lines: keep.map((row) => ({ productId: String(row.productId), quantity: String(row.quantity) })), reason: `Hoàn tác tồn đầu kỳ — lô ${String(batch.code)}`, actorId: request.user.sub }, session);
+          const keep = rows.filter((row) => !products.some((productId) => productId.equals(row.productId as ObjectId)) && !new Decimal(String(row.quantity)).isZero());
+          // Dòng tăng (IN) trừ lại bằng REVERSAL xuất; dòng giảm của lô điều chỉnh (OUT) cộng lại bằng REVERSAL nhập.
+          for (const direction of ['OUT', 'IN'] as const) {
+            const group = keep.filter((row) => (row.direction === 'OUT' ? 'IN' : 'OUT') === direction);
+            if (!group.length) continue;
+            await this.inventory.applyPhysicalMovement({ warehouseId, referenceType: 'ImportBatchRollback', referenceId: String(batch.code), movementType: 'REVERSAL', direction, lines: group.map((row) => ({ productId: String(row.productId), quantity: String(row.quantity) })), reason: `Hoàn tác ${batch.mode === 'ADJUST_OPENING' ? 'điều chỉnh tồn đầu kỳ' : 'tồn đầu kỳ'} — lô ${String(batch.code)}`, actorId: request.user.sub }, session);
           }
         }
         if (products.length) {

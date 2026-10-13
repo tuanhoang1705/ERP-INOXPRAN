@@ -25,8 +25,8 @@
   let success = $state('');
   let issueTarget = $state<Order | null>(null);
   const canShip = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
-  const canDeliver = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
   /** Nhân viên thủ kho: danh sách đã được máy chủ lọc theo phiếu giao cho mình. Quản lý kho xem toàn bộ. */
+  const canDeliver = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
   const keeperOnly = $derived(Boolean(session.user?.roles.includes('WAREHOUSE') && !hasRole(session.user.roles, ['DIRECTOR', 'ACCOUNTANT', 'SALES', 'SALES_MANAGER', 'AUDITOR', 'WAREHOUSE_MANAGER'])));
   /** Lập SWK / xác nhận giao chỉ cho thủ kho được giao phiếu (ADMIN luôn được). */
   const mine = (order: Order) => Boolean(session.user && (session.user.roles.includes('ADMIN') || order.warehouseKeeperId === session.user.sub));

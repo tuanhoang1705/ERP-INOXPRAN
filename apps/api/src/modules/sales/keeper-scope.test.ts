@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { describe, expect, it } from 'vitest';
-import { isAssignedKeeper, isKeeperOnly, salesOrderScope } from './keeper-scope';
+import { isAssignedKeeper, isKeeperOnly, salesOrderScope, seesStaffHidden } from './keeper-scope';
 
 const keeperId = new ObjectId();
 
@@ -11,9 +11,17 @@ describe('phạm vi phiếu của thủ kho', () => {
     expect(salesOrderScope(user)).toEqual({ warehouseKeeperId: keeperId, status: { $nin: ['DRAFT', 'CANCELLED'] } });
   });
 
-  it('kế toán, kinh doanh, giám đốc, quản trị, quản lý kho xem toàn bộ', () => {
-    for (const roles of [['ACCOUNTANT'], ['SALES'], ['DIRECTOR'], ['ADMIN'], ['WAREHOUSE_MANAGER'], ['WAREHOUSE', 'WAREHOUSE_MANAGER']]) {
+  it('kế toán, giám đốc, quản trị, kiểm soát, quản trị gốc xem toàn bộ (cả phiếu quản trị gốc đã hủy)', () => {
+    for (const roles of [['ACCOUNTANT'], ['DIRECTOR'], ['ADMIN'], ['AUDITOR']]) {
       expect(salesOrderScope({ sub: keeperId.toHexString(), roles })).toEqual({});
+    }
+    expect(salesOrderScope({ sub: keeperId.toHexString(), roles: ['SALES'], root: true })).toEqual({});
+  });
+
+  it('kinh doanh, quản lý kho xem toàn bộ trừ phiếu quản trị gốc đã hủy (ROOT-DEL-02)', () => {
+    for (const roles of [['SALES'], ['SALES_MANAGER'], ['WAREHOUSE_MANAGER'], ['WAREHOUSE', 'WAREHOUSE_MANAGER']]) {
+      expect(salesOrderScope({ sub: keeperId.toHexString(), roles })).toEqual({ staffHidden: { $ne: true } });
+      expect(seesStaffHidden({ roles })).toBe(false);
     }
   });
 

@@ -4,7 +4,7 @@ import type { FastifyReply } from 'fastify';
 import { pageRequest } from '../../../common/paging';
 import type { AuthenticatedRequest } from '../../../common/request-context';
 import { Roles, RootOnly } from '../../../common/roles.decorator';
-import { ImportService } from './import.service';
+import { importModeOf, ImportService } from './import.service';
 
 /** Nhập dữ liệu ban đầu: chỉ tài khoản quản trị gốc (root) — ghi, đối chiếu, xác nhận, hoàn tác (09/10/2026). */
 const IMPORTERS = ['ADMIN'];
@@ -30,14 +30,14 @@ export class ImportController {
   @Roles(...IMPORTERS)
   @Post('dry-run')
   @HttpCode(200)
-  dryRun(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined) {
-    return this.imports.dryRun(body, fileName ? decodeURIComponent(fileName) : undefined);
+  dryRun(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Headers('x-import-mode') mode: string | undefined) {
+    return this.imports.dryRun(body, fileName ? decodeURIComponent(fileName) : undefined, importModeOf(mode));
   }
 
   @Roles(...IMPORTERS)
   @Post('commit')
-  commit(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Req() request: AuthenticatedRequest) {
-    return this.imports.commit(body, fileName ? decodeURIComponent(fileName) : undefined, request);
+  commit(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Headers('x-import-mode') mode: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.imports.commit(body, fileName ? decodeURIComponent(fileName) : undefined, request, importModeOf(mode));
   }
 
   @Roles(...REVIEWERS)

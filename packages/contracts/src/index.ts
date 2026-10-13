@@ -355,6 +355,11 @@ export const OrderLineInputSchema = z.object({
   unit: z.string().trim().min(1).max(30),
   /** Hàng tặng kèm / khuyến mãi: đơn giá 0 nhưng vẫn xuất kho. */
   gift: z.boolean().default(false),
+  /**
+   * Đơn giá chưa VAT sửa tay (theo đơn vị bán) — chỉ khi Admin / Giám đốc đã cấp quyền sửa giá cho đúng phiếu này
+   * (xem `priceOverrideRequestId`). Dòng sửa giá: CK = 0, giá theo bảng giá vẫn lưu ở `originalUnitPrice`.
+   */
+  overrideUnitPrice: MoneySchema.refine((value) => Number(value) > 0, 'Đơn giá phải lớn hơn 0').optional(),
 });
 export const OrderLineSchema = OrderLineInputSchema.extend({
   sku: CodeSchema,
@@ -368,6 +373,8 @@ export const OrderLineSchema = OrderLineInputSchema.extend({
   netAmount: MoneySchema.optional(),
   lineTotal: MoneySchema,
   pricingSource: z.string(),
+  /** Đơn giá chưa VAT theo bảng giá trước khi sửa tay (chỉ có ở dòng pricingSource = MANUAL_PRICE). */
+  originalUnitPrice: MoneySchema.optional(),
 });
 export type OrderLine = z.infer<typeof OrderLineSchema>;
 
@@ -375,11 +382,15 @@ export const SalesOrderCodeSchema = z
   .string()
   .trim()
   .toUpperCase()
-  .regex(SALES_ORDER_CODE_PATTERN, 'Số phiếu chỉ gồm chữ, số và . _ / - (2–40 ký tự)')
+  .regex(SALES_ORDER_CODE_PATTERN, 'Số phiếu chỉ gồm chữ, số và . _ / - (2–40 ký tự), hoặc chỉ gõ số hóa đơn (vd. 104)')
   .refine((code) => salesOrderCodeProblem(code) !== 'RESERVED', 'Số phiếu trùng kiểu số của chứng từ khác (SWK, AR, PO, TH…) — dùng số khác');
 export const CreateSalesOrderSchema = z.object({
   /** Bỏ trống = hệ thống tự sinh BHyyyymm####; có giá trị = số phiếu tự nhập (không được trùng). */
   code: SalesOrderCodeSchema.optional(),
+  /** Quyền sửa đơn giá đã được Admin / Giám đốc duyệt cho phiếu này (bắt buộc khi có dòng `overrideUnitPrice`). */
+  priceOverrideRequestId: IdSchema.optional(),
+  /** Mã phiên mở form lập phiếu — quyền sửa giá chưa gắn phiếu chỉ dùng được trong đúng phiên đã xin. */
+  formSessionId: z.string().uuid().optional(),
   customerId: IdSchema,
   warehouseId: IdSchema,
   channel: SalesChannelSchema.default('B2B'),
@@ -416,6 +427,39 @@ export const DiscardSalesOrderSchema = z.object({
   reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(300),
 });
 export type DiscardSalesOrder = z.infer<typeof DiscardSalesOrderSchema>;
+/** Kế toán xin quyền sửa đơn giá cho phiếu BH đang lập (Admin / Giám đốc duyệt từ xa). */
+export const PRICE_OVERRIDE_APPROVER_ROLES = ['ADMIN', 'DIRECTOR'] as const;
+export const PriceOverrideRequestSchema = z.object({
+  reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(300),
+  formSessionId: z.string().uuid(),
+  customerId: IdSchema.optional(),
+  /** Đang sửa phiếu nháp đã có: quyền gắn luôn với phiếu này. */
+  salesOrderId: IdSchema.optional(),
+});
+export type PriceOverrideRequestInput = z.infer<typeof PriceOverrideRequestSchema>;
+export const PriceOverrideDecisionSchema = z.object({
+  decision: z.enum(['APPROVE', 'REJECT']),
+  note: z.string().trim().max(300).optional(),
+});
+export type PriceOverrideDecision = z.infer<typeof PriceOverrideDecisionSchema>;
+export type PriceOverrideStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export interface PriceOverrideRequestView {
+  id: string;
+  code: string;
+  status: PriceOverrideStatus;
+  reason: string;
+  requestedByName: string;
+  requestedAt: string;
+  customerName?: string;
+  salesOrderId?: string;
+  salesOrderCode?: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  /** Quyền đã duyệt nhưng chưa gắn phiếu sẽ hết hạn lúc này. */
+  expiresAt?: string;
+}
+
 /** Trạng thái phiếu BH còn hủy được: đã phát hành nhưng chưa có SWK / xuất kho. */
 export const CANCELLABLE_SALES_STATUSES = ['PENDING_APPROVAL', 'APPROVED', 'RESERVED'] as const;
 
@@ -616,11 +660,20 @@ export const SalesOrderSchema = z.object({
   warehouseSlipNo: z.string().optional(),
   /** AUTO = số tự sinh, MANUAL = số do kế toán tự nhập. Phiếu cũ không có trường này là tự sinh. */
   codeMode: z.enum(['AUTO', 'MANUAL']).optional(),
+  /** Quyền sửa đơn giá đã dùng cho phiếu này: ai duyệt, lý do kế toán xin. */
+  priceOverrideRequestId: z.string().optional(),
+  priceOverrideApprovedByName: z.string().optional(),
+  priceOverrideReason: z.string().optional(),
+  /** Quản trị gốc sửa phiếu sau khi phát hành (tồn kho / công nợ đã tự điều chỉnh theo chênh lệch). */
+  rootEditedAt: z.string().datetime().optional(),
+  rootEditedByName: z.string().optional(),
   /** Phiếu bị hủy (đã phát hành, chưa xuất kho): ai hủy, lúc nào, lý do, trạng thái trước khi hủy. */
   cancelledAt: z.string().datetime().optional(),
   cancelledByName: z.string().optional(),
   cancelReason: z.string().optional(),
   statusBeforeCancel: z.string().optional(),
+  /** Quản trị gốc hủy (ROOT-DEL-02): ẩn với NVKD / thủ kho, chỉ quản trị, Giám đốc, kế toán thấy. */
+  staffHidden: z.boolean().optional(),
   templateCode: z.string().optional(),
   taxRate: z.string().optional(),
   pricesIncludeTax: z.boolean().optional(),
@@ -831,6 +884,9 @@ export const NOTIFICATION_TEMPLATES = [
   'SALES_ISSUE_REQUESTED',
   'SALES_ORDER_CANCELLED',
   'SALES_ORDER_DELETED',
+  'PRICE_OVERRIDE_REQUESTED',
+  'PRICE_OVERRIDE_DECIDED',
+  'SALES_ORDER_ROOT_EDITED',
   'SALES_APPROVAL_REQUESTED',
   'SALES_CONFIRMATION_PENDING',
   'SALES_APPROVED_CONFIRMATION_PENDING',

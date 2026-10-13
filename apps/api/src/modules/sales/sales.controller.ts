@@ -12,7 +12,7 @@ import {
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
-import { Roles } from '../../common/roles.decorator';
+import { RootOnly, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { SalesService } from './sales.service';
@@ -129,6 +129,30 @@ export class SalesController {
     const input = UpdateSalesOrderSchema.parse(body);
     assertWarehouseAccess(request, input.warehouseId);
     return this.sales.update(id, input, request, key);
+  }
+
+  /** Quản trị gốc sửa phiếu ở mọi giai đoạn sau khi phát hành (tồn kho / công nợ tự điều chỉnh theo chênh lệch). */
+  @RootOnly()
+  @Patch(':id/root')
+  rootUpdate(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.rootUpdate(id, UpdateSalesOrderSchema.parse(body), request, key);
+  }
+
+  /** Quản trị gốc hủy phiếu đã xuất kho / đã giao bằng bút toán đảo (nhập lại kho, công nợ hủy, tiền đã thu thành trả trước). */
+  @RootOnly()
+  @Post(':id/void')
+  rootVoid(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.rootVoid(id, DiscardSalesOrderSchema.parse(body), request, key);
   }
 
   /** Kế toán xóa hẳn phiếu nháp (kể cả phiếu bị KD trả về) — bắt buộc lý do, nội dung giữ trong nhật ký. */

@@ -25,6 +25,9 @@ export class DashboardService {
 
   async summary(page = 1, pageSize = 5, user?: RequestUser): Promise<DashboardSummary> {
     const scope = user ? salesOrderScope(user) : {};
+    // "Đơn hàng mới nhất": phiếu đã hủy chỉ tài khoản Admin (kể cả quản trị gốc) thấy.
+    const canSeeCancelled = Boolean(user?.root || user?.roles.includes('ADMIN'));
+    const recentScope: Document = canSeeCancelled ? scope : { $and: [scope, { status: { $ne: 'CANCELLED' } }] };
     const now = new Date();
     const { year, month } = vnParts(now);
     const monthStarts = Array.from({ length: 7 }, (_, index) => vnMonthStart(year, month - 5 + index));
@@ -96,12 +99,13 @@ export class DashboardService {
         { $unwind: '$partner' },
         { $sort: { total: -1 } },
       ]).toArray(),
-      this.db.collection('sales_orders').find(scope)
-        .sort({ orderDate: -1, createdAt: -1 })
+      // Phiếu lập gần nhất lên đầu (cả nháp lẫn đã xuất), không theo ngày chứng từ.
+      this.db.collection('sales_orders').find(recentScope)
+        .sort({ createdAt: -1, _id: -1 })
         .skip((safePage - 1) * safeSize)
         .limit(safeSize)
         .toArray(),
-      this.db.collection('sales_orders').countDocuments(scope),
+      this.db.collection('sales_orders').countDocuments(recentScope),
       this.db.collection('promotions').find({
         status: 'ACTIVE',
         validTo: { $gte: now, $lte: new Date(now.getTime() + 7 * DAY_MS) },

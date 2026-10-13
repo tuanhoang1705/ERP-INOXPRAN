@@ -24,6 +24,8 @@ interface PricingLineInput {
   quantity: string;
   unit: string;
   gift?: boolean | undefined;
+  /** Đơn giá chưa VAT sửa tay (đã kiểm tra quyền ở SalesService trước khi gọi). */
+  overrideUnitPrice?: string | undefined;
 }
 
 export interface CustomerPricingContext {
@@ -200,7 +202,7 @@ export class PricingService {
       const tierDiscountRate = gift ? '0' : priced.tierDiscountRate;
       const salesTierDiscountRate = gift ? '0' : priced.salesTierDiscountRate;
       const promotionDiscountRate = gift ? '0' : priced.promotionDiscountRate;
-      const result = calculatePrice({
+      const pricingInput = {
         quantity: line.quantity,
         conversionFactor: decimalString(conversion.factorToBase),
         baseUnitPrice: priced.baseUnitPrice,
@@ -211,7 +213,10 @@ export class PricingService {
         taxRate,
         pricesIncludeTax: settings.pricesIncludeTax,
         gift,
-      });
+      };
+      const overridden = Boolean(line.overrideUnitPrice) && !gift;
+      const result = calculatePrice({ ...pricingInput, ...(overridden ? { unitPriceOverride: line.overrideUnitPrice } : {}) });
+      const original = overridden ? calculatePrice(pricingInput) : null;
 
       subtotal = subtotal.add(result.subtotal);
       discountTotal = discountTotal.add(result.discountAmount);
@@ -230,13 +235,14 @@ export class PricingService {
         listUnitPrice: result.listUnitPrice,
         unitPrice: result.unitPrice,
         discountRate: result.discountRate,
-        tierDiscountRate,
-        salesTierDiscountRate,
-        promotionDiscountRate,
-        ...(priced.promotionCode && !gift ? { promotionCode: priced.promotionCode } : {}),
+        tierDiscountRate: overridden ? '0' : tierDiscountRate,
+        salesTierDiscountRate: overridden ? '0' : salesTierDiscountRate,
+        promotionDiscountRate: overridden ? '0' : promotionDiscountRate,
+        ...(priced.promotionCode && !gift && !overridden ? { promotionCode: priced.promotionCode } : {}),
         lineTotal: result.grossAmount,
         netAmount: result.netAmount,
-        pricingSource: priced.pricingSource,
+        pricingSource: overridden ? 'MANUAL_PRICE' : priced.pricingSource,
+        ...(original ? { originalUnitPrice: original.unitPrice } : {}),
         pricingSnapshot: result,
       });
     }

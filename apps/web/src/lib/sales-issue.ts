@@ -20,6 +20,8 @@ export interface IssueLineInput {
   unit: string;
   quantity: string | number | null | undefined;
   gift: boolean;
+  /** Đơn giá chưa thuế sửa tay (đã được cấp quyền) cho 1 đơn vị bán; bỏ trống = giá theo bảng giá. */
+  overrideUnitPrice?: string | undefined;
 }
 
 export interface ComputedLine extends LineAmounts {
@@ -28,8 +30,12 @@ export interface ComputedLine extends LineAmounts {
   quantity: string;
   conversionFactor: string;
   basis: SalesPriceSheetItem;
-  /** CK tổng áp cho dòng (hàng tặng = 0). */
+  /** CK tổng áp cho dòng (hàng tặng = 0, dòng sửa giá = 0). */
   discountRate: string;
+  /** Dòng đang dùng đơn giá sửa tay. */
+  overridden: boolean;
+  /** Đơn giá chưa thuế theo bảng giá (để so với giá sửa tay). */
+  originalUnitPrice: string;
 }
 
 export interface StockWarning {
@@ -94,12 +100,14 @@ export function computeIssue(
       lines.push(null);
       return;
     }
-    const discountRate = input.gift ? '0' : basis.discountRate;
-    const amounts = priceLine(
-      { quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate, gift: input.gift },
-      { vatRate, pricesIncludeTax: sheet.pricesIncludeTax },
-    );
-    lines.push({ ...amounts, index, productId: input.productId, quantity, conversionFactor: factor, basis, discountRate });
+    const overridden = !input.gift && Boolean(input.overrideUnitPrice) && Number(input.overrideUnitPrice) > 0;
+    const discountRate = input.gift || overridden ? '0' : basis.discountRate;
+    const options = { vatRate, pricesIncludeTax: sheet.pricesIncludeTax };
+    const original = priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: input.gift ? '0' : basis.discountRate, gift: input.gift }, options);
+    const amounts = overridden
+      ? priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: '0', unitPriceOverride: input.overrideUnitPrice }, options)
+      : original;
+    lines.push({ ...amounts, index, productId: input.productId, quantity, conversionFactor: factor, basis, discountRate, overridden, originalUnitPrice: original.unitPrice });
   });
 
   const computed = lines.filter((line): line is ComputedLine => line !== null);

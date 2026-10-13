@@ -26,6 +26,7 @@ export const receivableStatus: Record<string, { label: string; tone: Tone }> = {
   PARTIALLY_PAID: { label: m.thu_mot_phan(), tone: 'warning' },
   PAID: { label: m.da_thu_du(), tone: 'success' },
   OVERDUE: { label: m.qua_han(), tone: 'danger' },
+  VOIDED: { label: m.cn_da_huy_theo_phieu(), tone: 'neutral' },
 };
 
 export const overdueLevel: Record<string, { label: string; tone: Tone }> = {

@@ -63,6 +63,14 @@ export function notificationText(notification: AppNotification): { title: string
       return { title: m.tb_da_duyet_cho_doi_chieu({ code }), message: m.tb_doi_chieu_chi_tiet({ customer }) };
     case 'SALES_READY_FOR_SWK':
       return { title: m.tb_cho_lap_swk({ code }), message: m.tb_cho_lap_swk_chi_tiet({ customer }) };
+    case 'PRICE_OVERRIDE_REQUESTED':
+      return { title: m.tb_gia_xin_quyen({ requester: text(p, 'requester') }), message: m.tb_gia_xin_quyen_chi_tiet({ customer: text(p, 'customer') || '—', reason: text(p, 'reason') }) };
+    case 'PRICE_OVERRIDE_DECIDED':
+      return text(p, 'decision') === 'APPROVE'
+        ? { title: m.tb_gia_da_cap({ approver: text(p, 'approver') }), message: m.tb_gia_da_cap_chi_tiet({ code }) }
+        : { title: m.tb_gia_tu_choi({ approver: text(p, 'approver') }), message: text(p, 'note') };
+    case 'SALES_ORDER_ROOT_EDITED':
+      return { title: m.tb_root_sua_phieu({ code }), message: m.tb_root_sua_phieu_chi_tiet({ actor: text(p, 'actor'), customer: text(p, 'customer') }) };
     case 'SALES_ORDER_CANCELLED':
       return { title: m.tb_bh_da_huy({ code }), message: m.tb_bh_da_huy_chi_tiet({ actor: text(p, 'actor'), code, customer: text(p, 'customer'), reason: text(p, 'reason') }) };
     case 'SALES_ORDER_DELETED':

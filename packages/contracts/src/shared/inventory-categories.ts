@@ -37,6 +37,8 @@ export const INVENTORY_CATEGORIES = [
   { code: 'OPENING_IN', direction: 'IN', zh: '期初导入（入库）', vi: 'Tồn đầu kỳ nhập hệ thống', optional: true },
   { code: 'TRANSFER_IN', direction: 'IN', zh: '调拨（入库）', vi: 'Chuyển kho đến', optional: true },
   { code: 'TRANSFER_OUT', direction: 'OUT', zh: '调拨（出库）', vi: 'Chuyển kho đi', optional: true },
+  { code: 'SALES_REVERSAL_IN', direction: 'IN', zh: '销售单作废·更正（入库）', vi: 'Nhập lại do hủy / sửa phiếu BH', optional: true },
+  { code: 'SALES_EXTRA_OUT', direction: 'OUT', zh: '销售单更正补发（出库）', vi: 'Xuất bổ sung do sửa phiếu BH', optional: true },
 ] as const satisfies readonly InventoryCategoryInfo[];
 
 export type InventoryCategory = (typeof INVENTORY_CATEGORIES)[number]['code'];
