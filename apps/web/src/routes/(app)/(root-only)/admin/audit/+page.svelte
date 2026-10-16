@@ -1,4 +1,5 @@
 <script lang="ts">
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import { m } from '$lib/paraglide/messages';
   import { onMount } from 'svelte';
   import { CircleAlert } from 'lucide-svelte';
@@ -66,8 +67,7 @@
 <section class="card filters">
   <div class="field"><label for="a-search">{m.tim_kiem()}</label><input id="a-search" bind:value={search} oninput={searchChanged} placeholder={m.aud_search_ph()} /></div>
   <div class="field"><label for="a-type">{m.aud_entity()}</label><select id="a-type" bind:value={entityType} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each ENTITY_TYPES as item}<option value={item}>{item}</option>{/each}</select></div>
-  <div class="field"><label for="a-from">{m.wr_report_from()}</label><input id="a-from" type="date" bind:value={from} onchange={refilter} /></div>
-  <div class="field"><label for="a-to">{m.wr_report_to()}</label><input id="a-to" type="date" bind:value={to} onchange={refilter} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_thoi_gian()} id="a-date" onchange={refilter} />
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
@@ -106,7 +106,7 @@
 </section>
 
 <style>
-  .filters { grid-template-columns: 2fr 1fr 1fr 1fr; }
+  .filters { grid-template-columns: 2fr 1fr 1.6fr; }
   .clickable { cursor: pointer; }
   .mono { font-family: ui-monospace, monospace; font-size: 12px; }
   .detail td { background: var(--surface-2); }

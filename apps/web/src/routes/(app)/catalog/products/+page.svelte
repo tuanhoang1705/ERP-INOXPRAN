@@ -12,8 +12,11 @@
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import ProductDialog from '$lib/components/ProductDialog.svelte';
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
+  import CategoryPurgeDialog from '$lib/components/CategoryPurgeDialog.svelte';
+  import { session } from '$lib/session.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import RecordDialog, { type RecordValues } from '$lib/components/RecordDialog.svelte';
 
@@ -31,6 +34,9 @@
   let availability = $state('');
   let status = $state('');
   let search = $state('');
+  /** Lọc theo khoảng ngày (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
   let loading = $state(true);
   let error = $state('');
   let success = $state('');
@@ -44,13 +50,16 @@
   let editingCategory = $state<Category | null>(null);
   let categoryDeleteOpen = $state(false);
   let deletingCategory = $state<Category | null>(null);
+  let purgeOpen = $state(false);
+  let purgingCategory = $state<Category | null>(null);
+  const isRoot = $derived(Boolean(session.user?.root));
   const editable = $derived(can.editProducts());
 
   async function load() {
     loading = true;
     error = '';
     try {
-      const filters = { search, categoryId, availability, status };
+      const filters = { search, categoryId, availability, status, from, to };
       const result = await api<Paged<Row> & { all: number; priceReview: number }>(`/products?${pageQuery(filters, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
@@ -104,6 +113,18 @@
     if (!deleting) return;
     await api(`/products/${deleting.id}`, { method: 'DELETE' });
     success = m.crud_da_xoa({ name: deleting.sku });
+    await Promise.all([load(), loadCategories()]);
+  }
+  /** Quản trị gốc gỡ hẳn mã chỉ có tồn đầu kỳ nhập từ Excel (CAT-PURGE-01). */
+  async function purgeProduct() {
+    if (!deleting) return;
+    const result = await api<{ removed: number; openingQuantity: string }>(`/products/${deleting.id}?purge=1`, { method: 'DELETE' });
+    success = m.cp_da_go({ count: result.removed, total: num(result.openingQuantity) });
+    await Promise.all([load(), loadCategories()]);
+  }
+  async function categoryPurged(result: { removed: number; openingQuantity: string }) {
+    success = m.cp_da_go({ count: result.removed, total: num(result.openingQuantity) });
+    if (purgingCategory && categoryId === purgingCategory.id) categoryId = '';
     await Promise.all([load(), loadCategories()]);
   }
   async function deactivateProduct() {
@@ -178,6 +199,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_model_hoac_ten_san_pham()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_tao_ma()} id="product-date" onchange={refilter} />
   <div class="field"><label for="availability">{m.tinh_trang_hang()}</label><select id="availability" bind:value={availability} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each Object.entries(availabilityLabel) as [value, item]}<option {value}>{item.label}</option>{/each}</select></div>
   <div class="field"><label for="status">{m.trang_thai()}</label><select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option><option value="ACTIVE">{m.dang_hoat_dong()}</option><option value="INACTIVE">{m.crud_ngung_kinh_doanh()}</option></select></div>
 </section>
@@ -225,7 +247,7 @@
 </section>
 
 <ProductDialog bind:open={productOpen} product={editing} {categories} onsaved={productSaved} />
-<ConfirmDelete bind:open={deleteOpen} name={deleting ? `${deleting.sku} — ${deleting.name}` : ''} ondelete={removeProduct} ondeactivate={deleting?.status === 'ACTIVE' ? deactivateProduct : undefined} />
+<ConfirmDelete bind:open={deleteOpen} name={deleting ? `${deleting.sku} — ${deleting.name}` : ''} ondelete={removeProduct} ondeactivate={deleting?.status === 'ACTIVE' ? deactivateProduct : undefined} onpurge={isRoot ? purgeProduct : undefined} />
 
 <Dialog bind:open={categoriesOpen} title={m.crud_quan_ly_nhom()} wide>
   <div class="cat-head"><p class="muted">{m.crud_nhom_ghi_chu()}</p><button class="btn small primary" onclick={() => openCategory(null)}><Plus size={15} />{m.crud_them_nhom()}</button></div>
@@ -241,6 +263,7 @@
           <td class="row-actions">
             <button class="icon-btn" title={m.crud_sua()} aria-label={`${m.crud_sua()} ${row.name}`} onclick={() => openCategory(row)}><Pencil size={15} /></button>
             <button class="icon-btn danger" title={m.crud_xoa()} aria-label={`${m.crud_xoa()} ${row.name}`} onclick={() => { deletingCategory = row; categoryDeleteOpen = true; }}><Trash2 size={15} /></button>
+            {#if isRoot && row.productCount > 0}<button class="btn small danger-soft purge" title={m.cp_giai_thich()} onclick={() => { purgingCategory = row; purgeOpen = true; }}>{m.cp_nut()}</button>{/if}
           </td>
         </tr>
       {/each}
@@ -248,6 +271,7 @@
   </table>
 </Dialog>
 <RecordDialog bind:open={categoryFormOpen} formId="category-form" title={editingCategory ? m.crud_sua_nhom() : m.crud_them_nhom()} fields={categoryFields} values={categoryValues} onsubmit={saveCategory} />
+<CategoryPurgeDialog bind:open={purgeOpen} category={purgingCategory} onpurged={categoryPurged} />
 <ConfirmDelete bind:open={categoryDeleteOpen} name={deletingCategory?.name ?? ''} ondelete={removeCategory} ondeactivate={deletingCategory?.status !== 'INACTIVE' ? deactivateCategory : undefined} />
 
 <style>
@@ -256,7 +280,7 @@
   .cats button b { padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 11.5px; }
   .cats button.active { border-color: var(--navy); background: var(--navy); color: #fff; }
   .cats button.active b { background: rgba(255, 255, 255, 0.18); color: #fff; }
-  .filters { grid-template-columns: 2fr 1fr 1fr; }
+  .filters { grid-template-columns: 2fr 1.4fr 1fr 1fr; }
   .review { color: #8a6508 !important; }
   .low { color: var(--orange); }
   .clear { margin-left: 6px; }

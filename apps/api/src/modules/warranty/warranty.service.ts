@@ -18,6 +18,7 @@ import {
 } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import { type ClientSession, type Db, type Document, type Filter, ObjectId } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -81,8 +82,12 @@ export class WarrantyService {
     return warrantySettings(this.db);
   }
 
-  async list(filter: { status?: string | undefined; tone?: string | undefined; search?: string | undefined; customerId?: string | undefined }, paging: PageRequest | null = null) {
-    const query: Filter<Document> = {};
+  async list(
+    filter: { status?: string | undefined; tone?: string | undefined; search?: string | undefined; customerId?: string | undefined; from?: string | undefined; to?: string | undefined },
+    paging: PageRequest | null = null,
+  ) {
+    // Lọc theo ngày nhận phiếu (LIST-DATE-01) ngay trong truy vấn để khoảng ngày cũ vẫn ra đủ (không bị giới hạn 500 phiếu mới nhất).
+    const query: Filter<Document> = dateRangeFilter('receivedAt', filter.from, filter.to);
     if (filter.status) query.status = filter.status;
     // Tab Bảo hành trên hồ sơ khách hàng.
     if (filter.customerId) query['customer.partnerId'] = toObjectId(filter.customerId, 'customerId');

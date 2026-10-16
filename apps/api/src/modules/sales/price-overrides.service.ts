@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { PriceOverrideDecision, PriceOverrideRequestInput, PriceOverrideRequestView } from '@inoxpran/contracts';
-import { PRICE_OVERRIDE_APPROVER_ROLES } from '@inoxpran/contracts';
+import { can, userIdsWithPermission } from '../../common/permissions';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
@@ -14,7 +14,7 @@ import { MONGO_DATABASE } from '../../common/tokens';
 const COLLECTION = 'price_override_requests';
 /** Quyền đã duyệt mà chưa gắn vào phiếu nào thì hết hạn sau 12 giờ (một ca làm việc). */
 const GRANT_TTL_MS = 12 * 3_600_000;
-const isApprover = (roles: string[]) => roles.some((role) => (PRICE_OVERRIDE_APPROVER_ROLES as readonly string[]).includes(role));
+const isApprover = (user: AuthenticatedRequest['user']) => can(user, 'sales.price_override_approve');
 
 /**
  * Quyền sửa đơn giá trên phiếu BH (12/10/2026): kế toán xin kèm lý do → Admin / Giám đốc duyệt từ xa → quyền chỉ dùng
@@ -63,7 +63,7 @@ export class PriceOverridesService {
       }
       const now = new Date();
       // Admin / Giám đốc tự lập phiếu thì đã có thẩm quyền: quyền được duyệt ngay.
-      const selfApproved = isApprover(request.user.roles);
+      const selfApproved = isApprover(request.user);
       const document: Document = {
         _id: new ObjectId(),
         code: await this.sequences.next('SG', session),
@@ -87,7 +87,7 @@ export class PriceOverridesService {
           aggregateId: (document._id as ObjectId).toHexString(),
           payload: {
             category: 'SALES_ISSUE',
-            targetRoles: [...PRICE_OVERRIDE_APPROVER_ROLES],
+            targetUserIds: await userIdsWithPermission(this.db, 'sales.price_override_approve', session),
             level: 'WARNING',
             title: `${request.user.displayName} xin quyền sửa đơn giá phiếu BH`,
             message: `${document.customerName ? `${String(document.customerName)}: ` : ''}${input.reason}`,
@@ -116,7 +116,7 @@ export class PriceOverridesService {
   async get(id: string, request: AuthenticatedRequest) {
     const row = await this.db.collection(COLLECTION).findOne({ _id: toObjectId(id) });
     if (!row) throw new NotFoundException({ code: 'PRICE_OVERRIDE_NOT_FOUND', message: 'Không tìm thấy yêu cầu sửa giá' });
-    if (!isApprover(request.user.roles) && String(row.requestedBy) !== request.user.sub) {
+    if (!isApprover(request.user) && String(row.requestedBy) !== request.user.sub) {
       throw new NotFoundException({ code: 'PRICE_OVERRIDE_NOT_FOUND', message: 'Không tìm thấy yêu cầu sửa giá' });
     }
     return this.view(row);

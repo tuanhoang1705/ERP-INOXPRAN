@@ -1,10 +1,8 @@
-import { Controller, Get, Inject, Query, Req } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Db, Document, ObjectId } from 'mongodb';
 import { serializeDocument } from '../../common/domain';
-import type { AuthenticatedRequest } from '../../common/request-context';
 import { Roles } from '../../common/roles.decorator';
-import { staffHiddenFilter } from '../sales/keeper-scope';
 import { MONGO_DATABASE } from '../../common/tokens';
 
 @ApiTags('Approvals')
@@ -14,8 +12,8 @@ export class ApprovalsController {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
   @Get()
-  async list(@Req() request: AuthenticatedRequest, @Query('status') status = 'PENDING') {
-    const filter: Document = { ...(status ? { status } : {}), ...staffHiddenFilter(request.user) };
+  async list(@Query('status') status = 'PENDING') {
+    const filter: Document = status ? { status } : {};
     const approvals = await this.db.collection('approval_requests').find(filter).sort({ requestedAt: -1 }).limit(250).toArray();
 
     return Promise.all(

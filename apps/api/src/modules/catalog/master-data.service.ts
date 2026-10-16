@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ConvertPartner, EmployeeInput, LocationInput, PartnerAddress, PartnerContact, ProductCategoryInput, RegionInput, UpdatePartner, UpdateProduct, UpdateWarehouse } from '@inoxpran/contracts';
-import type { Db, Document } from 'mongodb';
+import Decimal from 'decimal.js';
+import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
@@ -56,18 +57,18 @@ export class MasterDataService {
 
   // ---------- dùng chung ----------
 
-  private async usages(checks: Usage[]): Promise<string[]> {
-    const found = await Promise.all(checks.map(async (check) => ((await this.db.collection(check.collection).findOne(check.filter, { projection: { _id: 1 } })) ? check.label : null)));
+  private async usages(checks: Usage[], session?: ClientSession): Promise<string[]> {
+    const found = await Promise.all(checks.map(async (check) => ((await this.db.collection(check.collection).findOne(check.filter, { projection: { _id: 1 }, ...(session ? { session } : {}) })) ? check.label : null)));
     return found.filter((label): label is string => label !== null);
   }
 
-  private async assertUnused(code: string, name: string, checks: Usage[], hint = 'Hãy chuyển sang "Ngừng sử dụng" để giữ lịch sử chứng từ.'): Promise<void> {
+  private async assertUnused(code: string, name: string, checks: Usage[], hint = 'Hãy chuyển sang "Ngừng sử dụng" để giữ lịch sử chứng từ.', extra?: Document): Promise<void> {
     const usedBy = await this.usages(checks);
     if (usedBy.length) {
       throw new ConflictException({
         code,
         message: `Không xóa được ${name}: đã phát sinh ở ${usedBy.join(', ')}. ${hint}`,
-        details: { usedBy },
+        details: { usedBy, ...(extra ?? {}) },
       });
     }
   }
@@ -141,6 +142,8 @@ export class MasterDataService {
   async deleteProduct(id: string, request: AuthenticatedRequest) {
     const before = await this.load('products', id, 'PRODUCT_NOT_FOUND', 'Không tìm thấy sản phẩm');
     const productId = before._id as ObjectId;
+    // Mã chỉ có tồn đầu kỳ nhập từ Excel: báo kèm "purgeable" để quản trị gốc chọn gỡ hẳn (CAT-PURGE-01).
+    const purgeable = (await this.purgePlan([productId]))[0]?.blockers.length === 0;
     await this.assertUnused('PRODUCT_IN_USE', `mã ${String(before.sku)}`, [
       { collection: 'inventory_movements', filter: { productId }, label: 'thẻ kho' },
       { collection: 'inventory_balances', filter: { productId }, label: 'tồn kho' },
@@ -149,10 +152,153 @@ export class MasterDataService {
       { collection: 'price_books', filter: { 'lines.productId': productId }, label: 'bảng giá' },
       { collection: 'promotions', filter: { productIds: productId }, label: 'chương trình khuyến mãi' },
       { collection: 'warranty_tickets', filter: { 'product.productId': productId }, label: 'phiếu bảo hành' },
-    ]);
+    ], purgeable ? 'Mã chỉ có tồn đầu kỳ nhập từ Excel — quản trị gốc có thể "Gỡ hẳn cả tồn đầu kỳ".' : undefined, purgeable ? { purgeable: true } : undefined);
     await this.evidence.removeAllFor('Product', productId);
     await this.db.collection('products').deleteOne({ _id: productId });
     await this.record(request, 'PRODUCT_DELETED', 'Product', id, before);
+  }
+
+  // ---------- gỡ hẳn mã hàng chỉ có tồn đầu kỳ (CAT-PURGE-01, 14/10/2026) ----------
+
+  /**
+   * Mã gỡ được khi chỉ có dòng "Tồn đầu kỳ" nhập từ Excel (kể cả dòng hoàn tác lô): không phiếu bán / mua / lô nhập / bảng giá /
+   * khuyến mãi / bảo hành / trả hàng / chuyển kho / kiểm kê, không phát sinh thẻ kho khác, không có hàng giữ chỗ.
+   */
+  async purgePlan(productIds: ObjectId[], session?: ClientSession) {
+    const options = session ? { session } : {};
+    const [products, warehouses] = await Promise.all([
+      this.db.collection('products').find({ _id: { $in: productIds } }, options).sort({ sku: 1 }).toArray(),
+      this.db.collection('warehouses').find({}, { projection: { code: 1 }, ...options }).toArray(),
+    ]);
+    const warehouseCode = new Map(warehouses.map((row) => [String(row._id), String(row.code)]));
+    const rows = [];
+    for (const product of products) {
+      const productId = product._id as ObjectId;
+      const blockers = await this.usages([
+        { collection: 'inventory_movements', filter: { productId, $nor: [{ movementType: 'OPENING', referenceType: 'ImportBatch' }, { movementType: 'REVERSAL', referenceType: 'ImportBatchRollback' }] }, label: 'thẻ kho có phát sinh ngoài tồn đầu kỳ' },
+        { collection: 'inventory_balances', filter: { productId, reserved: { $gt: decimal('0') } }, label: 'hàng đang giữ chỗ' },
+        { collection: 'sales_orders', filter: { 'lines.productId': productId }, label: 'phiếu bán hàng' },
+        { collection: 'purchase_orders', filter: { 'lines.productId': productId }, label: 'đơn mua hàng' },
+        { collection: 'import_shipments', filter: { 'lines.productId': productId }, label: 'lô hàng nhập' },
+        { collection: 'price_books', filter: { 'lines.productId': productId }, label: 'bảng giá' },
+        { collection: 'promotions', filter: { productIds: productId }, label: 'chương trình khuyến mãi' },
+        { collection: 'warranty_tickets', filter: { 'product.productId': productId }, label: 'phiếu bảo hành' },
+        { collection: 'stock_returns', filter: { 'lines.productId': productId }, label: 'phiếu trả hàng' },
+        { collection: 'inventory_transfers', filter: { 'lines.productId': productId }, label: 'phiếu chuyển kho' },
+        { collection: 'stock_counts', filter: { $or: [{ 'skuStep.entries.productId': productId }, { 'qtyStep.entries.productId': productId }, { 'adjustments.productId': productId }] }, label: 'phiếu kiểm kê' },
+      ], session);
+      const balances = await this.db.collection('inventory_balances').find({ productId }, options).toArray();
+      const opening = balances.map((row) => ({ warehouse: warehouseCode.get(String(row.warehouseId)) ?? String(row.warehouseId), quantity: decimalString(row.onHand) }));
+      rows.push({
+        id: productId.toHexString(),
+        sku: String(product.sku),
+        name: String(product.name),
+        unit: String(product.baseUnit ?? ''),
+        opening,
+        total: opening.reduce((sum, row) => sum.add(row.quantity), new Decimal(0)).toString(),
+        blockers,
+      });
+    }
+    return rows;
+  }
+
+  async categoryPurgePreview(id: string) {
+    const category = await this.load('product_categories', id, 'CATEGORY_NOT_FOUND', 'Không tìm thấy nhóm hàng');
+    const products = await this.db.collection('products').find({ categoryId: category._id }, { projection: { _id: 1 } }).toArray();
+    const rows = await this.purgePlan(products.map((row) => row._id as ObjectId));
+    return {
+      category: { id, code: String(category.code), name: String(category.name) },
+      products: rows,
+      total: rows.reduce((sum, row) => sum.add(row.total), new Decimal(0)).toString(),
+      blocked: rows.filter((row) => row.blockers.length).length,
+    };
+  }
+
+  /** Quản trị gốc gỡ cả nhóm (gõ lại đúng mã nhóm để xác nhận). */
+  async purgeCategory(id: string, confirm: string, request: AuthenticatedRequest) {
+    const category = await this.load('product_categories', id, 'CATEGORY_NOT_FOUND', 'Không tìm thấy nhóm hàng');
+    if (confirm.trim().toUpperCase() !== String(category.code).toUpperCase()) {
+      throw new BadRequestException({ code: 'PURGE_CONFIRM_MISMATCH', message: `Gõ đúng mã nhóm "${String(category.code)}" để xác nhận` });
+    }
+    const products = await this.db.collection('products').find({ categoryId: category._id }, { projection: { _id: 1 } }).toArray();
+    return this.purgeProducts(products.map((row) => row._id as ObjectId), request, category);
+  }
+
+  async purgeProduct(id: string, request: AuthenticatedRequest) {
+    await this.load('products', id, 'PRODUCT_NOT_FOUND', 'Không tìm thấy sản phẩm');
+    return this.purgeProducts([toObjectId(id)], request);
+  }
+
+  /**
+   * Gỡ hẳn (một giao dịch): dòng tồn đầu kỳ trên thẻ kho, dòng tồn, mã hàng; lô nhập Excel bỏ các dòng tồn đầu kỳ / mã đã tạo
+   * tương ứng (đối chiếu lô vẫn khớp); nhóm không còn mã thì xóa nhóm. Có mã bị chặn thì không gỡ gì.
+   */
+  private async purgeProducts(productIds: ObjectId[], request: AuthenticatedRequest, category?: Document) {
+    const session = this.db.client.startSession();
+    let result: Document = {};
+    try {
+      await session.withTransaction(async () => {
+        const plan = await this.purgePlan(productIds, session);
+        const blocked = plan.filter((row) => row.blockers.length);
+        if (blocked.length) {
+          throw new ConflictException({
+            code: 'PRODUCT_PURGE_BLOCKED',
+            message: `Không gỡ được: ${blocked.map((row) => `${row.sku} (${row.blockers.join(', ')})`).join('; ')}`,
+            details: { blocked: blocked.map((row) => ({ sku: row.sku, blockers: row.blockers })) },
+          });
+        }
+        const ids = plan.map((row) => new ObjectId(row.id));
+        const products = await this.db.collection('products').find({ _id: { $in: ids } }, { session }).toArray();
+        const movements = await this.db.collection('inventory_movements').find({ productId: { $in: ids } }, { session, projection: { productId: 1, referenceId: 1, movementType: 1, direction: 1, quantity: 1 } }).toArray();
+        const batches = await this.db.collection('import_batches').find({
+          $or: [{ 'openings.productId': { $in: ids } }, { 'created.products': { $in: ids } }, ...(category ? [{ 'created.product_categories': category._id }] : [])],
+        }, { session }).toArray();
+        await this.db.collection('inventory_movements').deleteMany({ productId: { $in: ids } }, { session });
+        await this.db.collection('inventory_balances').deleteMany({ productId: { $in: ids } }, { session });
+        await this.db.collection('products').deleteMany({ _id: { $in: ids } }, { session });
+        const categoryEmpty = category ? (await this.db.collection('products').countDocuments({ categoryId: category._id }, { session })) === 0 : false;
+        for (const batch of batches) {
+          const removed = ((batch.openings as Document[] | undefined) ?? [])
+            .filter((row) => ids.some((id) => id.equals(row.productId as ObjectId)) && row.direction !== 'OUT')
+            .reduce<Decimal>((sum, row) => sum.add(String(row.next ?? row.quantity ?? 0)), new Decimal(0));
+          const totals = batch.totals as Document | undefined;
+          await this.db.collection('import_batches').updateOne(
+            { _id: batch._id },
+            {
+              $pull: { openings: { productId: { $in: ids } }, 'created.products': { $in: ids }, ...(categoryEmpty && category ? { 'created.product_categories': category._id } : {}) } as Document,
+              ...(totals?.stockQuantity !== undefined && removed.gt(0) ? { $set: { 'totals.stockQuantity': new Decimal(String(totals.stockQuantity)).sub(removed).toString() } } : {}),
+            },
+            { session },
+          );
+        }
+        if (categoryEmpty && category) await this.db.collection('product_categories').deleteOne({ _id: category._id }, { session });
+        const actor = { actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId };
+        for (const product of products) {
+          const row = plan.find((item) => item.id === (product._id as ObjectId).toHexString());
+          await this.audit.record({
+            ...actor, action: 'PRODUCT_PURGED', entityType: 'Product', entityId: (product._id as ObjectId).toHexString(),
+            before: serializeDocument(product),
+            metadata: {
+              opening: row?.opening ?? [],
+              batches: [...new Set(movements.filter((item) => (item.productId as ObjectId).equals(product._id as ObjectId)).map((item) => String(item.referenceId)))],
+            },
+          }, session);
+        }
+        if (categoryEmpty && category) {
+          await this.audit.record({ ...actor, action: 'CATEGORY_DELETED', entityType: 'ProductCategory', entityId: (category._id as ObjectId).toHexString(), before: serializeDocument(category), metadata: { purged: products.length } }, session);
+        }
+        result = {
+          removed: products.length,
+          skus: products.map((row) => String(row.sku)),
+          openingQuantity: plan.reduce((sum, row) => sum.add(row.total), new Decimal(0)).toString(),
+          categoryDeleted: categoryEmpty,
+        };
+      });
+    } finally {
+      await session.endSession();
+    }
+    for (const id of productIds) await this.evidence.removeAllFor('Product', id).catch(() => 0);
+    return result;
   }
 
   // ---------- nhóm hàng ----------

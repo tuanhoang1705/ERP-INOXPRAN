@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slipTypeShort } from '$lib/slip-type';
   import { m } from '$lib/paraglide/messages';
   import { intlLocale } from '$lib/i18n';
   import type { DashboardSummary } from '@inoxpran/contracts';
@@ -184,7 +185,7 @@
             <tr>
               <td><a class="code" href={`/sales/orders/${order.id}`}>{order.code}</a></td>
               <td>{order.customerName}{order.province ? ` — ${order.province}` : ''}</td>
-              <td><span class="tag" class:b2c={order.channel === 'B2C'}>{order.channel}</span></td>
+              <td><span class="tag" class:b2c={(order.slipType ?? order.channel) === 'B2C'} class:loan={order.slipType === 'SAMPLE' || order.slipType === 'INSPECTION' || order.slipType === 'GIFT'}>{slipTypeShort(order.slipType ?? order.channel)}</span></td>
               <td>{date(order.orderDate)}</td>
               <td class="num">{order.lineCount}</td>
               <td class="num"><b>{num(order.total)}</b></td>
@@ -216,6 +217,7 @@
 </section>
 
 <style>
+  .tag.loan { background: var(--orange-soft); color: #b4501f; }
   .kpi.top { border-top: 4px solid var(--green); }
   .kpi.amber { border-top-color: var(--amber); }
   .kpi.red { border-top-color: var(--red); }

@@ -13,9 +13,13 @@
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { INVENTORY_CATEGORIES } from '$shared/inventory-categories';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
+  import { presetRange } from '$lib/date-range';
 
-  const thisMonth = () => new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 7);
-  let month = $state(thisMonth());
+  // Khoảng ngày (LIST-DATE-01), mặc định tháng này; tối đa 366 ngày.
+  const initial = presetRange('THIS_MONTH');
+  let from = $state(initial.from);
+  let to = $state(initial.to);
   let warehouseId = $state('');
   let category = $state('');
   let search = $state('');
@@ -27,7 +31,7 @@
   let loading = $state(true);
   let exporting = $state(false);
   let error = $state('');
-  const filters = $derived({ month, warehouseId, category, search: search.trim() });
+  const filters = $derived({ from, to, warehouseId, category, search: search.trim() });
 
   async function load() {
     loading = true;
@@ -64,7 +68,7 @@
     error = '';
     try {
       const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value) as Array<[string, string]>).toString();
-      await download(`/inventory/reports/journal/export?${query}`, `NhatKyXuatNhap_${month}.xlsx`);
+      await download(`/inventory/reports/journal/export?${query}`, `NhatKyXuatNhap_${from || '…'}_${to || '…'}.xlsx`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_tep();
     } finally {
@@ -85,7 +89,7 @@
 </section>
 
 <section class="card filters">
-  <div class="field"><label for="month">{m.inv_thang()}</label><input id="month" type="month" bind:value={month} max={thisMonth()} onchange={refilter} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_thoi_gian()} id="journal-date" allowAll={false} onchange={refilter} />
   <div class="field"><label for="warehouse">{m.kho()}</label>
     <select id="warehouse" bind:value={warehouseId} onchange={refilter}><option value="">{m.tat_ca_kho()}</option>{#each warehouses as item (item.id)}<option value={item.id}>{item.name}</option>{/each}</select>
   </div>
@@ -128,7 +132,7 @@
 
 <style>
   .zh { color: var(--subtle); font-size: 0.6em; font-weight: 500; }
-  .filters { grid-template-columns: 180px minmax(180px, 1fr) minmax(200px, 1fr) minmax(200px, 1fr); }
+  .filters { grid-template-columns: minmax(220px, 1.3fr) minmax(160px, 1fr) minmax(200px, 1fr) minmax(200px, 1fr); }
   td small { display: block; color: var(--subtle); font-size: 12px; }
   .note { max-width: 260px; }
   @media (max-width: 900px) { .filters { grid-template-columns: 1fr 1fr; } }

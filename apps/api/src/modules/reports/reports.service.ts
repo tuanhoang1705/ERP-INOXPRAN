@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import type { Db, Document, ObjectId } from 'mongodb';
 import { decimalString, toObjectId, vnParts } from '../../common/domain';
 import { MONGO_DATABASE } from '../../common/tokens';
+import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 
 const DAY_MS = 86_400_000;
@@ -45,7 +46,7 @@ export class ReportsService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
   private async revenueByCustomer(filter: SalesReportFilter, from: Date, toExclusive: Date) {
-    const match: Document = { status: { $in: REVENUE_STATUSES }, orderDate: { $gte: from, $lt: toExclusive } };
+    const match: Document = { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: from, $lt: toExclusive } };
     if (filter.regionCode === 'B2C') match.channel = 'B2C';
     else if (filter.regionCode) match.regionCode = filter.regionCode;
     if (filter.tier) match.customerTier = filter.tier;

@@ -26,7 +26,7 @@ describe('số phiếu BH tự nhập', () => {
 
 describe('số phiếu BH tự nhập không trùng kiểu số chứng từ khác', () => {
   it('chặn số bắt đầu như SWK / AR / PO / TH / KK… kèm chữ số', () => {
-    for (const code of ['SWK2026100001', 'AR2610-00001', 'PO2610-00001', 'TH2026100001', 'KK2026100001', 'IMP2610-001', 'XT2026100001']) expect(salesOrderCodeProblem(code)).toBe('RESERVED');
+    for (const code of ['SWK2026100001', 'AR2610-00001', 'PO2610-00001', 'TH2026100001', 'KK2026100001', 'IMP2610-001', 'XT2026100001', 'YC2610-00001']) expect(salesOrderCodeProblem(code)).toBe('RESERVED');
   });
   it('vẫn cho số BH (kể cả đúng kiểu tự sinh) và số phiếu giấy; báo sai định dạng trước', () => {
     for (const code of ['BH003/0826', 'BH2026100123', 'PX-01', 'THANGVUONG-01', 'ARC1']) expect(salesOrderCodeProblem(code)).toBe(null);

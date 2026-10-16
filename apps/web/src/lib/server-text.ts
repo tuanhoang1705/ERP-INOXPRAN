@@ -14,6 +14,7 @@ const isPlan = (value: string): value is WarrantyPlan => (WARRANTY_PLANS as read
 type DashboardAlert = DashboardSummary['alerts'][number];
 
 const text = (params: TextParams, key: string) => String(params[key] ?? '');
+const changeKind = (kind: string) => ({ EDIT: m.yc_loai_sua(), VOID: m.yc_loai_huy_da_giao(), CANCEL: m.yc_loai_huy(), DELETE: m.yc_loai_xoa() } as Record<string, string>)[kind] ?? kind;
 const count = (params: TextParams, key: string) => Number(params[key] ?? 0);
 
 export function alertText(alert: DashboardAlert): { title: string; detail: string } {
@@ -69,6 +70,12 @@ export function notificationText(notification: AppNotification): { title: string
       return text(p, 'decision') === 'APPROVE'
         ? { title: m.tb_gia_da_cap({ approver: text(p, 'approver') }), message: m.tb_gia_da_cap_chi_tiet({ code }) }
         : { title: m.tb_gia_tu_choi({ approver: text(p, 'approver') }), message: text(p, 'note') };
+    case 'SALES_CHANGE_REQUESTED':
+      return { title: m.tb_yc_moi({ requester: text(p, 'requester'), kind: changeKind(text(p, 'kind')).toLowerCase(), order: text(p, 'order') }), message: text(p, 'reason') };
+    case 'SALES_CHANGE_APPROVED':
+      return { title: m.tb_yc_duyet({ code, approver: text(p, 'approver') }), message: m.tb_yc_duyet_chi_tiet({ kind: changeKind(text(p, 'kind')), order: text(p, 'order') }) };
+    case 'SALES_CHANGE_REJECTED':
+      return { title: m.tb_yc_tu_choi({ code }), message: `${text(p, 'approver')}: ${text(p, 'note')}` };
     case 'SALES_ORDER_ROOT_EDITED':
       return { title: m.tb_root_sua_phieu({ code }), message: m.tb_root_sua_phieu_chi_tiet({ actor: text(p, 'actor'), customer: text(p, 'customer') }) };
     case 'SALES_ORDER_CANCELLED':

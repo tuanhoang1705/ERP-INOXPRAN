@@ -4,6 +4,8 @@ import {
   CreateSalesOrderSchema,
   DiscardSalesOrderSchema,
   CustomerConfirmationSchema,
+  LoanCloseSchema,
+  LoanReturnSchema,
   SalesPriceSheetRequestSchema,
   SalesQuoteRequestSchema,
   UpdateSalesOrderSchema,
@@ -12,7 +14,7 @@ import {
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
-import { RootOnly, Roles } from '../../common/roles.decorator';
+import { RequirePermission, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { SalesService } from './sales.service';
@@ -35,11 +37,16 @@ export class SalesController {
     @Query('confirmation') confirmation?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('type') type?: string,
+    @Query('loan') loan?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.sales.list(request.user, status, search, channel, customerId, confirmation, pageRequest(page, pageSize));
+    return this.sales.list(request.user, status, search, channel, customerId, confirmation, pageRequest(page, pageSize), { type, loan, from, to });
   }
 
   @Roles('ADMIN', 'SALES', 'SALES_MANAGER', 'ACCOUNTANT', 'DIRECTOR')
+  @RequirePermission('sales.change_request')
   @Post('quote')
   quote(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = SalesQuoteRequestSchema.parse(body);
@@ -49,6 +56,7 @@ export class SalesController {
 
   /** Bảng giá của khách tại kho xuất để form phiếu tính tiền tức thời. */
   @Roles('ADMIN', 'SALES', 'SALES_MANAGER', 'ACCOUNTANT', 'DIRECTOR')
+  @RequirePermission('sales.change_request')
   @Get('price-sheet')
   priceSheet(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     const input = SalesPriceSheetRequestSchema.parse(query);
@@ -58,6 +66,7 @@ export class SalesController {
 
   /** Tài khoản thủ kho có phạm vi kho xuất, để kế toán chọn người tiếp nhận phiếu. */
   @Roles('ADMIN', 'SALES', 'SALES_MANAGER', 'ACCOUNTANT', 'DIRECTOR')
+  @RequirePermission('sales.change_request')
   @Get('warehouse-keepers')
   warehouseKeepers(@Query('warehouseId') warehouseId: string, @Req() request: AuthenticatedRequest) {
     assertWarehouseAccess(request, warehouseId);
@@ -131,8 +140,8 @@ export class SalesController {
     return this.sales.update(id, input, request, key);
   }
 
-  /** Quản trị gốc sửa phiếu ở mọi giai đoạn sau khi phát hành (tồn kho / công nợ tự điều chỉnh theo chênh lệch). */
-  @RootOnly()
+  /** Sửa phiếu ở mọi giai đoạn sau khi phát hành (quyền `sales.edit_issued`, mặc định Admin) — tồn kho / công nợ tự điều chỉnh theo chênh lệch. */
+  @RequirePermission('sales.edit_issued')
   @Patch(':id/root')
   rootUpdate(
     @Param('id') id: string,
@@ -143,8 +152,8 @@ export class SalesController {
     return this.sales.rootUpdate(id, UpdateSalesOrderSchema.parse(body), request, key);
   }
 
-  /** Quản trị gốc hủy phiếu đã xuất kho / đã giao bằng bút toán đảo (nhập lại kho, công nợ hủy, tiền đã thu thành trả trước). */
-  @RootOnly()
+  /** Hủy phiếu đã xuất kho / đã giao bằng bút toán đảo (quyền `sales.void_shipped`, mặc định Admin): nhập lại kho, công nợ hủy, tiền đã thu thành trả trước. */
+  @RequirePermission('sales.void_shipped')
   @Post(':id/void')
   rootVoid(
     @Param('id') id: string,
@@ -155,8 +164,8 @@ export class SalesController {
     return this.sales.rootVoid(id, DiscardSalesOrderSchema.parse(body), request, key);
   }
 
-  /** Kế toán xóa hẳn phiếu nháp (kể cả phiếu bị KD trả về) — bắt buộc lý do, nội dung giữ trong nhật ký. */
-  @Roles('ADMIN', 'ACCOUNTANT')
+  /** Xóa hẳn phiếu nháp (quyền `sales.discard`, mặc định kế toán / Admin) — bắt buộc lý do, nội dung giữ trong nhật ký. */
+  @RequirePermission('sales.discard')
   @Delete(':id')
   remove(
     @Param('id') id: string,
@@ -167,8 +176,8 @@ export class SalesController {
     return this.sales.remove(id, DiscardSalesOrderSchema.parse(body), request, key);
   }
 
-  /** Kế toán hủy phiếu đã phát hành nhưng chưa xuất kho — giữ số, trả hàng giữ chỗ, bắt buộc lý do. */
-  @Roles('ADMIN', 'ACCOUNTANT')
+  /** Hủy phiếu đã phát hành nhưng chưa xuất kho (quyền `sales.discard`) — trả hàng giữ chỗ, bắt buộc lý do. */
+  @RequirePermission('sales.discard')
   @Post(':id/cancel')
   cancel(
     @Param('id') id: string,
@@ -211,6 +220,30 @@ export class SalesController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.sales.ship(id, WarehouseIssueSchema.parse(body), request, key);
+  }
+
+  /** Nhập lại hàng mẫu / hàng kiểm định NVKD mang về theo phiếu (SAL-TYPE-01) — thủ kho, quản lý kho. */
+  @Roles('ADMIN', 'WAREHOUSE', 'WAREHOUSE_MANAGER')
+  @Post(':id/loan-returns')
+  loanReturn(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.loanReturn(id, LoanReturnSchema.parse(body), request, key);
+  }
+
+  /** Chốt phần hàng mẫu / kiểm định chưa về: hỏng / tiêu hao / tặng, hoặc đại lý mua luôn (SAL-TYPE-01) — kế toán, quản lý kho. */
+  @Roles('ADMIN', 'ACCOUNTANT', 'WAREHOUSE_MANAGER')
+  @Post(':id/loan-close')
+  loanClose(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.loanClose(id, LoanCloseSchema.parse(body), request, key);
   }
 
   /**

@@ -50,6 +50,8 @@ const OPERATIONAL_COLLECTIONS = [
   // 08/10/2026: phiếu trả hàng (khách trả / trả nhà máy).
   'stock_returns',
   'stock_counts',
+  // 12–14/10/2026: yêu cầu sửa đơn giá (SG…), đề nghị sửa / hủy phiếu BH (YC…) — bộ đếm số bị xóa nên phải xóa cùng.
+  'price_override_requests', 'sales_change_requests',
 ];
 
 function mulberry32(seed: number) {

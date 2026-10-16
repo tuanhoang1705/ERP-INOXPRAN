@@ -1,3 +1,5 @@
+import { SalesChangeRequestsController } from './sales-change-requests.controller';
+import { SalesChangeRequestsService } from './sales-change-requests.service';
 import { Module } from '@nestjs/common';
 import { InventoryModule } from '../inventory/inventory.module';
 import { PriceOverridesController } from './price-overrides.controller';
@@ -8,8 +10,8 @@ import { SalesService } from './sales.service';
 
 @Module({
   imports: [InventoryModule],
-  controllers: [SalesController, PriceOverridesController],
-  providers: [PricingService, SalesService, PriceOverridesService],
+  controllers: [SalesController, PriceOverridesController, SalesChangeRequestsController],
+  providers: [PricingService, SalesService, PriceOverridesService, SalesChangeRequestsService],
   exports: [SalesService],
 })
 export class SalesModule {}

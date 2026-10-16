@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { VAT_RATES } from './shared/sales-math.js';
 import { DEFAULT_SALES_ISSUE_TEMPLATE, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesOrderCodeProblem } from './shared/sales-templates.js';
+import { isLoanPurpose, isNonSalePurpose, LOAN_CLOSE_OUTCOMES, LOAN_STATUSES, SALES_PURPOSES, SALES_SLIP_TYPES } from './shared/sales-purpose.js';
 import { isDateOnly, WARRANTY_CHANNELS, WARRANTY_EXCLUSIONS, WARRANTY_PLANS } from './shared/warranty.js';
 import type { WarrantyChannel, WarrantyCoverage, WarrantyExclusion, WarrantyPhotoKind, WarrantyPlan, WarrantyResolution, WarrantyStatus } from './shared/warranty.js';
 import { USER_ROLES } from './shared/user-admin.js';
@@ -12,9 +13,11 @@ import type { StockCountRow, StockCountStatus, StockCountStep } from './shared/s
 
 export * from './shared/sales-math.js';
 export * from './shared/sales-templates.js';
+export * from './shared/sales-purpose.js';
 export * from './shared/warranty.js';
 export * from './shared/catalog-access.js';
 export * from './shared/user-admin.js';
+export * from './shared/permissions.js';
 export * from './shared/currency.js';
 export * from './shared/packing.js';
 export * from './shared/landed-cost.js';
@@ -358,8 +361,9 @@ export const OrderLineInputSchema = z.object({
   /**
    * Đơn giá chưa VAT sửa tay (theo đơn vị bán) — chỉ khi Admin / Giám đốc đã cấp quyền sửa giá cho đúng phiếu này
    * (xem `priceOverrideRequestId`). Dòng sửa giá: CK = 0, giá theo bảng giá vẫn lưu ở `originalUnitPrice`.
+   * Thấp nhất 0 (phiếu xuất đi kiểm định / mẫu — 14/10/2026); không âm.
    */
-  overrideUnitPrice: MoneySchema.refine((value) => Number(value) > 0, 'Đơn giá phải lớn hơn 0').optional(),
+  overrideUnitPrice: MoneySchema.optional(),
 });
 export const OrderLineSchema = OrderLineInputSchema.extend({
   sku: CodeSchema,
@@ -384,17 +388,27 @@ export const SalesOrderCodeSchema = z
   .toUpperCase()
   .regex(SALES_ORDER_CODE_PATTERN, 'Số phiếu chỉ gồm chữ, số và . _ / - (2–40 ký tự), hoặc chỉ gõ số hóa đơn (vd. 104)')
   .refine((code) => salesOrderCodeProblem(code) !== 'RESERVED', 'Số phiếu trùng kiểu số của chứng từ khác (SWK, AR, PO, TH…) — dùng số khác');
-export const CreateSalesOrderSchema = z.object({
+/** Mục đích phiếu: bán hàng / xuất hàng mẫu / xuất kiểm định (SAL-TYPE-01). Thiếu = bán hàng. */
+export const SalesPurposeSchema = z.enum(SALES_PURPOSES);
+export const SalesSlipTypeSchema = z.enum(SALES_SLIP_TYPES);
+const SalesOrderInputObject = z.object({
   /** Bỏ trống = hệ thống tự sinh BHyyyymm####; có giá trị = số phiếu tự nhập (không được trùng). */
   code: SalesOrderCodeSchema.optional(),
   /** Quyền sửa đơn giá đã được Admin / Giám đốc duyệt cho phiếu này (bắt buộc khi có dòng `overrideUnitPrice`). */
   priceOverrideRequestId: IdSchema.optional(),
   /** Mã phiên mở form lập phiếu — quyền sửa giá chưa gắn phiếu chỉ dùng được trong đúng phiên đã xin. */
   formSessionId: z.string().uuid().optional(),
-  customerId: IdSchema,
+  purpose: SalesPurposeSchema.default('SALE'),
+  /** Bắt buộc với phiếu bán; phiếu hàng mẫu / kiểm định không có khách hàng. */
+  customerId: IdSchema.optional(),
   warehouseId: IdSchema,
   channel: SalesChannelSchema.default('B2B'),
+  /** Phiếu bán: NVKD phụ trách. Phiếu hàng mẫu / kiểm định: người mượn hàng (bắt buộc). */
   salesRepId: IdSchema.optional(),
+  /** Phiếu hàng mẫu / kiểm định: gửi tới đâu (tên đại lý / NPP, trung tâm kiểm định). */
+  destination: z.string().trim().max(200).optional(),
+  /** Phiếu hàng mẫu / kiểm định: ngày hẹn mang hàng về. */
+  expectedReturnDate: z.string().date().optional(),
   orderDate: z.string().date().optional(),
   paymentTermDays: z.number().int().min(0).max(365).optional(),
   requestedDeliveryDate: z.string().date().optional(),
@@ -410,13 +424,44 @@ export const CreateSalesOrderSchema = z.object({
   taxRate: VatRateSchema.optional(),
   lines: z.array(OrderLineInputSchema).min(1).max(200),
 });
+/** Phiếu bán cần khách; phiếu hàng mẫu / kiểm định / xuất tặng cần nhân viên, không có khách, không có giá sửa tay / hàng tặng; chỉ hàng mẫu / kiểm định có hẹn trả. */
+function checkSalesPurpose(input: z.infer<typeof SalesOrderInputObject>, ctx: z.RefinementCtx) {
+  if (!isNonSalePurpose(input.purpose)) {
+    if (!input.customerId) ctx.addIssue({ code: 'custom', path: ['customerId'], message: 'Chọn khách hàng' });
+    return;
+  }
+  if (!input.salesRepId) ctx.addIssue({ code: 'custom', path: ['salesRepId'], message: input.purpose === 'GIFT' ? 'Chọn nhân viên phụ trách' : 'Chọn nhân viên mượn hàng' });
+  if (input.customerId) ctx.addIssue({ code: 'custom', path: ['customerId'], message: 'Phiếu hàng mẫu / kiểm định / xuất tặng không gắn khách hàng' });
+  if (input.priceOverrideRequestId || input.lines.some((line) => line.overrideUnitPrice !== undefined || line.gift)) {
+    ctx.addIssue({ code: 'custom', path: ['lines'], message: 'Phiếu hàng mẫu / kiểm định / xuất tặng không có giá sửa tay hay dòng hàng tặng (đơn giá luôn 0)' });
+  }
+  if (!isLoanPurpose(input.purpose) && input.expectedReturnDate) {
+    ctx.addIssue({ code: 'custom', path: ['expectedReturnDate'], message: 'Phiếu xuất tặng không có ngày hẹn trả' });
+  }
+}
+export const CreateSalesOrderSchema = SalesOrderInputObject.superRefine(checkSalesPurpose);
 export type CreateSalesOrder = z.infer<typeof CreateSalesOrderSchema>;
-export const UpdateSalesOrderSchema = CreateSalesOrderSchema.extend({
+export const UpdateSalesOrderSchema = SalesOrderInputObject.extend({
   version: z.number().int().positive(),
   /** AUTO khi phiếu đang mang số tự nhập = cấp lại số tự sinh; bỏ trống = giữ cách đánh số hiện tại. */
   codeMode: z.enum(['AUTO', 'MANUAL']).optional(),
-});
+}).superRefine(checkSalesPurpose);
 export type UpdateSalesOrder = z.infer<typeof UpdateSalesOrderSchema>;
+
+/** Thủ kho nhập lại hàng mẫu / hàng kiểm định mang về (một phần hoặc đủ) theo phiếu. */
+export const LoanReturnSchema = z.object({
+  version: z.number().int().positive(),
+  lines: z.array(z.object({ productId: IdSchema, quantity: PositiveDecimalStringSchema })).min(1).max(200),
+  note: z.string().trim().max(500).optional(),
+});
+export type LoanReturn = z.infer<typeof LoanReturnSchema>;
+/** Chốt phần hàng mẫu / kiểm định chưa về: hỏng / tiêu hao / tặng, hoặc đại lý giữ mua luôn (chuyển thành phiếu bán). */
+export const LoanCloseSchema = z.object({
+  version: z.number().int().positive(),
+  outcome: z.enum(LOAN_CLOSE_OUTCOMES),
+  reason: z.string().trim().min(5, 'Lý do tối thiểu 5 ký tự').max(500),
+});
+export type LoanClose = z.infer<typeof LoanCloseSchema>;
 
 /**
  * Bỏ phiếu BH (kế toán / Admin, bắt buộc lý do): phiếu nháp (kể cả bị KD trả về) thì xóa hẳn;
@@ -427,6 +472,46 @@ export const DiscardSalesOrderSchema = z.object({
   reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(300),
 });
 export type DiscardSalesOrder = z.infer<typeof DiscardSalesOrderSchema>;
+
+/**
+ * Đề nghị sửa / hủy / xóa phiếu BH (SAL-CHG-01, 14/10/2026): người có quyền `sales.change_request` (mặc định kế toán, kho)
+ * gửi đề nghị kèm lý do; người có quyền `sales.change_approve` (mặc định Admin) duyệt thì hệ thống mới thực hiện.
+ * EDIT: phiếu đã phát hành (kèm nội dung sửa); VOID: phiếu đã xuất / đã giao; CANCEL: phiếu đã phát hành chưa xuất; DELETE: phiếu nháp.
+ */
+export const SALES_CHANGE_KINDS = ['EDIT', 'VOID', 'CANCEL', 'DELETE'] as const;
+export type SalesChangeKind = (typeof SALES_CHANGE_KINDS)[number];
+export const SALES_CHANGE_STATUSES = ['PENDING', 'APPLIED', 'REJECTED', 'WITHDRAWN', 'FAILED'] as const;
+export type SalesChangeStatus = (typeof SALES_CHANGE_STATUSES)[number];
+export const CreateSalesChangeRequestSchema = z.object({
+  kind: z.enum(SALES_CHANGE_KINDS),
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(300),
+  changes: UpdateSalesOrderSchema.optional(),
+}).superRefine((value, context) => {
+  if (value.kind === 'EDIT' && !value.changes) context.addIssue({ code: 'custom', path: ['changes'], message: 'Đề nghị sửa phải kèm nội dung sửa' });
+});
+export type CreateSalesChangeRequest = z.infer<typeof CreateSalesChangeRequestSchema>;
+export const DecideSalesChangeRequestSchema = z.object({ note: z.string().trim().max(300).optional() });
+export const RejectSalesChangeRequestSchema = z.object({ note: z.string().trim().min(5, 'Ghi lý do từ chối (ít nhất 5 ký tự)').max(300) });
+export interface SalesChangeRequestView {
+  id: string;
+  code: string;
+  kind: SalesChangeKind;
+  status: SalesChangeStatus;
+  orderId: string;
+  orderCode: string;
+  orderVersion: number;
+  customerName?: string;
+  reason: string;
+  changes?: UpdateSalesOrder;
+  requestedById: string;
+  requestedByName: string;
+  requestedAt: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  error?: string;
+}
 /** Kế toán xin quyền sửa đơn giá cho phiếu BH đang lập (Admin / Giám đốc duyệt từ xa). */
 export const PRICE_OVERRIDE_APPROVER_ROLES = ['ADMIN', 'DIRECTOR'] as const;
 export const PriceOverrideRequestSchema = z.object({
@@ -529,7 +614,8 @@ export const WarehouseIssueSchema = z.object({
   note: z.string().trim().max(500).optional(),
 });
 export type WarehouseIssue = z.infer<typeof WarehouseIssueSchema>;
-export const ConfirmationStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'REVISION_REQUESTED']);
+/** NOT_REQUIRED = phiếu hàng mẫu / kiểm định: không có khách nên bỏ bước KD đối chiếu, phát hành xong chuyển thẳng thủ kho. */
+export const ConfirmationStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'REVISION_REQUESTED', 'NOT_REQUIRED']);
 
 export const SalesQuoteRequestSchema = z.object({
   customerId: IdSchema,
@@ -560,7 +646,8 @@ export interface SalesQuoteLine {
   stockState: 'OK' | 'NEAR_MINIMUM' | 'INSUFFICIENT';
 }
 
-export const SalesPriceSheetRequestSchema = z.object({ customerId: IdSchema, warehouseId: IdSchema });
+/** Không có khách = bảng của phiếu hàng mẫu / kiểm định: chỉ tồn khả dụng, đơn giá 0. */
+export const SalesPriceSheetRequestSchema = z.object({ customerId: IdSchema.optional(), warehouseId: IdSchema });
 
 /** Cơ sở tính giá của một mã hàng cho một khách: form dùng để tính tiền tức thời bằng priceLine(). */
 export interface SalesPriceSheetItem {
@@ -586,7 +673,8 @@ export interface SalesPriceSheet {
   pricesIncludeTax: boolean;
   discountCapRate: string;
   approvalThreshold: string;
-  customer: {
+  /** Trống với bảng của phiếu hàng mẫu / kiểm định. */
+  customer?: {
     id: string;
     tier: string;
     status: string;
@@ -626,13 +714,23 @@ export interface SalesQuote {
 export const SalesOrderSchema = z.object({
   id: IdSchema,
   code: CodeSchema,
-  customerId: IdSchema,
-  customerCode: CodeSchema,
-  customerName: z.string(),
+  /** Thiếu = phiếu bán. Phiếu hàng mẫu / kiểm định không có khách hàng (customer* trống). */
+  purpose: SalesPurposeSchema.optional(),
+  customerId: IdSchema.optional(),
+  customerCode: CodeSchema.optional(),
+  customerName: z.string().optional(),
   warehouseId: IdSchema,
-  channel: SalesChannelSchema.default('B2B'),
+  channel: SalesChannelSchema.optional(),
   salesRepId: IdSchema.optional(),
   salesRepName: z.string().optional(),
+  destination: z.string().optional(),
+  expectedReturnDate: z.string().date().optional(),
+  /** Phiếu hàng mẫu / kiểm định đã xuất: hàng còn ở ngoài / đã về một phần / đã về đủ / đã chốt phần chưa về. */
+  loanStatus: z.enum(LOAN_STATUSES).optional(),
+  loanClosedAt: z.string().datetime().optional(),
+  loanClosedByName: z.string().optional(),
+  loanCloseOutcome: z.enum(LOAN_CLOSE_OUTCOMES).optional(),
+  loanCloseReason: z.string().optional(),
   regionCode: z.string().optional(),
   orderDate: z.string().datetime().optional(),
   paymentTermDays: z.number().int().optional(),
@@ -672,8 +770,6 @@ export const SalesOrderSchema = z.object({
   cancelledByName: z.string().optional(),
   cancelReason: z.string().optional(),
   statusBeforeCancel: z.string().optional(),
-  /** Quản trị gốc hủy (ROOT-DEL-02): ẩn với NVKD / thủ kho, chỉ quản trị, Giám đốc, kế toán thấy. */
-  staffHidden: z.boolean().optional(),
   templateCode: z.string().optional(),
   taxRate: z.string().optional(),
   pricesIncludeTax: z.boolean().optional(),
@@ -887,6 +983,9 @@ export const NOTIFICATION_TEMPLATES = [
   'PRICE_OVERRIDE_REQUESTED',
   'PRICE_OVERRIDE_DECIDED',
   'SALES_ORDER_ROOT_EDITED',
+  'SALES_CHANGE_REQUESTED',
+  'SALES_CHANGE_APPROVED',
+  'SALES_CHANGE_REJECTED',
   'SALES_APPROVAL_REQUESTED',
   'SALES_CONFIRMATION_PENDING',
   'SALES_APPROVED_CONFIRMATION_PENDING',
@@ -944,9 +1043,11 @@ export const DashboardSummarySchema = z.object({
     z.object({
       id: IdSchema,
       code: CodeSchema,
+      /** Tên khách; phiếu hàng mẫu / kiểm định = người mượn (xem `slipType`). */
       customerName: z.string(),
       province: z.string().optional(),
       channel: SalesChannelSchema,
+      slipType: SalesSlipTypeSchema.optional(),
       orderDate: z.string().datetime(),
       lineCount: z.number().int(),
       total: MoneySchema,
@@ -1327,7 +1428,13 @@ export interface AdminUser {
   lastSeenAt?: string;
   createdAt?: string;
   demoData?: boolean;
+  /** Quyền nghiệp vụ chỉnh riêng (PERM-01) và quyền hiệu lực sau khi áp vai trò. */
+  permissionOverrides?: Record<string, boolean>;
+  permissions: string[];
 }
+/** Quản trị gốc cấp / thu quyền nghiệp vụ: true = cấp, false = thu, null = về mặc định theo vai trò. */
+export const UpdateUserPermissionsSchema = z.object({ overrides: z.record(z.string(), z.boolean().nullable()) });
+export type UpdateUserPermissions = z.infer<typeof UpdateUserPermissionsSchema>;
 
 export interface LoginEvent {
   id: string;
@@ -1449,10 +1556,11 @@ export type CreateStockReturn = z.infer<typeof CreateStockReturnSchema>;
 export interface StockReturn {
   id: string;
   code: string;
-  kind: 'CUSTOMER' | 'SUPPLIER';
+  /** SAMPLE = hàng mẫu / hàng kiểm định NVKD mang về theo phiếu (SAL-TYPE-01): không đối tác, không qua kế toán. */
+  kind: 'CUSTOMER' | 'SUPPLIER' | 'SAMPLE';
   category: InventoryCategory;
-  partnerId: string;
-  partnerCode: string;
+  partnerId?: string;
+  partnerCode?: string;
   partnerName: string;
   warehouseId: string;
   warehouseName: string;

@@ -18,6 +18,9 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('partner_activities').createIndex({ done: 1, followUpOn: 1, ownerId: 1 }),
       this.db.collection('outbox_events').createIndex({ aggregateType: 1, aggregateId: 1 }),
       this.db.collection('warehouses').createIndex({ code: 1 }, { unique: true }),
+      this.db.collection('sales_change_requests').createIndex({ orderId: 1, status: 1 }),
+      this.db.collection('sales_change_requests').createIndex({ status: 1, requestedAt: -1 }),
+      this.db.collection('sales_change_requests').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('promotions').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('product_categories').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('locations').createIndex({ warehouseId: 1, code: 1 }, { unique: true }),
@@ -75,5 +78,8 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('system_jobs').createIndex({ type: 1, at: -1 }),
       this.db.collection('audit_events').createIndex({ occurredAt: -1 }),
     ]);
+    // ROOT-DEL-02 (13/10/2026) đã bỏ ngày 14/10: gỡ cờ ẩn với nhân viên còn sót (chạy lại nhiều lần không sao).
+    await Promise.all(['sales_orders', 'shipments', 'inventory_movements', 'receivables', 'approval_requests', 'price_override_requests'].map((name) =>
+      this.db.collection(name).updateMany({ staffHidden: { $exists: true } }, { $unset: { staffHidden: '' } })));
   }
 }

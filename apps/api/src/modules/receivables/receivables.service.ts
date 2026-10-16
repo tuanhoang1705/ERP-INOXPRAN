@@ -3,6 +3,7 @@ import type { CreatePayment } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -22,9 +23,9 @@ export class ReceivablesService {
   ) {}
 
   /** Mặc định chỉ trả khoản còn dư nợ (sắp theo hạn); includePaid trả cả khoản đã thu, mới nhất trước. */
-  /** `hidden`: điều kiện bỏ công nợ ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
-  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null, hidden: Document = {}) {
-    const filter: Document = { ...(includePaid ? {} : { status: { $in: OPEN_RECEIVABLE_STATUSES } }), ...hidden };
+  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null, from?: string, to?: string) {
+    // Lọc theo ngày phát sinh công nợ (LIST-DATE-01); "quá hạn" vẫn lọc riêng theo hạn trả.
+    const filter: Document = { ...(includePaid ? {} : { status: { $in: OPEN_RECEIVABLE_STATUSES } }), ...dateRangeFilter('createdAt', from, to) };
     if (partnerId) filter.partnerId = toObjectId(partnerId, 'partnerId');
     if (overdueOnly) {
       filter.dueDate = { $lt: new Date() };

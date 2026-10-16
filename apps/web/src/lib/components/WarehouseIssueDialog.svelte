@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { partyName } from '$lib/slip-type';
   import { m } from '$lib/paraglide/messages';
   /** Kho lập phiếu xuất kho bán hàng số SWK từ phiếu BH đã được khách xác nhận. */
   import { CircleAlert } from 'lucide-svelte';
@@ -7,7 +8,7 @@
   import { vnd } from '$lib/format';
   import { warehouseSlipNumber } from '$shared/sales-templates';
 
-  type Target = { id: string; code: string; version: number; customerName: string; grandTotal: string; contactName?: string | undefined; deliveryLocation?: string | undefined };
+  type Target = { id: string; code: string; version: number; customerName?: string | undefined; purpose?: string | undefined; salesRepName?: string | undefined; destination?: string | undefined; grandTotal: string; contactName?: string | undefined; deliveryLocation?: string | undefined };
   let { order = $bindable(null), ondone }: { order?: Target | null; ondone: (result: { id: string; shipmentCode: string }) => void } = $props();
 
   let open = $state(false);
@@ -57,7 +58,7 @@
 
 <Dialog bind:open title={order ? m.lap_phieu_swk_cho({ code: order.code }) : m.lap_phieu_swk()}>
   {#if order}
-    <p class="lead">{m.xuat_kho_cho()} <b>{order.customerName}</b> {m.tong_thanh_toan()} <b>{vnd(order.grandTotal)}</b>{m.he_thong_se_cap_so_swk_cung_so({ swk: warehouseSlipNumber(order.code) })}</p>
+    <p class="lead">{m.xuat_kho_cho()} <b>{partyName(order)}</b> {m.tong_thanh_toan()} <b>{vnd(order.grandTotal)}</b>{m.he_thong_se_cap_so_swk_cung_so({ swk: warehouseSlipNumber(order.code) })}</p>
     {#if order.deliveryLocation}<p class="lead">{m.dia_diem_giao()} <b>{order.deliveryLocation}</b></p>{/if}
     <div class="field"><label for="receiver">{m.nguoi_nhan_hang()}</label><input id="receiver" bind:value={receiverName} maxlength="120" placeholder={m.ho_ten_nguoi_nhan_lai_xe()} /></div>
     <div class="field"><label for="carrier">{m.phuong_tien_don_vi_van_chuyen()}</label><input id="carrier" bind:value={carrier} maxlength="120" placeholder={m.vd_xe_cong_ty_29c_123()} /></div>

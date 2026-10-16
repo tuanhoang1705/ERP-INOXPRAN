@@ -7,15 +7,19 @@
   import { salesIssueTemplate } from '$shared/sales-templates';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { Ban, Check, CircleAlert, CircleCheck, MessageSquareWarning, Paperclip, Pencil, Printer, ShieldAlert, ShieldCheck, Trash2, Warehouse as WarehouseIcon } from 'lucide-svelte';
+  import { Ban, Check, CircleAlert, CircleCheck, Hourglass, MessageSquareWarning, Paperclip, Pencil, Printer, Send, ShieldAlert, ShieldCheck, Trash2, Warehouse as WarehouseIcon } from 'lucide-svelte';
   import { goto } from '$app/navigation';
+  import ChangeRequestDialog from '$lib/components/ChangeRequestDialog.svelte';
   import CustomerConfirmationDialog from '$lib/components/CustomerConfirmationDialog.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import WarehouseIssueDialog from '$lib/components/WarehouseIssueDialog.svelte';
   import { api } from '$lib/api';
   import { date, dateTime, num, vnd } from '$lib/format';
   import { approvalReason, hasRole, orderStage, tierLabel } from '$lib/labels';
-  import { session } from '$lib/session.svelte';
+  import { can, session } from '$lib/session.svelte';
+  import { changeKindLabel, type ChangeKind, type ChangeRequest } from '$lib/change-requests';
+  import LoanPanel, { type LoanLine, type LoanReturnRow } from '$lib/components/LoanPanel.svelte';
+  import { isLoanPurpose, isNonSalePurpose, loanAge, partyName, slipTypeOf, slipTypeShort } from '$lib/slip-type';
 
   type Line = SalesOrder['lines'][number] & {
     netAmount?: string; salesTierDiscountRate?: string; promotionDiscountRate?: string; promotionCode?: string; gift?: boolean;
@@ -26,6 +30,7 @@
     confirmedAt?: string; confirmedByName?: string; revisionRequestedAt?: string; revisionRequestedByName?: string;
     shippedAt?: string; shippedByName?: string; receiverName?: string; carrier?: string; warehouseNote?: string; deliveredAt?: string;
     warehouseKeeperId?: string; warehouseKeeperName?: string;
+    loanLines?: LoanLine[]; loanReturns?: LoanReturnRow[];
     confirmationEvidence?: Array<{ id: string; fileName: string; contentType: string; size: number; sha256: string; uploadedAt: string; uploadedByName: string; decision?: string; scan?: { result: string; engine: string; scannedAt: string } }>;
   };
   type Step = { label: string; who?: string | undefined; at?: string | undefined; done: boolean; current?: boolean; cancelled?: boolean };
@@ -54,8 +59,69 @@
   /** Hai bước cuối chỉ do thủ kho được giao phiếu thực hiện (ADMIN luôn được). */
   const isAssignedKeeper = $derived(Boolean(order && (roles.includes('ADMIN') || (isWarehouse && order.warehouseKeeperId === session.user?.sub))));
   const evidence = $derived(order?.confirmationEvidence ?? []);
-  const canDelete = $derived(Boolean(order && order.status === 'DRAFT' && isAccountant));
-  const isRoot = $derived(Boolean(session.user?.root));
+  /** Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không khách, không tiền; hàng mang về nhập lại theo phiếu. */
+  const nonSale = $derived(isNonSalePurpose(order?.purpose));
+  const gift = $derived(order?.purpose === 'GIFT');
+  const age = $derived(order && nonSale ? loanAge(order) : { days: 0, overdue: 0 });
+  // Quyền nghiệp vụ (PERM-01): làm trực tiếp, hoặc gửi đề nghị để Admin duyệt (SAL-CHG-01).
+  const canDiscard = $derived(can('sales.discard'));
+  const canEditIssued = $derived(can('sales.edit_issued'));
+  const canVoid = $derived(can('sales.void_shipped'));
+  const canRequestChange = $derived(can('sales.change_request'));
+  const canApproveChange = $derived(can('sales.change_approve'));
+  const canDelete = $derived(Boolean(order && order.status === 'DRAFT' && canDiscard));
+  const issuedStage = $derived(Boolean(order && order.status !== 'DRAFT' && order.status !== 'CANCELLED'));
+  let pendingChange = $state<ChangeRequest | null>(null);
+  let changeOpen = $state(false);
+  let changeKind = $state<ChangeKind>('CANCEL');
+  let changeReason = $state('');
+  let decideOpen = $state(false);
+  let decideAction = $state<'view' | 'approve' | 'reject'>('view');
+  function openChange(kind: ChangeKind) {
+    changeKind = kind;
+    changeReason = '';
+    changeOpen = true;
+  }
+  async function sendChange() {
+    if (!order || changeReason.trim().length < 5) return;
+    working = true;
+    error = '';
+    success = '';
+    try {
+      const created = await api<ChangeRequest>(`/sales-orders/${order.id}/change-requests`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ kind: changeKind, version: order.version, reason: changeReason.trim() }) });
+      changeOpen = false;
+      success = m.yc_da_gui({ code: created.code });
+      await load();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_the_hoan_tat_thao_tac();
+      changeOpen = false;
+    } finally {
+      working = false;
+    }
+  }
+  async function withdrawChange() {
+    if (!pendingChange) return;
+    working = true;
+    error = '';
+    try {
+      await api(`/sales-change-requests/${pendingChange.id}/withdraw`, { method: 'POST', idempotentCommand: true });
+      success = m.yc_da_rut({ code: pendingChange.code });
+      await load();
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_the_hoan_tat_thao_tac();
+    } finally {
+      working = false;
+    }
+  }
+  async function changeDecided(result: ChangeRequest) {
+    if (result.status === 'FAILED') error = m.yc_khong_thuc_hien({ code: result.code, error: result.error ?? '' });
+    else success = result.status === 'APPLIED' ? m.yc_da_duyet({ code: result.code }) : m.yc_da_tu_choi({ code: result.code });
+    if (result.status === 'APPLIED' && result.kind === 'DELETE') {
+      await goto(`/sales/orders?deleted=${encodeURIComponent(result.orderCode)}`);
+      return;
+    }
+    await load();
+  }
   const shippedStage = $derived(Boolean(order && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(order.status)));
   let voidOpen = $state(false);
   let voidReason = $state('');
@@ -65,7 +131,8 @@
     await command('void', { reason: voidReason.trim() }, m.root_da_huy_phieu_da_giao());
     voidReason = '';
   }
-  const canCancel = $derived(Boolean(order && ['PENDING_APPROVAL', 'APPROVED', 'RESERVED'].includes(order.status) && !order.warehouseSlipNo && isAccountant));
+  const cancellable = $derived(Boolean(order && ['PENDING_APPROVAL', 'APPROVED', 'RESERVED'].includes(order.status) && !order.warehouseSlipNo));
+  const canCancel = $derived(cancellable && canDiscard);
   const netTotal = $derived(order ? order.netTotal ?? String(Number(order.subtotal) - Number(order.discountTotal)) : '0');
   const steps = $derived.by((): Step[] => {
     if (!order) return [];
@@ -81,11 +148,24 @@
     if (order.approvalStatus !== 'NOT_REQUIRED') {
       list.push({ label: m.duyet_ngoai_le(), who: order.approvedByName, at: order.approvedAt, done: rank >= 2, current: status === 'PENDING_APPROVAL' });
     }
-    list.push(
-      { label: m.kd_doi_chieu_voi_khach(), who: order.confirmedByName ? `${order.confirmedByName}${evidence.length ? m.anh_3({ length: evidence.filter((item) => item.decision !== 'REVISION_REQUESTED').length }) : ''}` : undefined, at: order.confirmedAt, done: rank >= 3 || confirmationStatus === 'CONFIRMED', current: status === 'RESERVED' && confirmationStatus === 'PENDING' },
-      { label: m.kho_lap_swk_xuat(), who: order.warehouseSlipNo ? `${order.warehouseSlipNo} · ${order.shippedByName ?? ''}` : order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.shippedAt, done: rank >= 3, current: status === 'RESERVED' && confirmationStatus !== 'PENDING' },
-      { label: m.giao_hang_thanh_cong(), who: order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.deliveredAt, done: rank >= 4, current: status === 'SHIPPED' },
-    );
+    const keeperStep = { label: m.kho_lap_swk_xuat(), who: order.warehouseSlipNo ? `${order.warehouseSlipNo} · ${order.shippedByName ?? ''}` : order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.shippedAt, done: rank >= 3, current: status === 'RESERVED' && confirmationStatus !== 'PENDING' };
+    if (order.purpose === 'GIFT') {
+      // Xuất tặng: không đối chiếu khách, không thu hồi — xong khi kho xuất.
+      list.push(keeperStep);
+    } else if (isNonSalePurpose(order.purpose)) {
+      // Hàng mẫu / kiểm định: không qua bước KD đối chiếu khách; bước cuối là hàng mang về / chốt.
+      const loanDone = order.loanStatus === 'RETURNED' || order.loanStatus === 'CLOSED';
+      list.push(keeperStep, {
+        label: order.loanStatus === 'CLOSED' ? m.lp_da_chot() : order.loanStatus === 'RETURNED' ? m.lp_da_ve_du() : order.loanStatus === 'PARTIAL' ? m.lp_ve_mot_phan() : m.lp_mang_ve(),
+        who: order.salesRepName, at: order.loanClosedAt, done: loanDone, current: !loanDone && rank >= 3,
+      });
+    } else {
+      list.push(
+        { label: m.kd_doi_chieu_voi_khach(), who: order.confirmedByName ? `${order.confirmedByName}${evidence.length ? m.anh_3({ length: evidence.filter((item) => item.decision !== 'REVISION_REQUESTED').length }) : ''}` : undefined, at: order.confirmedAt, done: rank >= 3 || confirmationStatus === 'CONFIRMED', current: status === 'RESERVED' && confirmationStatus === 'PENDING' },
+        keeperStep,
+        { label: m.giao_hang_thanh_cong(), who: order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.deliveredAt, done: rank >= 4, current: status === 'SHIPPED' },
+      );
+    }
     if (cancelled) {
       return [
         ...list.filter((step) => step.done).map((step) => ({ ...step, current: false })),
@@ -100,6 +180,9 @@
     error = '';
     try {
       order = await api<Order>(`/sales-orders/${page.params.id}`);
+      pendingChange = canRequestChange || canApproveChange
+        ? (await api<ChangeRequest[]>(`/sales-change-requests?orderId=${page.params.id}&status=PENDING`).catch(() => []))[0] ?? null
+        : null;
       if (order.status === 'PENDING_APPROVAL') {
         const pending = await api<Array<{ entityId: string; reasons: string[] }>>('/approval-requests?status=PENDING').catch(() => []);
         reasons = pending.find((item) => item.entityId === order?.id)?.reasons ?? [];
@@ -117,6 +200,7 @@
     if (created === 'requested') success = m.da_gui_de_nghi_ke_toan();
     if (created === 'issued') success = m.da_phat_hanh_phieu_bh_va();
     if (created === 'root-edited') success = m.root_da_luu_thay_doi();
+    if (created === 'change-requested') success = m.yc_da_gui_chung();
     const repriced = page.url.searchParams.get('repriced');
     if (repriced) repricedNote = m.bang_gia_hoac_khuyen_mai_vua({ p0: vnd(repriced) });
     warehouses = await api<Warehouse[]>('/warehouses').catch(() => []);
@@ -182,11 +266,12 @@
 <section class="page-head">
   <div>
     <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span><span>{order?.code ?? '…'}</span></nav>
-    <h1 class="page-title">{order ? `${order.code} — ${order.customerName}` : m.phieu_xuat_kho_ban_hang()}</h1>
+    <h1 class="page-title">{order ? `${order.code} — ${partyName(order)}` : m.phieu_xuat_kho_ban_hang()}</h1>
     {#if order && stage}
       <p class="page-sub">
         <span class="pill template" title={templateDescription(salesIssueTemplate(order.templateCode))}>{m.mau()} {salesIssueTemplate(order.templateCode).code}</span>
         {#if order.codeMode === 'MANUAL'}<span class="pill neutral" title={m.bh_so_tu_nhap_goi_y()}>{m.bh_so_tu_nhap()}</span>{/if}
+        <span class="pill type" class:loan={nonSale}>{slipTypeShort(slipTypeOf(order))}</span>
         <span class={`pill ${stage.tone}`}>{stage.label}</span>
         {#if order.warehouseSlipNo}<span class="slip">SWK: <b>{order.warehouseSlipNo}</b></span>{/if}
         {m.ngay_chung_tu_2()} {date(order.orderDate ?? order.createdAt)} {m.phien_ban()} {order.version}
@@ -205,11 +290,17 @@
         <button class="btn primary" disabled={working} onclick={() => (confirmTarget = order)}><Paperclip size={16} />{m.xac_nhan_doi_chieu_kem_anh()}</button>
       {/if}
       {#if order.status === 'RESERVED' && order.confirmationStatus !== 'PENDING' && isAssignedKeeper}<button class="btn primary" disabled={working} onclick={() => (issueTarget = order)}>{m.lap_phieu_swk_xuat_kho()}</button>{/if}
-      {#if order.status === 'SHIPPED' && isAssignedKeeper}<button class="btn navy" disabled={working} onclick={deliver}>{m.xac_nhan_da_giao()}</button>{/if}
+      {#if order.status === 'SHIPPED' && isAssignedKeeper && !nonSale}<button class="btn navy" disabled={working} onclick={deliver}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
-      {#if isRoot && order.status !== 'DRAFT' && order.status !== 'CANCELLED'}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
-      {#if isRoot && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
+      {#if canEditIssued && issuedStage}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
+      {#if canVoid && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
+      {#if canRequestChange && !pendingChange}
+        {#if !canEditIssued && issuedStage}<a class="btn soft" href={`/sales/orders/${order.id}/edit?request=1`}><Send size={15} />{m.yc_de_nghi_sua()}</a>{/if}
+        {#if !canVoid && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => openChange('VOID')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
+        {#if !canDiscard && cancellable}<button class="btn danger-soft" disabled={working} onclick={() => openChange('CANCEL')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
+        {#if !canDiscard && order.status === 'DRAFT'}<button class="btn danger-soft" disabled={working} onclick={() => openChange('DELETE')}><Send size={15} />{m.yc_de_nghi_xoa()}</button>{/if}
+      {/if}
     </div>
   {/if}
 </section>
@@ -217,6 +308,20 @@
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
 {#if repricedNote}<div class="banner warning"><CircleAlert size={17} /><span>{repricedNote}</span></div>{/if}
+{#if pendingChange}
+  <div class="banner warning change-banner">
+    <Hourglass size={17} />
+    <span>{m.yc_dang_cho({ code: pendingChange.code, kind: changeKindLabel(pendingChange.kind), who: pendingChange.requestedByName, at: dateTime(pendingChange.requestedAt) })} <b>{m.bh_ly_do()}:</b> {pendingChange.reason}</span>
+    <span class="change-actions">
+      {#if pendingChange.kind === 'EDIT'}<button class="btn small" onclick={() => { decideAction = 'view'; decideOpen = true; }}>{m.yc_xem_thay_doi()}</button>{/if}
+      {#if pendingChange.requestedById === session.user?.sub}<button class="btn small" disabled={working} onclick={withdrawChange}>{m.yc_rut()}</button>{/if}
+      {#if canApproveChange}
+        <button class="btn small danger-soft" disabled={working} onclick={() => { decideAction = 'reject'; decideOpen = true; }}>{m.yc_tu_choi()}</button>
+        <button class="btn small primary" disabled={working} onclick={() => { decideAction = 'approve'; decideOpen = true; }}>{m.yc_duyet()}</button>
+      {/if}
+    </span>
+  </div>
+{/if}
 
 {#if loading && !order}
   <div class="card skeleton" style="height:240px"></div>
@@ -239,7 +344,7 @@
     <div class="banner info"><Pencil size={17} /><span>{m.root_da_sua_luc({ at: dateTime(order.rootEditedAt), by: order.rootEditedByName ?? '—' })}</span></div>
   {/if}
   {#if order.status === 'CANCELLED'}
-    <div class="banner error"><Ban size={17} /><span>{m.bh_phieu_da_huy({ at: order.cancelledAt ? dateTime(order.cancelledAt) : '—', by: order.cancelledByName ?? '—' })} <b>{m.bh_ly_do()}:</b> {order.cancelReason ?? '—'}{#if order.staffHidden} <span class="pill neutral">{m.bh_an_voi_nhan_vien()}</span>{/if}</span></div>
+    <div class="banner error"><Ban size={17} /><span>{m.bh_phieu_da_huy({ at: order.cancelledAt ? dateTime(order.cancelledAt) : '—', by: order.cancelledByName ?? '—' })} <b>{m.bh_ly_do()}:</b> {order.cancelReason ?? '—'}</span></div>
   {/if}
   {#if order.confirmationStatus === 'REVISION_REQUESTED' && order.confirmationNote && order.status !== 'CANCELLED'}
     <div class="banner warning"><MessageSquareWarning size={17} /><span><b>{order.revisionRequestedByName ?? 'Kinh doanh'} {m.yeu_cau_sua_2()}{order.revisionRequestedAt ? ` (${dateTime(order.revisionRequestedAt)})` : ''}:</b> {order.confirmationNote}</span></div>
@@ -258,6 +363,14 @@
     <div>
       <article class="card info">
         <dl>
+          {#if nonSale}
+          <div class="wide2"><dt>{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
+          <div class="wide2"><dt>{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</dt><dd>{order.destination ?? '—'}</dd></div>
+          {#if !gift}<div class="wide2"><dt>{m.lp_hen_tra()}</dt><dd>{order.expectedReturnDate ? date(order.expectedReturnDate) : '—'}{#if order.shippedAt && (order.loanStatus === 'OUT' || order.loanStatus === 'PARTIAL')} · <span class:overdue={age.overdue > 0}>{age.overdue > 0 ? m.lp_qua_hen({ days: age.overdue }) : m.lp_da_muon_ngay({ days: age.days })}</span>{/if}</dd></div>{/if}
+          <div class="wide2"><dt>{m.dien_giai()}</dt><dd>{order.description ?? '—'}</dd></div>
+          <div><dt>{m.kho_xuat()}</dt><dd>{warehouses.find((item) => item.id === order?.warehouseId)?.name ?? '—'}</dd></div>
+          <div><dt>{m.lp_loai_phieu()}</dt><dd>{slipTypeShort(slipTypeOf(order))} · {m.lp_khong_tinh_tien_ngan()}</dd></div>
+          {:else}
           <div class="wide2"><dt>{m.nguoi_mua()}</dt><dd>{order.buyer?.name ?? order.customerName}</dd></div>
           <div><dt>{m.ma_khach_hang()}</dt><dd class="code">{order.customerCode}</dd></div>
           <div><dt>{m.cap_khach_hang()}</dt><dd>{tierLabel[order.customerTier ?? ''] ?? '—'}</dd></div>
@@ -270,6 +383,7 @@
           <div class="wide2"><dt>{m.dia_diem_giao_hang()}</dt><dd>{order.deliveryLocation ?? m.khach_lay_tai_kho()}</dd></div>
           <div><dt>{m.kho_xuat()}</dt><dd>{warehouses.find((item) => item.id === order?.warehouseId)?.name ?? '—'}</dd></div>
           <div><dt>{m.dieu_khoan()}</dt><dd>{order.paymentTermDays ? m.cong_no_ngay_2({ paymentTermDays: order.paymentTermDays }) : m.thanh_toan_ngay()} · <span class="tag" class:b2c={order.channel === 'B2C'}>{order.channel ?? 'B2B'}</span></dd></div>
+          {/if}
           <div class="wide2"><dt>{m.thu_kho_xuat_hang()}</dt><dd>{order.warehouseKeeperName ?? (order.status === 'DRAFT' ? m.ke_toan_chon_khi_phat_hanh() : '—')}</dd></div>
           {#if order.warehouseSlipNo}
             <div><dt>{m.so_phieu_swk()}</dt><dd class="code">{order.warehouseSlipNo}</dd></div>
@@ -282,6 +396,10 @@
           {/if}
         </dl>
       </article>
+
+      {#if isLoanPurpose(order.purpose) && order.loanStatus}
+        <LoanPanel order={order} canReturn={hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER'])} canClose={hasRole(roles, ['ACCOUNTANT', 'WAREHOUSE_MANAGER'])} onchanged={(message) => { success = message; error = ''; load(); }} />
+      {/if}
 
       {#if evidence.length || order.confirmationStatus === 'CONFIRMED'}
         <article class="card evidence">
@@ -334,6 +452,16 @@
       </article>
     </div>
 
+    {#if nonSale}
+    <aside class="card summary">
+      <h2>{m.lp_khong_tinh_tien_ngan()}</h2>
+      <dl>
+        <div><dt>{m.lp_tong_so_luong()}</dt><dd>{num(order.lines.reduce((sum, line) => sum + Number(line.quantity), 0))}</dd></div>
+        <div class="total"><dt>{m.tong_tien_thanh_toan()}</dt><dd>{vnd('0')}</dd></div>
+      </dl>
+      <p class="words">{gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</p>
+    </aside>
+    {:else}
     <aside class="card summary">
       <h2>{m.tong_tien_phieu()}</h2>
       <dl>
@@ -346,6 +474,7 @@
       </dl>
       <p class="words">{m.bang_chu()} <b>{vndInWords(order.grandTotal)}</b></p>
     </aside>
+    {/if}
   </section>
 {/if}
 
@@ -363,7 +492,6 @@
 
 <Dialog bind:open={discardOpen} title={order?.status === 'DRAFT' ? m.bh_xoa_tieu_de({ code: order?.code ?? '' }) : m.bh_huy_tieu_de({ code: order?.code ?? '' })}>
   <p class="lead">{order?.status === 'DRAFT' ? m.bh_xoa_giai_thich() : m.bh_huy_giai_thich()}</p>
-  {#if isRoot}<p class="lead root-note">{order?.status === 'DRAFT' ? m.root_xoa_nhap_ghi_chu() : m.root_an_nhan_vien_ghi_chu()}</p>{/if}
   <div class="field">
     <label for="discard-reason">{m.bh_ly_do()} <span class="req">*</span></label>
     <textarea id="discard-reason" rows="3" maxlength="300" bind:value={discardReason} placeholder={m.bh_ly_do_placeholder()}></textarea>
@@ -377,7 +505,6 @@
 
 <Dialog bind:open={voidOpen} title={m.root_huy_tieu_de({ code: order?.code ?? '' })}>
   <p class="lead">{m.root_huy_giai_thich()}</p>
-  <p class="lead root-note">{m.root_an_nhan_vien_ghi_chu()}</p>
   <div class="field">
     <label for="void-reason">{m.bh_ly_do()} <span class="req">*</span></label>
     <textarea id="void-reason" rows="3" maxlength="300" bind:value={voidReason} placeholder={m.root_huy_ly_do_placeholder()}></textarea>
@@ -389,6 +516,21 @@
   {/snippet}
 </Dialog>
 
+<Dialog bind:open={changeOpen} title={m.yc_tieu_de({ kind: changeKindLabel(changeKind), code: order?.code ?? '' })}>
+  <p class="lead">{m.yc_giai_thich()}</p>
+  <div class="field">
+    <label for="change-reason">{m.bh_ly_do()} <span class="req">*</span></label>
+    <textarea id="change-reason" rows="3" maxlength="300" bind:value={changeReason} placeholder={m.bh_ly_do_placeholder()}></textarea>
+    {#if changeReason.trim() && changeReason.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}
+  </div>
+  {#snippet footer()}
+    <button class="btn" onclick={() => (changeOpen = false)}>{m.dong()}</button>
+    <button class="btn primary" disabled={changeReason.trim().length < 5 || working} onclick={sendChange}><Send size={15} />{m.yc_gui()}</button>
+  {/snippet}
+</Dialog>
+
+<ChangeRequestDialog bind:open={decideOpen} request={pendingChange} action={decideAction} ondone={changeDecided} />
+
 <CustomerConfirmationDialog bind:order={confirmTarget} ondone={(count) => { success = m.da_xac_nhan_doi_chieu_kem({ count: count, p1: order?.warehouseKeeperName ?? '' }); load(); }} />
 
 <WarehouseIssueDialog bind:order={issueTarget} ondone={(result) => { success = m.da_lap_phieu_tru_ton_va_2({ shipmentCode: result.shipmentCode }); load(); }} />
@@ -398,6 +540,9 @@
   .slip { color: var(--muted); }
   .template { margin-right: 6px; background: var(--navy); color: #fff; }
   .slip b { color: var(--navy); }
+  .pill.type { background: var(--surface-2); color: var(--navy); font-weight: 600; }
+  .pill.type.loan { background: var(--orange-soft); color: #b4501f; }
+  .overdue { color: var(--red); font-weight: 600; }
   .btn.danger-soft { border-color: #f3c9c9; background: var(--red-soft); color: var(--red); }
   .timeline li.cancelled b { color: var(--red); }
   .btn.root { border-color: var(--navy-2); color: var(--navy); }
@@ -454,5 +599,7 @@
   .lead { margin: 0; color: var(--muted); font-size: 13.5px; }
   @media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } .summary { position: static; } .info dl { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 640px) { .summary dd { white-space: normal; text-align: right; } .timeline { grid-template-columns: 1fr; gap: 10px; } .timeline li::before { display: none; } .info dl { grid-template-columns: 1fr; } .info .wide2 { grid-column: auto; } }
-  .root-note { padding: 8px 10px; border-radius: 6px; background: var(--amber-soft); color: #8a6508; }
+  .change-banner { flex-wrap: wrap; }
+  .change-banner > span:first-of-type { flex: 1 1 320px; }
+  .change-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 </style>

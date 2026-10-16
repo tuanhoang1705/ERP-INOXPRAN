@@ -15,10 +15,12 @@
   import { CUSTOMER_RETURN_CATEGORIES, DEFECT_RETURN_CATEGORIES, type CustomerReturnCategory } from '$shared/inventory-categories';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import CustomerPicker from './CustomerPicker.svelte';
+  import type { CustomerOption } from '$lib/customer-search';
 
   type Kind = 'CUSTOMER' | 'SUPPLIER';
   type ProductOption = { id: string; sku: string; name: string; baseUnit: string };
-  type PartnerOption = { id: string; code: string; name: string; status?: string };
+  type PartnerOption = CustomerOption;
   type Line = { productId: string; quantity: string };
 
   let { open = $bindable(false), kind = 'CUSTOMER', warehouses = [], onsaved }: {
@@ -30,6 +32,7 @@
 
   let products = $state<ProductOption[]>([]);
   let partners = $state<PartnerOption[]>([]);
+  let partnersLoading = $state(false);
   let form = $state({ partnerId: '', category: 'SLOW_RETURN_IN' as CustomerReturnCategory, warehouseId: '', sourceCode: '', note: '' });
   let lines = $state<Line[]>([]);
   let errors = $state<Record<string, string>>({});
@@ -51,7 +54,15 @@
       errors = {};
       error = '';
       partners = [];
-      void api<PartnerOption[]>(`/partners?kind=${kind}`).then((rows) => (partners = rows.filter((row) => row.status !== 'INACTIVE'))).catch(() => undefined);
+      partnersLoading = true;
+      // Khách: toàn bộ khách chính thức (như ô Người mua của phiếu BH, kèm SĐT / tỉnh); NCC: danh mục nhà cung cấp.
+      const source = customer
+        ? api<{ rows: PartnerOption[] }>('/dealers?stage=CUSTOMER').then((result) => result.rows)
+        : api<PartnerOption[]>(`/partners?kind=${kind}`);
+      void source
+        .then((rows) => (partners = rows.filter((row) => row.status !== 'INACTIVE')))
+        .catch(() => undefined)
+        .finally(() => (partnersLoading = false));
       if (!products.length) void api<ProductOption[]>('/products?status=ACTIVE').then((rows) => (products = rows)).catch(() => undefined);
     });
   });
@@ -105,10 +116,9 @@
     {#if error}<div class="banner error span"><CircleAlert size={17} /><span>{error}</span></div>{/if}
     <div class="field">
       <label for="sr-partner">{customer ? m.khach_hang() : m.nha_cung_cap()} <span class="req">*</span></label>
-      <select id="sr-partner" bind:value={form.partnerId} aria-invalid={Boolean(errors.partnerId)}>
-        <option value="">—</option>
-        {#each partners as partner (partner.id)}<option value={partner.id}>{partner.code} — {partner.name}</option>{/each}
-      </select>
+      <CustomerPicker id="sr-partner" options={partners} value={form.partnerId} loading={partnersLoading} invalid={Boolean(errors.partnerId)}
+        placeholder={customer ? m.kh_tim_nguoi_mua() : m.kh_tim_ncc()} emptyText={customer ? m.kh_khong_tim_thay_khach() : m.kh_khong_tim_thay_ncc()}
+        onchoose={(id) => { form.partnerId = id; errors.partnerId = ''; }} />
       {#if errors.partnerId}<span class="error">{errors.partnerId}</span>{/if}
     </div>
     {#if customer}

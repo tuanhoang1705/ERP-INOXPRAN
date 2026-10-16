@@ -3,12 +3,14 @@ import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import Decimal from 'decimal.js';
 import type { Db, Document, ObjectId } from 'mongodb';
+import { dateBounds } from '../../common/date-range';
 import { decimalString, salesTierWindow, serializeDocument, toObjectId } from '../../common/domain';
 import { pageOf, pageRequest } from '../../common/paging';
 import { Public } from '../../common/public.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
+import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 
 function escapeRegex(value: string): string {
@@ -75,9 +77,11 @@ export class ReferenceController {
 
   /** Bảng giá hiện hành: giá Net NPP (cấp 1), giá đại lý (cấp 2) và giá bán lẻ cho từng mã hàng. */
   @Get('price-list')
-  async priceList(@Query('search') search?: string, @Query('categoryId') categoryId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  async priceList(@Query('search') search?: string, @Query('categoryId') categoryId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('at') at?: string) {
     const paging = pageRequest(page, pageSize);
-    const now = new Date();
+    // Bảng giá áp dụng tại cuối một ngày (LIST-DATE-01); bỏ trống = hiện tại. Giá bán lẻ lấy theo hồ sơ mã hàng hiện tại.
+    const bounds = at ? dateBounds(at, at) : null;
+    const now = bounds?.$lt ? new Date(bounds.$lt.getTime() - 1) : new Date();
     const filter: Document = { status: 'ACTIVE' };
     if (categoryId) filter.categoryId = toObjectId(categoryId, 'categoryId');
     if (search) {
@@ -159,7 +163,7 @@ export class ReferenceController {
       .slice()
       .sort((a, b) => Number(a.minimumRevenue) - Number(b.minimumRevenue));
     const progress = await this.db.collection('sales_orders').aggregate([
-      { $match: { status: { $in: REVENUE_STATUSES }, orderDate: { $gte: quarter.start } } },
+      { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: quarter.start } } },
       { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
       { $lookup: { from: 'partners', localField: '_id', foreignField: '_id', as: 'partner' } },
       { $unwind: '$partner' },
@@ -210,8 +214,12 @@ export class ReferenceController {
     @Query('pageSize') pageSize?: string,
     @Query('stage') stage?: string,
     @Query('grade') grade?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     const paging = pageRequest(page, pageSize);
+    // Khoảng ngày (LIST-DATE-01) = kỳ tính cột doanh số; bỏ trống = kỳ bậc doanh số đang cấu hình (quý).
+    const revenueWindow = dateBounds(from, to);
     const filter: Document = { kind: { $in: ['CUSTOMER', 'BOTH'] } };
     if (region) filter.regionCode = region;
     if (tier) filter.customerTier = tier;
@@ -242,7 +250,7 @@ export class ReferenceController {
         },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, orderDate: { $gte: quarter.start }, customerId: { $in: ids } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: revenueWindow ?? { $gte: quarter.start }, customerId: { $in: ids } } },
         { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
       ]).toArray(),
       this.db.collection('regions').find({}).toArray(),
@@ -269,7 +277,8 @@ export class ReferenceController {
           periodRevenue: new Decimal(revenueById.get(id) ?? '0').toFixed(2),
         };
       });
-    return paging ? { periodLabel: quarter.label, ...pageOf(rows, total, paging) } : { periodLabel: quarter.label, rows };
+    const periodLabel = revenueWindow ? `${from ? from.split('-').reverse().join('/') : '…'} – ${to ? to.split('-').reverse().join('/') : '…'}` : quarter.label;
+    return paging ? { periodLabel, ...pageOf(rows, total, paging) } : { periodLabel, rows };
   }
 
   @Roles('ADMIN', 'DIRECTOR', 'AUDITOR')

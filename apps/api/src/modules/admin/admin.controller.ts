@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateUserSchema, UpdateUserSchema, USER_VIEWER_ROLES } from '@inoxpran/contracts';
+import { CreateUserSchema, UpdateUserPermissionsSchema, UpdateUserSchema, USER_VIEWER_ROLES } from '@inoxpran/contracts';
 import { pageRequest } from '../../common/paging';
 import { onlyProvided } from '../../common/patch';
 import { Roles, RootOnly } from '../../common/roles.decorator';
@@ -19,8 +19,11 @@ export class AdminController {
 
   @Roles(...USER_VIEWER_ROLES)
   @Get('users')
-  list(@Query('search') search?: string, @Query('role') role?: string, @Query('status') status?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    return this.users.list({ search, role, status }, pageRequest(page, pageSize));
+  list(
+    @Query('search') search?: string, @Query('role') role?: string, @Query('status') status?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
+    @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.users.list({ search, role, status, from, to }, pageRequest(page, pageSize));
   }
 
   @Roles('ADMIN')
@@ -33,6 +36,13 @@ export class AdminController {
   @Patch('users/:id')
   update(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.users.update(id, onlyProvided(body, UpdateUserSchema.parse(body)), request);
+  }
+
+  /** Quản trị gốc cấp / thu quyền nghiệp vụ của một tài khoản (PERM-01). */
+  @RootOnly()
+  @Patch('users/:id/permissions')
+  updatePermissions(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.users.updatePermissions(id, UpdateUserPermissionsSchema.parse(body), request);
   }
 
   @Roles('ADMIN')
@@ -72,8 +82,11 @@ export class AdminController {
 
   @Roles(...USER_VIEWER_ROLES)
   @Get('login-events')
-  loginEvents(@Query('userId') userId?: string, @Query('success') success?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    return this.users.loginEvents({ userId, success, search }, pageRequest(page || '1', pageSize) ?? { page: 1, pageSize: 50, skip: 0 });
+  loginEvents(
+    @Query('userId') userId?: string, @Query('success') success?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
+    @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.users.loginEvents({ userId, success, search, from, to }, pageRequest(page || '1', pageSize) ?? { page: 1, pageSize: 50, skip: 0 });
   }
 
   @RootOnly()

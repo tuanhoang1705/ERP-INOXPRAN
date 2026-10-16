@@ -4,7 +4,6 @@ import { CreatePaymentSchema } from '@inoxpran/contracts';
 import { Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
-import { staffHiddenFilter } from '../sales/keeper-scope';
 import { ReceivablesService } from './receivables.service';
 
 @ApiTags('Receivables')
@@ -14,15 +13,16 @@ export class ReceivablesController {
 
   @Get('receivables')
   list(
-    @Req() request: AuthenticatedRequest,
     @Query('partnerId') partnerId?: string,
     @Query('overdueOnly') overdueOnly?: string,
     @Query('includePaid') includePaid?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.receivables.list(partnerId, overdueOnly === 'true', includePaid === 'true', search, pageRequest(page, pageSize), staffHiddenFilter(request.user));
+    return this.receivables.list(partnerId, overdueOnly === 'true', includePaid === 'true', search, pageRequest(page, pageSize), from, to);
   }
 
   @Get('receivables/aging')

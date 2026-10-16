@@ -170,7 +170,7 @@ export function priceLine(line: LineBasis, options: TaxOptions): LineAmounts {
   const taxDivisor = options.pricesIncludeTax ? PERCENT_BASE + tax : PERCENT_BASE;
   const listPrice = roundDiv(price, PERCENT_BASE);
   const override = line.unitPriceOverride === undefined || line.unitPriceOverride === '' ? null : roundDiv(toScaled(line.unitPriceOverride), 100n);
-  if (override !== null && override <= 0n) throw new Error('Đơn giá sửa tay phải lớn hơn 0');
+  if (override !== null && override < 0n) throw new Error('Đơn giá sửa tay không được âm');
   const listUnitPrice = override ?? roundDiv(price, taxDivisor);
   const unitPrice = override ?? roundDiv(price * (PERCENT_BASE - discount), taxDivisor * PERCENT_BASE);
 

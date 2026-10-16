@@ -33,8 +33,11 @@ export class ProcurementController {
   ) {}
 
   @Get('purchase-orders')
-  list(@Query('status') status?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('supplierId') supplierId?: string) {
-    return this.procurement.list(status, search, pageRequest(page, pageSize), supplierId);
+  list(
+    @Query('status') status?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
+    @Query('supplierId') supplierId?: string, @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.procurement.list(status, search, pageRequest(page, pageSize), supplierId, from, to);
   }
 
   @Get('purchase-orders/:id')
@@ -98,8 +101,11 @@ export class ProcurementController {
   // ---------- lô hàng nhập ----------
 
   @Get('import-shipments')
-  shipmentList(@Query('status') status?: string, @Query('search') search?: string, @Query('purchaseOrderId') purchaseOrderId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    return this.shipments.list({ status, search, purchaseOrderId }, pageRequest(page ?? '1', pageSize) ?? { page: 1, pageSize: 50, skip: 0 });
+  shipmentList(
+    @Query('status') status?: string, @Query('search') search?: string, @Query('purchaseOrderId') purchaseOrderId?: string, @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string, @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.shipments.list({ status, search, purchaseOrderId, from, to }, pageRequest(page ?? '1', pageSize) ?? { page: 1, pageSize: 50, skip: 0 });
   }
 
   @Roles(...SHIPMENT_EDITORS)

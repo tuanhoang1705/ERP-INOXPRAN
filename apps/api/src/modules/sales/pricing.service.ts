@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { isVatRate } from '@inoxpran/contracts';
+import { isVatRate, SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
@@ -74,7 +74,7 @@ export class PricingService {
       .collection('sales_orders')
       .aggregate(
         [
-          { $match: { customerId: customer._id, status: { $in: REVENUE_STATUSES }, orderDate: { $gte: start } } },
+          { $match: { customerId: customer._id, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: start } } },
           { $group: { _id: null, total: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
         ],
         session ? { session } : {},
@@ -260,5 +260,59 @@ export class PricingService {
       taxTotal: totals.taxTotal,
       grandTotal: totals.grandTotal,
     };
+  }
+
+  /**
+   * Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không bán nên không có khách, không bảng giá — kiểm mã đang kinh doanh và
+   * đơn vị như phiếu bán, mọi dòng đơn giá 0, tổng 0.
+   */
+  async zeroLines(lines: PricingLineInput[], session?: ClientSession, vatRate?: string) {
+    const settings = await this.settings(session);
+    const taxRate = vatRate ?? settings.taxRate;
+    const ids = [...new Set(lines.map((line) => line.productId))].map((id) => toObjectId(id, 'productId'));
+    const products = await this.db.collection('products').find({ _id: { $in: ids }, status: 'ACTIVE' }, session ? { session } : {}).toArray();
+    const byId = new Map(products.map((product) => [(product._id as ObjectId).toHexString(), product]));
+    const pricedLines = lines.map((line) => {
+      const productId = toObjectId(line.productId, 'productId');
+      const product = byId.get(productId.toHexString());
+      if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: 'Không tìm thấy sản phẩm' });
+      const conversion = line.unit === product.baseUnit
+        ? { factorToBase: '1' }
+        : (product.unitConversions as Array<{ unit: string; factorToBase: unknown }>).find((item) => item.unit === line.unit);
+      if (!conversion) {
+        throw new NotFoundException({ code: 'UNIT_NOT_CONFIGURED', message: `Đơn vị ${line.unit} chưa được cấu hình cho ${String(product.sku)}` });
+      }
+      // gift = true chỉ để tính: số lượng quy đổi đúng, mọi khoản tiền 0 (dòng phiếu vẫn là dòng thường).
+      const result = calculatePrice({
+        quantity: line.quantity, conversionFactor: decimalString(conversion.factorToBase), baseUnitPrice: '0',
+        tierDiscountRate: '0', salesTierDiscountRate: '0', promotionDiscountRate: '0', discountCapRate: settings.discountCapRate,
+        taxRate, pricesIncludeTax: settings.pricesIncludeTax, gift: true,
+      });
+      return {
+        productId,
+        sku: String(product.sku),
+        productName: String(product.name),
+        categoryId: product.categoryId as ObjectId | undefined,
+        unit: line.unit,
+        quantity: line.quantity,
+        gift: false,
+        baseQuantity: result.baseQuantity,
+        minimumStock: decimalString(product.minimumStock),
+        listPrice: result.listPrice,
+        listUnitPrice: result.listUnitPrice,
+        unitPrice: result.unitPrice,
+        discountRate: '0',
+        tierDiscountRate: '0',
+        salesTierDiscountRate: '0',
+        promotionDiscountRate: '0',
+        lineTotal: result.grossAmount,
+        netAmount: result.netAmount,
+        pricingSource: 'NON_SALE',
+        originalUnitPrice: undefined as string | undefined,
+        promotionCode: undefined as string | undefined,
+        pricingSnapshot: result,
+      };
+    });
+    return { settings, vatRate: taxRate, lines: pricedLines, subtotal: '0.00', discountTotal: '0.00', netTotal: '0', taxTotal: '0', grandTotal: '0' };
   }
 }

@@ -13,6 +13,7 @@ import {
 } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import { ObjectId, type ClientSession, type Db, type Document } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -204,8 +205,9 @@ export class ImportShipmentsService {
     }
   }
 
-  async list(filter: { status?: string | undefined; search?: string | undefined; purchaseOrderId?: string | undefined }, paging: PageRequest) {
-    const query: Document = {};
+  async list(filter: { status?: string | undefined; search?: string | undefined; purchaseOrderId?: string | undefined; from?: string | undefined; to?: string | undefined }, paging: PageRequest) {
+    // Lọc theo ngày lập lô (LIST-DATE-01).
+    const query: Document = dateRangeFilter('createdAt', filter.from, filter.to);
     if (filter.status) query.status = filter.status;
     if (filter.purchaseOrderId) query.purchaseOrderIds = toObjectId(filter.purchaseOrderId, 'purchaseOrderId');
     if (filter.search) {

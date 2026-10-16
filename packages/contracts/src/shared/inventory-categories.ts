@@ -31,6 +31,9 @@ export const INVENTORY_CATEGORIES = [
   { code: 'SLOW_RETURN_IN', direction: 'IN', zh: '滞销退货（入库）', vi: 'Hàng bán chậm trả lại' },
   { code: 'SAMPLE_IN', direction: 'IN', zh: '样品（入库）', vi: 'Hàng mẫu nhập lại' },
   { code: 'FACTORY_RETURN_OUT', direction: 'OUT', zh: '库存退货（出库返厂）', vi: 'Hàng tồn trả nhà máy' },
+  // Phiếu xuất kiểm định (SAL-TYPE-01, 15/10/2026) và hàng kiểm định mang về.
+  { code: 'INSPECTION_OUT', direction: 'OUT', zh: '送检（出库）', vi: 'Xuất kiểm định', optional: true },
+  { code: 'INSPECTION_IN', direction: 'IN', zh: '送检退回（入库）', vi: 'Nhập lại sau kiểm định', optional: true },
   { code: 'WARRANTY_OUT', direction: 'OUT', zh: '保修换新（出库）', vi: 'Xuất đổi bảo hành', optional: true },
   { code: 'ADJUST_IN', direction: 'IN', zh: '盘盈·其他（入库）', vi: 'Kiểm kê thừa / điều chỉnh tăng', optional: true },
   { code: 'ADJUST_OUT', direction: 'OUT', zh: '盘亏·其他（出库）', vi: 'Kiểm kê thiếu / điều chỉnh giảm', optional: true },

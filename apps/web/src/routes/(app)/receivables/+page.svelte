@@ -9,6 +9,7 @@
   import { session } from '$lib/session.svelte';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
 
   type Receivable = {
@@ -19,6 +20,9 @@
   let rows = $state<Receivable[]>([]);
   let filter = $state<'open' | 'overdue' | 'all'>('open');
   let search = $state(page.url.searchParams.get('search') ?? '');
+  /** Lọc theo ngày phát sinh (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
   let loading = $state(true);
   let error = $state('');
   let success = $state('');
@@ -45,6 +49,8 @@
         includePaid: filter === 'all' ? 'true' : '',
         overdueOnly: filter === 'overdue' ? 'true' : '',
         search,
+        from,
+        to,
       }, pageNo, pageSize);
       const result = await api<Paged<Receivable> & { totalOutstanding: string }>(`/receivables?${query}`);
       rows = result.rows;
@@ -112,6 +118,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_chung_tu_don_hang_dai()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_phat_sinh()} id="receivable-date" onchange={refilter} />
   <div class="field"><label for="filter">{m.hien_thi()}</label><select id="filter" bind:value={filter} onchange={refilter}><option value="open">{m.con_du_no()}</option><option value="overdue">{m.chi_qua_han()}</option><option value="all">{m.tat_ca_chung_tu()}</option></select></div>
   <div class="total"><span>{m.tong_du_no_dang_hien_thi()}</span><b>{vnd(totalOutstanding)}</b></div>
 </section>
@@ -164,7 +171,7 @@
 {/if}
 
 <style>
-  .filters { grid-template-columns: 1.6fr 1fr 1fr; }
+  .filters { grid-template-columns: 1.5fr 1.3fr 1fr 1fr; }
   .total { display: grid; gap: 4px; padding-bottom: 6px; text-align: right; }
   .total span { color: var(--subtle); font-size: 12px; }
   .total b { font-size: 18px; }

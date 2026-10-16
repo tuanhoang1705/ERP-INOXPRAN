@@ -13,13 +13,14 @@
   import { notificationText } from '$lib/server-text';
   import { activeSection, allowed, sections, type NavItem } from '$lib/nav';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
-  import { session, savedWorkspace, type SessionUser } from '$lib/session.svelte';
+  import { can, session, savedWorkspace, type SessionUser } from '$lib/session.svelte';
 
 
   let { children }: { children: Snippet } = $props();
   let drawerOpen = $state(false);
   let online = $state(true);
   let pendingApprovals = $state(0);
+  let pendingChanges = $state(0);
   let notificationsOpen = $state(false);
   let userMenuOpen = $state(false);
   let notifications = $state<AppNotification[]>([]);
@@ -43,14 +44,18 @@
           return;
         }
         session.user = value;
-        const [approvals, unread, warehouses] = await Promise.all([
+        const [approvals, unread, warehouses, changes] = await Promise.all([
           allowed(value.roles, ['SALES_MANAGER', 'PROCUREMENT_MANAGER', 'DIRECTOR'])
             ? api<unknown[]>('/approval-requests?status=PENDING').catch(() => [])
             : Promise.resolve([]),
           api<AppNotification[]>('/notifications?unreadOnly=true').catch(() => []),
           api<Array<{ id: string; name: string }>>('/warehouses').catch(() => []),
+          can('sales.change_approve') || can('sales.change_request')
+            ? api<{ pending: number }>('/sales-change-requests/count').catch(() => ({ pending: 0 }))
+            : Promise.resolve({ pending: 0 }),
         ]);
         pendingApprovals = approvals.length;
+        pendingChanges = changes.pending;
         notifications = unread;
         warehouseName = savedWorkspace()?.name ?? warehouses[0]?.name ?? '';
       })
@@ -170,7 +175,7 @@
         {/each}
       </nav>
       {#each current.groups as group}
-        {@const items = group.items.filter((item) => (!item.rootOnly || user?.root) && allowed(user?.roles, item.roles))}
+        {@const items = group.items.filter((item) => (!item.rootOnly || user?.root) && allowed(user?.roles, item.roles) && (!item.permissions || item.permissions.some((key) => can(key))))}
         {#if items.length}
           <p class="group-title">{group.title}</p>
           <nav class="side-nav">
@@ -178,6 +183,7 @@
               <a href={item.href} class:active={item.href === selectedHref} aria-current={item.href === selectedHref ? 'page' : undefined} onclick={() => (drawerOpen = false)}>
                 <i aria-hidden="true"></i><span>{item.label}</span>
                 {#if item.badge === 'approvals' && pendingApprovals > 0}<em>{pendingApprovals}</em>{/if}
+                {#if item.badge === 'changes' && pendingChanges > 0}<em>{pendingChanges}</em>{/if}
               </a>
             {/each}
           </nav>

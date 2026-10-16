@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, ClipboardCheck, SlidersHorizontal } from 'lucide-svelte';
   import { api } from '$lib/api';
-  import { dateTime, num } from '$lib/format';
+  import { date, dateTime, num, todayIso } from '$lib/format';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
   import Pagination from '$lib/components/Pagination.svelte';
@@ -20,6 +20,8 @@
   let warehouses = $state<Warehouse[]>([]);
   let warehouseId = $state('');
   let search = $state('');
+  /** Tồn cuối ngày (LIST-DATE-01); trống = hiện tại. */
+  let asOf = $state('');
   let lowOnly = $state(false);
   let loading = $state(true);
   let error = $state('');
@@ -34,7 +36,7 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<Row> & { lowCount: number }>(`/inventory/balances?${pageQuery({ warehouseId, search, low: lowOnly ? '1' : '' }, page, pageSize)}`);
+      const result = await api<Paged<Row> & { lowCount: number }>(`/inventory/balances?${pageQuery({ warehouseId, search, low: lowOnly && !asOf ? '1' : '', asOf }, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
       lowCount = result.lowCount;
@@ -94,11 +96,13 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.ma_sp_ten_hang()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.quet_hoac_nhap_ma_vi_du()} /></div>
+  <div class="field"><label for="as-of">{m.dr_ton_tai_ngay()}</label><input id="as-of" type="date" max={todayIso()} bind:value={asOf} onchange={refilter} placeholder={m.dr_ton_hien_tai()} /></div>
   <div class="field"><label for="warehouse">{m.kho()}</label><select id="warehouse" bind:value={warehouseId} onchange={refilter}><option value="">{m.tat_ca_kho()}</option>{#each warehouses as item}<option value={item.id}>{item.name}</option>{/each}</select></div>
-  <label class="check"><input type="checkbox" bind:checked={lowOnly} onchange={refilter} />{m.chi_hien_duoi_dinh_muc()}{lowCount})</label>
+  <label class="check" class:muted={Boolean(asOf)}><input type="checkbox" bind:checked={lowOnly} onchange={refilter} disabled={Boolean(asOf)} />{m.chi_hien_duoi_dinh_muc()}{lowCount})</label>
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if asOf}<div class="banner warning"><CircleAlert size={17} /><span>{m.dr_dang_xem_ngay({ date: date(`${asOf}T00:00:00+07:00`) })}</span></div>{/if}
 {#each openCounts as item (item.id)}<div class="banner warning"><ClipboardCheck size={17} /><span>{m.kk_dang_mo({ warehouse: item.warehouseName, code: item.code })} <a class="link" href={`/inventory/counts/${item.id}`}>{m.kk_lam_tiep()}</a></span></div>{/each}
 {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
 
@@ -135,7 +139,7 @@
 <AdjustmentDialog bind:open={adjustOpen} {warehouses} {warehouseId} productId={adjustProductId} onsaved={adjusted} />
 
 <style>
-  .filters { grid-template-columns: 1.5fr 1fr auto; }
+  .filters { grid-template-columns: 1.5fr 1fr 1fr auto; }
   .check { display: flex; align-items: center; gap: 8px; min-height: 42px; color: var(--muted); font-size: 13.5px; }
   .check input { width: 17px; height: 17px; accent-color: var(--navy); }
   .head { padding-bottom: 14px; }

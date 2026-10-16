@@ -2,13 +2,14 @@ import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, 
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { pendingSetup } from '@inoxpran/contracts';
+import { effectivePermissions, pendingSetup } from '@inoxpran/contracts';
 import type { FastifyRequest } from 'fastify';
 import { type Db, ObjectId } from 'mongodb';
 import { ALLOW_PENDING_KEY } from './allow-pending.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
 import type { RequestUser } from './request-context';
 import { type CachedAccount, sessionCache } from './session-cache';
+import { overridesOf } from './permissions';
 import { MONGO_DATABASE } from './tokens';
 
 /** Cập nhật "lần hoạt động gần nhất" tối đa 5 phút một lần (màn giám sát: số người đang dùng). */
@@ -59,6 +60,7 @@ export class JwtAuthGuard implements CanActivate {
       mfa: account.mfaEnabled,
       root: account.root,
       pending,
+      permissions: effectivePermissions({ roles: account.roles, root: account.root, permissionOverrides: account.permissionOverrides ?? null }),
     };
     if (pending.length && !this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_KEY, targets)) {
       throw new ForbiddenException({
@@ -76,7 +78,7 @@ export class JwtAuthGuard implements CanActivate {
     if (!ObjectId.isValid(userId)) return null;
     const user = await this.db.collection('users').findOne(
       { _id: new ObjectId(userId) },
-      { projection: { email: 1, displayName: 1, roles: 1, warehouseScopes: 1, status: 1, tokenVersion: 1, root: 1, mfaEnabled: 1, mustChangePassword: 1, lastSeenAt: 1 } },
+      { projection: { email: 1, displayName: 1, roles: 1, warehouseScopes: 1, status: 1, tokenVersion: 1, root: 1, mfaEnabled: 1, mustChangePassword: 1, lastSeenAt: 1, permissionGrants: 1, permissionRevokes: 1 } },
     );
     const account: CachedAccount | null = user
       ? {
@@ -91,6 +93,7 @@ export class JwtAuthGuard implements CanActivate {
           mfaEnabled: Boolean(user.mfaEnabled),
           mustChangePassword: Boolean(user.mustChangePassword),
           lastSeenAt: user.lastSeenAt as Date | undefined,
+          permissionOverrides: overridesOf(user),
         }
       : null;
     sessionCache.set(userId, account);

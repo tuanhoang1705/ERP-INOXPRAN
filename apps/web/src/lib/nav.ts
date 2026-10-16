@@ -6,7 +6,9 @@ export interface NavItem {
   roles?: string[];
   /** Chỉ tài khoản quản trị gốc (root) thấy — phần kỹ thuật / cấu hình hệ thống. */
   rootOnly?: boolean;
-  badge?: 'approvals';
+  /** Chỉ hiện khi có một trong các quyền nghiệp vụ này (PERM-01); quản trị gốc luôn thấy. */
+  permissions?: string[];
+  badge?: 'approvals' | 'changes';
 }
 
 export interface NavGroup {
@@ -42,7 +44,8 @@ export const sections: NavSection[] = [
           { label: m.phieu_xuat_kho_ban_hang(), href: '/sales/orders' },
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
-          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', roles: ['DIRECTOR'] },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
+          { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
           { label: m.canh_bao_cong_no(), href: '/receivables/overdue' },
         ],
       },
@@ -94,14 +97,19 @@ export const sections: NavSection[] = [
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
           { label: m.cho_kho_lap_phieu_swk(), href: '/sales/orders?stage=warehouse' },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
-          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', roles: ['DIRECTOR'] },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
+          { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
         ],
       },
       {
-        title: m.theo_kenh(),
+        title: m.lp_theo_loai_phieu(),
         items: [
-          { label: m.dai_ly_npp_b2b(), href: '/sales/orders?channel=B2B' },
-          { label: m.khach_le_b2c(), href: '/sales/orders?channel=B2C' },
+          { label: m.dai_ly_npp_b2b(), href: '/sales/orders?type=B2B' },
+          { label: m.khach_le_b2c(), href: '/sales/orders?type=B2C' },
+          { label: m.lp_ngan_hang_mau(), href: '/sales/orders?type=SAMPLE' },
+          { label: m.lp_ngan_kiem_dinh(), href: '/sales/orders?type=INSPECTION' },
+          { label: m.lp_ngan_xuat_tang(), href: '/sales/orders?type=GIFT' },
+          { label: m.lp_hang_mau_chua_tra(), href: '/sales/orders?loan=OUT' },
         ],
       },
     ],

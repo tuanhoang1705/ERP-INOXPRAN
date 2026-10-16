@@ -1,7 +1,7 @@
 <script lang="ts" generics="T extends CustomerOption">
   /**
-   * Ô chọn người mua: gõ số điện thoại / mã / tên (không dấu) để lọc, hoặc bấm mũi tên mở cả danh sách như ô chọn cũ.
-   * ↑↓ chọn, Enter lấy, Esc đóng. Khi không gõ, ô hiện khách đang chọn.
+   * Ô chọn người mua (phiếu BH) / khách trả hàng / nhà cung cấp (phiếu trả hàng): gõ số điện thoại / mã / tên (không dấu) để lọc,
+   * hoặc bấm mũi tên mở cả danh sách như ô chọn cũ. ↑↓ chọn, Enter lấy, Esc đóng. Khi không gõ, ô hiện đối tác đang chọn.
    */
   import { m } from '$lib/paraglide/messages';
   import { tick } from 'svelte';
@@ -15,7 +15,13 @@
     id = 'customer',
     disabled = false,
     loading = false,
-  }: { options: readonly T[]; value?: string; onchoose: (id: string) => void; id?: string; disabled?: boolean; loading?: boolean } = $props();
+    placeholder = m.kh_tim_nguoi_mua(),
+    emptyText = m.kh_khong_tim_thay_nguoi_mua(),
+    invalid = false,
+  }: {
+    options: readonly T[]; value?: string; onchoose: (id: string) => void; id?: string; disabled?: boolean; loading?: boolean;
+    placeholder?: string; emptyText?: string; invalid?: boolean;
+  } = $props();
 
   let query = $state('');
   let typing = $state(false);
@@ -69,7 +75,8 @@
     {id}
     {disabled}
     value={shown}
-    placeholder={selected ? customerLabel(selected) : m.kh_tim_nguoi_mua()}
+    placeholder={selected ? customerLabel(selected) : placeholder}
+    aria-invalid={invalid}
     autocomplete="off"
     spellcheck="false"
     role="combobox"
@@ -92,7 +99,7 @@
           <small>{[option.phone, option.province].filter(Boolean).join(' · ') || '—'}</small>
         </li>
       {:else}
-        <li class="empty" role="presentation">{loading ? m.kh_dang_tai_danh_sach() : m.kh_khong_tim_thay_nguoi_mua()}</li>
+        <li class="empty" role="presentation">{loading ? m.kh_dang_tai_danh_sach() : emptyText}</li>
       {/each}
     </ul>
   {/if}

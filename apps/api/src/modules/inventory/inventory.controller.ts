@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { staffHiddenFilter } from '../sales/keeper-scope';
 import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateStockReturnSchema, isInventoryCategory, StockReturnAccountingSchema } from '@inoxpran/contracts';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
@@ -49,13 +48,14 @@ export class InventoryController {
     @Query('low') low?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('asOf') asOf?: string,
   ) {
-    return this.inventory.listBalances(warehouseId, search, low === '1' || low === 'true', pageRequest(page, pageSize));
+    return this.inventory.listBalances(warehouseId, search, low === '1' || low === 'true', pageRequest(page, pageSize), asOf);
   }
 
   @Get('movements')
-  movements(@Req() request: AuthenticatedRequest, @Query('productId') productId?: string, @Query('warehouseId') warehouseId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
-    return this.inventory.listMovements(productId, warehouseId, pageRequest(page, pageSize), staffHiddenFilter(request.user));
+  movements(@Query('productId') productId?: string, @Query('warehouseId') warehouseId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.inventory.listMovements(productId, warehouseId, pageRequest(page, pageSize));
   }
 
   @Roles(...WAREHOUSE_EDITOR_ROLES)
@@ -86,13 +86,13 @@ export class InventoryController {
   // ---- Báo cáo kho theo mẫu công ty (月库存明细单 / 出库汇总) ----
 
   @Get('reports/monthly')
-  monthly(@Req() request: AuthenticatedRequest, @Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
-    return this.reports.monthly(month, warehouseId || undefined, staffHiddenFilter(request.user));
+  monthly(@Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
+    return this.reports.monthly(month, warehouseId || undefined);
   }
 
   @Get('reports/monthly/export')
   async monthlyExport(@Query('month') month: string, @Query('warehouseId') warehouseId: string | undefined, @Req() request: AuthenticatedRequest) {
-    const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined, request.user.displayName || request.user.email, staffHiddenFilter(request.user));
+    const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined, request.user.displayName || request.user.email);
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       disposition: `attachment; filename="TonKhoThang_${month}.xlsx"`,
@@ -104,30 +104,36 @@ export class InventoryController {
     return { warehouseId: warehouseId || undefined, category: isInventoryCategory(category) ? category : undefined, search: search?.trim().slice(0, 80) || undefined };
   }
 
+  /** Nhật ký xuất nhập theo tháng (`month`) hoặc khoảng ngày (`from` / `to`, LIST-DATE-01). */
   @Get('reports/journal')
   journal(
-    @Query('month') month: string,
+    @Query('month') month?: string,
     @Query('warehouseId') warehouseId?: string,
     @Query('category') category?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.reports.journal(month, this.journalOptions(warehouseId, category, search), pageRequest(page ?? '1', pageSize, 50));
+    return this.reports.journal({ month, from, to }, this.journalOptions(warehouseId, category, search), pageRequest(page ?? '1', pageSize, 50));
   }
 
   @Get('reports/journal/export')
   async journalExport(
-    @Query('month') month: string,
     @Req() request: AuthenticatedRequest,
+    @Query('month') month?: string,
     @Query('warehouseId') warehouseId?: string,
     @Query('category') category?: string,
     @Query('search') search?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    const buffer = await this.reports.journalWorkbook(month, this.journalOptions(warehouseId, category, search), request.user.displayName || request.user.email);
+    const buffer = await this.reports.journalWorkbook({ month, from, to }, this.journalOptions(warehouseId, category, search), request.user.displayName || request.user.email);
+    const tag = from || to ? `${from ?? ''}_${to ?? ''}` : month ?? '';
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      disposition: `attachment; filename="NhatKyXuatNhap_${month}.xlsx"`,
+      disposition: `attachment; filename="NhatKyXuatNhap_${tag.replace(/[^0-9_-]/g, '')}.xlsx"`,
       length: buffer.length,
     });
   }

@@ -20,14 +20,17 @@
   import { computeIssue, type IssueProduct } from '$lib/sales-issue';
   import CustomerCreateDialog, { CUSTOMER_CREATE_ROLES } from './CustomerCreateDialog.svelte';
   import { periodText } from '$lib/server-text';
-  import { defaultWarehouseId, session } from '$lib/session.svelte';
+  import { can, defaultWarehouseId, session } from '$lib/session.svelte';
   import { vndInWords } from '$lib/vnd-words';
   import { isVatRate, roundDong, VAT_RATE_OPTIONS, vatPercent, type VatRate } from '$shared/sales-math';
   import { expandSalesOrderCode, normalizeSalesOrderCode, periodOfDate, salesIssueTemplate, salesOrderCodeProblem } from '$shared/sales-templates';
   import NumberInput from './NumberInput.svelte';
   import CustomerPicker from './CustomerPicker.svelte';
+  import { SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, type SalesSlipType } from '$lib/slip-type';
+  import { defaultReturnDate } from '$shared/sales-purpose';
 
   type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
+  type LoanSource = SalesOrder & { loanRemainder?: Array<{ productId: string; sku: string; quantity: string }> };
   type CatalogProduct = Product & { available?: string; categoryName?: string };
   type Dealer = {
     id: string; code: string; name: string; province?: string; address?: string; phone?: string; taxCode?: string; customerTier?: string;
@@ -37,7 +40,9 @@
   type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; overrideUnitPrice?: string | undefined };
   type Grant = { id: string; code?: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decidedByName?: string; decisionNote?: string };
 
-  let { existing = null }: { existing?: ExistingOrder | null } = $props();
+  let { existing = null, requestMode = false }: { existing?: ExistingOrder | null; requestMode?: boolean } = $props();
+  /** Đề nghị sửa (SAL-CHG-01): lý do bắt buộc, gửi cho Admin duyệt thay vì lưu thẳng. */
+  let requestReason = $state('');
 
   let dealers = $state<Dealer[]>([]);
   let dealerCodes = $state<string[]>([]);
@@ -46,7 +51,7 @@
   const canCreateCustomer = $derived(hasRole(session.user?.roles, CUSTOMER_CREATE_ROLES));
   let products = $state<CatalogProduct[]>([]);
   let warehouses = $state<Warehouse[]>([]);
-  let employees = $state<Employee[]>([]);
+  let allEmployees = $state<Employee[]>([]);
 
   /** Số phiếu: tự sinh BHyyyymm#### hoặc tự nhập (vd. theo số phiếu giấy). */
   let codeMode = $state<'AUTO' | 'MANUAL'>('AUTO');
@@ -82,7 +87,19 @@
   let priceDraft = $state('');
 
   let customerId = $state('');
-  let channel = $state<'B2B' | 'B2C'>('B2B');
+  /** Loại phiếu (SAL-TYPE-01): bán B2B / bán lẻ B2C / xuất hàng mẫu / xuất kiểm định. Hàng mẫu / kiểm định: không khách, giá 0. */
+  let slipType = $state<SalesSlipType>('B2B');
+  const nonSale = $derived(slipType === 'SAMPLE' || slipType === 'INSPECTION' || slipType === 'GIFT');
+  /** Hàng mẫu / kiểm định: có hẹn trả (mặc định hôm nay + 15 ngày) và theo dõi hàng mang về; xuất tặng thì không. */
+  const loanType = $derived(slipType === 'SAMPLE' || slipType === 'INSPECTION');
+  const gift = $derived(slipType === 'GIFT');
+  const channel = $derived<'B2B' | 'B2C'>(slipType === 'B2C' ? 'B2C' : 'B2B');
+  /** Phiếu bán: NVKD; phiếu hàng mẫu / kiểm định: bất kỳ nhân viên nào mượn hàng. */
+  const employees = $derived(nonSale ? allEmployees : allEmployees.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER' || row.id === salesRepId));
+  let destination = $state('');
+  let expectedReturnDate = $state('');
+  /** Lập phiếu bán từ phần hàng mẫu đại lý mua luôn (chốt "Đại lý mua luôn"). */
+  let loanSource = $state<{ id: string; code: string } | null>(null);
   let orderDate = $state(todayIso());
   let salesRepId = $state('');
   let warehouseId = $state('');
@@ -130,9 +147,10 @@
   const price2 = (value: string | number) => Number(value).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dong = (value: string) => num(roundDong(value));
 
-  const grantApproved = $derived(grant?.status === 'APPROVED');
   /** Quản trị gốc đang sửa phiếu đã phát hành: lưu qua /root, tồn kho / công nợ tự điều chỉnh theo chênh lệch. */
-  const rootEdit = $derived(Boolean(existing && existing.status !== 'DRAFT' && session.user?.root));
+  const rootEdit = $derived(Boolean(existing && existing.status !== 'DRAFT' && (requestMode || can('sales.edit_issued'))));
+  /** Người sửa trực tiếp phiếu đã phát hành (`sales.edit_issued`) sửa đơn giá luôn, không cần xin quyền sửa giá (máy chủ cũng cho phép). */
+  const grantApproved = $derived(grant?.status === 'APPROVED' || (rootEdit && !requestMode && can('sales.edit_issued')));
   const shippedOrder = $derived(Boolean(existing && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(existing.status)));
   /** Đơn giá chưa thuế dạng tiền 2 số lẻ gửi máy chủ ("480000", "123456.78"). */
   const money = (value: string) => String(Math.round(Number(value) * 100) / 100);
@@ -150,7 +168,7 @@
   }
   function applyPrice(index: number) {
     const line = lines[index];
-    if (line && Number(priceDraft) > 0) line.overrideUnitPrice = money(priceDraft);
+    if (line && priceDraft.trim() !== '' && Number(priceDraft) >= 0) line.overrideUnitPrice = money(priceDraft);
     editingPrice = null;
   }
   function resetPrice(index: number) {
@@ -215,10 +233,12 @@
       setDealers(dealerResult.rows);
       products = productRows;
       warehouses = warehouseRows.filter((row) => row.active);
-      employees = employeeRows.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER');
+      allEmployees = employeeRows;
       if (existing) {
-        customerId = existing.customerId;
-        channel = existing.channel ?? 'B2B';
+        customerId = existing.customerId ?? '';
+        slipType = slipTypeOf(existing);
+        destination = existing.destination ?? '';
+        expectedReturnDate = existing.expectedReturnDate ?? '';
         orderDate = (existing.orderDate ?? existing.createdAt).slice(0, 10);
         salesRepId = existing.salesRepId ?? '';
         warehouseId = existing.warehouseId;
@@ -241,26 +261,71 @@
       } else {
         warehouseId = warehouses.find((row) => row.id === defaultWarehouseId())?.id ?? warehouses[0]?.id ?? '';
         loadKeepers();
+        // Đã chọn "Xuất hàng mẫu / kiểm định" trước khi danh sách kho tải xong: tải bảng giá 0 của kho vừa chọn.
+        if (nonSale) loadSheet();
+        const presetType = page.url.searchParams.get('type');
+        if (presetType === 'SAMPLE' || presetType === 'INSPECTION' || presetType === 'GIFT') chooseSlipType(presetType);
         const preset = page.url.searchParams.get('customer');
         const presetDealer = dealers.find((row) => row.code === preset || row.id === preset);
         if (presetDealer) chooseCustomer(presetDealer.id);
+        const fromLoan = page.url.searchParams.get('fromLoan');
+        if (fromLoan) await prefillFromLoan(fromLoan);
       }
     } catch (caught) {
       loadError = caught instanceof Error ? caught.message : m.khong_tai_duoc_du_lieu_danh();
     }
   });
 
+  /** Phần hàng mẫu đại lý mua luôn: điền sẵn các dòng, NVKD và ghi chú; kế toán chọn khách rồi phát hành như phiếu bán thường. */
+  async function prefillFromLoan(id: string) {
+    try {
+      const source = await api<LoanSource>(`/sales-orders/${id}`);
+      const remainder = source.loanRemainder ?? [];
+      if (!remainder.length) return;
+      loanSource = { id: source.id, code: source.code };
+      lines = remainder.map((line) => ({ productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false }));
+      if (source.salesRepId) salesRepId = source.salesRepId;
+      note = m.lp_lap_phieu_ban_tu_mau({ code: source.code });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_tai_duoc_du_lieu_danh();
+    }
+  }
+
+  /** Đổi loại phiếu: hàng mẫu / kiểm định bỏ khách, hàng tặng, giá sửa tay; bảng giá tải lại theo loại. */
+  function chooseSlipType(type: SalesSlipType) {
+    const wasNonSale = nonSale;
+    slipType = type;
+    const nowNonSale = type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT';
+    // Hẹn trả mặc định 15 ngày cho hàng mẫu / kiểm định; loại khác không có hẹn trả.
+    if (type === 'SAMPLE' || type === 'INSPECTION') {
+      if (!expectedReturnDate) expectedReturnDate = defaultReturnDate(todayIso());
+    } else expectedReturnDate = '';
+    if (nowNonSale) {
+      lines = lines.filter((line) => !line.gift).map((line) => ({ ...line, overrideUnitPrice: undefined }));
+      if (!lines.length) addLine();
+      editingPrice = null;
+      if (description.startsWith('Bán hàng ')) description = '';
+    } else if (wasNonSale && dealer) {
+      description = `Bán hàng ${dealer.name}`;
+    }
+    if (nowNonSale !== wasNonSale) {
+      sheet = null;
+      loadSheet();
+    }
+  }
+
   /** Tải bảng giá riêng của khách tại kho xuất (một lần); sau đó mọi phép tính diễn ra ngay trên trình duyệt. */
   let sheetSequence = 0;
   async function loadSheet() {
     const sequence = ++sheetSequence;
-    if (!customerId || !warehouseId) {
+    if (!warehouseId || (!nonSale && !customerId)) {
       sheet = null;
       return;
     }
     sheetLoading = true;
     try {
-      const result = await api<SalesPriceSheet>(`/sales-orders/price-sheet?customerId=${customerId}&warehouseId=${warehouseId}`);
+      // Phiếu hàng mẫu / kiểm định: bảng không khách (giá 0, chỉ tồn khả dụng).
+      const result = await api<SalesPriceSheet>(`/sales-orders/price-sheet?${nonSale ? '' : `customerId=${customerId}&`}warehouseId=${warehouseId}`);
       if (sequence !== sheetSequence) return;
       sheet = result;
       if (!vatTouched && isVatRate(result.defaultVatRate)) vatRate = result.defaultVatRate;
@@ -316,7 +381,7 @@
     sheet = null;
     const selected = dealers.find((row) => row.id === id);
     if (!selected) return;
-    channel = selected.customerTier === 'RETAIL' ? 'B2C' : 'B2B';
+    slipType = selected.customerTier === 'RETAIL' ? 'B2C' : 'B2B';
     paymentTermDays = selected.paymentTermDays;
     if (selected.salesRepId) salesRepId = selected.salesRepId;
     if (!description || description === `Bán hàng ${previous?.name ?? ''}`) description = `Bán hàng ${selected.name}`;
@@ -423,8 +488,11 @@
       ...(codeMode === 'MANUAL' && code !== existing?.code ? { code } : {}),
       ...(codeMode === 'AUTO' && existing?.codeMode === 'MANUAL' ? { codeMode: 'AUTO' } : {}),
       formSessionId,
-      ...(grantApproved && grant && calc.lines.some((line) => line?.overridden) ? { priceOverrideRequestId: grant.id } : {}),
-      templateCode: template.code, customerId, warehouseId, channel, orderDate, paymentTermDays, taxRate: vatRate,
+      ...(!nonSale && grantApproved && grant && calc.lines.some((line) => line?.overridden) ? { priceOverrideRequestId: grant.id } : {}),
+      templateCode: template.code, warehouseId, orderDate, taxRate: vatRate,
+      ...(nonSale
+        ? { purpose: slipType, ...(destination.trim() ? { destination: destination.trim() } : {}), ...(loanType && expectedReturnDate ? { expectedReturnDate } : {}) }
+        : { purpose: 'SALE', customerId, channel, paymentTermDays }),
       ...(warehouseKeeperId ? { warehouseKeeperId } : {}),
       ...(salesRepId ? { salesRepId } : {}),
       ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
@@ -434,7 +502,9 @@
       ...(note.trim() ? { note: note.trim() } : {}),
       lines: calc.lines.flatMap((computed) => {
         const line = computed ? lines[computed.index] : undefined;
-        return computed && line ? [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift, ...(computed.overridden && line.overrideUnitPrice ? { overrideUnitPrice: line.overrideUnitPrice } : {}) }] : [];
+        if (!computed || !line) return [];
+        if (nonSale) return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: false }];
+        return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift, ...(computed.overridden && line.overrideUnitPrice ? { overrideUnitPrice: line.overrideUnitPrice } : {}) }];
       }),
     };
   }
@@ -446,8 +516,16 @@
       codeInput?.focus();
       return;
     }
-    if (!customerId || !warehouseId || !salesRepId) {
-      error = m.chon_day_du_nguoi_mua_nhan();
+    if (!warehouseId || !salesRepId || (!nonSale && !customerId)) {
+      error = gift ? m.lp_chon_nguoi_phu_trach() : nonSale ? m.lp_chon_nguoi_muon() : m.chon_day_du_nguoi_mua_nhan();
+      return;
+    }
+    if (loanType && expectedReturnDate && expectedReturnDate < orderDate) {
+      error = m.ngay_giao_du_kien_phai_lon();
+      return;
+    }
+    if (requestMode && requestReason.trim().length < 5) {
+      error = m.bh_ly_do_toi_thieu();
       return;
     }
     if (isAccountant && !warehouseKeeperId) {
@@ -463,7 +541,7 @@
       error = m.dang_tai_bang_gia_cua_khach_2();
       return;
     }
-    if (!calc.lines.some((line) => line && !lines[line.index]?.gift)) {
+    if (!calc.lines.some((line) => line && (nonSale || !lines[line.index]?.gift))) {
       error = m.phieu_can_it_nhat_mot_dong();
       return;
     }
@@ -474,6 +552,11 @@
     saving = true;
     const expectedTotal = summary.grandTotal;
     try {
+      if (existing && requestMode) {
+        await api(`/sales-orders/${existing.id}/change-requests`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ kind: 'EDIT', version: existing.version, reason: requestReason.trim(), changes: { ...payload(), version: existing.version } }) });
+        await goto(`/sales/orders/${existing.id}?created=change-requested`);
+        return;
+      }
       const order = existing
         ? await api<SalesOrder>(`/sales-orders/${existing.id}${rootEdit ? '/root' : ''}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
         : await api<SalesOrder>('/sales-orders', { method: 'POST', idempotentCommand: true, body: JSON.stringify(payload()) });
@@ -494,15 +577,17 @@
 <section class="page-head">
   <div>
     <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span><span>{existing ? m.sua({ code: existing.code }) : isAccountant ? m.lap_phieu_moi() : m.de_nghi_xuat_ban()}</span></nav>
-    <h1 class="page-title">{existing ? m.sua_phieu_xuat_kho_ban_hang({ code: existing.code }) : isAccountant ? m.lap_phieu_xuat_kho_ban_hang() : m.de_nghi_ke_toan_lap_phieu()}</h1>
+    <h1 class="page-title">{existing ? m.sua_phieu_xuat_kho_ban_hang({ code: existing.code }) : slipType === 'SAMPLE' ? m.lp_lap_phieu_hang_mau() : slipType === 'INSPECTION' ? m.lp_lap_phieu_kiem_dinh() : gift ? m.lp_lap_phieu_xuat_tang() : isAccountant ? m.lap_phieu_xuat_kho_ban_hang() : m.de_nghi_ke_toan_lap_phieu()}</h1>
     <p class="page-sub">
       <span class="pill template" title={templateDescription(template)}>{m.mau()} {template.code}</span>
-      {#if isAccountant}{m.ke_toan_lap_phieu_bh_kinh()}{:else}{m.gui_de_nghi_de_ke_toan()}{/if}
+      {#if nonSale}{m.lp_khong_tinh_tien_ngan()} · {slipTypeLabel(slipType)}{:else if isAccountant}{m.ke_toan_lap_phieu_bh_kinh()}{:else}{m.gui_de_nghi_de_ke_toan()}{/if}
     </p>
   </div>
   <div class="actions">
     <a class="btn" href={existing ? `/sales/orders/${existing.id}` : '/sales/orders'}>{m.huy_bo()}</a>
-    {#if rootEdit}
+    {#if requestMode}
+      <button class="btn primary" disabled={saving || requestReason.trim().length < 5} onclick={() => save(false)}>{saving ? m.dang_gui() : m.yc_gui_de_nghi_sua()}</button>
+    {:else if rootEdit}
       <button class="btn primary" disabled={saving} onclick={() => save(false)}>{saving ? m.dang_xu_ly() : m.root_luu_thay_doi()}</button>
     {:else if isAccountant}
       <button class="btn soft" disabled={saving} onclick={() => save(false)}>{m.luu_nhap()}</button>
@@ -518,11 +603,29 @@
   <div class="banner warning"><CircleAlert size={17} /><span><b>{m.kinh_doanh_yeu_cau_sua()}</b> {existing.confirmationNote}</span></div>
 {/if}
 {#if rootEdit}<div class="banner warning"><CircleAlert size={17} /><span>{shippedOrder ? m.root_sua_phieu_da_xuat() : m.root_sua_phieu_da_phat_hanh()}</span></div>{/if}
+{#if requestMode}
+  <div class="banner info request-reason">
+    <CircleAlert size={17} />
+    <div class="field">
+      <label for="request-reason">{m.yc_sua_ghi_chu()}</label>
+      <textarea id="request-reason" rows="2" maxlength="300" bind:value={requestReason} placeholder={m.yc_ly_do_sua()}></textarea>
+    </div>
+  </div>
+{/if}
 {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span><button class="close" onclick={() => (error = '')} aria-label={m.dong()}><X size={15} /></button></div>{/if}
-{#if blocked}<div class="banner error"><CircleAlert size={17} /><span><b>{dealer?.name}</b> {m.dang_tam_khoa_dat_hang()}{dealer?.holdReason === 'OVERDUE_60' ? m.do_co_cong_no_qua_han() : ''}{m.can_thu_hoi_cong_no_truoc()}</span></div>{/if}
+{#if loanSource}<div class="banner info"><Info size={17} /><span>{m.lp_dien_san_tu_mau({ code: loanSource.code })}</span></div>{/if}
+{#if nonSale}<div class="banner info"><Info size={17} /><span>{gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</span></div>{/if}
+{#if blocked && !nonSale}<div class="banner error"><CircleAlert size={17} /><span><b>{dealer?.name}</b> {m.dang_tam_khoa_dat_hang()}{dealer?.holdReason === 'OVERDUE_60' ? m.do_co_cong_no_qua_han() : ''}{m.can_thu_hoi_cong_no_truoc()}</span></div>{/if}
 
 <article class="card block">
-  <header class="block-head"><span class="step">1</span><h2>{m.thong_tin_nguoi_mua()}</h2><small>(<span class="req">*</span>{m.truong_bat_buoc()}</small></header>
+  <header class="block-head"><span class="step">1</span><h2>{gift ? m.lp_thong_tin_xuat_tang() : nonSale ? m.lp_thong_tin_nguoi_muon() : m.thong_tin_nguoi_mua()}</h2><small>(<span class="req">*</span>{m.truong_bat_buoc()}</small></header>
+  <div class="slip-types" role="radiogroup" aria-label={m.lp_loai_phieu()}>
+    <span class="slip-label">{m.lp_loai_phieu()}</span>
+    {#each SLIP_TYPE_OPTIONS as type}
+      <button type="button" role="radio" aria-checked={slipType === type} class:on={slipType === type} class:loan={type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT'}
+        disabled={Boolean(loanSource) && (type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT')} onclick={() => chooseSlipType(type)}>{slipTypeLabel(type)}</button>
+    {/each}
+  </div>
   <div class="grid">
     <div class="field">
       <div class="code-head">
@@ -540,30 +643,40 @@
       {/if}
     </div>
     <div class="field"><label for="date">{m.ngay_chung_tu()} <span class="req">*</span></label><input id="date" type="date" max={todayIso()} bind:value={orderDate} /></div>
-    <div class="field wide">
-      <label for="customer">{m.nguoi_mua_ma_khach_hang()} <span class="req">*</span></label>
-      <CustomerPicker options={dealers} value={customerId} onchoose={chooseCustomer} loading={!dealersLoaded && !loadError} />
-      {#if canCreateCustomer}<button type="button" class="add-customer" onclick={() => (customerDialogOpen = true)}><Plus size={14} />{m.them_khach_hang_moi()}</button>
-      {:else if !existing}<small class="field-hint">{m.kh_khong_co_quyen_tao({ path: `${m.danh_muc()} → ${m.ho_so_dai_ly_khach_hang()}` })}</small>{/if}
-    </div>
+    {#if nonSale}
+      <div class="field">
+        <label for="borrower">{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()} <span class="req">*</span></label>
+        <select id="borrower" bind:value={salesRepId} class:missing={!salesRepId}><option value="">{gift ? m.lp_chon_nguoi_phu_trach() : m.lp_chon_nguoi_muon()}</option>{#each employees as row}<option value={row.id}>{row.name} ({row.code})</option>{/each}</select>
+      </div>
+      <div class="field"><label for="destination">{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</label><input id="destination" bind:value={destination} maxlength="200" placeholder={gift ? m.lp_tang_cho_goi_y() : m.lp_gui_toi_goi_y()} /></div>
+    {:else}
+      <div class="field wide">
+        <label for="customer">{m.nguoi_mua_ma_khach_hang()} <span class="req">*</span></label>
+        <CustomerPicker options={dealers} value={customerId} onchoose={chooseCustomer} loading={!dealersLoaded && !loadError} />
+        {#if canCreateCustomer}<button type="button" class="add-customer" onclick={() => (customerDialogOpen = true)}><Plus size={14} />{m.them_khach_hang_moi()}</button>
+        {:else if !existing}<small class="field-hint">{m.kh_khong_co_quyen_tao({ path: `${m.danh_muc()} → ${m.ho_so_dai_ly_khach_hang()}` })}</small>{/if}
+      </div>
+    {/if}
   </div>
-  {#if dealer}
+  {#if dealer && !nonSale}
     <dl class="buyer">
       <div><dt>{m.dia_chi()}</dt><dd>{dealer.address ?? '—'}</dd></div>
       <div><dt>{m.dien_thoai()}</dt><dd>{dealer.phone ?? '—'}</dd></div>
       <div><dt>{m.ma_so_thue()}</dt><dd>{dealer.taxCode ?? '—'}</dd></div>
       <div><dt>{m.cap_han_muc()}</dt><dd>{tierLabel[dealer.customerTier ?? 'RETAIL']} · {dealer.customerTier === 'RETAIL' ? m.tra_ngay() : Number(dealer.creditLimit) > 0 ? vnd(dealer.creditLimit) : m.khong_cap_cong_no()}</dd></div>
-      <div><dt>{m.du_no_hien_tai()}</dt><dd class:danger={Number(dealer.creditLimit) > 0 && Number(sheet?.customer.exposure ?? dealer.outstanding) > Number(dealer.creditLimit) && dealer.customerTier !== 'RETAIL'}>{vnd(sheet?.customer.exposure ?? dealer.outstanding)}</dd></div>
-      <div><dt>{m.ck_bac_doanh_so()}</dt><dd>{sheet ? m.luy_ke({ salesTierRate: sheet.customer.salesTierRate, periodLabel: periodText(sheet.customer.periodLabel), p2: vnd(sheet.customer.periodRevenue) }) : sheetLoading ? m.dang_tai() : '—'}</dd></div>
+      <div><dt>{m.du_no_hien_tai()}</dt><dd class:danger={Number(dealer.creditLimit) > 0 && Number(sheet?.customer?.exposure ?? dealer.outstanding) > Number(dealer.creditLimit) && dealer.customerTier !== 'RETAIL'}>{vnd(sheet?.customer?.exposure ?? dealer.outstanding)}</dd></div>
+      <div><dt>{m.ck_bac_doanh_so()}</dt><dd>{sheet?.customer ? m.luy_ke({ salesTierRate: sheet.customer.salesTierRate, periodLabel: periodText(sheet.customer.periodLabel), p2: vnd(sheet.customer.periodRevenue) }) : sheetLoading ? m.dang_tai() : '—'}</dd></div>
     </dl>
   {/if}
   <div class="grid second">
-    <div class="field"><label for="contact">{m.ten_khach_hang_nguoi_nhan_lien()}</label><input id="contact" bind:value={contactName} maxlength="120" placeholder={m.khong_bat_buoc()} /></div>
+    {#if !nonSale}<div class="field"><label for="contact">{m.ten_khach_hang_nguoi_nhan_lien()}</label><input id="contact" bind:value={contactName} maxlength="120" placeholder={m.khong_bat_buoc()} /></div>{/if}
     <div class="field wide"><label for="description">{m.dien_giai()}</label><input id="description" bind:value={description} maxlength="300" /></div>
-    <div class="field">
-      <label for="rep">{m.nhan_vien_ban_hang()} <span class="req">*</span></label>
-      <select id="rep" bind:value={salesRepId}><option value="">{m.chon_nhan_vien()}</option>{#each employees as row}<option value={row.id}>{row.name} ({row.code})</option>{/each}</select>
-    </div>
+    {#if !nonSale}
+      <div class="field">
+        <label for="rep">{m.nhan_vien_ban_hang()} <span class="req">*</span></label>
+        <select id="rep" bind:value={salesRepId}><option value="">{m.chon_nhan_vien()}</option>{#each employees as row}<option value={row.id}>{row.name} ({row.code})</option>{/each}</select>
+      </div>
+    {/if}
     <div class="field">
       <label for="warehouse">{m.kho_xuat()} <span class="req">*</span></label>
       <select id="warehouse" bind:value={warehouseId} onchange={changeWarehouse} disabled={shippedOrder} title={shippedOrder ? m.root_khong_doi_kho() : ''}>{#each warehouses as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}</select>
@@ -576,13 +689,16 @@
       </select>
       <small id="keeper-hint" class="field-hint">{isAccountant ? m.chi_thu_kho_duoc_chon_thay() : m.ke_toan_se_chon_khi_phat()}</small>
     </div>
-    <div class="field wide"><label for="location">{m.dia_diem_giao_hang()}</label><input id="location" bind:value={deliveryLocation} maxlength="300" placeholder={m.de_trong_neu_khach_lay_tai()} /></div>
-    <div class="field">
-      <label for="term">{m.dieu_khoan_thanh_toan()}</label>
-      <select id="term" bind:value={paymentTermDays}>{#each termOptions as days}<option value={days}>{days === 0 ? m.thanh_toan_ngay() : m.cong_no_ngay({ days: days })}</option>{/each}</select>
-    </div>
-    <div class="field"><label for="channel">{m.kenh_ban()}</label><select id="channel" bind:value={channel}><option value="B2B">{m.b2b_dai_ly_npp()}</option><option value="B2C">{m.b2c_khach_le()}</option></select></div>
-    <div class="field"><label for="delivery">{m.ngay_giao_du_kien()}</label><input id="delivery" type="date" min={orderDate} bind:value={requestedDeliveryDate} /></div>
+    {#if nonSale}
+      {#if loanType}<div class="field"><label for="return-date">{m.lp_hen_tra()}</label><input id="return-date" type="date" min={orderDate} bind:value={expectedReturnDate} /></div>{/if}
+    {:else}
+      <div class="field wide"><label for="location">{m.dia_diem_giao_hang()}</label><input id="location" bind:value={deliveryLocation} maxlength="300" placeholder={m.de_trong_neu_khach_lay_tai()} /></div>
+      <div class="field">
+        <label for="term">{m.dieu_khoan_thanh_toan()}</label>
+        <select id="term" bind:value={paymentTermDays}>{#each termOptions as days}<option value={days}>{days === 0 ? m.thanh_toan_ngay() : m.cong_no_ngay({ days: days })}</option>{/each}</select>
+      </div>
+      <div class="field"><label for="delivery">{m.ngay_giao_du_kien()}</label><input id="delivery" type="date" min={orderDate} bind:value={requestedDeliveryDate} /></div>
+    {/if}
   </div>
 </article>
 
@@ -591,12 +707,13 @@
     <span class="step">2</span><h2>{m.hang_hoa()}</h2>
     <label class="scan"><ScanLine size={16} /><input bind:this={scanInput} bind:value={scan} onkeydown={scanAdd} placeholder={m.quet_ma_vach_nhap_ma_hang()} aria-label={m.quet_ma_vach_hoac_nhap_ma()} /></label>
     <button class="btn soft small" onclick={() => addLine(false)}><Plus size={15} />{m.them_dong()}</button>
-    <button class="btn small" onclick={() => addLine(true)}><Gift size={15} />{m.them_hang_tang()}</button>
+    {#if !nonSale}<button class="btn small" onclick={() => addLine(true)}><Gift size={15} />{m.them_hang_tang()}</button>{/if}
   </header>
-  {#if isAccountant && grant?.status === 'PENDING'}
+  {#if nonSale}<!-- Phiếu không tính tiền: không có quyền sửa giá. -->
+  {:else if isAccountant && grant?.status === 'PENDING'}
     <div class="banner warning price-grant"><Clock size={16} /><span>{m.gia_dang_cho_duyet({ code: grant.code ?? '' })}</span><button type="button" class="link" onclick={cancelPriceRequest}>{m.gia_huy_yeu_cau()}</button></div>
   {:else if grantApproved}
-    <div class="banner success price-grant"><Pencil size={16} /><span>{m.gia_da_duoc_cap_quyen({ by: grant?.decidedByName || '—' })}</span></div>
+    <div class="banner success price-grant"><Pencil size={16} /><span>{m.gia_da_duoc_cap_quyen({ by: grant?.decidedByName || session.user?.displayName || '—' })}</span></div>
   {:else if isAccountant && grant?.status === 'REJECTED'}
     <div class="banner error price-grant"><CircleAlert size={16} /><span>{m.gia_bi_tu_choi({ by: grant.decidedByName ?? '—', note: grant.decisionNote ?? '' })}</span><button type="button" class="link" onclick={() => (grant = null)}>{m.gia_xin_lai()}</button></div>
   {/if}
@@ -631,7 +748,7 @@
                 <NumberInput class="input price-input" decimals={2} bind:value={priceDraft} autofocus aria-label={m.gia_nhap_don_gia({ p0: index + 1 })}
                   onkeydown={(event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); applyPrice(index); } else if (event.key === 'Escape') editingPrice = null; }}
                   onblur={() => applyPrice(index)} />
-              {:else if computed && isAccountant && !line.gift}
+              {:else if computed && isAccountant && !line.gift && !nonSale}
                 <button type="button" class="price-btn" class:overridden={computed.overridden} onclick={() => clickPrice(index, computed.unitPrice)}
                   title={grantApproved ? m.gia_bam_de_sua() : grant?.status === 'PENDING' ? m.gia_dang_cho_duyet_ngan() : m.gia_bam_de_xin_quyen()}>
                   {price2(computed.unitPrice)}{#if grantApproved}<Pencil size={11} />{:else}<Lock size={11} />{/if}
@@ -645,7 +762,7 @@
             <td class="num">{#if computed && !line.gift}<span class="ck" title={m.bac_doanh_so_khuyen_mai_tran({ salesTierDiscountRate: computed.basis.salesTierDiscountRate, promotionDiscountRate: computed.basis.promotionDiscountRate, p2: computed.basis.promotionCode ? ` (${computed.basis.promotionCode})` : '', discountCapRate: sheet?.discountCapRate ?? "—" })}>{computed.discountRate}</span>{/if}</td>
             <td class="num"><b title={computed ? `${computed.quantity} × ${price2(computed.unitPrice)} = ${price2(computed.netAmount)}` : ''}>{computed ? dong(computed.netAmount) : ''}</b></td>
             <td><div class="row-actions">
-              {#if product && !line.gift}<button class="icon gift" onclick={() => addGiftFor(line)} title={m.tang_kem_1_san_pham_cung()} aria-label={m.tang_kem({ sku: product.sku })}><Gift size={14} /></button>{/if}
+              {#if product && !line.gift && !nonSale}<button class="icon gift" onclick={() => addGiftFor(line)} title={m.tang_kem_1_san_pham_cung()} aria-label={m.tang_kem({ sku: product.sku })}><Gift size={14} /></button>{/if}
               <button class="icon remove" onclick={() => removeLine(index)} aria-label={m.xoa_dong({ p0: index + 1 })}><X size={14} /></button>
             </div></td>
           </tr>
@@ -659,13 +776,13 @@
   {#if calc.stockWarnings.length}
     <div class="warnings">{#each calc.stockWarnings as warning}<p class={warning.tone}><CircleAlert size={15} />{warning.text}</p>{/each}</div>
   {/if}
-  <p class="hint">
+  <p class="hint" class:hidden={nonSale}>
     {#if sheet?.pricesIncludeTax}
       {m.bang_gia_da_gom_thue_gtgt()}{taxPercent ? ` ÷ ${taxDivisor}` : ''}{m.lam_tron_2_so_le_thanh()}
     {:else}
       {m.don_gia_tren_phieu_gia_niem()}
     {/if}
-    {m.ck_bac_doanh_so_2()} {sheet ? m.luy_ke_2({ periodLabel: periodText(sheet.customer.periodLabel) }) : ''} {m.khuyen_mai_toi_da()} {sheet?.discountCapRate ?? '—'}{m.hang_tang_co_don_gia_0()}
+    {m.ck_bac_doanh_so_2()} {sheet?.customer ? m.luy_ke_2({ periodLabel: periodText(sheet.customer.periodLabel) }) : ''} {m.khuyen_mai_toi_da()} {sheet?.discountCapRate ?? '—'}{m.hang_tang_co_don_gia_0()}
   </p>
 </article>
 
@@ -678,6 +795,17 @@
     </div>
   </article>
 
+  {#if nonSale}
+    <aside class="card summary loan-summary" aria-live="polite">
+      <h2>{m.lp_khong_tinh_tien_ngan()}</h2>
+      <dl>
+        <div class="main"><dt>{m.lp_loai_phieu()}</dt><dd>{slipTypeLabel(slipType)}</dd></div>
+        <div><dt>{m.lp_tong_so_luong()}</dt><dd>{num(calc.lines.reduce((sum, line) => sum + (line ? Number(line.quantity) : 0), 0))}</dd></div>
+        <div class="total"><dt>{m.tong_tien_thanh_toan()}</dt><dd>{vnd('0')}</dd></div>
+      </dl>
+      <p class="words"><span>{gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</span></p>
+    </aside>
+  {:else}
   <aside class="card summary" aria-live="polite">
     <h2>{m.tong_tien_phieu()}</h2>
     <dl>
@@ -699,7 +827,7 @@
     {#if vatRate !== defaultVat && hasLines}
       <p class="credit info"><Info size={16} /><span>{m.khac_thue_suat_mac_dinh()} {defaultVat === 'KCT' ? 'KCT' : `${defaultVat}%`}. {sheet?.pricesIncludeTax ? m.bang_gia_da_gom_thue_nen() : m.tien_thue_va_tong_thanh_toan()} {m.kiem_tra_ma_hang_co_dung()}</span></p>
     {/if}
-    {#if sheet && dealer && hasLines}
+    {#if sheet?.customer && dealer && hasLines}
       {#if calc.creditRemainingAfter === null}
         <p class="credit ok"><CircleCheck size={16} />{sheet.customer.tier === 'RETAIL' ? m.khach_le_thanh_toan_ngay_khong() : m.khong_cap_cong_no_thanh_toan_ngay()}</p>
       {:else if calc.creditRemainingAfter >= 0}
@@ -713,6 +841,7 @@
     {/if}
     {#if sheetLoading}<p class="quoting">{m.dang_tai_bang_gia_cua_khach()}</p>{/if}
   </aside>
+  {/if}
 </section>
 
 <Dialog bind:open={priceRequestOpen} title={m.gia_xin_quyen_tieu_de()}>
@@ -749,6 +878,14 @@
   .block-head small { margin-left: auto; color: var(--subtle); font-size: 12.5px; }
   .step { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12.5px; font-weight: 700; }
   .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 16px 22px; padding: 20px 22px 6px; }
+  .slip-types { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 16px 22px 0; }
+  .slip-label { margin-right: 6px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .slip-types button { padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; }
+  .slip-types button.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .slip-types button.loan.on { border-color: var(--orange); background: var(--orange); }
+  .slip-types button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .hint.hidden { display: none; }
+  .loan-summary .words span { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
   .grid.second { padding: 14px 22px 22px; }
   .wide { grid-column: span 2; }
   .buyer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 24px; margin: 14px 22px 4px; padding: 14px 16px; border-radius: 8px; background: var(--surface-2); }
@@ -818,4 +955,7 @@
   @media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .buyer { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 1000px) { .bottom { grid-template-columns: 1fr; } .block-head { flex-wrap: wrap; } .scan { width: 100%; margin-left: 0; } }
   @media (max-width: 640px) { .grid, .buyer { grid-template-columns: 1fr; } .wide { grid-column: auto; } .vat-select { width: 160px; } }
+  .request-reason { align-items: flex-start; }
+  .request-reason .field { flex: 1; margin: 0; }
+  .request-reason textarea { width: 100%; }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { partyName } from '$lib/slip-type';
   import { m } from '$lib/paraglide/messages';
   import type { SalesOrder } from '@inoxpran/contracts';
   import { onMount } from 'svelte';
@@ -37,7 +38,7 @@
     try {
       let shipped: Paged<Order>;
       [waiting, checking, shipped] = await Promise.all([
-        api<Order[]>('/sales-orders?status=RESERVED&confirmation=CONFIRMED'),
+        api<Order[]>('/sales-orders?status=RESERVED&confirmation=CONFIRMED,NOT_REQUIRED'),
         api<Order[]>('/sales-orders?status=RESERVED&confirmation=PENDING'),
         api<Paged<Order>>(`/sales-orders?status=SHIPPED&page=${shippingPage}&pageSize=${shippingPageSize}`),
       ]);
@@ -103,7 +104,7 @@
           {#each waiting as order}
             <tr>
               <td><a class="code" href={`/sales/orders/${order.id}`}>{order.code}</a></td>
-              <td>{order.customerName}<small>{order.customerCode}{order.province ? ` · ${order.province}` : ''}{!keeperOnly && order.warehouseKeeperName ? m.thu_kho({ warehouseKeeperName: order.warehouseKeeperName }) : ''}</small></td>
+              <td>{partyName(order)}<small>{order.customerCode ?? ''}{order.province ? ` · ${order.province}` : ''}{!keeperOnly && order.warehouseKeeperName ? m.thu_kho({ warehouseKeeperName: order.warehouseKeeperName }) : ''}</small></td>
               <td>{order.deliveryLocation ?? m.khach_lay_tai_kho()}</td>
               <td class="num">{order.lineCount ?? order.lines.length}</td>
               <td class="num"><b>{num(order.grandTotal)}</b></td>
@@ -132,7 +133,7 @@
             <tr>
               <td class="code">{order.warehouseSlipNo ?? '—'}</td>
               <td><a class="code" href={`/sales/orders/${order.id}`}>{order.code}</a></td>
-              <td>{order.customerName}{#if order.province}<small>{order.province}</small>{/if}</td>
+              <td>{partyName(order)}{#if order.province}<small>{order.province}</small>{/if}</td>
               <td>{order.receiverName ?? '—'}{#if order.carrier}<small>{order.carrier}</small>{/if}</td>
               <td class="num"><b>{num(order.grandTotal)}</b></td>
               <td class="muted">{dateTime(order.shippedAt ?? order.updatedAt)}</td>
@@ -159,7 +160,7 @@
           {#each checking as order}
             <tr>
               <td><a class="code" href={`/sales/orders/${order.id}`}>{order.code}</a></td>
-              <td>{order.customerName}</td>
+              <td>{partyName(order)}</td>
               <td>{order.salesRepName ?? '—'}</td>
               <td class="num">{order.lineCount ?? order.lines.length}</td>
               <td class="num">{num(order.grandTotal)}</td>

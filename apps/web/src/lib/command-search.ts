@@ -15,11 +15,14 @@ export interface CommandItem {
   /** Mọi tầng phải qua (phân hệ, mục); ADMIN luôn qua. */
   roleGates: Array<string[] | undefined>;
   rootOnly?: boolean | undefined;
+  /** Cần một trong các quyền nghiệp vụ (PERM-01). */
+  permissions?: string[] | undefined;
 }
 
 export interface CommandUser {
   roles: string[];
   root?: boolean | undefined;
+  permissions?: string[] | undefined;
 }
 
 const WAREHOUSE_EDITORS = ['DIRECTOR', 'WAREHOUSE_MANAGER', 'WAREHOUSE'];
@@ -88,6 +91,7 @@ export function buildCommands(sections: readonly NavSection[], extra: readonly C
           keywords: KEYWORDS[item.href] ?? '',
           roleGates: [section.roles, item.roles],
           rootOnly: item.rootOnly,
+          permissions: item.permissions,
         });
       }
     }
@@ -104,6 +108,7 @@ export function visibleCommands(items: readonly CommandItem[], user: CommandUser
   return items.filter((item) => {
     if (item.rootOnly && !user.root) return false;
     if (!item.roleGates.every((gate) => passes(user.roles, gate))) return false;
+    if (item.permissions?.length && !user.root && !item.permissions.some((key) => user.permissions?.includes(key))) return false;
     if (seen.has(item.href)) return false;
     seen.add(item.href);
     return true;

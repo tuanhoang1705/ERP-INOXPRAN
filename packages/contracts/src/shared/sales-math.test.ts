@@ -53,6 +53,48 @@ describe('priceLine — đổi thuế suất khi bảng giá đã gồm thuế',
   });
 });
 
+describe('priceLine — đơn giá sửa tay', () => {
+  it('đơn giá 0 (phiếu xuất đi kiểm định): thành tiền, thuế = 0, giá niêm yết vẫn giữ', () => {
+    const line = priceLine({ ...sale(820000, 1), unitPriceOverride: '0' }, included('8'));
+    expect(line.unitPrice).toBe('0.00');
+    expect(line.netAmount).toBe('0.00');
+    expect(line.taxAmount).toBe('0.00');
+    expect(line.grossAmount).toBe('0.00');
+    expect(line.listPrice).toBe('820000.00');
+    expect(line.baseQuantity).toBe('1');
+  });
+
+  it('đơn giá 0 khi bảng giá chưa gồm thuế, quy đổi thùng 4 cái: thành tiền 0, số lượng quy đổi đúng', () => {
+    const line = priceLine({ baseUnitPrice: '500000', quantity: '3', conversionFactor: '4', discountRate: '5', unitPriceOverride: '0' }, { vatRate: '10', pricesIncludeTax: false });
+    expect(line.baseQuantity).toBe('12');
+    expect(line.unitPrice).toBe('0.00');
+    expect(line.listUnitPrice).toBe('0.00');
+    expect(line.discountAmount).toBe('0.00');
+    expect(line.netAmount).toBe('0.00');
+    expect(line.listPrice).toBe('2000000.00');
+  });
+
+  it('phiếu trộn: dòng giá 0 + dòng thường + hàng tặng — tổng chỉ tính dòng thường', () => {
+    const zero = priceLine({ ...sale(820000, 2), unitPriceOverride: '0' }, included('8'));
+    const normal = priceLine(sale(160000, 12), included('8'));
+    const gift = priceLine({ ...sale(586000, 1), gift: true }, included('8'));
+    expect(summarizeDocument([zero, normal, gift], '8')).toMatchObject(summarizeDocument([normal], '8'));
+    expect(summarizeDocument([zero, normal, gift], '8')).toMatchObject({ netTotal: '1777778', taxTotal: '142222', grandTotal: '1920000' });
+  });
+
+  it('phiếu toàn dòng giá 0: tổng thanh toán 0 với mọi thuế suất', () => {
+    for (const rate of ['0', '5', '8', '10', 'KCT']) {
+      const line = priceLine({ ...sale(820000, 5), unitPriceOverride: '0' }, included(rate));
+      expect(summarizeDocument([line], rate)).toMatchObject({ subtotal: '0.00', discountTotal: '0.00', netTotal: '0', taxTotal: '0', grandTotal: '0' });
+    }
+    expect(documentTotals('0', '8')).toEqual({ netTotal: '0', taxTotal: '0', grandTotal: '0' });
+  });
+
+  it('đơn giá âm bị từ chối', () => {
+    expect(() => priceLine({ ...sale(820000, 1), unitPriceOverride: '-1' }, included('8'))).toThrow('không được âm');
+  });
+});
+
 describe('priceLine — chiết khấu, quy đổi đơn vị, số lẻ', () => {
   it('thùng 2 bộ, CK 6% (bậc 2% + KM 4%), VAT 8%', () => {
     const line = priceLine(sale(1610000, 2, 6, 2), included('8'));

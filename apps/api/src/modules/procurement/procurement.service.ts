@@ -15,6 +15,7 @@ import {
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -74,8 +75,9 @@ export class ProcurementService {
     return { actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId };
   }
 
-  async list(status?: string, search?: string, paging: PageRequest | null = null, supplierId?: string) {
-    const filter: Document = status ? { status } : {};
+  async list(status?: string, search?: string, paging: PageRequest | null = null, supplierId?: string, from?: string, to?: string) {
+    // Lọc theo ngày lập đơn (LIST-DATE-01).
+    const filter: Document = { ...(status ? { status } : {}), ...dateRangeFilter('createdAt', from, to) };
     if (supplierId) filter.supplierId = toObjectId(supplierId, 'supplierId');
     if (search) {
       const pattern = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };

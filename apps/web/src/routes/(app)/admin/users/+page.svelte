@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import type { AdminUser, LoginEvent, Warehouse } from '@inoxpran/contracts';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, Copy, KeyRound, LogOut, Pencil, Plus, ShieldOff, UserCheck, UserX } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Copy, KeyRound, ListChecks, LogOut, Pencil, Plus, ShieldOff, UserCheck, UserX } from 'lucide-svelte';
   import { api, ApiRequestError } from '$lib/api';
   import { dateTime, initials } from '$lib/format';
   import { hasRole, roleLabel } from '$lib/labels';
@@ -12,6 +12,8 @@
   import { canManageUser, USER_ROLES } from '$shared/user-admin';
   import Dialog from '$lib/components/Dialog.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
+  import PermissionsDialog from '$lib/components/PermissionsDialog.svelte';
 
   type Tab = 'users' | 'logins';
   let tab = $state<Tab>('users');
@@ -20,6 +22,11 @@
   let page = $state(1);
   let pageSize = $state(initialPageSize());
   let search = $state('');
+  /** Lọc theo ngày tạo tài khoản / thời điểm đăng nhập (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
+  let loginFrom = $state('');
+  let loginTo = $state('');
   let role = $state('');
   let status = $state('');
   let loading = $state(true);
@@ -44,6 +51,8 @@
   let copied = $state(false);
 
   let confirmOpen = $state(false);
+  let permissionsOpen = $state(false);
+  let permissionsUser = $state<AdminUser | null>(null);
   let confirmAction = $state<{ user: AdminUser; kind: 'disable' | 'enable' | 'reset-password' | 'reset-mfa' | 'revoke-sessions' } | null>(null);
 
   const me = $derived(session.user);
@@ -56,7 +65,7 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<AdminUser>>(`/admin/users?${pageQuery({ search, role, status }, page, pageSize)}`);
+      const result = await api<Paged<AdminUser>>(`/admin/users?${pageQuery({ search, role, status, from, to }, page, pageSize)}`);
       users = result.rows;
       total = result.total;
     } catch (caught) {
@@ -66,7 +75,7 @@
     }
   }
   async function loadLogins() {
-    const result = await api<Paged<LoginEvent>>(`/admin/login-events?${pageQuery({ success: loginFilter, search: loginSearch }, loginPage, pageSize)}`).catch(() => null);
+    const result = await api<Paged<LoginEvent>>(`/admin/login-events?${pageQuery({ success: loginFilter, search: loginSearch, from: loginFrom, to: loginTo }, loginPage, pageSize)}`).catch(() => null);
     if (result) {
       logins = result.rows;
       loginTotal = result.total;
@@ -211,6 +220,7 @@
 {#if tab === 'users'}
   <section class="card filters">
     <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.adm_search_ph()} /></div>
+    <DateRangeFilter bind:from bind:to label={m.dr_ngay_tao()} id="user-date" onchange={refilter} />
     <div class="field"><label for="role">{m.adm_roles()}</label><select id="role" bind:value={role} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each USER_ROLES as item}<option value={item}>{roleLabel[item] ?? item}</option>{/each}</select></div>
     <div class="field"><label for="status">{m.trang_thai()}</label><select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option><option value="ACTIVE">{m.hoat_dong()}</option><option value="DISABLED">{m.da_khoa()}</option></select></div>
   </section>
@@ -237,6 +247,7 @@
                 </td>
                 {#if isAdmin}
                   <td class="row-actions">
+                    <button class="icon-btn" title={m.perm_nut()} aria-label={`${m.perm_nut()} ${user.displayName}`} onclick={() => { permissionsUser = user; permissionsOpen = true; }}><ListChecks size={15} /></button>
                     {#if manageable(user)}
                       <button class="icon-btn" title={m.crud_sua()} aria-label={`${m.crud_sua()} ${user.displayName}`} onclick={() => openForm(user)}><Pencil size={15} /></button>
                       <button class="icon-btn" title={m.adm_reset_password()} aria-label={`${m.adm_reset_password()} ${user.displayName}`} onclick={() => ask(user, 'reset-password')}><KeyRound size={15} /></button>
@@ -273,6 +284,7 @@
 {:else}
   <section class="card filters">
     <div class="field"><label for="login-search">{m.tim_kiem()}</label><input id="login-search" bind:value={loginSearch} oninput={loginSearchChanged} placeholder="Email" /></div>
+    <DateRangeFilter bind:from={loginFrom} bind:to={loginTo} label={m.dr_thoi_gian()} id="login-date" onchange={() => { loginPage = 1; void loadLogins(); }} />
     <div class="field"><label for="login-filter">{m.adm_result()}</label><select id="login-filter" bind:value={loginFilter} onchange={() => { loginPage = 1; void loadLogins(); }}><option value="">{m.tat_ca()}</option><option value="false">{m.adm_failed_only()}</option></select></div>
   </section>
   <section class="card block">
@@ -295,6 +307,8 @@
     <Pagination page={loginPage} {pageSize} total={loginTotal} onchange={(next, size) => { loginPage = next; pageSize = size; void loadLogins(); }} />
   </section>
 {/if}
+
+<PermissionsDialog bind:open={permissionsOpen} user={permissionsUser} editable={Boolean(me?.root)} onsaved={(updated) => { success = m.perm_da_luu({ name: updated.displayName }); users = users.map((row) => (row.id === updated.id ? updated : row)); }} />
 
 <Dialog bind:open={formOpen} title={editing ? m.adm_edit_user({ name: editing.displayName }) : m.adm_add_user()} wide>
   <form id="user-form" class="grid" onsubmit={save} novalidate>
@@ -342,7 +356,7 @@
   .tabs button { padding: 9px 14px; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; }
   .tabs button.active { border-color: var(--navy); color: var(--navy); }
   .tabs b { margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--surface-2); font-size: 11.5px; }
-  .filters { grid-template-columns: 2fr 1fr 1fr; }
+  .filters { grid-template-columns: 2fr 1.4fr 1fr 1fr; }
   .block { margin-bottom: 18px; }
   .user { display: flex; align-items: center; gap: 10px; }
   .user > span { display: grid; flex: none; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--blue-soft); color: var(--navy); font-size: 12px; font-weight: 700; }

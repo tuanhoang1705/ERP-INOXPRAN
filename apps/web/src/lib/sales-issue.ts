@@ -100,7 +100,7 @@ export function computeIssue(
       lines.push(null);
       return;
     }
-    const overridden = !input.gift && Boolean(input.overrideUnitPrice) && Number(input.overrideUnitPrice) > 0;
+    const overridden = !input.gift && Boolean(input.overrideUnitPrice) && Number(input.overrideUnitPrice) >= 0;
     const discountRate = input.gift || overridden ? '0' : basis.discountRate;
     const options = { vatRate, pricesIncludeTax: sheet.pricesIncludeTax };
     const original = priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: input.gift ? '0' : basis.discountRate, gift: input.gift }, options);
@@ -131,8 +131,10 @@ export function computeIssue(
 
   const grandTotal = Number(summary.grandTotal);
   // Khách lẻ hoặc hạn mức 0 (không cấp công nợ): thanh toán ngay, không xét vượt hạn mức — cùng quy tắc approval.engine.ts.
-  const noCredit = sheet?.customer.tier === 'RETAIL' || Number(sheet?.customer.creditLimit ?? 0) <= 0;
-  const creditRemainingAfter = sheet && !noCredit ? Number(sheet.customer.creditLimit) - Number(sheet.customer.exposure) - grandTotal : null;
+  // Bảng của phiếu hàng mẫu / kiểm định không có khách → không xét hạn mức.
+  const customer = sheet?.customer;
+  const noCredit = !customer || customer.tier === 'RETAIL' || Number(customer.creditLimit ?? 0) <= 0;
+  const creditRemainingAfter = customer && !noCredit ? Number(customer.creditLimit) - Number(customer.exposure) - grandTotal : null;
   return {
     lines,
     lineErrors,

@@ -1,7 +1,7 @@
 /**
  * Làm sạch dữ liệu dùng thử trước khi chạy thật (RESET-01, 13/10/2026) — quản trị hạ tầng chạy một lần, có bước chạy thử.
  * Xóa chứng từ phát sinh khi dùng thử (phiếu BH / SWK, thẻ kho, giữ chỗ, chuyển kho, kiểm kê, trả hàng, công nợ, phiếu thu,
- * đơn mua / nhập kho / lô nhập khẩu, bảo hành, duyệt, sửa giá, thông báo, lô nhập Excel, bộ đếm số chứng từ) và ảnh đính kèm
+ * đơn mua / nhập kho / lô nhập khẩu, bảo hành, duyệt, sửa giá, đề nghị sửa / hủy phiếu, thông báo, lô nhập Excel, bộ đếm số chứng từ) và ảnh đính kèm
  * của chúng; tồn kho đưa về 0 để nhập lại tồn đầu kỳ.
  * GIỮ NGUYÊN: nhật ký hệ thống (audit_events — không xóa, thêm một dòng ghi lại lần làm sạch này), tài khoản, cấu hình, kho & vị trí,
  * danh mục sản phẩm, bảng giá, khuyến mãi, khách hàng / NCC, khu vực, NVKD, mã lỗi bảo hành, hoạt động CRM.
@@ -23,7 +23,7 @@ export const RESET_CONFIRM = 'XOA-DU-LIEU-GIAO-DICH';
 const WIPE = [
   'sales_orders', 'shipments', 'inventory_movements', 'inventory_reservations', 'inventory_transfers', 'stock_counts', 'stock_returns',
   'receivables', 'payments', 'overdue_reviews', 'purchase_orders', 'goods_receipts', 'import_shipments', 'warranty_tickets',
-  'approval_requests', 'price_override_requests', 'import_batches', 'notifications', 'outbox_events', 'idempotency_keys', 'counters',
+  'approval_requests', 'price_override_requests', 'sales_change_requests', 'import_batches', 'notifications', 'outbox_events', 'idempotency_keys', 'counters',
 ];
 /** Ảnh đính kèm của chứng từ (ảnh sản phẩm / hồ sơ khách giữ lại). */
 const ATTACHMENT_ENTITY_TYPES = ['SalesOrder', 'WarrantyTicket', 'PurchaseOrder', 'ImportShipment'];

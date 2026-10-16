@@ -15,6 +15,7 @@ export interface CachedAccount {
   mfaEnabled: boolean;
   mustChangePassword: boolean;
   lastSeenAt?: Date | undefined;
+  permissionOverrides?: Record<string, boolean> | undefined;
 }
 
 export const SESSION_CACHE_TTL_MS = 15_000;

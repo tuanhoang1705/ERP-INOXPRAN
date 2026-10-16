@@ -98,7 +98,13 @@ export function hasRole(roles: string[] | undefined, allowed: string[]): boolean
  * Bước xử lý của phiếu xuất kho bán hàng theo quy trình INOXPRAN:
  * Kế toán lập BH → (duyệt nếu vượt ngưỡng) → Kinh doanh đối chiếu với khách → Kho lập SWK & xuất → Giao hàng.
  */
-export function orderStage(order: { status: string; confirmationStatus?: string | undefined }): { label: string; tone: Tone } {
+export function orderStage(order: { status: string; confirmationStatus?: string | undefined; loanStatus?: string | undefined; purpose?: string | undefined }): { label: string; tone: Tone } {
+  if (order.purpose === 'GIFT' && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(order.status)) return { label: m.lp_da_xuat_tang(), tone: 'success' };
+  // Phiếu hàng mẫu / kiểm định đã xuất: tình trạng hàng ở ngoài (SAL-TYPE-01).
+  if (order.loanStatus && order.status !== 'CANCELLED') {
+    const loan = { OUT: m.lp_dang_muon(), PARTIAL: m.lp_ve_mot_phan(), RETURNED: m.lp_da_ve_du(), CLOSED: m.lp_da_chot() }[order.loanStatus];
+    if (loan) return { label: loan, tone: order.loanStatus === 'RETURNED' ? 'success' : order.loanStatus === 'CLOSED' ? 'neutral' : 'warning' };
+  }
   if (order.status === 'DRAFT') {
     return order.confirmationStatus === 'REVISION_REQUESTED'
       ? { label: m.kd_yeu_cau_sua_phieu(), tone: 'danger' }
@@ -106,7 +112,7 @@ export function orderStage(order: { status: string; confirmationStatus?: string 
   }
   if (order.status === 'RESERVED') {
     if (order.confirmationStatus === 'PENDING') return { label: m.cho_kd_doi_chieu_voi_khach(), tone: 'warning' };
-    if (order.confirmationStatus === 'CONFIRMED') return { label: m.cho_kho_lap_swk(), tone: '' };
+    if (order.confirmationStatus === 'CONFIRMED' || order.confirmationStatus === 'NOT_REQUIRED') return { label: m.cho_kho_lap_swk(), tone: '' };
   }
   if (order.status === 'SHIPPED') return { label: m.da_xuat_kho_dang_giao(), tone: '' };
   return salesStatus[order.status] ?? { label: order.status, tone: '' };

@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, type LoginEvent, type UpdateUser } from '@inoxpran/contracts';
+import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, isPermissionKey, type LoginEvent, type UpdateUser, type UpdateUserPermissions } from '@inoxpran/contracts';
 import { randomBytes } from 'node:crypto';
 import { type Db, type Document, type Filter, ObjectId } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { serializeDocument, toObjectId } from '../../common/domain';
 import { pageOf, type PageRequest } from '../../common/paging';
 import type { AuthenticatedRequest } from '../../common/request-context';
+import { overridesOf, permissionsOf } from '../../common/permissions';
 import { sessionCache } from '../../common/session-cache';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { hashPassword } from '../auth/password';
@@ -60,12 +62,15 @@ export class UsersAdminService {
         ...(iso(row.lastSeenAt) ? { lastSeenAt: iso(row.lastSeenAt) as string } : {}),
         ...(iso(row.createdAt) ? { createdAt: iso(row.createdAt) as string } : {}),
         ...(row.demoData ? { demoData: true } : {}),
+        ...(Object.keys(overridesOf(row)).length ? { permissionOverrides: overridesOf(row) } : {}),
+        permissions: permissionsOf(row),
       };
     });
   }
 
-  async list(filter: { search?: string | undefined; role?: string | undefined; status?: string | undefined }, paging: PageRequest | null) {
-    const query: Filter<Document> = {};
+  async list(filter: { search?: string | undefined; role?: string | undefined; status?: string | undefined; from?: string | undefined; to?: string | undefined }, paging: PageRequest | null) {
+    // Lọc theo ngày tạo tài khoản (LIST-DATE-01).
+    const query: Filter<Document> = dateRangeFilter('createdAt', filter.from, filter.to);
     if (filter.role) query.roles = filter.role;
     if (filter.status) query.status = filter.status;
     if (filter.search) {
@@ -175,6 +180,33 @@ export class UsersAdminService {
     return (await this.present([after as Document]))[0];
   }
 
+  /**
+   * Quyền nghiệp vụ theo tài khoản (PERM-01): chỉ quản trị gốc tích / bỏ tích; true = cấp, false = thu, null = về mặc định theo vai trò.
+   * Tài khoản gốc luôn có mọi quyền (không chỉnh). Có hiệu lực ngay (xóa bộ nhớ phiên).
+   */
+  async updatePermissions(id: string, input: UpdateUserPermissions, request: AuthenticatedRequest) {
+    if (!request.user.root) throw new ForbiddenException({ code: 'ROOT_ONLY', message: 'Chỉ quản trị gốc được cấp / thu quyền nghiệp vụ' });
+    const before = await this.load(id);
+    if (before.root) throw new ConflictException({ code: 'USER_ROOT_PERMISSIONS', message: 'Tài khoản quản trị gốc luôn có mọi quyền' });
+    const unknown = Object.keys(input.overrides).filter((key) => !isPermissionKey(key));
+    if (unknown.length) throw new BadRequestException({ code: 'PERMISSION_UNKNOWN', message: `Không có quyền: ${unknown.join(', ')}` });
+    const overrides = overridesOf(before);
+    for (const [key, value] of Object.entries(input.overrides)) {
+      if (value === null) delete overrides[key];
+      else overrides[key] = value;
+    }
+    const permissionGrants = Object.keys(overrides).filter((key) => overrides[key] === true).sort();
+    const permissionRevokes = Object.keys(overrides).filter((key) => overrides[key] === false).sort();
+    const after = await this.users().findOneAndUpdate(
+      { _id: before._id },
+      { $set: { permissionGrants, permissionRevokes, updatedAt: new Date() } },
+      { returnDocument: 'after', projection: { passwordHash: 0, mfaSecret: 0, pendingMfaSecret: 0 } },
+    );
+    sessionCache.invalidate(id);
+    await this.record(request, 'USER_PERMISSIONS_UPDATED', before, undefined, { permissionOverrides: overridesOf(before) }, { permissionOverrides: overrides });
+    return (await this.present([after as Document]))[0];
+  }
+
   /** Khóa / mở khóa. Khóa đăng xuất mọi phiên ngay; mở khóa xóa luôn khóa tạm do nhập sai mật khẩu. */
   async setStatus(id: string, status: 'ACTIVE' | 'DISABLED', request: AuthenticatedRequest) {
     const before = await this.load(id);
@@ -223,8 +255,8 @@ export class UsersAdminService {
     return { revoked: true };
   }
 
-  async loginEvents(filter: { userId?: string | undefined; success?: string | undefined; search?: string | undefined }, paging: PageRequest) {
-    const query: Filter<Document> = {};
+  async loginEvents(filter: { userId?: string | undefined; success?: string | undefined; search?: string | undefined; from?: string | undefined; to?: string | undefined }, paging: PageRequest) {
+    const query: Filter<Document> = dateRangeFilter('at', filter.from, filter.to);
     if (filter.userId) query.userId = toObjectId(filter.userId, 'userId');
     if (filter.success === 'true' || filter.success === 'false') query.success = filter.success === 'true';
     if (filter.search) query.email = new RegExp(filter.search.replace(ESCAPE, '\\$&'), 'i');

@@ -3,7 +3,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert } from 'lucide-svelte';
   import { api } from '$lib/api';
-  import { date, num } from '$lib/format';
+  import { date, num, todayIso } from '$lib/format';
   import { availabilityLabel } from '$lib/labels';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
@@ -18,6 +18,8 @@
   let categories = $state<Array<{ id: string; name: string }>>([]);
   let categoryId = $state('');
   let search = $state('');
+  /** Bảng giá áp dụng tại ngày (LIST-DATE-01); trống = hiện hành. */
+  let at = $state('');
   let loading = $state(true);
   let error = $state('');
   let total = $state(0);
@@ -28,7 +30,7 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<PriceRow> & { books: Book[] }>(`/price-list?${pageQuery({ categoryId, search }, page, pageSize)}`);
+      const result = await api<Paged<PriceRow> & { books: Book[] }>(`/price-list?${pageQuery({ categoryId, search, at }, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
       books = result.books;
@@ -75,10 +77,12 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_model_hoac_ten_san_pham()} /></div>
+  <div class="field"><label for="price-at">{m.dr_bang_gia_ngay()}</label><input id="price-at" type="date" max={todayIso()} bind:value={at} onchange={refilter} /></div>
   <div class="field"><label for="category">{m.nhom_san_pham()}</label><select id="category" bind:value={categoryId} onchange={refilter}><option value="">{m.tat_ca_nhom()}</option>{#each categories as item}<option value={item.id}>{item.name}</option>{/each}</select></div>
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if at}<div class="banner warning"><CircleAlert size={17} /><span>{m.dr_dang_xem_gia_ngay({ date: date(`${at}T00:00:00+07:00`) })}</span></div>{/if}
 
 <section class="card">
   <div class="table-wrap">
@@ -113,7 +117,7 @@
   .book span { width: fit-content; padding: 2px 9px; border-radius: 999px; background: var(--blue-soft); color: var(--navy-2); font-size: 11.5px; font-weight: 700; }
   .book b { font-size: 15px; }
   .book small { color: var(--muted); font-size: 12px; }
-  .filters { grid-template-columns: 2fr 1fr; }
+  .filters { grid-template-columns: 2fr 1fr 1fr; }
   th.npp { background: #eaf6e4; color: #3f7a2a; }
   td.npp { background: #f5fbf2; }
 </style>

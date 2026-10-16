@@ -3,6 +3,7 @@ import type { AdjustmentCategory, CreateInventoryTransfer, InventoryCategory } f
 import type { Db, ClientSession, Document } from 'mongodb';
 import { Decimal128, ObjectId } from 'mongodb';
 import Decimal from 'decimal.js';
+import { dateBounds } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -36,7 +37,13 @@ export class InventoryService {
     private readonly idempotency: IdempotencyService,
   ) {}
 
-  async listBalances(warehouseId?: string, search?: string, lowOnly = false, paging: PageRequest | null = null) {
+  /**
+   * Tồn kho theo kho / mã. `asOf` (YYYY-MM-DD, LIST-DATE-01): tồn cuối ngày đó theo giờ Việt Nam = tồn hiện tại trừ các phát sinh
+   * thẻ kho sau thời điểm đó; xem ngày cũ thì không có số giữ chỗ và bỏ lọc "dưới định mức".
+   */
+  async listBalances(warehouseId?: string, search?: string, lowOnly = false, paging: PageRequest | null = null, asOf?: string) {
+    const asOfEnd = asOf ? dateBounds(asOf, asOf)?.$lt ?? null : null;
+    if (asOfEnd) lowOnly = false;
     const match: Document = {};
     if (warehouseId) match.warehouseId = toObjectId(warehouseId, 'warehouseId');
     const pipeline: Document[] = [
@@ -80,9 +87,19 @@ export class InventoryService {
     } else {
       documents = await this.db.collection('inventory_balances').aggregate([...pipeline, { $limit: 500 }]).toArray();
     }
+    // Phát sinh sau cuối ngày xem (chỉ cho các dòng đang hiển thị): nhập cộng, xuất trừ.
+    const after = new Map<string, number>();
+    if (asOfEnd && documents.length) {
+      const moved = await this.db.collection('inventory_movements').aggregate([
+        { $match: { occurredAt: { $gte: asOfEnd }, productId: { $in: documents.map((document) => document.productId as ObjectId) }, warehouseId: { $in: [...new Set(documents.map((document) => String(document.warehouseId)))].map((id) => new ObjectId(id)) } } },
+        { $group: { _id: { warehouseId: '$warehouseId', productId: '$productId' }, net: { $sum: { $cond: [{ $eq: ['$direction', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }] } } } },
+      ]).toArray();
+      for (const row of moved) after.set(`${String(row._id.warehouseId)}:${String(row._id.productId)}`, Number(decimalString(row.net)));
+    }
     const rows = documents.map((document) => {
-      const onHand = Number(decimalString(document.onHand));
-      const reserved = Number(decimalString(document.reserved));
+      const current = Number(decimalString(document.onHand));
+      const onHand = asOfEnd ? Math.round((current - (after.get(`${String(document.warehouseId)}:${String(document.productId)}`) ?? 0)) * 10_000) / 10_000 : current;
+      const reserved = asOfEnd ? 0 : Number(decimalString(document.reserved));
       const minimum = Number(decimalString(document.product.minimumStock));
       return {
         productId: document.productId.toHexString(),
@@ -102,9 +119,8 @@ export class InventoryService {
     return paging ? pageOf(rows, counts.total, paging, { lowCount: counts.low }) : rows;
   }
 
-  /** `hidden`: điều kiện bỏ dòng thẻ kho ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
-  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null, hidden: Document = {}) {
-    const filter: Document = { ...hidden };
+  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null) {
+    const filter: Document = {};
     if (productId) filter.productId = toObjectId(productId, 'productId');
     if (warehouseId) filter.warehouseId = toObjectId(warehouseId, 'warehouseId');
     const cursor = this.db.collection('inventory_movements').find(filter).sort({ occurredAt: -1, _id: -1 });
@@ -114,7 +130,7 @@ export class InventoryService {
     // Thẻ kho một mã: tồn sau dòng đầu trang = tồn hiện tại − phát sinh của các dòng mới hơn (các trang trước).
     const signed = { $cond: [{ $eq: ['$direction', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }] };
     const [stock, newer] = await Promise.all([
-      this.db.collection('inventory_balances').aggregate([{ $match: { productId: filter.productId, ...(filter.warehouseId ? { warehouseId: filter.warehouseId } : {}) } }, { $group: { _id: null, onHand: { $sum: '$onHand' } } }]).toArray(),
+      this.db.collection('inventory_balances').aggregate([{ $match: filter }, { $group: { _id: null, onHand: { $sum: '$onHand' } } }]).toArray(),
       paging.skip
         ? this.db.collection('inventory_movements').aggregate([{ $match: filter }, { $sort: { occurredAt: -1, _id: -1 } }, { $limit: paging.skip }, { $group: { _id: null, net: { $sum: signed } } }]).toArray()
         : Promise.resolve([]),
@@ -399,6 +415,8 @@ export class InventoryService {
     shipmentCode: string,
     session: ClientSession,
     salesOrderCode?: string,
+    /** Phiếu hàng mẫu / kiểm định: mọi dòng ghi loại này thay cho Xuất bán / Hàng tặng (SAL-TYPE-01). */
+    category?: InventoryCategory,
   ): Promise<void> {
     const warehouseId = toObjectId(warehouseIdValue, 'warehouseId');
     for (const line of lines) {
@@ -431,7 +449,7 @@ export class InventoryService {
           productId,
           movementType: 'SALES_SHIPMENT',
           direction: 'OUT',
-          category: line.gift ? 'GIFT_OUT' : 'SALES_OUT',
+          category: category ?? (line.gift ? 'GIFT_OUT' : 'SALES_OUT'),
           quantity,
           referenceType: 'Shipment',
           referenceId: shipmentCode,

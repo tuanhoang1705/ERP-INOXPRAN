@@ -14,22 +14,9 @@ export function isKeeperOnly(user: Pick<RequestUser, 'roles'>): boolean {
   return user.roles.includes('WAREHOUSE') && !user.roles.some((role) => FULL_VIEW_ROLES.includes(role));
 }
 
-/**
- * Phiếu do quản trị gốc hủy (ROOT-DEL-02, 13/10/2026) mang cờ `staffHidden`: chỉ quản trị gốc, Admin, Giám đốc, kế toán, kiểm soát
- * còn thấy (nhãn "Đã hủy" + lý do); NVKD, thủ kho, mua hàng… không thấy phiếu, dòng thẻ kho, công nợ, yêu cầu duyệt gắn với phiếu.
- */
-const STAFF_HIDDEN_VIEW_ROLES = ['ADMIN', 'DIRECTOR', 'ACCOUNTANT', 'AUDITOR'];
-export function seesStaffHidden(user: Pick<RequestUser, 'roles'> & { root?: boolean | undefined }): boolean {
-  return Boolean(user.root) || user.roles.some((role) => STAFF_HIDDEN_VIEW_ROLES.includes(role));
-}
-/** Điều kiện bỏ bản ghi ẩn với nhân viên (rỗng nếu người xem được thấy). */
-export function staffHiddenFilter(user: Pick<RequestUser, 'roles'> & { root?: boolean | undefined }): Document {
-  return seesStaffHidden(user) ? {} : { staffHidden: { $ne: true } };
-}
-
 /** Điều kiện lọc phiếu theo người xem (rỗng = xem tất cả). */
-export function salesOrderScope(user: Pick<RequestUser, 'roles' | 'sub'> & { root?: boolean | undefined }): Document {
-  if (!isKeeperOnly(user)) return staffHiddenFilter(user);
+export function salesOrderScope(user: Pick<RequestUser, 'roles' | 'sub'>): Document {
+  if (!isKeeperOnly(user)) return {};
   return { warehouseKeeperId: new ObjectId(user.sub), status: { $nin: ['DRAFT', 'CANCELLED'] } };
 }
 

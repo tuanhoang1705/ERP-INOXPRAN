@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PriceOverrideDecisionSchema, PriceOverrideRequestSchema } from '@inoxpran/contracts';
-import { Roles } from '../../common/roles.decorator';
+import { RequirePermission, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { PriceOverridesService } from './price-overrides.service';
 
@@ -17,7 +17,7 @@ export class PriceOverridesController {
     return this.overrides.create(PriceOverrideRequestSchema.parse(body), request, key);
   }
 
-  @Roles('ADMIN', 'DIRECTOR')
+  @RequirePermission('sales.price_override_approve')
   @Get()
   list(@Query('status') status?: string) {
     return this.overrides.list(status && ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].includes(status) ? status : undefined);
@@ -29,7 +29,7 @@ export class PriceOverridesController {
     return this.overrides.get(id, request);
   }
 
-  @Roles('ADMIN', 'DIRECTOR')
+  @RequirePermission('sales.price_override_approve')
   @Post(':id/decision')
   decide(@Param('id') id: string, @Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
     return this.overrides.decide(id, PriceOverrideDecisionSchema.parse(body), request, key);

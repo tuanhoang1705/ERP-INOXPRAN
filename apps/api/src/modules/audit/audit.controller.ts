@@ -1,13 +1,13 @@
 import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Db, Document } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { serializeDocument } from '../../common/domain';
 import { pageOf, pageRequest } from '../../common/paging';
 import { Roles, RootOnly } from '../../common/roles.decorator';
 import { MONGO_DATABASE } from '../../common/tokens';
 
 const ESCAPE = /[.*+?^${}()|[\]\\]/g;
-const isDate = (value: string | undefined): value is string => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 
 /** Nhật ký kiểm toán (ai làm gì, lúc nào, trước / sau): lọc theo người, đối tượng, hành động, khoảng ngày (giờ Việt Nam). */
 @ApiTags('Audit')
@@ -38,12 +38,7 @@ export class AuditController {
       const pattern = new RegExp(search.replace(ESCAPE, '\\$&'), 'i');
       filter.$or = [{ actorEmail: pattern }, { action: pattern }, { entityId: pattern }, { 'metadata.email': pattern }];
     }
-    if (isDate(from) || isDate(to)) {
-      filter.occurredAt = {
-        ...(isDate(from) ? { $gte: new Date(`${from}T00:00:00+07:00`) } : {}),
-        ...(isDate(to) ? { $lt: new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86_400_000) } : {}),
-      };
-    }
+    Object.assign(filter, dateRangeFilter('occurredAt', from, to));
     const paging = pageRequest(page, pageSize);
     const cursor = this.db.collection('audit_events').find(filter).sort({ occurredAt: -1, _id: -1 });
     if (!paging) return (await cursor.limit(500).toArray()).map(serializeDocument);

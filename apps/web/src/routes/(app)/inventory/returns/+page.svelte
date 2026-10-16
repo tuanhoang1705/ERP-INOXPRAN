@@ -109,6 +109,7 @@
       <option value="">{m.tat_ca()}</option>
       <option value="CUSTOMER">{m.inv_khach_tra_hang()}</option>
       <option value="SUPPLIER">{m.inv_tra_nha_may()}</option>
+      <option value="SAMPLE">{m.lp_tra_hang_mau()}</option>
     </select>
   </div>
 </section>
@@ -127,8 +128,8 @@
             <tr>
               <td class="code">{row.code}</td>
               <td class="muted nowrap">{dateTime(row.createdAt)}</td>
-              <td><span class={`pill ${row.kind === 'CUSTOMER' ? 'success' : 'orange'}`}>{categoryLabel(row.category)}</span></td>
-              <td><span class="code">{row.partnerCode}</span><small>{row.partnerName}</small></td>
+              <td><span class={`pill ${row.kind === 'CUSTOMER' ? 'success' : row.kind === 'SAMPLE' ? 'neutral' : 'orange'}`}>{categoryLabel(row.category)}</span></td>
+              <td>{#if row.partnerCode}<span class="code">{row.partnerCode}</span>{/if}<small>{row.partnerName}</small></td>
               <td>{row.warehouseName}</td>
               <td class="code">{row.salesOrderCode ?? row.purchaseOrderCode ?? '—'}</td>
               <td>{#each row.lines as line}<div class="line"><span class="code">{line.sku}</span> × {num(line.quantity)} {line.unit.toLowerCase()}</div>{/each}</td>

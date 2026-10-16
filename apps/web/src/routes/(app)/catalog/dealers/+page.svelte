@@ -12,6 +12,7 @@
   import CustomerCreateDialog, { CUSTOMER_CREATE_ROLES } from '$lib/components/CustomerCreateDialog.svelte';
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
   import { num, percent } from '$lib/format';
@@ -37,6 +38,9 @@
   const today = todayIso();
   const crmViewer = $derived(hasRole(session.user?.roles, [...CRM_ROLES, ...PARTNER_MANAGER_ROLES, 'ACCOUNTANT', 'AUDITOR']));
   let search = $state('');
+  /** Lọc theo khoảng ngày (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
   let loading = $state(true);
   let error = $state('');
   let success = $state('');
@@ -55,7 +59,7 @@
     loading = true;
     error = '';
     try {
-      const filters = { region, tier, search, stage, grade };
+      const filters = { region, tier, search, stage, grade, from, to };
       const result = await api<Paged<Dealer> & { periodLabel: string }>(`/dealers?${pageQuery(filters, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
@@ -135,6 +139,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_ten_dai_ly_tinh_thanh()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ky_doanh_so()} id="dealer-period" onchange={refilter} />
   <div class="field"><label for="region">{m.khu_vuc()}</label><select id="region" bind:value={region} onchange={refilter}><option value="">{m.tat_ca_khu_vuc()}</option>{#each regions as item}<option value={item.code}>{item.name}</option>{/each}</select></div>
   <div class="field"><label for="tier">{m.cap()}</label><select id="tier" bind:value={tier} onchange={refilter}><option value="">{m.tat_ca_cac_cap()}</option><option value="TIER_1">{m.cap_1_nha_phan_phoi()}</option><option value="TIER_2">{m.cap_2_dai_ly()}</option><option value="RETAIL">{m.khach_le()}</option></select></div>
   <div class="field"><label for="stage">{m.crm_loai_khach()}</label><select id="stage" bind:value={stage} onchange={refilter}><option value="">{m.tat_ca()}</option><option value="CUSTOMER">{m.crm_khach_chinh_thuc()}</option><option value="PROSPECT">{m.crm_khach_co_hoi()}</option></select></div>
@@ -189,7 +194,7 @@
 <ConfirmDelete bind:open={deleteOpen} name={deleting ? `${deleting.code} — ${deleting.name}` : ''} ondelete={removeDealer} ondeactivate={deleting?.status !== 'INACTIVE' ? deactivateDealer : undefined} />
 
 <style>
-  .filters { grid-template-columns: 2fr repeat(4, 1fr); }
+  .filters { grid-template-columns: 2fr 1.4fr repeat(4, 1fr); }
   .count { padding: 0 7px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 12px; }
   .count.late { background: var(--red-soft); color: var(--red); }
   .grade { margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--orange-soft); color: var(--orange); font-size: 11px; font-weight: 700; }

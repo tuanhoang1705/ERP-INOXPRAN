@@ -9,10 +9,17 @@ export interface SessionUser {
   root?: boolean;
   /** Bước bắt buộc còn thiếu: đổi mật khẩu tạm, bật MFA. */
   pending?: Array<'PASSWORD' | 'MFA'>;
+  /** Quyền nghiệp vụ hiệu lực (PERM-01) — theo vai trò + chỉnh riêng của quản trị gốc. */
+  permissions?: string[];
 }
 
 /** Phiên đăng nhập hiện tại, được AppShell nạp từ /auth/me và dùng chung cho các trang. */
 export const session = $state<{ user: SessionUser | null }>({ user: null });
+
+/** Người đang đăng nhập có quyền nghiệp vụ `key` (quản trị gốc luôn có). */
+export function can(key: string): boolean {
+  return Boolean(session.user?.root) || Boolean(session.user?.permissions?.includes(key));
+}
 
 const WORKSPACE_KEY = 'erp.workspace';
 

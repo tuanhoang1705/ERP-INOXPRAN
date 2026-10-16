@@ -4,8 +4,10 @@ import {
   categoryInfo,
   categoryOf,
   INVENTORY_CATEGORIES,
+  isNonSale,
   MOVEMENT_TYPE_CATEGORY,
   monthlyBalance,
+  orderParty,
   remainingPercent,
   type InventoryCategory,
   type InventoryJournalRow,
@@ -14,9 +16,11 @@ import {
   type StockCountRow,
   type StockCountWarning,
   type StockDirection,
+  vnDate,
 } from '@inoxpran/contracts';
 import ExcelJS from 'exceljs';
 import type { Db, Document, ObjectId } from 'mongodb';
+import { dateBounds, vnDayBegin } from '../../common/date-range';
 import { decimalString, toObjectId, vnMonthStart, vnParts } from '../../common/domain';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { MONGO_DATABASE } from '../../common/tokens';
@@ -53,6 +57,9 @@ function percentFill(value: number): string {
  * Tính từ thẻ kho (inventory_movements) theo loại phát sinh chuẩn ($shared/inventory-categories).
  * Xem cả công ty thì bỏ qua chuyển kho nội bộ (hai chiều triệt tiêu), cộng cả kho hàng lỗi như file Excel đang làm.
  */
+/** Kỳ nhật ký xuất nhập: một tháng (YYYY-MM) hoặc khoảng ngày (YYYY-MM-DD). */
+export interface JournalPeriod { month?: string | undefined; from?: string | undefined; to?: string | undefined }
+
 @Injectable()
 export class InventoryReportsService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
@@ -65,6 +72,38 @@ export class InventoryReportsService {
     const now = vnParts(new Date());
     if (year * 12 + monthNo > now.year * 12 + now.month) throw new BadRequestException({ code: 'REPORT_MONTH_IN_FUTURE', message: 'Chưa đến tháng báo cáo', details: [{ path: ['month'] }] });
     return { year, monthNo, start: vnMonthStart(year, monthNo), end: vnMonthStart(year, monthNo + 1), current: year === now.year && monthNo === now.month };
+  }
+
+  /**
+   * Kỳ của nhật ký xuất nhập (LIST-DATE-01): khoảng ngày `from` – `to` (giờ Việt Nam, tối đa 366 ngày) hoặc một tháng `month` như trước.
+   */
+  private journalPeriod(period: JournalPeriod) {
+    if (period.from || period.to) {
+      const bounds = dateBounds(period.from, period.to);
+      const today = vnDate(new Date());
+      const fromDay = period.from || today.slice(0, 7) + '-01';
+      const toDay = period.to || today;
+      const start = bounds?.$gte ?? vnDayBegin(fromDay);
+      const end = bounds?.$lt ?? new Date(vnDayBegin(toDay).getTime() + 86_400_000);
+      if (end.getTime() - start.getTime() > 366 * 86_400_000) {
+        throw new BadRequestException({ code: 'DATE_RANGE_TOO_LONG', message: 'Khoảng ngày tối đa 366 ngày', details: [{ path: ['from'] }] });
+      }
+      const show = (value: string) => value.split('-').reverse().join('/');
+      return {
+        start, end,
+        title: `${fromDay} 至 ${toDay} 仓库出入库汇总 — NHẬT KÝ XUẤT NHẬP KHO TỪ ${show(fromDay)} ĐẾN ${show(toDay)}`,
+        sheetName: '出入库汇总',
+        fileTag: `${fromDay}_${toDay}`,
+      };
+    }
+    const month = period.month || vnDate(new Date()).slice(0, 7);
+    const range = this.range(month);
+    return {
+      start: range.start, end: range.end,
+      title: `${range.year}年${range.monthNo}月 仓库出入库汇总 — NHẬT KÝ XUẤT NHẬP KHO THÁNG ${range.monthNo}/${range.year}`,
+      sheetName: `${range.monthNo}月出入库汇总`,
+      fileTag: month,
+    };
   }
 
   private async scope(warehouseId: string | undefined) {
@@ -94,12 +133,9 @@ export class InventoryReportsService {
     };
   }
 
-  /** `hidden`: điều kiện bỏ dòng thẻ kho ẩn với nhân viên (phiếu quản trị gốc hủy — ROOT-DEL-02). */
-  async monthly(month: string, warehouseId?: string, hidden: Document = {}): Promise<InventoryMonthlyReport> {
+  async monthly(month: string, warehouseId?: string): Promise<InventoryMonthlyReport> {
     const range = this.range(month);
-    const scoped = await this.scope(warehouseId);
-    const filter: Document = { ...scoped.filter, ...hidden };
-    const { warehouse } = scoped;
+    const { filter, warehouse } = await this.scope(warehouseId);
     const movements = this.db.collection('inventory_movements');
     const [grouped, openings, rollbacks, rolledBackBatches] = await Promise.all([
       movements.aggregate([
@@ -204,8 +240,8 @@ export class InventoryReportsService {
     };
   }
 
-  async monthlyWorkbook(month: string, warehouseId: string | undefined, preparedBy: string, hidden: Document = {}): Promise<Buffer> {
-    const report = await this.monthly(month, warehouseId, hidden);
+  async monthlyWorkbook(month: string, warehouseId: string | undefined, preparedBy: string): Promise<Buffer> {
+    const report = await this.monthly(month, warehouseId);
     const range = this.range(month);
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'INOXPRAN ERP';
@@ -315,8 +351,8 @@ export class InventoryReportsService {
     return { $or: [{ category }, ...(legacyTypes.length ? [{ category: { $exists: false }, movementType: { $in: legacyTypes } }] : [])] };
   }
 
-  async journal(month: string, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, paging: PageRequest | null) {
-    const range = this.range(month);
+  async journal(period: JournalPeriod, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, paging: PageRequest | null) {
+    const range = this.journalPeriod(period);
     const filter: Document = { occurredAt: { $gte: range.start, $lt: range.end } };
     const and: Document[] = [];
     if (options.warehouseId) filter.warehouseId = toObjectId(options.warehouseId, 'warehouseId');
@@ -354,7 +390,7 @@ export class InventoryReportsService {
     const orderCodes = ids([...movements.map((row) => row.salesOrderCode), ...returnDocs.map((row) => row.salesOrderCode)]);
     const orderIds = shipmentDocs.map((row) => row.salesOrderId as ObjectId).filter(Boolean);
     const orders = orderCodes.length || orderIds.length
-      ? await this.db.collection('sales_orders').find({ $or: [{ code: { $in: orderCodes } }, { _id: { $in: orderIds } }] }, { projection: { code: 1, orderDate: 1, customerId: 1, customerCode: 1, customerName: 1, salesRepName: 1 } }).toArray()
+      ? await this.db.collection('sales_orders').find({ $or: [{ code: { $in: orderCodes } }, { _id: { $in: orderIds } }] }, { projection: { code: 1, orderDate: 1, customerId: 1, customerCode: 1, customerName: 1, salesRepName: 1, purpose: 1, destination: 1 } }).toArray()
       : [];
     const partnerIds = [...orders.map((row) => row.customerId), ...receiptDocs.map((row) => row.supplierId)].filter(Boolean) as ObjectId[];
     const partners = partnerIds.length ? await this.db.collection('partners').find({ _id: { $in: partnerIds } }, { projection: { code: 1, name: 1, salesRepName: 1 } }).toArray() : [];
@@ -381,7 +417,8 @@ export class InventoryReportsService {
       const stockReturn = returnMap.get(reference);
       const ticket = ticketMap.get(reference);
       const partnerCode = stockReturn?.partnerCode ?? orderPartner?.code ?? order?.customerCode ?? supplier?.code ?? ticket?.customer?.code;
-      const partnerName = stockReturn?.partnerName ?? order?.customerName ?? orderPartner?.name ?? supplier?.name ?? ticket?.customer?.name;
+      // Phiếu hàng mẫu / kiểm định không có khách: hiện người mượn (SAL-TYPE-01).
+      const partnerName = stockReturn?.partnerName ?? (order && isNonSale(order) ? orderParty(order) : order?.customerName) ?? orderPartner?.name ?? supplier?.name ?? ticket?.customer?.name;
       const quantity = Number(decimalString(movement.quantity));
       const category = categoryOf({ movementType: String(movement.movementType), direction: movement.direction as StockDirection, category: movement.category as string | undefined });
       return {
@@ -406,14 +443,14 @@ export class InventoryReportsService {
     });
   }
 
-  async journalWorkbook(month: string, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, preparedBy: string): Promise<Buffer> {
-    const range = this.range(month);
-    const rows = (await this.journal(month, options, null)) as InventoryJournalRow[];
+  async journalWorkbook(period: JournalPeriod, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, preparedBy: string): Promise<Buffer> {
+    const range = this.journalPeriod(period);
+    const rows = (await this.journal(period, options, null)) as InventoryJournalRow[];
     const used = INVENTORY_CATEGORIES.filter((item) => !('optional' in item) || rows.some((row) => row.category === item.code));
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'INOXPRAN ERP';
     workbook.created = new Date();
-    const sheet = workbook.addWorksheet(`${range.monthNo}月出入库汇总`, { views: [{ state: 'frozen', ySplit: 4 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
+    const sheet = workbook.addWorksheet(range.sheetName, { views: [{ state: 'frozen', ySplit: 4 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
     const head = [
       { key: 'stt', zh: '序号', vi: 'STT', width: 6 },
       { key: 'partner', zh: '客户', vi: 'Khách hàng / NCC', width: 30 },
@@ -434,7 +471,7 @@ export class InventoryReportsService {
     sheet.columns = head.map((column) => ({ key: column.key, width: column.width }));
     const last = sheet.getColumn(head.length).letter;
     sheet.mergeCells(`A1:${last}1`);
-    sheet.getCell('A1').value = `${range.year}年${range.monthNo}月 仓库出入库汇总 — NHẬT KÝ XUẤT NHẬP KHO THÁNG ${range.monthNo}/${range.year}`;
+    sheet.getCell('A1').value = range.title;
     sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: COLOR.navy } };
     sheet.mergeCells(`A2:${last}2`);
     sheet.getCell('A2').value = `INOXPRAN · Người lập: ${preparedBy} · Ngày kết xuất: ${day(new Date())} · ${rows.length} dòng${rows.length >= EXPORT_LIMIT ? ` (giới hạn ${EXPORT_LIMIT})` : ''}`;

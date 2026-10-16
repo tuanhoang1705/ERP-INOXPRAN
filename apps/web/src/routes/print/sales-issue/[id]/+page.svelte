@@ -8,6 +8,7 @@
   import { m } from '$lib/paraglide/messages';
   import { vatLabel } from '$shared/sales-math';
   import { salesIssueTemplate } from '$shared/sales-templates';
+  import { isNonSalePurpose, PURPOSE_TITLE_VI } from '$shared/sales-purpose';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { company } from '$lib/company';
@@ -22,6 +23,9 @@
   const slipDate = $derived(order ? new Date(type === 'SWK' ? order.shippedAt ?? order.updatedAt : order.orderDate ?? order.createdAt) : new Date());
   const draft = $derived(order?.status === 'DRAFT' || order?.status === 'PENDING_APPROVAL');
   const netTotal = $derived(order ? order.netTotal ?? String(Number(order.subtotal) - Number(order.discountTotal)) : '0');
+  /** Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không tiền — in người mượn, nơi gửi, hẹn trả; bỏ cột giá. */
+  const loan = $derived(isNonSalePurpose(order?.purpose));
+  const totalQuantity = $derived(order ? order.lines.reduce((sum, line) => sum + Number(line.quantity), 0) : 0);
 
   const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const price = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -68,10 +72,49 @@
     </header>
 
     {#if order.status === 'CANCELLED'}<div class="void-stamp" role="note">ĐÃ HỦY</div>{/if}
-    <h1>PHIẾU XUẤT KHO BÁN HÀNG</h1>
+    <h1>{isNonSalePurpose(order.purpose) ? PURPOSE_TITLE_VI[order.purpose] : PURPOSE_TITLE_VI.SALE}</h1>
     <p class="date">{dayParts(slipDate)}</p>
     <p class="no">Số: {slipNo}</p>
 
+    {#if loan}
+    <table class="buyer">
+      <tbody>
+        {#if order.purpose === 'GIFT'}
+          <tr><th>Nhân viên phụ trách:</th><td colspan="3">{order.salesRepName ?? ''}</td></tr>
+          <tr><th>Tặng cho:</th><td colspan="3">{order.destination ?? ''}</td></tr>
+          <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
+          <tr><th>Ghi chú:</th><td colspan="3">Hàng tặng — không tính tiền, không thu hồi.</td></tr>
+        {:else}
+          <tr><th>Người mượn hàng:</th><td colspan="3">{order.salesRepName ?? ''}</td></tr>
+          <tr><th>Gửi tới:</th><td colspan="3">{order.destination ?? ''}</td></tr>
+          <tr><th>Hẹn trả:</th><td colspan="3">{order.expectedReturnDate ? order.expectedReturnDate.split('-').reverse().join('/') : ''}</td></tr>
+          <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
+          <tr><th>Ghi chú:</th><td colspan="3">Hàng không bán — không tính tiền. Mang về nhập lại kho theo phiếu này.</td></tr>
+        {/if}
+      </tbody>
+    </table>
+
+    <table class="lines">
+      <colgroup><col style="width:6%" /><col style="width:14%" /><col /><col style="width:10%" /><col style="width:12%" /><col style="width:18%" /></colgroup>
+      <thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        {#each order.lines as line, index}
+          <tr>
+            <td class="center">{index + 1}</td>
+            <td>{line.sku}</td>
+            <td class="center">{line.productName}</td>
+            <td>{line.unit}</td>
+            <td class="center">{quantity.format(Number(line.quantity))}</td>
+            <td></td>
+          </tr>
+        {/each}
+      </tbody>
+      <tfoot>
+        <tr class="sum"><td colspan="4"><b>Cộng</b></td><td class="center"><b>{quantity.format(totalQuantity)}</b></td><td></td></tr>
+      </tfoot>
+    </table>
+    <p class="attached">Số chứng từ gốc kèm theo: {type === 'SWK' ? `Phiếu ${order.code}` : '…'}</p>
+    {:else}
     <table class="buyer">
       <tbody>
         <tr><th>Người mua:</th><td>{order.buyer?.name ?? order.customerName}</td><th class="right-label">Mã khách hàng:</th><td class="right-value">{order.customerCode}</td></tr>
@@ -112,13 +155,14 @@
 
     <p class="words">Số tiền bằng chữ: <b>{vndInWords(order.grandTotal)}</b></p>
     <p class="attached">Số chứng từ gốc kèm theo: {type === 'SWK' ? `Phiếu xuất kho bán hàng số ${order.code}` : '…'}</p>
+    {/if}
     <div class="closing">
     <p class="sign-date">{dayParts(slipDate)}</p>
     <section class="signatures">
       {#each [
-        { title: 'Người mua hàng', name: '' },
-        { title: 'Kế toán trưởng', name: '' },
-        { title: 'Nhân viên bán hàng', name: order.salesRepName ?? '' },
+        ...(loan
+          ? [{ title: order.purpose === 'GIFT' ? 'Người nhận hàng' : 'Người mượn hàng', name: order.salesRepName ?? '' }, { title: 'Kế toán trưởng', name: '' }]
+          : [{ title: 'Người mua hàng', name: '' }, { title: 'Kế toán trưởng', name: '' }, { title: 'Nhân viên bán hàng', name: order.salesRepName ?? '' }]),
         { title: 'Thủ kho', name: order.warehouseKeeperName ?? '' },
         { title: 'Người lập biểu', name: type === 'SWK' ? order.shippedByName ?? '' : order.issuedByName ?? '' },
       ] as signer}

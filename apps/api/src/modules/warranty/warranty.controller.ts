@@ -87,8 +87,11 @@ export class WarrantyController {
 
   @Roles(...WARRANTY_VIEWER_ROLES)
   @Get('tickets')
-  list(@Query('status') status?: string, @Query('tone') tone?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('customerId') customerId?: string) {
-    return this.warranty.list({ status, tone, search, customerId }, pageRequest(page, pageSize));
+  list(
+    @Query('status') status?: string, @Query('tone') tone?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
+    @Query('customerId') customerId?: string, @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.warranty.list({ status, tone, search, customerId, from, to }, pageRequest(page, pageSize));
   }
 
   @Roles(...WARRANTY_VIEWER_ROLES)

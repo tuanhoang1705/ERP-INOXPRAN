@@ -3,12 +3,14 @@ import type { CreatePartner, CreateProduct, CreateWarehouse } from '@inoxpran/co
 import type { Db, Document, Filter } from 'mongodb';
 import Decimal from 'decimal.js';
 import { Decimal128, ObjectId } from 'mongodb';
+import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { MasterDataService, normalizePartnerLists } from './master-data.service';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
+import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import { canCreatePartnerKind } from './partner-access';
 import { pageOf, type PageRequest } from '../../common/paging';
@@ -33,8 +35,12 @@ export class CatalogService {
     private readonly master: MasterDataService,
   ) {}
 
-  async listProducts(filters: { search?: string | undefined; status?: string | undefined; categoryId?: string | undefined; availability?: string | undefined }, paging: PageRequest | null = null) {
-    const filter: Filter<Record<string, unknown>> = {};
+  async listProducts(
+    filters: { search?: string | undefined; status?: string | undefined; categoryId?: string | undefined; availability?: string | undefined; from?: string | undefined; to?: string | undefined },
+    paging: PageRequest | null = null,
+  ) {
+    // Lọc theo ngày tạo mã (LIST-DATE-01).
+    const filter: Filter<Record<string, unknown>> = dateRangeFilter('createdAt', filters.from, filters.to);
     if (filters.status) filter.status = filters.status;
     if (filters.categoryId) filter.categoryId = toObjectId(filters.categoryId, 'categoryId');
     if (filters.availability) filter.availability = filters.availability;
@@ -163,7 +169,7 @@ export class CatalogService {
         { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: '$lines.lineTotal' }, orders: { $sum: 1 } } },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES } } },
+        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER } },
         { $sort: { orderDate: -1 } },
         { $limit: 5 },
         { $unwind: '$lines' },
@@ -171,7 +177,7 @@ export class CatalogService {
         { $project: { code: 1, customerName: 1, status: 1, orderDate: 1, line: '$lines' } },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, orderDate: { $gte: since } } },
+        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: since } } },
         { $unwind: '$lines' },
         { $match: { 'lines.productId': productId } },
         { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: '$lines.netAmount' }, orders: { $addToSet: '$_id' } } },
@@ -231,8 +237,8 @@ export class CatalogService {
     };
   }
 
-  async listPartners(kind?: string, search?: string, paging: PageRequest | null = null, stage?: string) {
-    const filter: Filter<Record<string, unknown>> = {};
+  async listPartners(kind?: string, search?: string, paging: PageRequest | null = null, stage?: string, from?: string, to?: string) {
+    const filter: Filter<Record<string, unknown>> = dateRangeFilter('createdAt', from, to);
     if (kind) filter.kind = { $in: [kind, 'BOTH'] };
     // stage=CUSTOMER: khách chính thức (gồm dữ liệu cũ chưa có stage) — ô chọn khách trên phiếu bán hàng.
     if (stage === 'CUSTOMER') filter.stage = { $ne: 'PROSPECT' };
@@ -344,7 +350,7 @@ export class CatalogService {
         },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { customerId: partnerId, status: { $in: REVENUE_STATUSES } } },
+        { $match: { customerId: partnerId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER } },
         {
           $group: {
             _id: null,

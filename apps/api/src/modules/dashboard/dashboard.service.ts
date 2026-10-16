@@ -6,6 +6,7 @@ import { decimalString, vnMonthStart, vnParts } from '../../common/domain';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { defectiveWarehouseIds } from '../../common/warehouses';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
+import { orderParty, SALE_ONLY_FILTER, slipTypeOf } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import type { RequestUser } from '../../common/request-context';
 import { salesOrderScope } from '../sales/keeper-scope';
@@ -59,7 +60,7 @@ export class DashboardService {
       previousToDateRows,
     ] = await Promise.all([
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, orderDate: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
         {
           $group: {
             _id: { $dateToString: { date: '$orderDate', format: '%Y-%m', timezone: 'Asia/Ho_Chi_Minh' } },
@@ -111,7 +112,7 @@ export class DashboardService {
         validTo: { $gte: now, $lte: new Date(now.getTime() + 7 * DAY_MS) },
       }).sort({ validTo: 1 }).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, orderDate: { $gte: previousMonthStart, $lt: previousToDate } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: previousMonthStart, $lt: previousToDate } } },
         { $group: { _id: null, revenue: { $sum: NET_AMOUNT } } },
       ]).toArray(),
     ]);
@@ -243,9 +244,10 @@ export class DashboardService {
       recentOrders: recentOrders.map((order) => ({
         id: (order._id as ObjectId).toHexString(),
         code: String(order.code),
-        customerName: String(order.customerName),
+        customerName: orderParty(order),
         ...(order.province ? { province: String(order.province) } : {}),
         channel: order.channel === 'B2C' ? 'B2C' : 'B2B',
+        slipType: slipTypeOf(order),
         orderDate: ((order.orderDate ?? order.createdAt) as Date).toISOString(),
         lineCount: Number(order.lineCount ?? (order.lines as unknown[] | undefined)?.length ?? 0),
         total: new Decimal(decimalString(order.grandTotal)).toFixed(2),

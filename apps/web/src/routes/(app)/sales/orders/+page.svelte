@@ -11,15 +11,22 @@
   import { session } from '$lib/session.svelte';
   import { initialPageSize, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
+  import { loanAge, partyName, SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, slipTypeShort, type SalesSlipType } from '$lib/slip-type';
 
-  type Row = SalesOrder & { warehouseKeeperName?: string; province?: string; lineCount?: number; netTotal?: string };
+  type Row = SalesOrder & { warehouseKeeperName?: string; province?: string; lineCount?: number; netTotal?: string; shippedAt?: string };
   let rows = $state<Row[]>([]);
   let loading = $state(true);
   let error = $state('');
   let search = $state('');
   let stage = $state('');
   let status = $state('');
-  let channel = $state('');
+  /** Loại phiếu (SAL-TYPE-01) — URL cũ `?channel=B2B` vẫn dùng được. */
+  let type = $state('');
+  /** `OUT` = hàng mẫu / kiểm định còn ở ngoài. */
+  let loan = $state('');
+  let from = $state('');
+  let to = $state('');
   let customerId = $state('');
   let total = $state(0);
   let totalValue = $state('0');
@@ -29,14 +36,23 @@
   let deletedCode = $state('');
 
   const roles = $derived(session.user?.roles ?? []);
-  const title = $derived(channel === 'B2C' ? m.phieu_xuat_kho_ban_le_b2c() : channel === 'B2B' ? m.phieu_xuat_kho_dai_ly_b2b() : m.phieu_xuat_kho_ban_hang());
+  const title = $derived(
+    loan === 'OUT' ? m.lp_hang_mau_chua_tra()
+      : type === 'B2C' ? m.phieu_xuat_kho_ban_le_b2c()
+      : type === 'B2B' ? m.phieu_xuat_kho_dai_ly_b2b()
+      : type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT' ? slipTypeLabel(type)
+      : m.phieu_xuat_kho_ban_hang(),
+  );
 
   $effect(() => {
     const params = page.url.searchParams;
     search = params.get('search') ?? '';
     stage = params.get('stage') ?? '';
     status = params.get('status') ?? '';
-    channel = params.get('channel') ?? '';
+    type = params.get('type') ?? params.get('channel') ?? '';
+    loan = params.get('loan') ?? '';
+    from = params.get('from') ?? '';
+    to = params.get('to') ?? '';
     customerId = params.get('customerId') ?? '';
     deletedCode = params.get('deleted') ?? '';
     // load() chạy ngoài theo dõi: đổi trang / gõ tìm kiếm không kích hoạt lại effect (chỉ URL mới kích hoạt).
@@ -54,7 +70,10 @@
     const preset = stageFilters.find((item) => item.value === stage);
     if (preset) for (const [key, value] of Object.entries(preset.query)) query.set(key, value);
     else if (status) query.set('status', status);
-    if (channel) query.set('channel', channel);
+    if (type) query.set('type', type);
+    if (loan) query.set('loan', loan);
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
     if (customerId) query.set('customerId', customerId);
     query.set('page', String(pageNo));
     query.set('pageSize', String(pageSize));
@@ -83,7 +102,10 @@
     if (search) query.set('search', search);
     if (stage) query.set('stage', stage);
     else if (status) query.set('status', status);
-    if (channel) query.set('channel', channel);
+    if (type) query.set('type', type);
+    if (loan) query.set('loan', loan);
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
     goto(`/sales/orders${query.size ? `?${query}` : ''}`, { keepFocus: true });
   }
 </script>
@@ -111,9 +133,14 @@
       {#each stageFilters as item}<option value={item.value}>{item.label}</option>{/each}
     </select>
   </div>
-  <div class="field"><label for="channel">{m.kenh_ban()}</label>
-    <select id="channel" bind:value={channel}><option value="">{m.tat_ca_kenh()}</option><option value="B2B">{m.b2b_dai_ly_npp()}</option><option value="B2C">{m.b2c_khach_le()}</option></select>
+  <div class="field"><label for="type">{m.lp_loai_phieu()}</label>
+    <select id="type" bind:value={type} onchange={() => { if (type !== 'SAMPLE' && type !== 'INSPECTION' && type !== '') loan = ''; }}>
+      <option value="">{m.lp_tat_ca_loai()}</option>
+      {#each SLIP_TYPE_OPTIONS as item}<option value={item}>{slipTypeLabel(item as SalesSlipType)}</option>{/each}
+    </select>
   </div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_chung_tu()} id="order-date" onchange={() => apply()} />
+  <label class="loan-check"><input type="checkbox" checked={loan === 'OUT'} onchange={(event) => { loan = event.currentTarget.checked ? 'OUT' : ''; apply(); }} /> {m.lp_hang_mau_chua_tra()}</label>
   <div class="actions"><button class="btn navy" type="submit">{m.loc_du_lieu()}</button><a class="btn" href="/sales/orders">{m.dat_lai()}</a></div>
 </form>
 
@@ -125,7 +152,7 @@
   <header class="card-head list-head"><h2>{loading && !rows.length ? m.dang_tai() : m.phieu({ p0: num(total) })}</h2><span class="muted">{m.tong_gia_tri()} <b>{num(totalValue)} {m.d()}</b></span></header>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.so_phieu_bh()}</th><th>{m.so_phieu_swk()}</th><th>{m.khach_hang()}</th><th>{m.kenh()}</th><th>{m.nv_ban_hang()}</th><th>{m.ngay_chung_tu()}</th><th class="num">{m.so_dong()}</th><th class="num">{m.tong_thanh_toan_2()}</th><th>{m.buoc_xu_ly()}</th></tr></thead>
+      <thead><tr><th>{m.so_phieu_bh()}</th><th>{m.so_phieu_swk()}</th><th>{m.khach_hang()}</th><th>{m.lp_loai_phieu()}</th><th>{m.nv_ban_hang()}</th><th>{m.ngay_chung_tu()}</th><th class="num">{m.so_dong()}</th><th class="num">{m.tong_thanh_toan_2()}</th><th>{m.buoc_xu_ly()}</th></tr></thead>
       <tbody>
         {#if loading && !rows.length}<tr class="empty-row"><td colspan="9">{m.dang_tai_phieu()}</td></tr>
         {:else if rows.length}
@@ -134,8 +161,13 @@
             <tr>
               <td><a class="code" href={`/sales/orders/${row.id}`}>{row.code}</a></td>
               <td class="code slip">{row.warehouseSlipNo ?? '—'}{#if row.warehouseKeeperName}<small>{m.thu_kho_2()} {row.warehouseKeeperName}</small>{/if}</td>
-              <td>{row.customerName}<small>{row.customerCode}{row.province ? ` · ${row.province}` : ''}</small></td>
-              <td><span class="tag" class:b2c={row.channel === 'B2C'}>{row.channel ?? 'B2B'}</span></td>
+              {#if row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT'}
+                {@const age = loanAge(row)}
+                <td>{partyName(row)}{#if row.loanStatus === 'OUT' || row.loanStatus === 'PARTIAL'}<small class:overdue={age.overdue > 0}>{age.overdue > 0 ? m.lp_qua_hen({ days: age.overdue }) : m.lp_da_muon_ngay({ days: age.days })}</small>{/if}</td>
+              {:else}
+                <td>{row.customerName}<small>{row.customerCode}{row.province ? ` · ${row.province}` : ''}</small></td>
+              {/if}
+              <td><span class="tag" class:b2c={row.channel === 'B2C' && !row.purpose?.match(/SAMPLE|INSPECTION|GIFT/)} class:loan={row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT'}>{slipTypeShort(slipTypeOf(row))}</span></td>
               <td class="muted">{row.salesRepName ?? '—'}</td>
               <td>{date(row.orderDate ?? row.createdAt)}</td>
               <td class="num">{row.lineCount ?? row.lines.length}</td>
@@ -151,7 +183,10 @@
 </section>
 
 <style>
-  .filters { grid-template-columns: 1.4fr 1.2fr 1fr auto; }
+  .filters { grid-template-columns: 1.3fr 1.1fr 1fr 1.2fr auto auto; align-items: end; }
+  .loan-check { display: flex; align-items: center; gap: 6px; padding-bottom: 10px; font-size: 13px; white-space: nowrap; }
+  .tag.loan { background: var(--orange-soft); color: #b4501f; }
+  .overdue { color: var(--red) !important; font-weight: 600; }
   .list-head { padding-bottom: 14px; }
   .slip { color: var(--muted); font-weight: 500; }
   @media (max-width: 900px) { .filters { grid-template-columns: 1fr 1fr; } }

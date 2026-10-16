@@ -11,6 +11,7 @@
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
   import RecordDialog, { type RecordValues } from '$lib/components/RecordDialog.svelte';
 
@@ -20,6 +21,9 @@
   let page = $state(1);
   let pageSize = $state(initialPageSize());
   let search = $state('');
+  /** Lọc theo khoảng ngày (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
   let loading = $state(true);
   let error = $state('');
   let success = $state('');
@@ -33,7 +37,7 @@
     loading = true;
     error = '';
     try {
-      const filters = { kind: 'SUPPLIER', search };
+      const filters = { kind: 'SUPPLIER', search, from, to };
       const result = await api<Paged<Supplier>>(`/partners?${pageQuery(filters, page, pageSize)}`);
       suppliers = result.rows;
       total = result.total;
@@ -123,6 +127,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.crud_tim_ncc()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_tao()} id="supplier-date" onchange={() => { page = 1; void load(); }} />
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
@@ -165,6 +170,6 @@
 <ConfirmDelete bind:open={deleteOpen} name={deleting ? `${deleting.code} — ${deleting.name}` : ''} ondelete={remove} ondeactivate={deleting?.status !== 'INACTIVE' ? deactivate : undefined} />
 
 <style>
-  .filters { grid-template-columns: minmax(0, 420px); }
+  .filters { grid-template-columns: minmax(0, 420px) minmax(220px, 340px); }
   .actions-col { width: 76px; }
 </style>

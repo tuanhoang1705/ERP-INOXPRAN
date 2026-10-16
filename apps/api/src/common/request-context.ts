@@ -12,6 +12,8 @@ export interface RequestUser {
   root?: boolean;
   /** Bước bắt buộc còn thiếu (đổi mật khẩu tạm / bật MFA). */
   pending?: SetupStep[];
+  /** Quyền nghiệp vụ hiệu lực (PERM-01): theo vai trò + chỉnh riêng của quản trị gốc. */
+  permissions?: string[];
 }
 
 export type AuthenticatedRequest = FastifyRequest & {

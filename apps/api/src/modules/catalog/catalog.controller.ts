@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 import { ApiTags } from '@nestjs/swagger';
 import {
   ConvertPartnerSchema,
@@ -16,7 +17,7 @@ import {
 import { z } from 'zod';
 import { pageRequest } from '../../common/paging';
 import { onlyProvided } from '../../common/patch';
-import { Roles } from '../../common/roles.decorator';
+import { Roles, RootOnly } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { CatalogService } from './catalog.service';
 import { MasterDataService } from './master-data.service';
@@ -46,8 +47,10 @@ export class CatalogController {
     @Query('availability') availability?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.catalog.listProducts({ search, status, categoryId, availability }, pageRequest(page, pageSize));
+    return this.catalog.listProducts({ search, status, categoryId, availability, from, to }, pageRequest(page, pageSize));
   }
 
   @Get('products/:id')
@@ -73,11 +76,31 @@ export class CatalogController {
     return this.master.updateProduct(id, { ...onlyProvided(body, input), version: input.version }, request);
   }
 
+  /** Xóa mã chưa phát sinh chứng từ; `purge=1` (chỉ quản trị gốc) gỡ hẳn mã chỉ có tồn đầu kỳ nhập từ Excel (CAT-PURGE-01). */
   @Roles(...PRODUCT_EDITOR_ROLES)
   @Delete('products/:id')
-  @HttpCode(204)
-  deleteProduct(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-    return this.master.deleteProduct(id, request);
+  async deleteProduct(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('purge') purge: string | undefined, @Res({ passthrough: true }) reply: FastifyReply) {
+    if (purge === '1' || purge === 'true') {
+      if (!request.user.root) throw new ForbiddenException({ code: 'ROOT_ONLY', message: 'Chỉ quản trị gốc được gỡ hẳn mã hàng kèm tồn đầu kỳ' });
+      return this.master.purgeProduct(id, request);
+    }
+    await this.master.deleteProduct(id, request);
+    reply.status(204);
+    return undefined;
+  }
+
+  /** Quản trị gốc xem trước / gỡ hẳn cả nhóm hàng (mã chỉ có tồn đầu kỳ nhập từ Excel — CAT-PURGE-01). */
+  @RootOnly()
+  @Get('product-categories/:id/purge-preview')
+  purgePreview(@Param('id') id: string) {
+    return this.master.categoryPurgePreview(id);
+  }
+
+  @RootOnly()
+  @Post('product-categories/:id/purge')
+  purgeCategory(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const confirm = typeof (body as { confirm?: unknown } | null)?.confirm === 'string' ? String((body as { confirm: string }).confirm) : '';
+    return this.master.purgeCategory(id, confirm, request);
   }
 
   /** `all=1`: gồm cả nhóm đã ngừng (màn hình quản lý nhóm hàng). */
@@ -108,8 +131,11 @@ export class CatalogController {
   // ---------- đối tác ----------
 
   @Get('partners')
-  partners(@Query('kind') kind?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('stage') stage?: string) {
-    return this.catalog.listPartners(kind, search, pageRequest(page, pageSize), stage);
+  partners(
+    @Query('kind') kind?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('stage') stage?: string,
+    @Query('from') from?: string, @Query('to') to?: string,
+  ) {
+    return this.catalog.listPartners(kind, search, pageRequest(page, pageSize), stage, from, to);
   }
 
   @Get('partners/:id')

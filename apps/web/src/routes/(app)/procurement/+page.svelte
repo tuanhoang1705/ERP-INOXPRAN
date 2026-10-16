@@ -10,11 +10,15 @@
   import { session } from '$lib/session.svelte';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
 
   type PurchaseOrder = { id: string; code: string; supplierName: string; supplierCode: string; supplierContractNo?: string; status: string; total: string; totalVnd: string; currency: string; expectedDate?: string; eta?: string; createdAt: string; lines: unknown[] };
   let orders = $state<PurchaseOrder[]>([]);
   let status = $state('');
   let search = $state('');
+  /** Lọc theo khoảng ngày (LIST-DATE-01). */
+  let from = $state('');
+  let to = $state('');
   let total = $state(0);
   let page = $state(1);
   let pageSize = $state(initialPageSize());
@@ -25,7 +29,7 @@
     loading = true;
     error = '';
     try {
-      const filters = { status, search };
+      const filters = { status, search, from, to };
       const result = await api<Paged<PurchaseOrder>>(`/purchase-orders?${pageQuery(filters, page, pageSize)}`);
       orders = result.rows;
       total = result.total;
@@ -66,6 +70,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.crud_tim_don_mua()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_lap()} id="po-date" onchange={refilter} />
   <div class="field"><label for="status">{m.trang_thai()}</label><select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each Object.entries(purchaseStatus) as [value, item]}<option {value}>{item.label}</option>{/each}</select></div>
 </section>
 
@@ -98,6 +103,6 @@
 </section>
 
 <style>
-  .filters { grid-template-columns: minmax(220px, 420px) minmax(200px, 280px); }
+  .filters { grid-template-columns: minmax(220px, 420px) minmax(220px, 340px) minmax(200px, 280px); }
   @media (max-width: 720px) { .filters { grid-template-columns: 1fr; } }
 </style>

@@ -55,7 +55,8 @@ export class StockReturnsService {
   }
 
   async list(kind: string | undefined, paging: PageRequest) {
-    const filter: Document = kind === 'CUSTOMER' || kind === 'SUPPLIER' ? { kind } : {};
+    // SAMPLE = hàng mẫu / hàng kiểm định nhập lại theo phiếu (SAL-TYPE-01).
+    const filter: Document = kind === 'CUSTOMER' || kind === 'SUPPLIER' || kind === 'SAMPLE' ? { kind } : {};
     const [rows, total] = await Promise.all([
       this.db.collection('stock_returns').find(filter).sort({ createdAt: -1, _id: -1 }).skip(paging.skip).limit(paging.pageSize).toArray(),
       this.db.collection('stock_returns').countDocuments(filter),
@@ -117,7 +118,8 @@ export class StockReturnsService {
   async create(input: CreateStockReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(`stock-return:${request.user.sub}`, idempotencyKey, input, async (session) => {
       const customer = input.kind === 'CUSTOMER';
-      const partner = await this.db.collection('partners').findOne({ _id: toObjectId(input.partnerId, 'partnerId'), kind: customer ? 'CUSTOMER' : 'SUPPLIER' }, { session });
+      // Đối tác vừa là khách vừa là NCC (BOTH) cũng hiện trong ô chọn — nhận cả hai.
+      const partner = await this.db.collection('partners').findOne({ _id: toObjectId(input.partnerId, 'partnerId'), kind: { $in: [customer ? 'CUSTOMER' : 'SUPPLIER', 'BOTH'] } }, { session });
       if (!partner) {
         throw new NotFoundException({ code: customer ? 'CUSTOMER_NOT_FOUND' : 'SUPPLIER_NOT_FOUND', message: customer ? 'Không tìm thấy khách hàng' : 'Không tìm thấy nhà cung cấp', details: [{ path: ['partnerId'] }] });
       }
@@ -182,10 +184,11 @@ export class StockReturnsService {
         session,
       );
       const now = new Date();
-      // Khách trả có ảnh hưởng tiền (trừ hàng tặng / combo trả lại): chờ kế toán giảm công nợ / xuất hóa đơn điều chỉnh.
-      const needsAccounting = customer && category !== 'GIFT_RETURN_IN';
       // Hàng tặng / combo trả lại không có giá bán → không tính giá trị.
-      const value = needsAccounting && salesOrder ? this.valuation(salesOrder, quantities) : undefined;
+      const value = customer && category !== 'GIFT_RETURN_IN' && salesOrder ? this.valuation(salesOrder, quantities) : undefined;
+      // Khách trả có ảnh hưởng tiền (trừ hàng tặng / combo trả lại): chờ kế toán giảm công nợ / xuất hóa đơn điều chỉnh.
+      // Trả theo phiếu giá 0 đ (15/10/2026) không có gì phải điều chỉnh.
+      const needsAccounting = customer && category !== 'GIFT_RETURN_IN' && !(value && new Decimal(value.total).isZero());
       const document = {
         _id: new ObjectId(),
         code,

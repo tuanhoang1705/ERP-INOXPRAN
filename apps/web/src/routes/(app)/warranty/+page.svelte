@@ -13,6 +13,7 @@
   import { WARRANTY_STATUSES, type SlaTone } from '$shared/warranty';
   import { initialPageSize, rememberPageSize } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
+  import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
 
   type Row = WarrantyTicket & { sla: SlaView };
   type Result = { settings: { warrantyMonths: number; turnaroundDays: number; warningRatio: number }; counts: Record<SlaTone, number>; rows: Row[]; total: number };
@@ -23,6 +24,9 @@
   let search = $state(page.url.searchParams.get('search') ?? '');
   const tone = $derived(page.url.searchParams.get('tone') ?? '');
   const status = $derived(page.url.searchParams.get('status') ?? '');
+  /** Lọc theo ngày nhận phiếu (LIST-DATE-01), giữ trên URL như các bộ lọc khác. */
+  let from = $state(page.url.searchParams.get('from') ?? '');
+  let to = $state(page.url.searchParams.get('to') ?? '');
   const canReceive = $derived(hasRole(session.user?.roles, WARRANTY_STAFF));
   const tones: SlaTone[] = ['overdue', 'warning', 'normal', 'closed'];
   let pageNo = $state(1);
@@ -32,7 +36,7 @@
     loading = true;
     error = '';
     const query = new URLSearchParams();
-    for (const [key, value] of [['tone', tone], ['status', status], ['search', page.url.searchParams.get('search') ?? '']]) if (value) query.set(key, value);
+    for (const [key, value] of [['tone', tone], ['status', status], ['search', page.url.searchParams.get('search') ?? ''], ['from', page.url.searchParams.get('from') ?? ''], ['to', page.url.searchParams.get('to') ?? '']]) if (value) query.set(key, value);
     query.set('page', String(pageNo));
     query.set('pageSize', String(pageSize));
     try {
@@ -90,6 +94,7 @@
 
 <form class="card filters" onsubmit={(event) => { event.preventDefault(); filter({ search: search.trim() }); }}>
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} placeholder={m.wr_search_ph()} /></div>
+  <DateRangeFilter bind:from bind:to label={m.dr_ngay_nhan()} id="ticket-date" onchange={() => filter({ from, to })} />
   <div class="field">
     <label for="status">{m.trang_thai()}</label>
     <select id="status" value={status} onchange={(event) => filter({ status: event.currentTarget.value })}>
@@ -151,7 +156,7 @@
   .tone.normal { border-left-color: var(--line); }
   .tone.closed { border-left-color: var(--line-soft); color: var(--muted); }
   .tone.active { box-shadow: 0 0 0 2px var(--navy-2) inset; }
-  .filters { grid-template-columns: 2fr 1fr auto; margin-bottom: 16px; }
+  .filters { grid-template-columns: 2fr 1.4fr 1fr auto; margin-bottom: 16px; }
   td small { display: block; color: var(--subtle); font-size: 12px; }
   .customer { min-width: 170px; }
   .product small { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

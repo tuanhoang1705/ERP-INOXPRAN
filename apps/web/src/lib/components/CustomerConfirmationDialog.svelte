@@ -10,7 +10,7 @@
   import Dialog from './Dialog.svelte';
   import { api } from '$lib/api';
 
-  type Target = { id: string; code: string; version: number; customerName: string; warehouseKeeperName?: string | undefined };
+  type Target = { id: string; code: string; version: number; customerName?: string | undefined; warehouseKeeperName?: string | undefined };
   type Item = { key: string; name: string; preview: string; size: number; status: 'uploading' | 'done' | 'error'; attachment?: AttachmentMeta; error?: string };
 
   const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp'];
@@ -172,7 +172,7 @@
 <Dialog bind:open title={order ? m.xac_nhan_doi_chieu_phieu({ code: order.code }) : m.xac_nhan_doi_chieu()}>
   {#if order}
     <p class="lead">
-      {m.dinh_kem()} <b>{m.anh_chup_man_hinh_xac_nhan()}</b> {m.cua_kinh_doanh_khach_cho_phieu()} <b>{order.customerName}</b> {m.vi_du_tin_nhan_zalo_xuat()}{order.warehouseKeeperName ? ` ${order.warehouseKeeperName}` : ''}.
+      {m.dinh_kem()} <b>{m.anh_chup_man_hinh_xac_nhan()}</b> {m.cua_kinh_doanh_khach_cho_phieu()} <b>{order.customerName ?? ''}</b> {m.vi_du_tin_nhan_zalo_xuat()}{order.warehouseKeeperName ? ` ${order.warehouseKeeperName}` : ''}.
     </p>
     <div
       class="drop"

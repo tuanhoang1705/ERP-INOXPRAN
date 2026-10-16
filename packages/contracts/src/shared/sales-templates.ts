@@ -41,7 +41,7 @@ export const SALES_ORDER_CODE_PATTERN = /^(?:\d{1,4}|[A-Z0-9][A-Z0-9._/-]{1,39})
  * Tiền tố số tự sinh của các chứng từ khác (SWK xuất kho, AR công nợ, PO đơn mua, TH/XT trả hàng, KK kiểm kê…).
  * Số phiếu BH tự nhập không được bắt đầu như vậy để thẻ kho / nhật ký / công nợ không lẫn chứng từ.
  */
-export const RESERVED_DOCUMENT_PREFIXES = ['SWK', 'AR', 'PO', 'GR', 'IS', 'IMP', 'KK', 'PAY', 'SC', 'TRF', 'TH', 'XT', 'ADJ', 'SG'] as const;
+export const RESERVED_DOCUMENT_PREFIXES = ['SWK', 'AR', 'PO', 'GR', 'IS', 'IMP', 'KK', 'PAY', 'SC', 'TRF', 'TH', 'XT', 'ADJ', 'SG', 'YC'] as const;
 const RESERVED_DOCUMENT_CODE = new RegExp(`^(${RESERVED_DOCUMENT_PREFIXES.join('|')})-?\\d`);
 
 /** Chuẩn hóa số phiếu tự nhập như máy chủ sẽ lưu: bỏ khoảng trắng hai đầu, viết hoa. */
