@@ -23,6 +23,8 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('sales_change_requests').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('promotions').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('product_categories').createIndex({ code: 1 }, { unique: true }),
+      this.db.collection('debt_segments').createIndex({ code: 1 }, { unique: true }),
+      this.db.collection('sku_aliases').createIndex({ oldSku: 1 }, { unique: true }),
       this.db.collection('locations').createIndex({ warehouseId: 1, code: 1 }, { unique: true }),
       this.db.collection('regions').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('employees').createIndex({ code: 1 }, { unique: true }),

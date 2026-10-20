@@ -14,7 +14,7 @@
 
   type Receivable = {
     id: string; code: string; partnerId: string; partnerName: string; partnerCode: string; partnerStatus: string; province?: string;
-    salesOrderId?: string; salesOrderCode?: string; openingDocumentNo?: string; sourceType?: string; note?: string; warrantyTicketId?: string; warrantyCode?: string; payerName?: string; payerPhone?: string; amount: string; paidAmount: string; outstandingAmount: string; dueDate: string;
+    salesOrderId?: string; salesOrderCode?: string; openingDocumentNo?: string; historyInvoiceNo?: string; historyDocumentNo?: string; sourceType?: string; note?: string; warrantyTicketId?: string; warrantyCode?: string; payerName?: string; payerPhone?: string; amount: string; paidAmount: string; outstandingAmount: string; dueDate: string;
     daysOverdue: number; overdueLevel: string | null; status: string; createdAt: string;
   };
   let rows = $state<Receivable[]>([]);
@@ -113,7 +113,7 @@
     <h1 class="page-title">{m.so_chi_tiet_cong_no_phai()}</h1>
     <p class="page-sub">{m.moi_lan_xuat_kho_sinh_mot()}</p>
   </div>
-  <div class="actions"><a class="btn" href="/receivables/overdue">{m.tuoi_no_canh_bao()}</a></div>
+  <div class="actions"><a class="btn" href="/receivables/overdue">{m.tuoi_no_canh_bao()}</a><a class="btn primary" href="/receivables/customers">{m.cn_theo_khach_title()}</a></div>
 </section>
 
 <section class="card filters">
@@ -136,9 +136,9 @@
           {#each rows as row (row.id)}
             {@const info = receivableStatus[row.status] ?? { label: row.status, tone: '' }}
             {@const level = row.overdueLevel ? overdueLevel[row.overdueLevel] : null}
-            {@const credit = row.sourceType === 'SALES_VOID_CREDIT'}
+            {@const credit = row.sourceType === 'SALES_VOID_CREDIT' || row.sourceType === 'CUSTOMER_PREPAYMENT'}
             <tr>
-              <td><span class="code">{row.code}</span>{#if row.sourceType === 'SALES_VOID_CREDIT'}<small class="credit">{m.cn_khach_tra_truoc({ code: row.salesOrderCode ?? '' })}</small>{:else if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small><a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a></small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
+              <td><span class="code">{row.code}</span>{#if row.sourceType === 'CUSTOMER_PREPAYMENT'}<small class="credit">{m.cn_khach_tra_truoc_dong()}</small>{:else if row.sourceType === 'HISTORY_IMPORT'}<small>{m.cn_lich_su_ct({ no: row.historyInvoiceNo ?? row.historyDocumentNo ?? '' })}</small>{:else if row.sourceType === 'SALES_VOID_CREDIT'}<small class="credit">{m.cn_khach_tra_truoc({ code: row.salesOrderCode ?? '' })}</small>{:else if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small><a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a></small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
               <td>{row.partnerName}<small>{row.partnerCode}{row.province ? ` · ${row.province}` : ''}{row.payerName ? ` · ${row.payerName}${row.payerPhone ? ` (${row.payerPhone})` : ''}` : ''}</small></td>
               <td class="muted">{date(row.createdAt)}</td>
               <td>{credit ? '—' : date(row.dueDate)}{#if level && !credit}<small class={`late ${level.tone}`}>{m.qua_han()} {row.daysOverdue} {m.ngay()}</small>{/if}</td>

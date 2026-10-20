@@ -53,7 +53,7 @@
   let confirmOpen = $state(false);
   let permissionsOpen = $state(false);
   let permissionsUser = $state<AdminUser | null>(null);
-  let confirmAction = $state<{ user: AdminUser; kind: 'disable' | 'enable' | 'reset-password' | 'reset-mfa' | 'revoke-sessions' } | null>(null);
+  let confirmAction = $state<{ user: AdminUser; kind: 'disable' | 'enable' | 'reset-password' | 'reset-mfa' | 'revoke-sessions' | 'mfa-on' | 'mfa-off' } | null>(null);
 
   const me = $derived(session.user);
   const isAdmin = $derived(Boolean(me?.roles.includes('ADMIN')));
@@ -150,14 +150,17 @@
     if (!confirmAction) return;
     const { user, kind } = confirmAction;
     try {
-      const result = await api<{ temporaryPassword?: string }>(`/admin/users/${user.id}/${kind}`, { method: 'POST' });
+      // Bật / tắt yêu cầu 2 lớp (MFA-02) dùng PATCH riêng; các thao tác khác là POST /admin/users/:id/<thao tác>.
+      const result = kind === 'mfa-on' || kind === 'mfa-off'
+        ? await api<{ temporaryPassword?: string }>(`/admin/users/${user.id}/mfa`, { method: 'PATCH', body: JSON.stringify({ required: kind === 'mfa-on' }) })
+        : await api<{ temporaryPassword?: string }>(`/admin/users/${user.id}/${kind}`, { method: 'POST' });
       confirmOpen = false;
       if (kind === 'reset-password' && result.temporaryPassword) {
         secret = { email: user.email, password: result.temporaryPassword };
         copied = false;
         secretOpen = true;
       }
-      success = { disable: m.adm_done_disable, enable: m.adm_done_enable, 'reset-password': m.adm_done_reset_password, 'reset-mfa': m.adm_done_reset_mfa, 'revoke-sessions': m.adm_done_revoke }[kind]({ name: user.displayName });
+      success = { disable: m.adm_done_disable, enable: m.adm_done_enable, 'reset-password': m.adm_done_reset_password, 'reset-mfa': m.adm_done_reset_mfa, 'revoke-sessions': m.adm_done_revoke, 'mfa-on': m.adm_done_mfa_on, 'mfa-off': m.adm_done_mfa_off }[kind]({ name: user.displayName });
       await load();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.crud_loi_luu();
@@ -179,6 +182,7 @@
 
   const confirmText = $derived(confirmAction ? {
     disable: m.adm_confirm_disable, enable: m.adm_confirm_enable, 'reset-password': m.adm_confirm_reset_password, 'reset-mfa': m.adm_confirm_reset_mfa, 'revoke-sessions': m.adm_confirm_revoke,
+    'mfa-on': m.adm_confirm_mfa_on, 'mfa-off': m.adm_confirm_mfa_off,
   }[confirmAction.kind]({ name: confirmAction.user.displayName }) : '');
 
   /** Ma trận quyền đang được API thực thi (RolesGuard); dùng để giải thích cho người duyệt. */
@@ -238,7 +242,12 @@
                 <td class="muted">{user.title ?? '—'}{#if user.department}<small>{user.department}</small>{/if}</td>
                 <td><div class="roles">{#each user.roles as item}<span class="pill">{roleLabel[item] ?? item}</span>{/each}</div></td>
                 <td class="muted">{user.roles.includes('ADMIN') ? m.tat_ca_kho() : user.warehouseNames.join(', ') || '—'}</td>
-                <td>{#if user.mfaEnabled}<span class="pill success">{m.da_bat()}</span>{:else}<span class="pill warning">{m.chua_bat()}</span>{/if}</td>
+                <td class="mfa-cell">
+                  {#if manageable(user)}
+                    <button class="switch" role="switch" aria-checked={user.mfaRequired} title={user.mfaRequiredSet ? '' : m.adm_mfa_by_role()} aria-label={`${m.adm_mfa_required()} ${user.displayName}`} onclick={() => ask(user, user.mfaRequired ? 'mfa-off' : 'mfa-on')}><span class="knob"></span>{user.mfaRequired ? m.adm_mfa_required() : m.adm_mfa_optional()}</button>
+                  {:else if user.mfaRequired}<small class="mfa-req">{m.adm_mfa_required()}</small>{/if}
+                  {#if user.mfaEnabled}<span class="pill success">{m.da_bat()}</span>{:else}<span class="pill warning">{m.chua_bat()}</span>{/if}
+                </td>
                 <td class="muted nowrap">{dateTime(user.lastLoginAt)}{#if user.lastSeenAt}<small>{m.adm_last_seen({ time: dateTime(user.lastSeenAt) })}</small>{/if}</td>
                 <td>
                   <span class={`pill ${user.status === 'ACTIVE' ? 'success' : 'neutral'}`}>{user.status === 'ACTIVE' ? m.hoat_dong() : m.da_khoa()}</span>
@@ -381,4 +390,13 @@
   .secret { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px dashed var(--navy-2); border-radius: 8px; background: var(--blue-soft); }
   .secret code { flex: 1; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; }
   @media (max-width: 720px) { .filters, .grid { grid-template-columns: 1fr; } }
+  .mfa-cell { display: grid; justify-items: start; gap: 4px; }
+  .switch { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .switch .knob { position: relative; width: 30px; height: 17px; border-radius: 999px; background: var(--line); transition: background 0.15s; }
+  .switch .knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: left 0.15s; }
+  .switch[aria-checked='true'] { color: var(--navy); font-weight: 600; }
+  .switch[aria-checked='true'] .knob { background: var(--green); }
+  .switch[aria-checked='true'] .knob::after { left: 15px; }
+  .switch:focus-visible .knob { outline: 2px solid var(--navy-2); outline-offset: 2px; }
+  .mfa-req { color: var(--muted); font-size: 12px; }
 </style>

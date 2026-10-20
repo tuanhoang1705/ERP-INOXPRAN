@@ -3,6 +3,8 @@
  * - Tài khoản gốc (root): chỉ tạo bằng script trên máy chủ, luôn có vai trò ADMIN và bắt buộc MFA,
  *   không bị khóa / đổi quyền / đặt lại qua giao diện; là người duy nhất cấp hoặc thu hồi vai trò ADMIN.
  * - Quản trị (ADMIN) thường: tạo, sửa, khóa, đặt lại mật khẩu / MFA cho người dùng không phải ADMIN.
+ * - Yêu cầu 2 lớp (MFA-02, 16/10/2026): Admin bật / tắt riêng từng tài khoản mình quản lý (`mfaRequired`); chưa đặt thì
+ *   theo vai trò như trước. Người không bị yêu cầu tự bật / tắt 2 lớp ở *Tài khoản của tôi*.
  */
 export const USER_ROLES = [
   'ADMIN',
@@ -34,10 +36,15 @@ export interface AccountState {
   root?: boolean | undefined;
   mfaEnabled: boolean;
   mustChangePassword?: boolean | undefined;
+  /** Admin đặt riêng (MFA-02): true = bắt buộc, false = không bắt buộc; không có = theo vai trò (PRIVILEGED_ROLES). */
+  mfaRequired?: boolean | undefined;
 }
 
-export function requiresMfa(user: Pick<AccountState, 'roles' | 'root'>, enforcePrivileged: boolean): boolean {
-  return Boolean(user.root) || (enforcePrivileged && user.roles.some((role) => PRIVILEGED_ROLES.includes(role)));
+/** Tài khoản có bị bắt buộc bật 2 lớp không: gốc luôn bắt buộc; có đặt riêng thì theo đặt riêng; không thì theo vai trò. */
+export function requiresMfa(user: Pick<AccountState, 'roles' | 'root' | 'mfaRequired'>, enforcePrivileged: boolean): boolean {
+  if (user.root) return true;
+  if (typeof user.mfaRequired === 'boolean') return user.mfaRequired;
+  return enforcePrivileged && user.roles.some((role) => PRIVILEGED_ROLES.includes(role));
 }
 
 export function pendingSetup(user: AccountState, enforcePrivileged: boolean): SetupStep[] {

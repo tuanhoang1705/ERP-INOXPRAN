@@ -1,0 +1,2758 @@
+{
+ "file": "Claude_Phan_1_Doan_12_trang_210-215.pdf",
+ "part": 1,
+ "sha256": "16d2c410d742adbab2bf7c57b1e7531e09f6fc11feb55ee0b3dab90dd44d348e",
+ "pages": [
+  {
+   "page": 1,
+   "title": "Công Ty TNHH Gia Bảo HP 嘉宝HP有限责任公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "1438",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-08-27",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "70,000,000 ₫",
+      "V": "70,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2112",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "41,617,997 ₫",
+      "V": "41,617,997 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2166",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "40",
+      "N": "111,111 ₫",
+      "O": "4,444,444 ₫",
+      "P": "355,556 ₫",
+      "Q": "4,800,000 ₫",
+      "V": "4,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2167",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "6",
+      "N": "1,185,185 ₫",
+      "O": "7,111,111 ₫",
+      "P": "568,889 ₫",
+      "Q": "7,680,000 ₫",
+      "V": "7,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2168",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP2104",
+      "K": "Chảo inox chống dính\nđúc nguyên khối\nINP2104",
+      "L": "Cái",
+      "M": "10",
+      "N": "298,148 ₫",
+      "O": "2,981,482 ₫",
+      "P": "238,519 ₫",
+      "Q": "3,220,000 ₫",
+      "V": "3,220,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2169",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP2109",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2109",
+      "L": "Cái",
+      "M": "10",
+      "N": "240,741 ₫",
+      "O": "2,407,407 ₫",
+      "P": "192,593 ₫",
+      "Q": "2,600,000 ₫",
+      "V": "2,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2170",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP2110",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2110",
+      "L": "Cái",
+      "M": "10",
+      "N": "259,259 ₫",
+      "O": "2,592,593 ₫",
+      "P": "207,407 ₫",
+      "Q": "2,800,000 ₫",
+      "V": "2,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2171",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khốiINP2202",
+      "L": "Cái",
+      "M": "4",
+      "N": "844,444 ₫",
+      "O": "3,377,778 ₫",
+      "P": "270,222 ₫",
+      "Q": "3,648,000 ₫",
+      "V": "3,648,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2172",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP6105",
+      "K": "Bếp từ đơn INP6105",
+      "L": "Cái",
+      "M": "12",
+      "N": "675,926 ₫",
+      "O": "8,111,111 ₫",
+      "P": "648,889 ₫",
+      "Q": "8,760,000 ₫",
+      "V": "8,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2173",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP6209A",
+      "K": "Ấm siêu tốc INP6209A",
+      "L": "Cái",
+      "M": "12",
+      "N": "212,963 ₫",
+      "O": "2,555,556 ₫",
+      "P": "204,444 ₫",
+      "Q": "2,760,000 ₫",
+      "V": "2,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2174",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "15",
+      "N": "527,778 ₫",
+      "O": "7,916,667 ₫",
+      "P": "633,333 ₫",
+      "Q": "8,550,000 ₫",
+      "V": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2175",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "15",
+      "N": "481,481 ₫",
+      "O": "7,222,222 ₫",
+      "P": "577,778 ₫",
+      "Q": "7,800,000 ₫",
+      "V": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2176",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "xuất bán Công Ty TNHH\nGia Bảo HP 销售给嘉宝HP有\n限责任公司",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "15",
+      "N": "574,074 ₫",
+      "O": "8,611,111 ₫",
+      "P": "688,889 ₫",
+      "Q": "9,300,000 ₫",
+      "V": "9,300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2177",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "mua bếp từ tặng nồi lẩu 购\n买电磁炉，赠送火锅",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "12",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2178",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2179",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2180",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP\n嘉宝HP有限责任公司",
+      "C": "2026-10-14",
+      "D": "2026-10-15",
+      "E": "BH2026100132",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 210
+  },
+  {
+   "page": 2,
+   "title": "Công Ty TNHH Gia Bảo HP 嘉宝HP有限责任公司",
+   "sheet": "Gia Bảo  ",
+   "hidden": false,
+   "declaredRows": 76,
+   "rows": [
+    {
+     "excelRow": "2",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-22",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6003",
+      "K": "Cái",
+      "L": "4",
+      "M": "870,370 ₫",
+      "N": "3,481,482 ₫",
+      "O": "278,519 ₫",
+      "P": "3,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "3",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1402",
+      "J": "Nồi áp suất 6L INP1402",
+      "K": "Cái",
+      "L": "4",
+      "M": "937,963 ₫",
+      "N": "3,751,852 ₫",
+      "O": "300,148 ₫",
+      "P": "4,052,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "4",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox đúc nguyên khối\nINP2003",
+      "K": "Bộ",
+      "L": "6",
+      "M": "1,059,260 ₫",
+      "N": "6,355,560 ₫",
+      "O": "508,445 ₫",
+      "P": "6,864,005 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "5",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2102",
+      "K": "Cái",
+      "L": "10",
+      "M": "2,565 ₫",
+      "N": "2,564,810 ₫",
+      "O": "205,185 ₫",
+      "P": "2,769,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "6",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2103",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2103",
+      "K": "Cái",
+      "L": "10",
+      "M": "281,481 ₫",
+      "N": "2,814,810 ₫",
+      "O": "225,185 ₫",
+      "P": "3,039,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "7",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2106",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2106",
+      "K": "Cái",
+      "L": "10",
+      "M": "252,778 ₫",
+      "N": "2,527,780 ₫",
+      "O": "202,222 ₫",
+      "P": "2,730,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "8",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2108",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2108",
+      "K": "Cái",
+      "L": "10",
+      "M": "256,481 ₫",
+      "N": "2,564,810 ₫",
+      "O": "205,185 ₫",
+      "P": "2,769,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "9",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2109",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2109",
+      "K": "Cái",
+      "L": "10",
+      "M": "227,778 ₫",
+      "N": "2,277,780 ₫",
+      "O": "182,222 ₫",
+      "P": "2,460,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "10",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2110",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2110",
+      "K": "Cái",
+      "L": "10",
+      "M": "252,778 ₫",
+      "N": "2,527,780 ₫",
+      "O": "202,222 ₫",
+      "P": "2,730,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "11",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2111",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2111",
+      "K": "Cái",
+      "L": "10",
+      "M": "277,778 ₫",
+      "N": "2,777,780 ₫",
+      "O": "222,222 ₫",
+      "P": "3,000,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "12",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "6",
+      "M": "844,444 ₫",
+      "N": "5,066,664 ₫",
+      "O": "405,333 ₫",
+      "P": "5,471,997 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "13",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP3002",
+      "J": "Nồi gang tráng menINP3002",
+      "K": "Cái",
+      "L": "2",
+      "M": "569,444 ₫",
+      "N": "1,138,888 ₫",
+      "O": "91,111 ₫",
+      "P": "1,229,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "14",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP3003",
+      "J": "Nồi gang tráng menINP3003",
+      "K": "Cái",
+      "L": "2",
+      "M": "564,814 ₫",
+      "N": "1,129,628 ₫",
+      "O": "90,370 ₫",
+      "P": "1,219,998 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "15",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP3201",
+      "J": "Chảo gang tráng menINP3201",
+      "K": "Cái",
+      "L": "6",
+      "M": "194,444 ₫",
+      "N": "1,166,664 ₫",
+      "O": "93,333 ₫",
+      "P": "1,259,997 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "16",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6003",
+      "K": "Cái",
+      "L": "2",
+      "M": "851,852 ₫",
+      "N": "1,703,704 ₫",
+      "O": "136,296 ₫",
+      "P": "1,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "17",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6101",
+      "J": "Bếp từ đơn INP6101( 2200W, mặt\nkính màu sữa )",
+      "K": "Cái",
+      "L": "12",
+      "M": "601,852 ₫",
+      "N": "7,222,224 ₫",
+      "O": "577,778 ₫",
+      "P": "7,800,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "18",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6102",
+      "J": "Bếp từ đơn INP6102 ( 2500W), 2\nquạt tản",
+      "K": "Cái",
+      "L": "12",
+      "M": "937,963 ₫",
+      "N": "11,255,556 ₫",
+      "O": "900,444 ₫",
+      "P": "12,156,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "19",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6104",
+      "J": "Bếp từ đơn INP6104 ( 2500W )",
+      "K": "Cái",
+      "L": "6",
+      "M": "1,007,407 ₫",
+      "N": "6,044,442 ₫",
+      "O": "483,555 ₫",
+      "P": "6,527,997 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "20",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6201",
+      "J": "Ấm điện siêu tốc INP6201 1,7 lít\nmàu ghi",
+      "K": "Cái",
+      "L": "12",
+      "M": "324,074 ₫",
+      "N": "3,888,888 ₫",
+      "O": "311,111 ₫",
+      "P": "4,199,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "21",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6202",
+      "J": "Ấm điện siêu tốc INP6202 1,7 lít\nmàu đen",
+      "K": "Cái",
+      "L": "12",
+      "M": "325,926 ₫",
+      "N": "3,911,112 ₫",
+      "O": "312,889 ₫",
+      "P": "4,224,001 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "22",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6602",
+      "J": "Máy sấy bát đĩa INP6602",
+      "K": "Cái",
+      "L": "5",
+      "M": "1,361,111 ₫",
+      "N": "6,805,555 ₫",
+      "O": "544,444 ₫",
+      "P": "7,349,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "23",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6001",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6001",
+      "K": "Cái",
+      "L": "2",
+      "M": "1,138,889 ₫",
+      "N": "2,277,778 ₫",
+      "O": "182,222 ₫",
+      "P": "2,460,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "24",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "E": "30/12/2025",
+      "G": "00000004",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6003",
+      "K": "Cái",
+      "L": "4",
+      "M": "910,185 ₫",
+      "N": "3,640,740 ₫",
+      "O": "291,259 ₫",
+      "P": "3,931,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "25",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2025-12-30",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1301",
+      "J": "Nồi mã INP1301",
+      "K": "Cái",
+      "L": "30"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "26",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "16/01/2026",
+      "G": "NTTK00003",
+      "H": "Công Ty TNHH Gia Bảo HP Đặt Cọc(\nchuyển khoản)",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "9,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "27",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1501",
+      "J": "Ấm đun nước 3L INP1501",
+      "K": "Cái",
+      "L": "12",
+      "M": "111,111 ₫",
+      "N": "1,333,333 ₫",
+      "O": "106,667 ₫",
+      "P": "1,440,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "28",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1502",
+      "J": "Ấm đun nước 4L INP1502",
+      "K": "Cái",
+      "L": "12",
+      "M": "120,370 ₫",
+      "N": "1,444,444 ₫",
+      "O": "115,556 ₫",
+      "P": "1,559,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "29",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1503",
+      "J": "Ấm đun nước 5L INP1503",
+      "K": "Cái",
+      "L": "12",
+      "M": "129,630 ₫",
+      "N": "1,555,556 ₫",
+      "O": "124,444 ₫",
+      "P": "1,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "30",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2106",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2106",
+      "K": "Cái",
+      "L": "10",
+      "M": "252,778 ₫",
+      "N": "2,527,778 ₫",
+      "O": "202,222 ₫",
+      "P": "2,730,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "31",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2108",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2108",
+      "K": "Cái",
+      "L": "20",
+      "M": "256,481 ₫",
+      "N": "5,129,630 ₫",
+      "O": "410,370 ₫",
+      "P": "5,540,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    }
+   ],
+   "originalPage": 211
+  },
+  {
+   "page": 3,
+   "title": "Công Ty TNHH Gia Bảo HP 嘉宝HP有限责任公司",
+   "sheet": "Gia Bảo  ",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "32",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2109",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2109",
+      "K": "Cái",
+      "L": "10",
+      "M": "227,778 ₫",
+      "N": "2,277,778 ₫",
+      "O": "182,222 ₫",
+      "P": "2,460,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "33",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2110",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2110",
+      "K": "Cái",
+      "L": "20",
+      "M": "252,778 ₫",
+      "N": "5,055,556 ₫",
+      "O": "404,444 ₫",
+      "P": "5,460,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "34",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "E": "21/01/2026",
+      "G": "00000027",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2111",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2111",
+      "K": "Cái",
+      "L": "20",
+      "M": "277,778 ₫",
+      "N": "5,555,556 ₫",
+      "O": "444,444 ₫",
+      "P": "6,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "35",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-01-16",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701·",
+      "K": "Cái",
+      "L": "8",
+      "M": "361,111 ₫",
+      "N": "2,888,889 ₫",
+      "O": "231,111 ₫",
+      "P": "3,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "36",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "K": "Bộ",
+      "L": "4",
+      "M": "324,074 ₫",
+      "N": "1,296,296 ₫",
+      "O": "103,704 ₫",
+      "P": "1,400,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "37",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1501",
+      "J": "Ấm đun nước 3L INP1501",
+      "K": "Cái",
+      "L": "48",
+      "M": "111,111 ₫",
+      "N": "5,333,333 ₫",
+      "O": "426,667 ₫",
+      "P": "5,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "38",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1502",
+      "J": "Ấm đun nước 4L INP1502",
+      "K": "Cái",
+      "L": "48",
+      "M": "120,370 ₫",
+      "N": "5,777,776 ₫",
+      "O": "462,222 ₫",
+      "P": "6,239,998 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "39",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1503",
+      "J": "Ấm đun nước 5L INP1503",
+      "K": "Cái",
+      "L": "48",
+      "M": "129,630 ₫",
+      "N": "6,222,222 ₫",
+      "O": "497,778 ₫",
+      "P": "6,720,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "40",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "4",
+      "M": "844,444 ₫",
+      "N": "3,377,778 ₫",
+      "O": "270,222 ₫",
+      "P": "3,648,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "41",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-02",
+      "E": "02/02/2026",
+      "G": "00000039",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6602",
+      "J": "Máy sấy bát đĩa INP6602",
+      "K": "Cái",
+      "L": "16",
+      "M": "1,361,111 ₫",
+      "N": "21,777,778 ₫",
+      "O": "1,742,222 ₫",
+      "P": "23,520,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "42",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-02-11",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "35,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "43",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "K": "Cái",
+      "L": "4",
+      "M": "824,074 ₫",
+      "N": "3,296,296 ₫",
+      "O": "263,704 ₫",
+      "P": "3,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "44",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Bộ",
+      "L": "4",
+      "M": "1,059,259 ₫",
+      "N": "4,237,037 ₫",
+      "O": "338,963 ₫",
+      "P": "4,576,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "45",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2106",
+      "J": "Chảo inox đúc nguyên khối\n(không chống dính)INP2106",
+      "K": "Cái",
+      "L": "10",
+      "M": "252,778 ₫",
+      "N": "2,527,778 ₫",
+      "O": "202,222 ₫",
+      "P": "2,730,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "46",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "2",
+      "M": "844,444 ₫",
+      "N": "1,688,889 ₫",
+      "O": "135,111 ₫",
+      "P": "1,824,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "47",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6002",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6002",
+      "K": "Cái",
+      "L": "4",
+      "M": "1,097,222 ₫",
+      "N": "4,388,889 ₫",
+      "O": "351,111 ₫",
+      "P": "4,740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "48",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "E": "06/12/2626",
+      "G": "00000175",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701·",
+      "K": "Cái",
+      "L": "8",
+      "M": "361,111 ₫",
+      "N": "2,888,889 ₫",
+      "O": "231,111 ₫",
+      "P": "3,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "49",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-10",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6401",
+      "J": "Quạt đứng INP6401",
+      "K": "Cái",
+      "L": "102",
+      "M": "509,259 ₫",
+      "N": "51,944,444 ₫",
+      "O": "4,155,555 ₫",
+      "P": "56,099,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "50",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-16",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "15,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "51",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "18,300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "52",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701·",
+      "K": "Cái",
+      "L": "16",
+      "M": "361,111 ₫",
+      "N": "5,777,778 ₫",
+      "O": "462,222 ₫",
+      "P": "6,240,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "53",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "27/7/2026",
+      "G": "00000248",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Nồi",
+      "L": "20",
+      "M": "814,815 ₫",
+      "N": "16,296,296 ₫",
+      "O": "1,303,704 ₫",
+      "P": "17,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "54",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "27/7/2026",
+      "G": "00000248",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6903",
+      "J": "Nồi áp suất điện INP6903",
+      "K": "Nồi",
+      "L": "4",
+      "M": "907,407 ₫",
+      "N": "3,629,630 ₫",
+      "O": "290,370 ₫",
+      "P": "3,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "55",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "K": "Cái",
+      "L": "2",
+      "M": "824,074 ₫",
+      "N": "1,648,148 ₫",
+      "O": "131,852 ₫",
+      "P": "1,780,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "56",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Bộ",
+      "L": "4",
+      "M": "1,059,259 ₫",
+      "N": "4,237,037 ₫",
+      "O": "338,963 ₫",
+      "P": "4,576,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "57",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-17",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "2",
+      "M": "844,444 ₫",
+      "N": "1,688,889 ₫",
+      "O": "135,111 ₫",
+      "P": "1,824,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "58",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-23",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Bộ",
+      "L": "4",
+      "M": "1,059,259 ₫",
+      "N": "4,237,037 ₫",
+      "O": "338,963 ₫",
+      "P": "4,576,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "59",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-23",
+      "E": "25/6/2026",
+      "G": "00000190",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "K": "Nồi",
+      "L": "4",
+      "M": "824,074 ₫",
+      "N": "3,296,296 ₫",
+      "O": "263,704 ₫",
+      "P": "3,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "60",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-23",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6402",
+      "J": "Quạt điện đứng INP6402",
+      "K": "Cái",
+      "L": "10",
+      "M": "574,074 ₫",
+      "N": "5,740,741 ₫",
+      "O": "459,259 ₫",
+      "P": "6,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "61",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-06-23",
+      "E": "27/7/2026",
+      "G": "00000248",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6403",
+      "J": "Quạt điện đứng INP6403",
+      "K": "Cái",
+      "L": "50",
+      "M": "694,444 ₫",
+      "N": "34,722,222 ₫",
+      "O": "2,777,778 ₫",
+      "P": "37,500,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "62",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6901",
+      "J": "Nồi áp suất điện INP6901",
+      "K": "Cái",
+      "L": "12",
+      "M": "907,407 ₫",
+      "N": "10,888,889 ₫",
+      "O": "871,111 ₫",
+      "P": "11,760,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    }
+   ],
+   "originalPage": 212
+  },
+  {
+   "page": 4,
+   "title": "Công Ty TNHH Gia Bảo HP 嘉宝HP有限责任公司",
+   "sheet": "Gia Bảo  ",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "63",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "E": "27/7/2026",
+      "G": "00000248",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6903",
+      "J": "Nồi áp suất điện INP6903",
+      "K": "Cái",
+      "L": "8",
+      "M": "907,407 ₫",
+      "N": "7,259,259 ₫",
+      "O": "580,741 ₫",
+      "P": "7,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "64",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6105",
+      "J": "Bếp từ đơn INP6105",
+      "K": "Cái",
+      "L": "18",
+      "M": "722,222 ₫",
+      "N": "13,000,000 ₫",
+      "O": "1,040,000 ₫",
+      "P": "14,040,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "65",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1301",
+      "J": "Nồi mã INP1301",
+      "K": "Cái",
+      "L": "18"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "66",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "E": "21/7/2026",
+      "G": "00000229",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "8",
+      "M": "844,444 ₫",
+      "N": "6,755,556 ₫",
+      "O": "540,444 ₫",
+      "P": "7,296,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "67",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "E": "21/7/2026",
+      "G": "00000229",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP1402",
+      "J": "Nồi áp suất 6L INP1402",
+      "K": "Cái",
+      "L": "6",
+      "M": "937,963 ₫",
+      "N": "5,627,778 ₫",
+      "O": "450,222 ₫",
+      "P": "6,078,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "68",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-07-16",
+      "H": "xuất bán Công Ty TNHH Gia Bảo HP 销\n售给嘉宝HP有限责任公司",
+      "I": "INP6203",
+      "J": "Ấm đun nước INP6203, 1.7L",
+      "L": "1.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "69",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-08-27",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "Q": "70,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "70",
+     "values": {
+      "A": "KH071",
+      "B": "Công Ty TNHH Gia Bảo HP 嘉宝HP有\n限责任公司",
+      "C": "2026-10-14",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "Q": "41,617,997 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [
+    {
+     "row": "71",
+     "cell": "N71",
+     "value": "354,227,764 ₫"
+    },
+    {
+     "row": "71",
+     "cell": "O71",
+     "value": "28,338,221 ₫"
+    },
+    {
+     "row": "71",
+     "cell": "P71",
+     "value": "382,565,985 ₫"
+    },
+    {
+     "row": "71",
+     "cell": "Q71",
+     "value": "188,917,997 ₫"
+    },
+    {
+     "row": "73",
+     "cell": "H73",
+     "value": "Tổng Công nợ (2025+2026)"
+    },
+    {
+     "row": "73",
+     "cell": "I73",
+     "value": "382,565,985 ₫"
+    },
+    {
+     "row": "74",
+     "cell": "H74",
+     "value": "công nợ đơn ( 2025)"
+    },
+    {
+     "row": "74",
+     "cell": "I74",
+     "value": "93,847,989 ₫"
+    },
+    {
+     "row": "74",
+     "cell": "K74",
+     "value": "CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG\nĐịa chỉ: Số 1369 Đại Lộ Thăng Long, Xã Sơn Đồng, Thành Phố Hà Nội\nSố Điện thoại : 0867024186\nMã số thuế : 0111201600\nTài khoản : 858988999 Ngân hàng: MB-CN Hai Bà Trưng."
+    },
+    {
+     "row": "75",
+     "cell": "H75",
+     "value": "Công nợ đơn 2026"
+    },
+    {
+     "row": "75",
+     "cell": "I75",
+     "value": "288,717,996 ₫"
+    },
+    {
+     "row": "76",
+     "cell": "H76",
+     "value": "Đã Thanh toán"
+    },
+    {
+     "row": "76",
+     "cell": "I76",
+     "value": "188,917,997 ₫"
+    },
+    {
+     "row": "77",
+     "cell": "H77",
+     "value": "Công nợ quạt"
+    },
+    {
+     "row": "77",
+     "cell": "I77",
+     "value": "99,799,999 ₫"
+    },
+    {
+     "row": "78",
+     "cell": "H78",
+     "value": "còn lại công nợ ( không tính quạt và đơn 2025)"
+    },
+    {
+     "row": "78",
+     "cell": "I78",
+     "value": "0 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    }
+   ],
+   "originalPage": 213
+  },
+  {
+   "page": 5,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": 12,
+   "rows": [
+    {
+     "excelRow": "922",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP1401",
+      "G": "Nồi áp suất 4.5L INP1401",
+      "H": "cái",
+      "I": "4",
+      "J": "824,074.00",
+      "K": "3,296,296.00",
+      "L": "263,703.68",
+      "M": "3559999.68",
+      "Q": "3,559,999.68"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "923",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP1402",
+      "G": "Nồi áp suất 6L INP1402",
+      "H": "cái",
+      "I": "4",
+      "J": "937,963.00",
+      "K": "3,751,852.00",
+      "L": "300,148.16",
+      "M": "4052000.16",
+      "Q": "4,052,000.16"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "924",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP3201",
+      "G": "Chảo gang tráng menINP3201",
+      "H": "cái",
+      "I": "18",
+      "J": "194,444.00",
+      "K": "3,499,992.00",
+      "L": "279,999.36",
+      "M": "3779991.36",
+      "Q": "3,779,991.36"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "925",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6601",
+      "G": "Máy sấy bát đĩa INP 6601",
+      "H": "cái",
+      "I": "4",
+      "J": "1,203,705.00",
+      "K": "4,814,820.00",
+      "L": "385,185.60",
+      "M": "5200005.60",
+      "Q": "5,200,005.60"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "926",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6602",
+      "G": "Máy sấy bát đĩa INP6602",
+      "H": "cái",
+      "I": "4",
+      "J": "1,361,111.00",
+      "K": "5,444,444.00",
+      "L": "435,555.52",
+      "M": "5879999.52",
+      "Q": "5,879,999.52"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "927",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "00000031",
+      "D": "31/12/2025",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP1301",
+      "G": "Nồi mã INP1301",
+      "H": "cái",
+      "I": "36",
+      "J": "0.00",
+      "L": "0.00",
+      "M": "0.00",
+      "Q": "0.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "928",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6001",
+      "G": "Nôì cơm điện tử ( nồi cơm điện\nđa năng giảm đường )\nINP6001",
+      "H": "cái",
+      "I": "12",
+      "J": "1,138,889.00",
+      "K": "13,666,668.00",
+      "L": "1,093,333.44",
+      "M": "14760001.44",
+      "Q": "14,760,001.44"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "929",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6003",
+      "G": "Nôì cơm điện tử ( nồi cơm điện\nđa năng giảm đường )\nINP6003",
+      "H": "cái",
+      "I": "12",
+      "J": "851,852.00",
+      "K": "10,222,224.00",
+      "L": "817,777.92",
+      "M": "11040001.92",
+      "Q": "11,040,001.92"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "930",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6101",
+      "G": "Bếp từ đơn INP6101\n(2200W,Mặt kính màu sữa)",
+      "H": "cái",
+      "I": "18",
+      "J": "583,333.00",
+      "K": "10,499,994.00",
+      "L": "839,999.52",
+      "M": "11339993.52",
+      "Q": "11,339,993.52"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "931",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6102",
+      "G": "Bếp từ đơn INP6102( 2500W)\nhai quạt tản",
+      "H": "cái",
+      "I": "18",
+      "J": "937,963.00",
+      "K": "16,883,334.00",
+      "L": "1,350,666.72",
+      "M": "18234000.72",
+      "Q": "18,234,000.72"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "932",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6202",
+      "G": "Ấm điện siêu tốc INP6202 1,7\nlít màu đen",
+      "H": "cái",
+      "I": "36",
+      "J": "325,926.00",
+      "K": "11,733,336.00",
+      "L": "938,666.88",
+      "M": "12672002.88",
+      "Q": "12,672,002.88"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "933",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN（德檀贸易服务\n有限公司",
+      "B": "31/12/2025",
+      "C": "chưa xuất HĐ",
+      "E": "xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "F": "INP6206",
+      "G": "Ấm đun nước INP6206 , 1,7 lít",
+      "H": "cái",
+      "I": "36",
+      "J": "263,889.00",
+      "K": "9,500,004.00",
+      "L": "760,000.32",
+      "M": "10260004.32",
+      "Q": "10,260,004.32"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    }
+   ],
+   "originalPage": 214
+  },
+  {
+   "page": 6,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 12,
+   "rows": [
+    {
+     "excelRow": "907",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "4.00",
+      "N": "824,074 ₫",
+      "O": "3,296,296 ₫",
+      "P": "263,704 ₫",
+      "Q": "3,560,000 ₫",
+      "V": "3,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "908",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP1402",
+      "K": "Nồi áp suất 6L INP1402",
+      "L": "cái",
+      "M": "4.00",
+      "N": "937,963 ₫",
+      "O": "3,751,852 ₫",
+      "P": "300,148 ₫",
+      "Q": "4,052,000 ₫",
+      "V": "4,052,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "909",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP3201",
+      "K": "Chảo gang tráng\nmenINP3201",
+      "L": "cái",
+      "M": "18.00",
+      "N": "194,444 ₫",
+      "O": "3,499,992 ₫",
+      "P": "279,999 ₫",
+      "Q": "3,779,991 ₫",
+      "V": "3,779,991 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "910",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6601",
+      "K": "Máy sấy bát đĩa INP6601",
+      "L": "cái",
+      "M": "4.00",
+      "N": "1,203,705 ₫",
+      "O": "4,814,820 ₫",
+      "P": "385,186 ₫",
+      "Q": "5,200,006 ₫",
+      "V": "5,200,006 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "911",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6602",
+      "K": "Máy sấy bát đĩa INP6602",
+      "L": "cái",
+      "M": "4.00",
+      "N": "1,361,111 ₫",
+      "O": "5,444,444 ₫",
+      "P": "435,556 ₫",
+      "Q": "5,880,000 ₫",
+      "V": "5,880,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "912",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "F": "31/12/2025",
+      "H": "00000031",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "cái",
+      "M": "36.00",
+      "N": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "913",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6001",
+      "K": "Nôì cơm điện tử ( nồi\ncơm điện đa năng giảm\nđường )\nINP6001",
+      "L": "cái",
+      "M": "12.00",
+      "N": "1,138,889 ₫",
+      "O": "13,666,668 ₫",
+      "P": "1,093,333 ₫",
+      "Q": "14,760,001 ₫",
+      "V": "14,760,001 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "914",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6003",
+      "K": "Nôì cơm điện tử ( nồi\ncơm điện đa năng giảm\nđường )\nINP6003",
+      "L": "cái",
+      "M": "12.00",
+      "N": "851,852 ₫",
+      "O": "10,222,224 ₫",
+      "P": "817,778 ₫",
+      "Q": "11,040,002 ₫",
+      "V": "11,040,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "915",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6101",
+      "K": "Bếp từ đơn INP6101(\n2200W, mặt kính màu\nsữa )",
+      "L": "cái",
+      "M": "18.00",
+      "N": "583,333 ₫",
+      "O": "10,499,994 ₫",
+      "P": "840,000 ₫",
+      "Q": "11,339,994 ₫",
+      "V": "11,339,994 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "916",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6102",
+      "K": "Bếp từ đơn INP6102(\n2500W) hai quạt tản",
+      "L": "cái",
+      "M": "18.00",
+      "N": "937,963 ₫",
+      "O": "16,883,334 ₫",
+      "P": "1,350,667 ₫",
+      "Q": "18,234,001 ₫",
+      "V": "18,234,001 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "917",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "cái",
+      "M": "36.00",
+      "N": "325,926 ₫",
+      "O": "11,733,336 ₫",
+      "P": "938,667 ₫",
+      "Q": "12,672,003 ₫",
+      "V": "12,672,003 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "918",
+     "values": {
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+      "C": "31/12/2025",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ ĐỨC ĐÀN",
+      "J": "INP6206",
+      "K": "Ấm đun nước INP6206 ,\n1,7 lít",
+      "L": "cái",
+      "M": "36.00",
+      "N": "263,889 ₫",
+      "O": "9,500,004 ₫",
+      "P": "760,000 ₫",
+      "Q": "10,260,004 ₫",
+      "V": "10,260,004 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 215
+  }
+ ]
+}

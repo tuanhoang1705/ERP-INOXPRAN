@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { vatPercent, type CreateStockReturn, type InventoryCategory, type VatRate } from '@inoxpran/contracts';
+import { vatPercent, type CreateSampleReturn, type CreateStockReturn, type InventoryCategory, type VatRate } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
@@ -113,6 +113,75 @@ export class StockReturnsService {
       after: serializeDocument(after),
     });
     return this.view(after);
+  }
+
+  /**
+   * Nhập lại hàng mẫu không có phiếu xuất hàng mẫu (NVKD mượn trước khi dùng ERP — SAL-TYPE-01 bổ sung 17/10/2026):
+   * thẻ kho "Hàng mẫu nhập lại" (SAMPLE_IN), phiếu TH loại hàng mẫu ghi người mượn; không có bước kế toán.
+   */
+  async createSample(input: CreateSampleReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`sample-return:${request.user.sub}`, idempotencyKey, input, async (session) => {
+      const borrower = await this.db.collection('employees').findOne({ _id: toObjectId(input.borrowerId, 'borrowerId') }, { session });
+      if (!borrower) throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Không tìm thấy nhân viên mượn hàng', details: [{ path: ['borrowerId'] }] });
+      const warehouse = await this.db.collection('warehouses').findOne({ _id: toObjectId(input.warehouseId, 'warehouseId'), active: true }, { session });
+      if (!warehouse) throw new NotFoundException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không tìm thấy kho hoạt động', details: [{ path: ['warehouseId'] }] });
+      const quantities = new Map<string, Decimal>();
+      for (const line of input.lines) {
+        const key = toObjectId(line.productId, 'productId').toHexString();
+        quantities.set(key, (quantities.get(key) ?? new Decimal(0)).add(line.quantity));
+      }
+      const products = await this.db.collection('products').find({ _id: { $in: [...quantities.keys()].map((id) => new ObjectId(id)) } }, { session }).toArray();
+      if (products.length !== quantities.size) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: 'Có mã hàng không tồn tại', details: [{ path: ['lines'] }] });
+      const productById = new Map(products.map((product) => [(product._id as ObjectId).toHexString(), product]));
+      const code = await this.sequences.next('TH', session, 4, new Date(), 'compact');
+      const lines = [...quantities].map(([productId, quantity]) => ({ productId, quantity: quantity.toString() }));
+      const partnerName = `Hàng mẫu — ${String(borrower.name)} (không có phiếu xuất mẫu)`;
+      await this.inventory.applyPhysicalMovement(
+        {
+          warehouseId: (warehouse._id as ObjectId).toHexString(),
+          referenceType: 'StockReturn',
+          referenceId: code,
+          movementType: 'LOAN_RETURN',
+          direction: 'IN',
+          category: 'SAMPLE_IN',
+          lines,
+          reason: input.note,
+          actorId: request.user.sub,
+          extra: { borrowerName: String(borrower.name) },
+        },
+        session,
+      );
+      const document = {
+        _id: new ObjectId(),
+        code,
+        kind: 'SAMPLE',
+        purpose: 'SAMPLE',
+        category: 'SAMPLE_IN' as InventoryCategory,
+        noSlip: true,
+        partnerName,
+        salesRepId: borrower._id,
+        borrowerName: String(borrower.name),
+        warehouseId: warehouse._id,
+        warehouseName: String(warehouse.name),
+        note: input.note,
+        lines: lines.map((line) => {
+          const product = productById.get(line.productId) as Document;
+          return { productId: product._id, sku: String(product.sku), productName: String(product.name), unit: String(product.baseUnit), quantity: decimal(line.quantity) };
+        }),
+        createdBy: toObjectId(request.user.sub, 'actorId'),
+        createdByName: request.user.displayName,
+        createdAt: new Date(),
+      };
+      await this.db.collection('stock_returns').insertOne(document, { session });
+      await this.audit.record(
+        {
+          actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+          action: 'SAMPLE_RETURN_POSTED', entityType: 'StockReturn', entityId: document._id.toHexString(), after: serializeDocument(document),
+        },
+        session,
+      );
+      return this.view(document);
+    });
   }
 
   async create(input: CreateStockReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {

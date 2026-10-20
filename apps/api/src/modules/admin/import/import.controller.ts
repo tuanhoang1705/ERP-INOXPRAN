@@ -5,6 +5,7 @@ import { pageRequest } from '../../../common/paging';
 import type { AuthenticatedRequest } from '../../../common/request-context';
 import { Roles, RootOnly } from '../../../common/roles.decorator';
 import { importModeOf, ImportService } from './import.service';
+import { ArHistoryImportService } from './ar-history.service';
 
 /** Nhập dữ liệu ban đầu: chỉ tài khoản quản trị gốc (root) — ghi, đối chiếu, xác nhận, hoàn tác (09/10/2026). */
 const IMPORTERS = ['ADMIN'];
@@ -14,7 +15,10 @@ const REVIEWERS = ['ADMIN'];
 @RootOnly()
 @Controller('admin/import')
 export class ImportController {
-  constructor(private readonly imports: ImportService) {}
+  constructor(
+    private readonly imports: ImportService,
+    private readonly arHistory: ArHistoryImportService,
+  ) {}
 
   @Roles(...IMPORTERS)
   @Get('template')
@@ -40,6 +44,42 @@ export class ImportController {
     return this.imports.commit(body, fileName ? decodeURIComponent(fileName) : undefined, request, importModeOf(mode));
   }
 
+  /** Nhập lịch sử công nợ theo khách (IMP-AR-01): thân request = file .xlsx; ngày chốt trong header x-cutoff (YYYY-MM-DD). */
+  @Roles(...IMPORTERS)
+  @Post('ar-history/dry-run')
+  @HttpCode(200)
+  arHistoryDryRun(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Headers('x-cutoff') cutoff: string | undefined) {
+    return this.arHistory.dryRun(body, fileName ? decodeURIComponent(fileName) : undefined, cutoff);
+  }
+
+  @Roles(...IMPORTERS)
+  @Post('ar-history/commit')
+  arHistoryCommit(@Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Headers('x-cutoff') cutoff: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.arHistory.commit(body, fileName ? decodeURIComponent(fileName) : undefined, cutoff, request);
+  }
+
+  /** Thay lô lịch sử bằng file mới (VD dựng từ Excel gốc, số chính xác): chạy thử so từng khách cũ → mới. */
+  @Roles(...IMPORTERS)
+  @Post('ar-history/batches/:id/replace/dry-run')
+  @HttpCode(200)
+  arHistoryReplaceDryRun(@Param('id') id: string, @Body() body: unknown, @Headers('x-file-name') fileName: string | undefined) {
+    return this.arHistory.replaceDryRun(id, body, fileName ? decodeURIComponent(fileName) : undefined);
+  }
+
+  @Roles(...IMPORTERS)
+  @Post('ar-history/batches/:id/replace')
+  arHistoryReplace(@Param('id') id: string, @Body() body: unknown, @Headers('x-file-name') fileName: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.arHistory.replace(id, body, fileName ? decodeURIComponent(fileName) : undefined, request);
+  }
+
+  /** Lô lịch sử đã ghi trước CN-SEG-01: nạp lại đúng file để bổ sung dòng hàng của phiếu trả hàng (tách phần quạt…). */
+  @Roles(...IMPORTERS)
+  @Post('ar-history/batches/:id/return-lines')
+  @HttpCode(200)
+  arHistoryReturnLines(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.arHistory.attachReturnLines(id, body, request);
+  }
+
   @Roles(...REVIEWERS)
   @Get('batches')
   list(@Query('page') page?: string, @Query('pageSize') pageSize?: string) {
@@ -48,8 +88,8 @@ export class ImportController {
 
   @Roles(...REVIEWERS)
   @Get('batches/:id/report')
-  report(@Param('id') id: string) {
-    return this.imports.report(id);
+  async report(@Param('id') id: string) {
+    return (await this.imports.kindOf(id)) === 'AR_HISTORY' ? this.arHistory.report(id) : this.imports.report(id);
   }
 
   @Roles(...REVIEWERS)
@@ -60,7 +100,7 @@ export class ImportController {
 
   @Roles(...IMPORTERS)
   @Post('batches/:id/rollback')
-  rollback(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-    return this.imports.rollback(id, request);
+  async rollback(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return (await this.imports.kindOf(id)) === 'AR_HISTORY' ? this.arHistory.rollback(id, request) : this.imports.rollback(id, request);
   }
 }

@@ -2,7 +2,7 @@
   import { m } from '$lib/paraglide/messages';
   import type { LoginEvent } from '@inoxpran/contracts';
   import { onMount } from 'svelte';
-  import { ShieldCheck } from 'lucide-svelte';
+  import { CircleAlert, ShieldCheck, ShieldOff } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { dateTime } from '$lib/format';
   import { roleLabel } from '$lib/labels';
@@ -20,6 +20,26 @@
   async function mfaDone() {
     const me = await api<typeof session.user>('/auth/me').catch(() => null);
     if (me) session.user = me;
+  }
+  /** Tự tắt 2 lớp khi không bị bắt buộc (MFA-02) — phải nhập mã 6 số hiện tại. */
+  let disabling = $state(false);
+  let offCode = $state('');
+  let offError = $state('');
+  let offSaving = $state(false);
+  async function disableMfa(event: SubmitEvent) {
+    event.preventDefault();
+    offSaving = true;
+    offError = '';
+    try {
+      await api('/auth/mfa/disable', { method: 'POST', body: JSON.stringify({ totpCode: offCode.trim() }) });
+      disabling = false;
+      offCode = '';
+      await mfaDone();
+    } catch (caught) {
+      offError = caught instanceof Error ? caught.message : m.acc_mfa_off_failed();
+    } finally {
+      offSaving = false;
+    }
   }
   onMount(loadLogins);
 </script>
@@ -56,6 +76,21 @@
       {#if user?.mfa}
         <p class="ok"><ShieldCheck size={18} />{m.acc_mfa_on()}</p>
         <p class="note">{m.acc_mfa_on_note()}</p>
+        {#if user.mfaRequired}
+          <p class="note">{m.acc_mfa_required_note()}</p>
+        {:else if disabling}
+          <form class="off" onsubmit={disableMfa}>
+            <label for="mfa-off-code">{m.acc_mfa_off_code()}</label>
+            <input id="mfa-off-code" bind:value={offCode} inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required />
+            {#if offError}<p class="err"><CircleAlert size={15} />{offError}</p>{/if}
+            <div class="row">
+              <button class="btn small danger" disabled={offSaving || !/^\d{6}$/.test(offCode.trim())}>{offSaving ? m.kh_dang_luu() : m.acc_mfa_off_confirm()}</button>
+              <button type="button" class="btn small" onclick={() => { disabling = false; offError = ''; offCode = ''; }}>{m.huy()}</button>
+            </div>
+          </form>
+        {:else}
+          <button class="btn small" onclick={() => (disabling = true)}><ShieldOff size={15} />{m.acc_mfa_off()}</button>
+        {/if}
       {:else}
         <MfaEnroll ondone={mfaDone} />
       {/if}
@@ -92,6 +127,12 @@
   .note { margin: 0; padding: 0 20px 16px; color: var(--subtle); font-size: 12.5px; }
   .body .note { padding: 6px 0 0; }
   .ok { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--green); font-weight: 600; }
+  .body > .btn { margin-top: 12px; }
+  .off { display: grid; gap: 8px; margin-top: 12px; }
+  .off label { color: var(--muted); font-size: 12.5px; }
+  .off input { max-width: 160px; letter-spacing: 3px; }
+  .off .row { display: flex; gap: 8px; }
+  .err { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--red); font-size: 12.5px; }
   .ua { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
 </style>

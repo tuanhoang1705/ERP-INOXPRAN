@@ -24,7 +24,7 @@
    * chuyển dòng cùng cột, thêm dòng bằng ô nhập mã (gõ hoặc máy quét mã vạch — Enter để thêm, trùng mã thì cộng số lượng),
    * chọn / sắp xếp cột (nhớ theo người dùng trên trình duyệt), xuất CSV mở bằng Excel.
    */
-  import { ArrowDown, ArrowUp, Columns3, Download, Info, ScanBarcode, Trash2 } from 'lucide-svelte';
+  import { ArrowDown, ArrowUp, Columns3, Download, Info, Plus, ScanBarcode, Trash2 } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { session } from '$lib/session.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
@@ -37,6 +37,7 @@
     exportName = 'dong-hang',
     suggestions = [],
     onadd,
+    oncreate,
     onremove,
     ondetail,
   }: {
@@ -50,6 +51,8 @@
     suggestions?: Array<{ value: string; label: string }>;
     /** Thêm dòng theo mã / mã vạch; trả lỗi (chuỗi) nếu không tìm thấy. */
     onadd?: ((code: string) => string | null | Promise<string | null>) | undefined;
+    /** Có thì hiện nút tạo mã mới (khi không tìm thấy mã, và nút "+ Sản phẩm mới"). Gọi với mã vừa gõ ('' = chưa gõ). */
+    oncreate?: ((code: string) => void) | undefined;
     onremove?: ((index: number) => void) | undefined;
     ondetail?: ((row: T) => void) | undefined;
   } = $props();
@@ -60,6 +63,8 @@
   let chooserOpen = $state(false);
   let code = $state('');
   let addError = $state('');
+  /** Mã vừa gõ mà không tìm thấy — gợi ý tạo mã mới. */
+  let missingCode = $state('');
   let adding = $state(false);
   let table = $state<HTMLTableElement>();
   let codeInput = $state<HTMLInputElement>();
@@ -107,10 +112,13 @@
     if (!value || !onadd) return;
     adding = true;
     addError = '';
+    missingCode = '';
     try {
       const problem = await onadd(value);
-      if (problem) addError = problem;
-      else code = '';
+      if (problem) {
+        addError = problem;
+        missingCode = value;
+      } else code = '';
     } finally {
       adding = false;
       codeInput?.focus();
@@ -153,6 +161,7 @@
       <datalist id={`${gridKey}-codes`}>{#each suggestions as item}<option value={item.value}>{item.label}</option>{/each}</datalist>
       <button class="btn small soft" disabled={adding || !code.trim()}>{m.lg_them()}</button>
     </form>
+    {#if oncreate}<button type="button" class="btn small" onclick={() => oncreate?.(code.trim())}><Plus size={15} />{m.lg_san_pham_moi()}</button>{/if}
   {/if}
   <div class="right">
     <div class="chooser">
@@ -175,7 +184,7 @@
     <button class="btn small" onclick={exportCsv} disabled={!rows.length}><Download size={15} />{m.lg_xuat_excel()}</button>
   </div>
 </div>
-{#if addError}<p class="add-error">{addError}</p>{/if}
+{#if addError}<p class="add-error">{addError}{#if oncreate && missingCode && !readonly} <button type="button" class="link-btn" onclick={() => { oncreate?.(missingCode); addError = ''; }}>{m.lg_tao_ma_moi({ code: missingCode.toUpperCase() })}</button>{/if}</p>{/if}
 
 <div class="table-wrap">
   <table class="table lines" bind:this={table}>
@@ -241,6 +250,7 @@
   .menu li { display: flex; align-items: center; gap: 2px; }
   .menu label { display: flex; flex: 1; align-items: center; gap: 8px; padding: 6px 8px; font-size: 13px; cursor: pointer; }
   .add-error { margin: 0 16px 8px; color: var(--red); font-size: 12.5px; }
+  .link-btn { margin-left: 6px; padding: 0; border: 0; background: none; color: var(--navy-2); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
   .lines td { padding: 6px 10px; }
   .idx { width: 42px; }
   .tools-col { width: 72px; }

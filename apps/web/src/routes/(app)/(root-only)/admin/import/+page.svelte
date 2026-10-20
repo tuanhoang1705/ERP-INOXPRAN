@@ -5,14 +5,17 @@
    * Chế độ "Điều chỉnh tồn đầu kỳ đã nhập" (IMP-ADJ-01): thay số tồn đầu kỳ bằng số trong file khi lô cũ không hoàn tác được.
    */
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, Download, FileSpreadsheet, RotateCcw, ShieldCheck, Upload } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Download, FileSpreadsheet, ListPlus, RotateCcw, ShieldCheck, Upload } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { api, ApiRequestError, download, localizedErrorMessage } from '$lib/api';
-  import { dateTime, num, vnd } from '$lib/format';
+  import { date, dateTime, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
   import { session } from '$lib/session.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
+  import ArHistoryImport, { type ArAfterCutoff, type ArCustomer, type CommittedBatch } from '$lib/components/ArHistoryImport.svelte';
+  import ErpTwinsTable, { type ErpTwin } from '$lib/components/ErpTwinsTable.svelte';
+  import { arStatusLabel, arStatusTone } from '$lib/ar-history';
 
   type SheetSummary = { name: string; title: string; rows: number; create: number; update: number; errors: number };
   type Totals = { stockQuantity: string; stockValue: string; stockWithoutCost: number; receivablesAmount: string; receivablesByCustomer: Array<{ code: string; amount: string }> };
@@ -21,16 +24,23 @@
   type Mode = 'NORMAL' | 'ADJUST_OPENING';
   type DryRun = { ok: boolean; mode: Mode; fileName: string; sha256: string; sheets: SheetSummary[]; totals: Totals; adjustment?: Adjustment; errors: Array<{ sheet: string; row: number; column: string; message: string }>; truncated: boolean };
   type Batch = {
-    id: string; code: string; fileName: string; status: 'COMMITTED' | 'ROLLED_BACK'; mode: Mode; adjustment?: Adjustment; sheets: SheetSummary[]; totals: Totals;
+    id: string; code: string; fileName: string; status: 'COMMITTED' | 'ROLLED_BACK'; mode: Mode; kind?: 'INITIAL' | 'AR_HISTORY'; cutoff?: string; paymentCount?: number; adjustment?: Adjustment; sheets: SheetSummary[]; totals: Totals;
+    replacedAt?: string; replacements?: number;
     createdCount: number; updatedCount: number; openingCount: number; receivableCount: number; createdByName: string; createdAt: string;
     confirmations: Array<{ role: string; name: string; at: string }>; rolledBackAt?: string; rolledBackByName?: string;
   };
+  type ArReportCustomer = ArCustomer & { ok: boolean; imported: { debit: string; receipt: string; freight: string; returns: string; balance: string; outstanding: string; kept?: string }; diffs: Array<{ field: string; ours: string; excel: string; delta: string }> };
   type Report = {
     batch: Batch;
+    customers?: ArReportCustomer[];
+    afterCutoff?: ArAfterCutoff[];
+    linked?: ErpTwin[];
+    twins?: ErpTwin[];
+    ok?: boolean;
     records: Array<{ collection: string; expected: number; actual: number; ok: boolean }>;
-    stock: Array<{ warehouse: string; lines: number; importedQuantity: string; currentQuantity: string; importedValue: string; ok: boolean }>;
+    stock?: Array<{ warehouse: string; lines: number; importedQuantity: string; currentQuantity: string; importedValue: string; ok: boolean }>;
     adjustments?: Array<{ warehouse: string; sku: string; previous: string; next: string; delta: string }>;
-    receivables: { fileTotal: string; imported: string; outstanding: string; documents: number; ok: boolean; byCustomer: Array<{ code: string; amount: string }> };
+    receivables?: { fileTotal: string; imported: string; outstanding: string; documents: number; ok: boolean; byCustomer: Array<{ code: string; amount: string }> };
   };
 
   const roles = $derived(session.user?.roles ?? []);
@@ -48,6 +58,13 @@
   let page = $state(1);
   let pageSize = $state(20);
   let report = $state<Report | null>(null);
+  // Thay lô lịch sử bằng file mới (số chính xác từ Excel gốc).
+  type ReplaceCompare = { code: string; name: string; before: { balance: string } | null; after: { balance: string } | null; delta: string };
+  type ReplacePreview = { ok: boolean; cutoff: string; errors: Array<{ sheet: string; row: number; column: string; message: string }>; compare: ReplaceCompare[]; afterCutoff?: ArAfterCutoff[]; linked?: ErpTwin[]; twins?: ErpTwin[]; kept?: Array<{ id: string; customerCode: string; fileAmount: string; keptAmount: string; payments: string[] }> };
+  let replaceOpen = $state(false);
+  let replaceTarget = $state<{ batch: Batch; file: File } | null>(null);
+  let replacePreview = $state<ReplacePreview | null>(null);
+  const replaceChanged = $derived(replacePreview?.compare.filter((row) => Number(row.delta) !== 0) ?? []);
   let reportOpen = $state(false);
   const collectionLabel = (value: string) => ({ product_categories: m.imp_nhom_hang(), regions: m.imp_khu_vuc(), employees: m.imp_nvkd(), partners: m.imp_doi_tac(), products: m.imp_san_pham() })[value] ?? value;
   const signed = (value: string) => (Number(value) > 0 ? `+${num(value)}` : num(value));
@@ -122,6 +139,12 @@
       error = caught instanceof Error ? caught.message : m.rw_loi_tai();
     }
   }
+  async function arCommitted(batch: CommittedBatch) {
+    success = m.ar_da_ghi({ code: batch.code });
+    page = 1;
+    await loadBatches();
+    await openReport(batch as Batch);
+  }
   async function confirmBatch() {
     if (!report) return;
     try {
@@ -130,6 +153,81 @@
       await loadBatches();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.crud_loi_luu();
+    }
+  }
+  /**
+   * Lô lịch sử công nợ ghi trước khi có nhóm công nợ tách riêng (CN-SEG-01): nạp lại đúng file đã ghi để bổ sung dòng hàng của
+   * phiếu trả hàng (phần quạt trả lại trừ vào phần quạt). Sau đó áp dụng ở Công nợ → Nhóm công nợ tách riêng.
+   */
+  async function attachReturnLines(batch: Batch, event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const picked = input.files?.[0];
+    input.value = '';
+    if (!picked || !confirm(m.seg_bo_sung_giai_thich({ code: batch.code }))) return;
+    busy = batch.id;
+    error = '';
+    success = '';
+    try {
+      const response = await fetch(`/api/v1/admin/import/ar-history/batches/${batch.id}/return-lines`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-file-name': encodeURIComponent(picked.name), 'x-csrf-token': csrf(), 'idempotency-key': crypto.randomUUID() },
+        body: picked,
+      });
+      const payload = await response.json().catch(() => ({ code: '', message: m.rw_loi_tai_len() }));
+      if (!response.ok) throw new ApiRequestError(payload);
+      success = m.seg_da_bo_sung({ code: batch.code, updated: (payload as { updated: number }).updated });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.crud_loi_luu();
+    } finally {
+      busy = '';
+    }
+  }
+  async function sendFile<T>(path: string, picked: File): Promise<T> {
+    const response = await fetch(`/api/v1${path}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'x-file-name': encodeURIComponent(picked.name), 'x-csrf-token': csrf(), 'idempotency-key': crypto.randomUUID() },
+      body: picked,
+    });
+    const payload = await response.json().catch(() => ({ code: '', message: m.rw_loi_tai_len() }));
+    if (!response.ok) throw new ApiRequestError(payload);
+    return payload as T;
+  }
+  async function previewReplace(batch: Batch, event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const picked = input.files?.[0];
+    input.value = '';
+    if (!picked) return;
+    busy = batch.id;
+    error = '';
+    success = '';
+    try {
+      replacePreview = await sendFile<ReplacePreview>(`/admin/import/ar-history/batches/${batch.id}/replace/dry-run`, picked);
+      replaceTarget = { batch, file: picked };
+      replaceOpen = true;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.crud_loi_luu();
+    } finally {
+      busy = '';
+    }
+  }
+  async function replaceBatch() {
+    if (!replaceTarget || !replacePreview?.ok || !confirm(m.rep_hoi({ code: replaceTarget.batch.code, file: replaceTarget.file.name }))) return;
+    const { batch, file: picked } = replaceTarget;
+    busy = batch.id;
+    error = '';
+    try {
+      const saved = await sendFile<Batch>(`/admin/import/ar-history/batches/${batch.id}/replace`, picked);
+      replaceOpen = false;
+      success = m.rep_da_thay({ code: saved.code, file: picked.name });
+      await loadBatches();
+      await openReport(saved);
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.crud_loi_luu();
+      replaceOpen = false;
+    } finally {
+      busy = '';
     }
   }
   async function rollback(batch: Batch) {
@@ -184,6 +282,8 @@
       <button class="btn primary" disabled={!result?.ok || busy !== ''} onclick={commit}><Upload size={16} />{busy === 'commit' ? m.imp_dang_ghi() : m.imp_ghi()}</button>
     </div>
   </section>
+
+  <ArHistoryImport oncommitted={arCommitted} />
 
   {#if result}
     <section class="card result">
@@ -247,17 +347,21 @@
         {#each batches as batch (batch.id)}
           <tr class:muted={batch.status === 'ROLLED_BACK'}>
             <td class="code">{batch.code}</td>
-            <td>{batch.fileName}{#if batch.mode === 'ADJUST_OPENING'} <span class="pill warning">{m.imp_dc_nhan()}</span>{/if}<small>{dateTime(batch.createdAt)}</small></td>
+            <td>{batch.fileName}{#if batch.mode === 'ADJUST_OPENING'} <span class="pill warning">{m.imp_dc_nhan()}</span>{/if}{#if batch.kind === 'AR_HISTORY'} <span class="pill orange">{m.ar_nhan_lo({ cutoff: batch.cutoff ?? '' })}</span>{#if batch.replacements} <span class="pill neutral">{m.rep_da_thay_nhan({ count: batch.replacements })}</span>{/if}{/if}<small>{dateTime(batch.createdAt)}</small></td>
             <td class="num">{num(batch.createdCount)}</td>
             <td class="num">{num(batch.updatedCount)}</td>
             <td class="num">{num(batch.openingCount)}</td>
-            <td class="num">{num(batch.receivableCount)}</td>
+            <td class="num">{num(batch.receivableCount)}{#if batch.paymentCount}<small>{m.ar_so_phieu({ count: batch.paymentCount })}</small>{/if}</td>
             <td>{batch.createdByName}</td>
             <td>{#each batch.confirmations as row}<span class="pill success">{roleLabel(row.role)}</span>{:else}<span class="muted">—</span>{/each}</td>
             <td>{#if batch.status === 'COMMITTED'}<span class="pill">{m.imp_da_ghi_trang_thai()}</span>{:else}<span class="pill neutral">{m.imp_da_hoan_tac_trang_thai()}</span><small>{batch.rolledBackByName}</small>{/if}</td>
             <td>
               <div class="batch-actions">
               <button class="btn small" onclick={() => openReport(batch)}>{m.imp_doi_chieu()}</button>
+              {#if canImport && batch.status === 'COMMITTED' && batch.kind === 'AR_HISTORY'}
+                <label class="btn small file-btn" title={m.rep_nut()}><Upload size={14} />{m.rep_nut()}<input type="file" accept=".xlsx" disabled={busy === batch.id} onchange={(event) => previewReplace(batch, event)} /></label>
+                <label class="btn small file-btn" title={m.seg_bo_sung_giai_thich({ code: batch.code })}><ListPlus size={14} />{m.seg_bo_sung_dong_tra()}<input type="file" accept=".xlsx" disabled={busy === batch.id} onchange={(event) => attachReturnLines(batch, event)} /></label>
+              {/if}
               {#if canImport && batch.status === 'COMMITTED'}<button class="btn small" disabled={busy === batch.id} onclick={() => rollback(batch)}><RotateCcw size={14} />{m.imp_hoan_tac()}</button>{/if}
               </div>
             </td>
@@ -270,7 +374,36 @@
 </section>
 
 <Dialog bind:open={reportOpen} title={report ? m.imp_doi_chieu_lo({ code: report.batch.code }) : ''} wide>
-  {#if report}
+  {#if report?.customers}
+    <div class="report">
+      <p class="line">{m.ar_bao_cao_mo_ta({ cutoff: report.batch.cutoff ?? '' })} {#if report.ok}<span class="pill success">{m.imp_khop()}</span>{:else}<span class="pill danger">{m.imp_lech()}</span>{/if}</p>
+      <table class="table compact">
+        <thead><tr><th>{m.imp_loai_du_lieu()}</th><th class="num">{m.imp_theo_file()}</th><th class="num">{m.imp_trong_he_thong()}</th><th></th></tr></thead>
+        <tbody>{#each report.records as row}<tr><td>{row.collection === 'payments' ? m.ar_phieu_giam_no() : m.ar_chung_tu_phai_thu()}</td><td class="num">{num(row.expected)}</td><td class="num">{num(row.actual)}</td><td>{#if row.ok}<span class="pill success">{m.imp_khop()}</span>{:else}<span class="pill danger">{m.imp_lech()}</span>{/if}</td></tr>{/each}</tbody>
+      </table>
+      <h3>{m.ar_theo_khach()}</h3>
+      <div class="table-wrap adjust-rows">
+        <table class="table compact">
+          <thead><tr><th>{m.khach_hang()}</th><th class="num">{m.cn_phat_sinh()}</th><th class="num">{m.cn_da_thu()}</th><th class="num">{m.cn_phi_vc()}</th><th class="num">{m.cn_tra_hang_giam()}</th><th class="num">{m.cn_con_lai()}</th><th class="num">{m.ar_con_no_hien_tai()}</th><th>{m.ar_so_cu()}</th><th></th></tr></thead>
+          <tbody>
+            {#each report.customers as row (row.code)}
+              <tr>
+                <td><a class="link" href={`/receivables/customers/${row.partnerId}`}><b>{row.code}</b></a> {row.name}</td>
+                <td class="num">{num(row.imported.debit)}</td><td class="num">{num(row.imported.receipt)}</td><td class="num">{num(row.imported.freight)}</td><td class="num">{num(row.imported.returns)}</td>
+                <td class="num"><b>{num(row.imported.balance)}</b></td><td class="num">{num(row.imported.outstanding)}</td>
+                <td>{#each row.diffs as d}<small class={Math.abs(Number(d.delta)) <= 10 ? 'muted' : 'bad'}>{d.field}: {num(d.delta)}</small>{:else}{#if row.expected}<span class="pill success">{m.imp_khop()}</span>{:else}—{/if}{/each}{#if row.imported.kept}<small class="muted">{m.rep_giu_nhan({ amount: Number(row.imported.kept).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) })}</small>{/if}</td>
+                <td>{#if row.ok}<span class="pill success">{m.imp_khop()}</span>{:else}<span class="pill danger">{m.imp_lech()}</span>{/if}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+      <ErpTwinsTable linked={report.linked} twins={report.twins} />
+      {@render skippedAfter(report.afterCutoff)}
+      <h3>{m.imp_xac_nhan()}</h3>
+      <p class="line">{#each report.batch.confirmations as row}<span class="pill success">{roleLabel(row.role)}: {row.name} · {dateTime(row.at)}</span> {:else}{m.imp_chua_xac_nhan()}{/each}</p>
+    </div>
+  {:else if report && report.stock && report.receivables}
     <div class="report">
       <h3>{m.imp_ho_so()}</h3>
       <table class="table">
@@ -308,6 +441,65 @@
   {/snippet}
 </Dialog>
 
+<!-- Bút toán sau ngày chốt (không nhập — kế toán nhập trên ERP): đã có / nghi trùng / chưa có trên ERP, kèm công nợ phiếu ERP và chênh so với sổ cũ. -->
+{#snippet skippedAfter(rows: ArAfterCutoff[] | undefined)}
+  {@const skipped = (rows ?? []).filter((row) => row.status !== 'NHAP')}
+  {#if skipped.length}
+    <h3>{m.ar_bo_qua_sau_chot({ count: skipped.length })}</h3>
+    <div class="table-wrap">
+      <table class="table compact skipped-after">
+        <thead><tr><th>{m.imp_ma_kh()}</th><th>{m.cn_ngay()}</th><th>{m.ar_loai()}</th><th>{m.chung_tu()}</th><th class="num">{m.crm_so_tien()}</th><th>{m.trang_thai()}</th><th>{m.ar_so_voi_erp()}</th></tr></thead>
+        <tbody>
+          {#each skipped as row (row.id)}
+            <tr class:changed={row.status === 'SAU_CHOT_CHUA_CO' || row.match?.includes('chênh')}><td>{row.customerCode}</td><td>{date(`${row.date}T12:00:00+07:00`)}</td><td>{row.typeLabel}</td><td>{row.documentNo || '—'}</td><td class="num">{num(row.amount)}</td><td><span class={`pill ${arStatusTone[row.status]}`}>{arStatusLabel(row.status)}</span></td><td><small>{row.match ?? ''}</small></td></tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+{/snippet}
+
+<Dialog bind:open={replaceOpen} title={replaceTarget ? m.rep_tieu_de({ code: replaceTarget.batch.code }) : ''} wide>
+  {#if replacePreview && replaceTarget}
+    <div class="report">
+      <p class="line">{m.rep_mo_ta({ cutoff: replacePreview.cutoff })}</p>
+      <p class="line"><b>{replaceTarget.file.name}</b> · {replaceChanged.length ? m.rep_tong_chenh({ count: replaceChanged.length, amount: vnd(replaceChanged.reduce((sum, row) => sum + Number(row.delta), 0)) }) : m.rep_khong_doi()}</p>
+      {#if replacePreview.errors.length}
+        <p class="line bad">{m.rep_loi()}</p>
+        <div class="table-wrap errors">
+          <table class="table compact"><tbody>{#each replacePreview.errors.slice(0, 50) as row}<tr><td>{row.sheet}</td><td class="num">{row.row || '—'}</td><td>{row.column}</td><td class="bad">{row.message}</td></tr>{/each}</tbody></table>
+        </div>
+      {/if}
+      <div class="table-wrap">
+        <table class="table compact replace-compare">
+          <thead><tr><th>{m.imp_ma_kh()}</th><th class="num">{m.rep_cu()}</th><th class="num">{m.rep_moi()}</th><th class="num">{m.rep_chenh()}</th></tr></thead>
+          <tbody>
+            {#each [...replaceChanged, ...replacePreview.compare.filter((row) => Number(row.delta) === 0)] as row (row.code)}
+              <tr class:changed={Number(row.delta) !== 0}><td><b>{row.code}</b> {row.name}</td><td class="num">{row.before ? num(row.before.balance) : '—'}</td><td class="num">{row.after ? num(row.after.balance) : '—'}</td><td class="num">{Number(row.delta) ? Number(row.delta).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : '—'}</td></tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+      {#if replacePreview.kept?.length}
+        <h3>{m.rep_giu_so_da_thu({ count: replacePreview.kept.length })}</h3>
+        <p class="line muted">{m.rep_giu_so_da_thu_mo_ta()}</p>
+        <div class="table-wrap">
+          <table class="table compact kept-rows">
+            <thead><tr><th>{m.ar_ma_dong()}</th><th>{m.imp_ma_kh()}</th><th class="num">{m.rep_theo_file()}</th><th class="num">{m.rep_giu_so()}</th><th>{m.rep_phieu_thu()}</th></tr></thead>
+            <tbody>{#each replacePreview.kept as row (row.id)}<tr><td class="code">{row.id}</td><td>{row.customerCode}</td><td class="num">{Number(row.fileAmount).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td><td class="num">{Number(row.keptAmount).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}</td><td>{row.payments.join(', ')}</td></tr>{/each}</tbody>
+          </table>
+        </div>
+      {/if}
+      <ErpTwinsTable linked={replacePreview.linked} twins={replacePreview.twins} />
+      {@render skippedAfter(replacePreview.afterCutoff)}
+    </div>
+  {/if}
+  {#snippet footer()}
+    <button class="btn" onclick={() => (replaceOpen = false)}>{m.huy()}</button>
+    <button class="btn primary" disabled={!replacePreview?.ok || busy !== ''} onclick={replaceBatch}><Upload size={15} />{m.rep_xac_nhan()}</button>
+  {/snippet}
+</Dialog>
+
 <style>
   .steps { margin-bottom: 16px; padding: 16px 20px; }
   .steps ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; padding: 0; list-style: none; }
@@ -334,9 +526,16 @@
   .hint { margin: 0; padding: 8px 20px 14px; color: var(--subtle); font-size: 12.5px; }
   tr.muted td { color: var(--subtle); }
   .batch-actions { display: flex; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+  .file-btn { position: relative; cursor: pointer; }
+  tr.changed td { background: var(--amber-soft); }
+  /* Tên khách dài xuống dòng để cột Chênh (có thể tới hàng chục triệu khi gỡ bút toán tháng 10) không bị đẩy ra ngoài hộp thoại. */
+  .replace-compare td:first-child { max-width: 300px; white-space: normal; }
+  .replace-compare td.num { white-space: nowrap; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .report h3 { margin: 14px 0 8px; font-size: 14px; }
   .report h3:first-child { margin-top: 0; }
   .report .line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 13px; }
   .compact td, .compact th { padding: 6px 10px; }
+  .report td small { display: block; }
   @media (max-width: 900px) { .steps ol { grid-template-columns: 1fr 1fr; } }
 </style>

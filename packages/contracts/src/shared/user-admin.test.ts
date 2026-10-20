@@ -47,3 +47,23 @@ describe('passwordProblem', () => {
     expect(passwordProblem('Inoxpran-2026-kho')).toBeNull();
   });
 });
+
+describe('requiresMfa — Admin đặt riêng (MFA-02)', () => {
+  it('chưa đặt riêng: theo vai trò như trước', () => {
+    expect(requiresMfa({ roles: ['ACCOUNTANT'] }, true)).toBe(true);
+    expect(requiresMfa({ roles: ['SALES'] }, true)).toBe(false);
+    expect(requiresMfa({ roles: ['ACCOUNTANT'] }, false)).toBe(false);
+  });
+  it('Admin tắt yêu cầu cho kế toán → không bắt buộc kể cả khi môi trường bắt buộc theo vai trò', () => {
+    expect(requiresMfa({ roles: ['ACCOUNTANT'], mfaRequired: false }, true)).toBe(false);
+    expect(pendingSetup({ roles: ['ACCOUNTANT'], mfaEnabled: false, mfaRequired: false }, true)).toEqual([]);
+  });
+  it('Admin bật yêu cầu cho NVKD → phải thiết lập 2 lớp', () => {
+    expect(requiresMfa({ roles: ['SALES'], mfaRequired: true }, false)).toBe(true);
+    expect(pendingSetup({ roles: ['SALES'], mfaEnabled: false, mfaRequired: true }, false)).toEqual(['MFA']);
+    expect(pendingSetup({ roles: ['SALES'], mfaEnabled: true, mfaRequired: true }, false)).toEqual([]);
+  });
+  it('tài khoản gốc luôn bắt buộc, kể cả khi có cờ false', () => {
+    expect(requiresMfa({ roles: ['ADMIN'], root: true, mfaRequired: false }, false)).toBe(true);
+  });
+});

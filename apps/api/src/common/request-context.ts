@@ -8,6 +8,8 @@ export interface RequestUser {
   roles: string[];
   warehouseScopes: string[];
   mfa: boolean;
+  /** Đang bị bắt buộc bật 2 lớp (MFA-02) — không tự tắt được. */
+  mfaRequired?: boolean;
   /** Tài khoản quản trị gốc. */
   root?: boolean;
   /** Bước bắt buộc còn thiếu (đổi mật khẩu tạm / bật MFA). */

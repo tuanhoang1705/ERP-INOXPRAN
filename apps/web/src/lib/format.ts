@@ -8,12 +8,17 @@ const integer = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
 const oneDecimal = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const twoDecimals = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Số nguyên theo ngôn ngữ; số âm dưới 1 đơn vị (VD −0,32 đ số lẻ sổ cũ) hiện "0", không hiện "-0". */
+function whole(value: number): string {
+  const text = integer.format(value);
+  return /^[-−]0$/.test(text) ? '0' : text;
+}
 /** Số tiền dạng "4.286.500.000 đ" như bản thiết kế. */
 export function vnd(value: string | number | null | undefined): string {
-  return `${integer.format(Math.round(Number(value ?? 0)))} ${m.tien_te_hau_to()}`;
+  return `${whole(Math.round(Number(value ?? 0)))} ${m.tien_te_hau_to()}`;
 }
 export function num(value: string | number | null | undefined): string {
-  return integer.format(Number(value ?? 0));
+  return whole(Number(value ?? 0));
 }
 /** Số có tối đa 1 chữ số thập phân theo ngôn ngữ (VD 5,4 / 5.4). */
 export function decimal1(value: number): string {

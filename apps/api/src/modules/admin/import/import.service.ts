@@ -25,7 +25,7 @@ import { cellText, IMPORT_SHEETS, issueMessage, normalize, parseCell, type Parse
 
 export const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 const MAX_ERRORS = 500;
-type Row = { row: number; values: Record<string, ParsedValue> };
+export type Row = { row: number; values: Record<string, ParsedValue> };
 export interface ImportIssue { sheet: string; row: number; column: string; message: string }
 /** NORMAL: tồn đầu kỳ chỉ nhập cho mã chưa có; ADJUST_OPENING: thay số tồn đầu kỳ đã nhập bằng số trong file (ghi phần chênh lệch). */
 export type ImportMode = 'NORMAL' | 'ADJUST_OPENING';
@@ -46,13 +46,13 @@ export interface OpeningAdjustment {
   existed: boolean;
 }
 const changed = (row: OpeningAdjustment) => row.delta !== '0' || (row.initialDelta !== null && row.initialDelta !== '0');
-interface Parsed {
+export interface Parsed {
   sha256: string;
   sheets: Map<string, Row[]>;
   errors: ImportIssue[];
 }
 /** Mỗi ô chỉ báo lỗi đầu tiên (lỗi đọc ô → bỏ qua lỗi schema / chéo cùng ô). */
-function pushIssue(errors: ImportIssue[], entry: ImportIssue) {
+export function pushIssue(errors: ImportIssue[], entry: ImportIssue) {
   if (errors.length >= MAX_ERRORS) return;
   if (errors.some((row) => row.sheet === entry.sheet && row.row === entry.row && row.column === entry.column)) return;
   errors.push(entry);
@@ -130,7 +130,8 @@ export class ImportService {
 
   // ---------- đọc & kiểm tra ----------
 
-  private async readWorkbook(body: unknown): Promise<{ workbook: ExcelJS.Workbook; sha256: string }> {
+  /** Đọc file .xlsx từ thân request: kiểm tra chữ ký, quét mã độc, tính SHA-256 (dùng chung cho nhập lịch sử công nợ). */
+  async readWorkbook(body: unknown): Promise<{ workbook: ExcelJS.Workbook; sha256: string }> {
     if (!Buffer.isBuffer(body) || body.length === 0) throw new BadRequestException({ code: 'IMPORT_EMPTY', message: 'Chưa nhận được file Excel' });
     if (body.length > MAX_IMPORT_BYTES) throw new PayloadTooLargeException({ code: 'IMPORT_TOO_LARGE', message: 'File vượt quá 10 MB' });
     // .xlsx là file zip (chữ ký "PK\x03\x04").
@@ -156,10 +157,15 @@ export class ImportService {
   }
 
   private parse(workbook: ExcelJS.Workbook, sha256: string): Parsed {
+    return this.parseSheets(workbook, sha256, IMPORT_SHEETS);
+  }
+
+  /** Đọc các sheet theo định nghĩa cột (tiêu đề → cột), kiểm tra từng ô theo kiểu. */
+  parseSheets(workbook: ExcelJS.Workbook, sha256: string, defs: readonly SheetDef[]): Parsed {
     const sheets = new Map<string, Row[]>();
     const errors: ImportIssue[] = [];
     const issue = (sheet: string, row: number, column: string, message: string) => pushIssue(errors, { sheet, row, column, message });
-    for (const def of IMPORT_SHEETS) {
+    for (const def of defs) {
       const worksheet = workbook.getWorksheet(def.name);
       if (!worksheet || worksheet.actualRowCount <= 1) continue;
       const header = worksheet.getRow(1);
@@ -745,6 +751,10 @@ export class ImportService {
 
   // ---------- lô nhập: danh sách, đối chiếu, xác nhận, hoàn tác ----------
 
+  presentBatch(batch: Document) {
+    return this.present(batch);
+  }
+
   private present(batch: Document) {
     const created = (batch.created ?? {}) as Record<string, ObjectId[]>;
     return {
@@ -753,6 +763,11 @@ export class ImportService {
       fileName: batch.fileName,
       status: batch.status,
       mode: (batch.mode as ImportMode | undefined) ?? 'NORMAL',
+      kind: (batch.kind as string | undefined) ?? 'INITIAL',
+      ...(batch.cutoff ? { cutoff: batch.cutoff } : {}),
+      paymentCount: ((batch.paymentIds as unknown[]) ?? []).length,
+      // Lô lịch sử đã thay bằng file mới (số chính xác từ Excel gốc): số lần thay, lần gần nhất.
+      ...(batch.replacedAt ? { replacedAt: (batch.replacedAt as Date).toISOString(), replacedByName: batch.replacedByName, replacements: ((batch.replacements as unknown[]) ?? []).length } : {}),
       ...(batch.adjustment ? { adjustment: batch.adjustment } : {}),
       sheets: batch.sheets,
       totals: batch.totals,
@@ -773,6 +788,11 @@ export class ImportService {
       this.db.collection('import_batches').countDocuments({}),
     ]);
     return pageOf(rows.map((row) => this.present(row)), total, paging);
+  }
+
+  /** Loại lô: INITIAL (nhập dữ liệu ban đầu) / AR_HISTORY (lịch sử công nợ) — báo cáo và hoàn tác rẽ theo loại. */
+  async kindOf(id: string): Promise<string> {
+    return String((await this.load(id)).kind ?? 'INITIAL');
   }
 
   private async load(id: string) {

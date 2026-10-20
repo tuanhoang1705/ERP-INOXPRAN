@@ -1,0 +1,128 @@
+{
+ "file": "Claude_Phan_3_Doan_03_trang_041-041.pdf",
+ "part": 3,
+ "sha256": "bdd89e2129be12add06f3bea7372210e75b872ad97ce070ce4228f8ecf28cac4",
+ "pages": [
+  {
+   "page": 1,
+   "title": "CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI XUÂN HÙNG（春雄贸易投资有限责任公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [
+    {
+     "excelRow": "1598",
+     "values": {
+      "A": "KH062",
+      "B": "CÔNG TY TNHH ĐẦU TƯ\nTHƯƠNG MẠI XUÂN\nHÙNG（春雄贸易投资有限\n责任公司",
+      "C": "2026-09-07",
+      "D": "2026-09-08",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "9,130,000 ₫",
+      "V": "9,130,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 41
+  }
+ ]
+}

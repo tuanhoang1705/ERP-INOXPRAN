@@ -12,6 +12,8 @@ import { decimal, decimalString, serializeDocument, toObjectId, vnDayStart, vnPa
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { PriceOverridesService } from './price-overrides.service';
 import { releaseHoldIfCleared } from '../receivables/overdue-review';
+import { loadSegmentRules, orderLinesForSegments, reallocatePartner } from '../receivables/segment-store';
+import { orderSegments, rulesFor } from '../receivables/segments';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import type { AuthenticatedRequest, RequestUser } from '../../common/request-context';
@@ -1176,6 +1178,8 @@ export class SalesService {
       { session, returnDocument: 'after' },
     ).catch((error: unknown) => this.codeConflict(error, codeChange.code ?? ''));
     if (!updated) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+    // Dòng hàng đổi → tính lại phần nợ nhóm tách riêng của chứng từ và phân bổ lại tiền đã thu của khách (CN-SEG-01).
+    if (shipped && fields.customerId) await reallocatePartner(this.db, fields.customerId as ObjectId, session, now);
     if (customerChanged && before.customerId) await releaseHoldIfCleared(this.db, before.customerId as ObjectId, session, now);
     await this.notify(session, id, {
       targetRoles: ['ACCOUNTANT'],
@@ -1616,6 +1620,10 @@ export class SalesService {
           dueDate.setUTCDate(dueDate.getUTCDate() + Number(order.paymentTermDays ?? customer?.paymentTermDays ?? 0));
           const shipmentId = new ObjectId();
           const receivableId = nonSalePurpose ? null : new ObjectId();
+          // Phần nợ của nhóm công nợ tách riêng (CN-SEG-01 — VD quạt & vợt muỗi): theo dõi riêng, không tính quá hạn.
+          const segments = receivableId
+            ? orderSegments(orderLinesForSegments(order), String(order.taxRate ?? '8'), decimalString(order.grandTotal), rulesFor(order.customerId ? String(order.customerId) : undefined, await loadSegmentRules(this.db, session)))
+            : [];
           await Promise.all([
             this.db.collection('shipments').insertOne(
               {
@@ -1652,6 +1660,7 @@ export class SalesService {
                 dueDate,
                 // Phiếu 0 đ (xuất kiểm định / mẫu): không có gì phải thu.
                 status: new Decimal(decimalString(order.grandTotal)).isZero() ? 'PAID' : 'OPEN',
+                ...(segments.length ? { segments: segments.map((part) => ({ code: part.code, amount: decimal(part.amount), paid: decimal('0') })) } : {}),
                 createdAt: now,
                 updatedAt: now,
                 version: 1,

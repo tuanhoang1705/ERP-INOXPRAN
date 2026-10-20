@@ -1,0 +1,97 @@
+  Claude_Phan_1_Doan_01_trang_001-020.pdf: trang 1–5 xong
+  Claude_Phan_1_Doan_01_trang_001-020.pdf: trang 6–10 xong
+  Claude_Phan_1_Doan_01_trang_001-020.pdf: trang 11–15 xong
+  Claude_Phan_1_Doan_01_trang_001-020.pdf: trang 16–20 xong
+XONG Claude_Phan_1_Doan_01_trang_001-020.pdf: 20 trang, 330 dòng dữ liệu
+  Claude_Phan_1_Doan_02_trang_021-039.pdf: trang 21–25 xong
+  Claude_Phan_1_Doan_02_trang_021-039.pdf: trang 26–30 xong
+  Claude_Phan_1_Doan_02_trang_021-039.pdf: trang 31–35 xong
+  Claude_Phan_1_Doan_02_trang_021-039.pdf: trang 36–39 xong
+XONG Claude_Phan_1_Doan_02_trang_021-039.pdf: 19 trang, 349 dòng dữ liệu
+  Claude_Phan_1_Doan_03_trang_040-059.pdf: trang 40–44 xong
+  Claude_Phan_1_Doan_03_trang_040-059.pdf: trang 45–49 xong
+  Claude_Phan_1_Doan_03_trang_040-059.pdf: trang 50–54 xong
+  Claude_Phan_1_Doan_03_trang_040-059.pdf: trang 55–59 xong
+XONG Claude_Phan_1_Doan_03_trang_040-059.pdf: 20 trang, 323 dòng dữ liệu
+  Claude_Phan_1_Doan_04_trang_060-077.pdf: trang 60–64 xong
+  Claude_Phan_1_Doan_04_trang_060-077.pdf: trang 65–69 xong
+  Claude_Phan_1_Doan_04_trang_060-077.pdf: trang 70–74 xong
+  Claude_Phan_1_Doan_04_trang_060-077.pdf: trang 75–77 xong
+XONG Claude_Phan_1_Doan_04_trang_060-077.pdf: 18 trang, 298 dòng dữ liệu
+  Claude_Phan_1_Doan_05_trang_078-097.pdf: trang 78–82 xong
+  Claude_Phan_1_Doan_05_trang_078-097.pdf: trang 83–87 xong
+  Claude_Phan_1_Doan_05_trang_078-097.pdf: trang 88–92 xong
+  Claude_Phan_1_Doan_05_trang_078-097.pdf: trang 93–97 xong
+XONG Claude_Phan_1_Doan_05_trang_078-097.pdf: 20 trang, 249 dòng dữ liệu
+  Claude_Phan_1_Doan_06_trang_098-116.pdf: trang 98–102 xong
+  Claude_Phan_1_Doan_06_trang_098-116.pdf: trang 103–107 xong
+  Claude_Phan_1_Doan_06_trang_098-116.pdf: trang 108–112 xong
+  Claude_Phan_1_Doan_06_trang_098-116.pdf: trang 113–116 xong
+XONG Claude_Phan_1_Doan_06_trang_098-116.pdf: 19 trang, 367 dòng dữ liệu
+  Claude_Phan_1_Doan_07_trang_117-135.pdf: trang 117–121 xong
+  Claude_Phan_1_Doan_07_trang_117-135.pdf: trang 122–126 xong
+  Claude_Phan_1_Doan_07_trang_117-135.pdf: trang 127–131 xong
+  Claude_Phan_1_Doan_07_trang_117-135.pdf: trang 132–135 xong
+XONG Claude_Phan_1_Doan_07_trang_117-135.pdf: 19 trang, 373 dòng dữ liệu
+  Claude_Phan_1_Doan_08_trang_136-153.pdf: trang 136–140 xong
+  Claude_Phan_1_Doan_08_trang_136-153.pdf: trang 141–145 xong
+  Claude_Phan_1_Doan_08_trang_136-153.pdf: trang 146–150 xong
+  Claude_Phan_1_Doan_08_trang_136-153.pdf: trang 151–153 xong
+XONG Claude_Phan_1_Doan_08_trang_136-153.pdf: 18 trang, 338 dòng dữ liệu
+  Claude_Phan_1_Doan_09_trang_154-170.pdf: trang 154–158 xong
+  Claude_Phan_1_Doan_09_trang_154-170.pdf: trang 159–163 xong
+  Claude_Phan_1_Doan_09_trang_154-170.pdf: trang 164–168 xong
+  Claude_Phan_1_Doan_09_trang_154-170.pdf: trang 169–170 xong
+XONG Claude_Phan_1_Doan_09_trang_154-170.pdf: 17 trang, 339 dòng dữ liệu
+  Claude_Phan_1_Doan_10_trang_171-189.pdf: trang 171–175 xong
+  Claude_Phan_1_Doan_10_trang_171-189.pdf: trang 176–180 xong
+  Claude_Phan_1_Doan_10_trang_171-189.pdf: trang 181–185 xong
+  Claude_Phan_1_Doan_10_trang_171-189.pdf: trang 186–189 xong
+XONG Claude_Phan_1_Doan_10_trang_171-189.pdf: 19 trang, 347 dòng dữ liệu
+  Claude_Phan_1_Doan_11_trang_190-209.pdf: trang 190–194 xong
+  Claude_Phan_1_Doan_11_trang_190-209.pdf: trang 195–199 xong
+  Claude_Phan_1_Doan_11_trang_190-209.pdf: trang 200–204 xong
+  Claude_Phan_1_Doan_11_trang_190-209.pdf: trang 205–209 xong
+XONG Claude_Phan_1_Doan_11_trang_190-209.pdf: 20 trang, 311 dòng dữ liệu
+  Claude_Phan_1_Doan_12_trang_210-215.pdf: trang 210–214 xong
+  Claude_Phan_1_Doan_12_trang_210-215.pdf: trang 215–215 xong
+XONG Claude_Phan_1_Doan_12_trang_210-215.pdf: 6 trang, 110 dòng dữ liệu
+  Claude_Phan_2_Doan_01_trang_001-020.pdf: trang 1–5 xong
+  Claude_Phan_2_Doan_01_trang_001-020.pdf: trang 6–10 xong
+  Claude_Phan_2_Doan_01_trang_001-020.pdf: trang 11–15 xong
+  Claude_Phan_2_Doan_01_trang_001-020.pdf: trang 16–20 xong
+XONG Claude_Phan_2_Doan_01_trang_001-020.pdf: 20 trang, 329 dòng dữ liệu
+  Claude_Phan_2_Doan_02_trang_021-040.pdf: trang 21–25 xong
+  Claude_Phan_2_Doan_02_trang_021-040.pdf: trang 26–30 xong
+  Claude_Phan_2_Doan_02_trang_021-040.pdf: trang 31–35 xong
+  Claude_Phan_2_Doan_02_trang_021-040.pdf: trang 36–40 xong
+XONG Claude_Phan_2_Doan_02_trang_021-040.pdf: 20 trang, 204 dòng dữ liệu
+  Claude_Phan_2_Doan_03_trang_041-060.pdf: trang 41–45 xong
+  Claude_Phan_2_Doan_03_trang_041-060.pdf: trang 46–50 xong
+  Claude_Phan_2_Doan_03_trang_041-060.pdf: trang 51–55 xong
+  Claude_Phan_2_Doan_03_trang_041-060.pdf: trang 56–60 xong
+XONG Claude_Phan_2_Doan_03_trang_041-060.pdf: 20 trang, 315 dòng dữ liệu
+  Claude_Phan_2_Doan_04_trang_061-065.pdf: trang 61–65 xong
+XONG Claude_Phan_2_Doan_04_trang_061-065.pdf: 5 trang, 15 dòng dữ liệu
+  Claude_Phan_3_Doan_01_trang_001-020.pdf: trang 1–5 xong
+  Claude_Phan_3_Doan_01_trang_001-020.pdf: trang 6–10 xong
+  Claude_Phan_3_Doan_01_trang_001-020.pdf: trang 11–15 xong
+  Claude_Phan_3_Doan_01_trang_001-020.pdf: trang 16–20 xong
+XONG Claude_Phan_3_Doan_01_trang_001-020.pdf: 20 trang, 142 dòng dữ liệu
+  Claude_Phan_3_Doan_02_trang_021-040.pdf: trang 21–25 xong
+  Claude_Phan_3_Doan_02_trang_021-040.pdf: trang 26–30 xong
+  Claude_Phan_3_Doan_02_trang_021-040.pdf: trang 31–35 xong
+  Claude_Phan_3_Doan_02_trang_021-040.pdf: trang 36–40 xong
+XONG Claude_Phan_3_Doan_02_trang_021-040.pdf: 20 trang, 278 dòng dữ liệu
+  Claude_Phan_3_Doan_03_trang_041-041.pdf: trang 41–41 xong
+XONG Claude_Phan_3_Doan_03_trang_041-041.pdf: 1 trang, 1 dòng dữ liệu
+  Claude_Phan_4_Doan_01_trang_001-020.pdf: trang 1–5 xong
+  Claude_Phan_4_Doan_01_trang_001-020.pdf: trang 6–10 xong
+  Claude_Phan_4_Doan_01_trang_001-020.pdf: trang 11–15 xong
+  Claude_Phan_4_Doan_01_trang_001-020.pdf: trang 16–20 xong
+XONG Claude_Phan_4_Doan_01_trang_001-020.pdf: 20 trang, 173 dòng dữ liệu
+  Claude_Phan_4_Doan_02_trang_021-033.pdf: trang 21–25 xong
+  Claude_Phan_4_Doan_02_trang_021-033.pdf: trang 26–30 xong
+  Claude_Phan_4_Doan_02_trang_021-033.pdf: trang 31–33 xong
+XONG Claude_Phan_4_Doan_02_trang_021-033.pdf: 13 trang, 28 dòng dữ liệu
+HOÀN TẤT

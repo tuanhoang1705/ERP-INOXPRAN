@@ -1,0 +1,5392 @@
+{
+ "file": "Claude_Phan_4_Doan_01_trang_001-020.pdf",
+ "part": 4,
+ "sha256": "64a3f7acc05e21a43555667c08093ae400bec79b0d3b9ccaa481b2ff5c8766f9",
+ "pages": [
+  {
+   "page": 1,
+   "title": "Danh sách khách hàng/đối tượng",
+   "sheet": null,
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [],
+   "index": [
+    {
+     "stt": "41",
+     "codes": "KH067",
+     "name": "NGUYỄN THỊ MINH NGỌC（阮明玉（平明）",
+     "startPage": "2"
+    },
+    {
+     "stt": "42",
+     "codes": "KH004",
+     "name": "Lê Thị ánh Nguyệt 黎氏映月",
+     "startPage": "5"
+    },
+    {
+     "stt": "43",
+     "codes": "KH090",
+     "name": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC西北电器股份公司",
+     "startPage": "8"
+    },
+    {
+     "stt": "44",
+     "codes": "KH025",
+     "name": "CÔNG TY TNHH GIA DỤNG YẾN NGUYỄN",
+     "startPage": "11"
+    },
+    {
+     "stt": "45",
+     "codes": "KH092",
+     "name": "CÔNG TY TNHH NỘI THẤT T&H HOMES T&H家居有限公司",
+     "startPage": "13"
+    },
+    {
+     "stt": "46",
+     "codes": "NCC01",
+     "name": "SHENZHEN MEISHENGFA TRADE CO.,LTD",
+     "startPage": "16"
+    },
+    {
+     "stt": "47",
+     "codes": "KH030",
+     "name": "Louie",
+     "startPage": "17"
+    },
+    {
+     "stt": "48",
+     "codes": "KH021",
+     "name": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa 陶氏琼花个体工商户",
+     "startPage": "18"
+    },
+    {
+     "stt": "49",
+     "codes": "KH094",
+     "name": "Nguyễn Tuấn Hoàng",
+     "startPage": "20"
+    },
+    {
+     "stt": "50",
+     "codes": "KH080",
+     "name": "CÔNG TY TNHH DỊCH VỤ THƯƠNG MẠI VÀ TỔNG HỢP AN THỊNH（安盛综合贸易服务有限公司",
+     "startPage": "22"
+    },
+    {
+     "stt": "51",
+     "codes": "KH056",
+     "name": "Thanh Anh（清英 )",
+     "startPage": "23"
+    },
+    {
+     "stt": "52",
+     "codes": "KHO",
+     "name": "KHO",
+     "startPage": "24"
+    },
+    {
+     "stt": "53",
+     "codes": "(để trống)",
+     "name": "Nguyễn Anh Tuấn",
+     "startPage": "25"
+    }
+   ],
+   "originalPage": 1
+  },
+  {
+   "page": 2,
+   "title": "NGUYỄN THỊ MINH NGỌC（阮明玉（平明）",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 6,
+   "rows": [
+    {
+     "excelRow": "1608",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090047",
+      "F": "2026-09-09",
+      "H": "00000294",
+      "I": "xuất bán cho Nguyễn Minh\nNgọc ( Bình Minh)（阮明玉\n（平明）销售产品",
+      "J": "INP3202",
+      "K": "Chảo gang tráng\nmenINP3202",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "342,593 ₫",
+      "O": "685,185 ₫",
+      "P": "54,815 ₫",
+      "Q": "740,000 ₫",
+      "V": "740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1609",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-08",
+      "D": "2026-09-09",
+      "E": "BH2026090047",
+      "F": "2026-09-09",
+      "H": "00000294",
+      "I": "xuất bán cho Nguyễn Minh\nNgọc ( Bình Minh)（阮明玉\n（平明）销售产品",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "273,148 ₫",
+      "O": "546,296 ₫",
+      "P": "43,704 ₫",
+      "Q": "590,000 ₫",
+      "V": "590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1610",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-08",
+      "D": "2026-09-09",
+      "E": "BH2026090047",
+      "F": "2026-09-09",
+      "H": "00000294",
+      "I": "xuất bán cho Nguyễn Minh\nNgọc ( Bình Minh)（阮明玉\n（平明）销售产品",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "296,296 ₫",
+      "O": "592,593 ₫",
+      "P": "47,407 ₫",
+      "Q": "640,000 ₫",
+      "V": "640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1617",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "1,970,000 ₫",
+      "V": "1,970,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1919",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-24",
+      "D": "2026-09-25",
+      "E": "BH2026090090",
+      "F": "2026-09-29",
+      "G": "BH311.4",
+      "H": "00000321",
+      "I": "xuất bán cho Nguyễn Minh\nNgọc ( Bình Minh)（阮明玉\n（平明）销售产品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "4.00",
+      "N": "416,667 ₫",
+      "O": "1,666,667 ₫",
+      "P": "133,333 ₫",
+      "Q": "1,800,000 ₫",
+      "V": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1948",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH\nNGỌC（阮明玉（平明）",
+      "C": "2026-09-28",
+      "D": "2026-09-25",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "1,800,000 ₫",
+      "V": "1,800,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 2
+  },
+  {
+   "page": 3,
+   "title": "NGUYỄN THỊ MINH NGỌC（阮明玉（平明）",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 4,
+   "rows": [
+    {
+     "excelRow": "48",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH NGỌC（阮明玉（平\n明）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "2026-09-09",
+      "G": "00000294",
+      "H": "xuất bán cho Nguyễn Minh Ngọc ( Bình\nMinh)（阮明玉（平明）销售产品",
+      "I": "INP3202",
+      "J": "Chảo gang tráng menINP3202",
+      "K": "Cái",
+      "L": "2",
+      "M": "342,592.59",
+      "N": "685,185 ₫",
+      "O": "54,815 ₫",
+      "P": "740,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "49",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH NGỌC（阮明玉（平\n明）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "2026-09-09",
+      "G": "00000294",
+      "H": "xuất bán cho Nguyễn Minh Ngọc ( Bình\nMinh)（阮明玉（平明）销售产品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2101",
+      "K": "Cái",
+      "L": "2",
+      "M": "273,148.15",
+      "N": "546,296 ₫",
+      "O": "43,704 ₫",
+      "P": "590,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "50",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH NGỌC（阮明玉（平\n明）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "2026-09-09",
+      "G": "00000294",
+      "H": "xuất bán cho Nguyễn Minh Ngọc ( Bình\nMinh)（阮明玉（平明）销售产品",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2102",
+      "K": "Cái",
+      "L": "2",
+      "M": "296,296.30",
+      "N": "592,593 ₫",
+      "O": "47,407 ₫",
+      "P": "640,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "222",
+     "values": {
+      "A": "KH067",
+      "B": "NGUYỄN THỊ MINH NGỌC（阮明玉（平\n明）",
+      "C": "2026-09-24",
+      "D": "BH2026090090",
+      "H": "xuất bán cho Nguyễn Minh Ngọc ( Bình\nMinh)（阮明玉（平明）销售产品",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701",
+      "K": "Cái",
+      "L": "4",
+      "M": "416,666.66",
+      "N": "1,666,667",
+      "O": "133,333 ₫",
+      "P": "1,800,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 3
+  },
+  {
+   "page": 4,
+   "title": "NGUYỄN THỊ MINH NGỌC（阮明玉（平明）",
+   "sheet": "Sheet6",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "58",
+     "values": {
+      "A": "KH067",
+      "B": "Nguyễn Minh Ngọc ( Bình Minh)（阮明玉（平明\n）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "xuất bán cho Nguyễn Minh Ngọc ( Bình Minh)（阮\n明玉（平明）销售产品",
+      "F": "INP3202",
+      "G": "Chảo gang tráng menINP3202",
+      "H": "Cái",
+      "I": "2",
+      "J": "342,592.59",
+      "K": "685,185",
+      "L": "54,815",
+      "M": "740,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "59",
+     "values": {
+      "A": "KH067",
+      "B": "Nguyễn Minh Ngọc ( Bình Minh)（阮明玉（平明\n）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "xuất bán cho Nguyễn Minh Ngọc ( Bình Minh)（阮\n明玉（平明）销售产品",
+      "F": "INP2101",
+      "G": "Chảo inox chống dính đúc nguyên\nkhốiINP2101",
+      "H": "Cái",
+      "I": "2",
+      "J": "273,148.15",
+      "K": "546,296",
+      "L": "43,704",
+      "M": "590,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "60",
+     "values": {
+      "A": "KH067",
+      "B": "Nguyễn Minh Ngọc ( Bình Minh)（阮明玉（平明\n）",
+      "C": "2026-09-08",
+      "D": "BH2026090047",
+      "E": "xuất bán cho Nguyễn Minh Ngọc ( Bình Minh)（阮\n明玉（平明）销售产品",
+      "F": "INP2102",
+      "G": "Chảo inox chống dính đúc nguyên\nkhốiINP2102",
+      "H": "Cái",
+      "I": "2",
+      "J": "296,296.30",
+      "K": "592,593",
+      "L": "47,407",
+      "M": "640,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 4
+  },
+  {
+   "page": 5,
+   "title": "Lê Thị ánh Nguyệt 黎氏映月",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 23,
+   "rows": [
+    {
+     "excelRow": "1647",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-10",
+      "D": "2026-09-10",
+      "E": "BH2026090056",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "907,407 ₫",
+      "O": "1,814,815 ₫",
+      "P": "145,185 ₫",
+      "Q": "1,960,000 ₫",
+      "V": "1,960,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1648",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-10",
+      "D": "2026-09-10",
+      "E": "BH2026090056",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6012",
+      "K": "Nồi cơm điện INP6012\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "907,407 ₫",
+      "O": "907,407 ₫",
+      "P": "72,593 ₫",
+      "Q": "980,000 ₫",
+      "V": "980,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1649",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-10",
+      "D": "2026-09-10",
+      "E": "BH2026090056",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP2105",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2105",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "277,778 ₫",
+      "O": "277,778 ₫",
+      "P": "22,222 ₫",
+      "Q": "300,000 ₫",
+      "V": "300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1650",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-10",
+      "D": "2026-09-11",
+      "E": "BH2026090056",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP2106",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2106",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "296,296 ₫",
+      "O": "296,296 ₫",
+      "P": "23,704 ₫",
+      "Q": "320,000 ₫",
+      "V": "320,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1651",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-10",
+      "D": "2026-09-11",
+      "E": "BH2026090056",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP2107",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính) INP2107",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "314,815 ₫",
+      "O": "314,815 ₫",
+      "P": "25,185 ₫",
+      "Q": "340,000 ₫",
+      "V": "340,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1654",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "NK2026090015",
+      "I": "Trả lại hàng bán",
+      "J": "INP2105",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2105",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "277,778 ₫",
+      "O": "277,778 ₫",
+      "P": "22,222 ₫",
+      "Q": "300,000 ₫",
+      "V": "300,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1655",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "NK2026090015",
+      "I": "Trả lại hàng bán",
+      "J": "INP2106",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2106",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "296,296 ₫",
+      "O": "296,296 ₫",
+      "P": "23,704 ₫",
+      "Q": "320,000 ₫",
+      "V": "320,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1656",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "NK2026090015",
+      "I": "Trả lại hàng bán",
+      "J": "INP2107",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính) INP2107",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "314,815 ₫",
+      "O": "314,815 ₫",
+      "P": "25,185 ₫",
+      "Q": "340,000 ₫",
+      "V": "340,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1657",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-11",
+      "D": "2026-09-10",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "R": "2,940,000 ₫",
+      "V": "2,940,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1725",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "583,333 ₫",
+      "O": "583,333 ₫",
+      "P": "46,667 ₫",
+      "Q": "630,000 ₫",
+      "V": "630,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1726",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "690,741 ₫",
+      "O": "690,741 ₫",
+      "P": "55,259 ₫",
+      "Q": "746,000 ₫",
+      "V": "746,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1727",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "583,333 ₫",
+      "O": "583,333 ₫",
+      "P": "46,667 ₫",
+      "Q": "630,000 ₫",
+      "V": "630,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1728",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6008",
+      "K": "Nồi cơm điện INP6008\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "620,370 ₫",
+      "O": "620,370 ₫",
+      "P": "49,630 ₫",
+      "Q": "670,000 ₫",
+      "V": "670,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1729",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "740,741 ₫",
+      "O": "740,741 ₫",
+      "P": "59,259 ₫",
+      "Q": "800,000 ₫",
+      "V": "800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1730",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "527,778 ₫",
+      "O": "527,778 ₫",
+      "P": "42,222 ₫",
+      "Q": "570,000 ₫",
+      "V": "570,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1731",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090065",
+      "F": "2026-10-01",
+      "G": "BH321.4",
+      "H": "00000331",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "611,111 ₫",
+      "O": "611,111 ₫",
+      "P": "48,889 ₫",
+      "Q": "660,000 ₫",
+      "V": "660,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2070",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-09",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "4,706,000 ₫",
+      "V": "4,706,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2185",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "F": "2026-10-16",
+      "G": "BH338.4",
+      "H": "00000348",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "583,333 ₫",
+      "O": "2,333,333 ₫",
+      "P": "186,667 ₫",
+      "Q": "2,520,000 ₫",
+      "V": "2,520,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2186",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "F": "2026-10-16",
+      "G": "BH338.4",
+      "H": "00000348",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "690,741 ₫",
+      "O": "2,762,963 ₫",
+      "P": "221,037 ₫",
+      "Q": "2,984,000 ₫",
+      "V": "2,984,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2187",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "F": "2026-10-16",
+      "G": "BH338.4",
+      "H": "00000348",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "583,333 ₫",
+      "O": "2,333,333 ₫",
+      "P": "186,667 ₫",
+      "Q": "2,520,000 ₫",
+      "V": "2,520,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2188",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "675,926 ₫",
+      "O": "2,703,704 ₫",
+      "P": "216,296 ₫",
+      "Q": "2,920,000 ₫",
+      "V": "2,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2189",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "F": "2026-10-16",
+      "G": "BH338.4",
+      "H": "00000348",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6008",
+      "K": "Nồi cơm điện INP6008\n(1,2L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "620,370 ₫",
+      "O": "2,481,481 ₫",
+      "P": "198,519 ₫",
+      "Q": "2,680,000 ₫",
+      "V": "2,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2190",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映\n月",
+      "C": "2026-10-14",
+      "D": "2026-10-16",
+      "E": "BH2026100131",
+      "F": "2026-10-16",
+      "G": "BH338.4",
+      "H": "00000348",
+      "I": "Xuất bán cho Lê Thị ánh\nNguyệt 黎氏映月销售产品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "4",
+      "N": "740,741 ₫",
+      "O": "2,962,963 ₫",
+      "P": "237,037 ₫",
+      "Q": "3,200,000 ₫",
+      "V": "3,200,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 5
+  },
+  {
+   "page": 6,
+   "title": "Lê Thị ánh Nguyệt 黎氏映月",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 12,
+   "rows": [
+    {
+     "excelRow": "56",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "907,407.41",
+      "N": "1,814,815 ₫",
+      "O": "145,185 ₫",
+      "P": "1,960,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "57",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6012",
+      "J": "Nồi cơm điện INP6012 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "907,407.41",
+      "N": "907,407 ₫",
+      "O": "72,593 ₫",
+      "P": "980,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "58",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP2105",
+      "J": "Chảo inox đúc nguyên khối (không\nchống dính)INP2105",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "277,777.78",
+      "N": "277,778 ₫",
+      "O": "22,222 ₫",
+      "P": "300,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "59",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP2106",
+      "J": "Chảo inox đúc nguyên khối (không\nchống dính)INP2106",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "296,296.30",
+      "N": "296,296 ₫",
+      "O": "23,704 ₫",
+      "P": "320,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "60",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP2107",
+      "J": "Chảo inox đúc nguyên khối (không\nchống dính) INP2107",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "314,814.81",
+      "N": "314,815 ₫",
+      "O": "25,185 ₫",
+      "P": "340,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "108",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6004",
+      "J": "Nồi cơm điện INP6004 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "583,333.33",
+      "N": "583,333 ₫",
+      "O": "46,667 ₫",
+      "P": "630,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "109",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "690,740.74",
+      "N": "690,741 ₫",
+      "O": "55,259 ₫",
+      "P": "746,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "110",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "583,333.33",
+      "N": "583,333 ₫",
+      "O": "46,667 ₫",
+      "P": "630,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "111",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6008",
+      "J": "Nồi cơm điện INP6008 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "620,370.37",
+      "N": "620,370 ₫",
+      "O": "49,630 ₫",
+      "P": "670,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "112",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6009",
+      "J": "Nồi cơm điện INP6009 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "740,740.74",
+      "N": "740,741 ₫",
+      "O": "59,259 ₫",
+      "P": "800,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "113",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "527,777.77",
+      "N": "527,778 ₫",
+      "O": "42,222 ₫",
+      "P": "570,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "114",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-14",
+      "D": "BH2026090065",
+      "H": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月\n销售产品",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "611,111.11",
+      "N": "611,111 ₫",
+      "O": "48,889 ₫",
+      "P": "660,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 6
+  },
+  {
+   "page": 7,
+   "title": "Lê Thị ánh Nguyệt 黎氏映月",
+   "sheet": "Sheet6",
+   "hidden": false,
+   "declaredRows": 5,
+   "rows": [
+    {
+     "excelRow": "68",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "E": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月销售产品",
+      "F": "INP6902",
+      "G": "Nồi áp suất điện INP6902",
+      "H": "Cái",
+      "I": "2.00",
+      "J": "907,407 ₫",
+      "K": "1,814,815",
+      "L": "145,185",
+      "M": "1,960,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "69",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "E": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月销售产品",
+      "F": "INP6012",
+      "G": "Nồi cơm điện INP6012 (1,8L)",
+      "H": "Cái",
+      "I": "1.00",
+      "J": "907,407 ₫",
+      "K": "907,407",
+      "L": "72,593",
+      "M": "980,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "70",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "E": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月销售产品",
+      "F": "INP2105",
+      "G": "Chảo inox đúc nguyên khối (không chống\ndính)INP2105",
+      "H": "Cái",
+      "I": "1.00",
+      "J": "277,778 ₫",
+      "K": "277,778",
+      "L": "22,222",
+      "M": "300,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "71",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "E": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月销售产品",
+      "F": "INP2106",
+      "G": "Chảo inox đúc nguyên khối (không chống\ndính)INP2106",
+      "H": "Cái",
+      "I": "1.00",
+      "J": "296,296 ₫",
+      "K": "296,296",
+      "L": "23,704",
+      "M": "320,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "72",
+     "values": {
+      "A": "KH004",
+      "B": "Lê Thị ánh Nguyệt 黎氏映月",
+      "C": "2026-09-10",
+      "D": "BH2026090056",
+      "E": "Xuất bán cho Lê Thị ánh Nguyệt 黎氏映月销售产品",
+      "F": "INP2107",
+      "G": "Chảo inox đúc nguyên khối (không chống\ndính) INP2107",
+      "H": "Cái",
+      "I": "1.00",
+      "J": "314,815 ₫",
+      "K": "314,815",
+      "L": "25,185",
+      "M": "340,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 7
+  },
+  {
+   "page": 8,
+   "title": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC西北电器股份公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 14,
+   "rows": [
+    {
+     "excelRow": "1703",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP1001",
+      "K": "Bộ nồi inox INP1001",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "480,556 ₫",
+      "O": "961,111 ₫",
+      "P": "76,889 ₫",
+      "Q": "1,038,000 ₫",
+      "V": "1,038,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1704",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP1002",
+      "K": "Bộ nồi inox INP1002",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "647,222 ₫",
+      "O": "1,294,444 ₫",
+      "P": "103,556 ₫",
+      "Q": "1,398,000 ₫",
+      "V": "1,398,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1705",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "824,074 ₫",
+      "O": "1,648,148 ₫",
+      "P": "131,852 ₫",
+      "Q": "1,780,000 ₫",
+      "V": "1,780,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1706",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP1503",
+      "K": "Ấm đun nước 5L\nINP1503",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "148,148 ₫",
+      "O": "1,777,778 ₫",
+      "P": "142,222 ₫",
+      "Q": "1,920,000 ₫",
+      "V": "1,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1707",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP2002",
+      "K": "Bộ nồi inox INP2002",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "851,852 ₫",
+      "O": "1,703,704 ₫",
+      "P": "136,296 ₫",
+      "Q": "1,840,000 ₫",
+      "V": "1,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1708",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP2301",
+      "K": "Chảo rán INP2301",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "416,667 ₫",
+      "O": "2,500,000 ₫",
+      "P": "200,000 ₫",
+      "Q": "2,700,000 ₫",
+      "V": "2,700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1709",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP3201",
+      "K": "Chảo gang tráng\nmenINP3201",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "240,741 ₫",
+      "O": "1,444,444 ₫",
+      "P": "115,556 ₫",
+      "Q": "1,560,000 ₫",
+      "V": "1,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1710",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP3202",
+      "K": "Chảo gang tráng\nmenINP3202",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "342,593 ₫",
+      "O": "2,055,556 ₫",
+      "P": "164,444 ₫",
+      "Q": "2,220,000 ₫",
+      "V": "2,220,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1711",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "Cái",
+      "M": "4.00",
+      "N": "1,138,889 ₫",
+      "O": "4,555,556 ₫",
+      "P": "364,444 ₫",
+      "Q": "4,920,000 ₫",
+      "V": "4,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1712",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "Cái",
+      "M": "4.00",
+      "N": "1,097,222 ₫",
+      "O": "4,388,889 ₫",
+      "P": "351,111 ₫",
+      "Q": "4,740,000 ₫",
+      "V": "4,740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1713",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-12",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP6102",
+      "K": "Bếp từ đơn INP6102 (\n2500W), 2 quạt tản",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "937,963 ₫",
+      "O": "5,627,778 ₫",
+      "P": "450,222 ₫",
+      "Q": "6,078,000 ₫",
+      "V": "6,078,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1714",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-08",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "xuất bán cho CÔNG TY CỔ\nPHẦN ĐIỆN MÁY TÂY BẮC销\n售给西北电器股份公司",
+      "J": "INP6104",
+      "K": "Bếp từ đơn INP6104 (\n2500W )",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "1,007,407 ₫",
+      "O": "6,044,444 ₫",
+      "P": "483,556 ₫",
+      "Q": "6,528,000 ₫",
+      "V": "6,528,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1715",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-14",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "mua 4 INP6102 tặng 1\nINP6203\nmua 4 INP6104tặng 1\nINP6203",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203,\n1.7L",
+      "L": "Cái",
+      "M": "3.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1716",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC西北电器股份\n公司",
+      "C": "2026-09-08",
+      "D": "2026-09-14",
+      "E": "BH2026090050",
+      "F": "2026-09-19",
+      "H": "00000308",
+      "I": "mua bếp từ tặng nồi lẩu 购\n买电磁炉，赠送火锅",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 8
+  },
+  {
+   "page": 9,
+   "title": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC西北电器股份公司",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 12,
+   "rows": [
+    {
+     "excelRow": "94",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP1001",
+      "J": "Bộ nồi inox INP1001",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "480,555.56",
+      "N": "961,111 ₫",
+      "O": "76,889 ₫",
+      "P": "1,038,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "95",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP1002",
+      "J": "Bộ nồi inox INP1002",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "647,222.22",
+      "N": "1,294,444 ₫",
+      "O": "103,556 ₫",
+      "P": "1,398,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "96",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "824,074.07",
+      "N": "1,648,148 ₫",
+      "O": "131,852 ₫",
+      "P": "1,780,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "97",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP1503",
+      "J": "Ấm đun nước 5L INP1503",
+      "K": "Cái",
+      "L": "12.00",
+      "M": "148,148.15",
+      "N": "1,777,778 ₫",
+      "O": "142,222 ₫",
+      "P": "1,920,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "98",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP2002",
+      "J": "Bộ nồi inox INP2002",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "851,851.85",
+      "N": "1,703,704 ₫",
+      "O": "136,296 ₫",
+      "P": "1,840,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "99",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP2301",
+      "J": "Chảo rán INP2301",
+      "K": "Cái",
+      "L": "6.00",
+      "M": "416,666.67",
+      "N": "2,500,000 ₫",
+      "O": "200,000 ₫",
+      "P": "2,700,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "100",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP3201",
+      "J": "Chảo gang tráng menINP3201",
+      "K": "Cái",
+      "L": "6.00",
+      "M": "240,740.74",
+      "N": "1,444,444 ₫",
+      "O": "115,556 ₫",
+      "P": "1,560,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "101",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP3202",
+      "J": "Chảo gang tráng menINP3202",
+      "K": "Cái",
+      "L": "6.00",
+      "M": "342,592.59",
+      "N": "2,055,556 ₫",
+      "O": "164,444 ₫",
+      "P": "2,220,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "102",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP6001",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6001",
+      "K": "Cái",
+      "L": "4.00",
+      "M": "1,138,888.89",
+      "N": "4,555,556 ₫",
+      "O": "364,444 ₫",
+      "P": "4,920,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "103",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP6002",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6002",
+      "K": "Cái",
+      "L": "4.00",
+      "M": "1,097,222.22",
+      "N": "4,388,889 ₫",
+      "O": "351,111 ₫",
+      "P": "4,740,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "104",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP6102",
+      "J": "Bếp từ đơn INP6102 ( 2500W), 2\nquạt tản",
+      "K": "Cái",
+      "L": "6.00",
+      "M": "937,962.96",
+      "N": "5,627,778 ₫",
+      "O": "450,222 ₫",
+      "P": "6,078,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "105",
+     "values": {
+      "A": "KH090",
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC\n西北电器股份公司",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "2026-09-19",
+      "G": "00000308",
+      "H": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN\nMÁY TÂY BẮC销售给西北电器股份公司",
+      "I": "INP6104",
+      "J": "Bếp từ đơn INP6104 ( 2500W )",
+      "K": "Cái",
+      "L": "6.00",
+      "M": "1,007,407.41",
+      "N": "6,044,444 ₫",
+      "O": "483,556 ₫",
+      "P": "6,528,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 9
+  },
+  {
+   "page": 10,
+   "title": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC西北电器股份公司",
+   "sheet": "Sheet6",
+   "hidden": false,
+   "declaredRows": 14,
+   "rows": [
+    {
+     "excelRow": "86",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP1001",
+      "G": "Bộ nồi inox INP1001",
+      "H": "Cái",
+      "I": "2",
+      "J": "480,555.56",
+      "K": "961,111",
+      "L": "76,889",
+      "M": "1,038,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "87",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP1002",
+      "G": "Bộ nồi inox INP1002",
+      "H": "Cái",
+      "I": "2",
+      "J": "647,222.22",
+      "K": "1,294,444",
+      "L": "103,556",
+      "M": "1,398,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "88",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP1401",
+      "G": "Nồi áp suất 4.5L INP1401",
+      "H": "Cái",
+      "I": "2",
+      "J": "824,074.07",
+      "K": "1,648,148",
+      "L": "131,852",
+      "M": "1,780,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "89",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP1503",
+      "G": "Ấm đun nước 5L INP1503",
+      "H": "Cái",
+      "I": "12",
+      "J": "148,148.15",
+      "K": "1,777,778",
+      "L": "142,222",
+      "M": "1,920,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "90",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP2002",
+      "G": "Bộ nồi inox INP2002",
+      "H": "Cái",
+      "I": "2",
+      "J": "851,851.85",
+      "K": "1,703,704",
+      "L": "136,296",
+      "M": "1,840,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "91",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP2301",
+      "G": "Chảo rán INP2301",
+      "H": "Cái",
+      "I": "6",
+      "J": "416,666.67",
+      "K": "2,500,000",
+      "L": "200,000",
+      "M": "2,700,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "92",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP3201",
+      "G": "Chảo gang tráng menINP3201",
+      "H": "Cái",
+      "I": "6",
+      "J": "240,740.74",
+      "K": "1,444,444",
+      "L": "115,556",
+      "M": "1,560,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "93",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP3202",
+      "G": "Chảo gang tráng menINP3202",
+      "H": "Cái",
+      "I": "6",
+      "J": "342,592.59",
+      "K": "2,055,556",
+      "L": "164,444",
+      "M": "2,220,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "94",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP6001",
+      "G": "Nồi cơm điện tử (Nồi cơm điện đa năng\ngiảm đường) INP6001",
+      "H": "Cái",
+      "I": "4",
+      "J": "1,138,888.89",
+      "K": "4,555,556",
+      "L": "364,444",
+      "M": "4,920,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "95",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP6002",
+      "G": "Nồi cơm điện tử (Nồi cơm điện đa năng\ngiảm đường) INP6002",
+      "H": "Cái",
+      "I": "4",
+      "J": "1,097,222.22",
+      "K": "4,388,889",
+      "L": "351,111",
+      "M": "4,740,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "96",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP6102",
+      "G": "Bếp từ đơn INP6102 ( 2500W), 2 quạt tản",
+      "H": "Cái",
+      "I": "6",
+      "J": "937,962.96",
+      "K": "5,627,778",
+      "L": "450,222",
+      "M": "6,078,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "97",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP6104",
+      "G": "Bếp từ đơn INP6104 ( 2500W )",
+      "H": "Cái",
+      "I": "6",
+      "J": "1,007,407.41",
+      "K": "6,044,444",
+      "L": "483,556",
+      "M": "6,528,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "98",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP6203",
+      "G": "Ấm đun nước INP6203, 1.7L",
+      "H": "Cái",
+      "I": "3",
+      "J": "0.00",
+      "K": "0",
+      "L": "0",
+      "M": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "99",
+     "values": {
+      "B": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+      "C": "2026-09-08",
+      "D": "BH2026080050",
+      "E": "xuất bán cho CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY\nBẮC",
+      "F": "INP1301B",
+      "G": "Nồi mã INP1301B",
+      "H": "Cái",
+      "I": "12",
+      "J": "0.00",
+      "K": "0",
+      "L": "0",
+      "M": "0"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 10
+  },
+  {
+   "page": 11,
+   "title": "CÔNG TY TNHH GIA DỤNG YẾN NGUYỄN",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [
+    {
+     "excelRow": "1736",
+     "values": {
+      "A": "KH025",
+      "B": "CÔNG TY TNHH GIA DỤNG\nYẾN NGUYỄN",
+      "C": "2026-09-14",
+      "D": "2026-09-15",
+      "E": "BH2026090072",
+      "F": "2026-09-19",
+      "H": "00000310",
+      "I": "xuất bán cho CÔNG TY\nTNHH GIA DỤNG YẾN\nNGUYỄN",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "361,111 ₫",
+      "O": "4,333,333 ₫",
+      "P": "346,667 ₫",
+      "Q": "4,680,000 ₫",
+      "V": "4,680,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 11
+  },
+  {
+   "page": 12,
+   "title": "CÔNG TY TNHH GIA DỤNG YẾN NGUYỄN",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [
+    {
+     "excelRow": "115",
+     "values": {
+      "A": "KH025",
+      "B": "CÔNG TY TNHH GIA DỤNG YẾN\nNGUYỄN",
+      "C": "2026-09-14",
+      "D": "BH2026090072",
+      "E": "2026-09-19",
+      "G": "00000310",
+      "H": "xuất bán cho CÔNG TY TNHH GIA DỤNG\nYẾN NGUYỄN",
+      "I": "INP6202",
+      "J": "Ấm điện siêu tốc INP6202 1,7 lít\nmàu đen",
+      "K": "Cái",
+      "L": "12.00",
+      "M": "361,111.11",
+      "N": "4,333,333",
+      "O": "346,667 ₫",
+      "P": "4,680,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 12
+  },
+  {
+   "page": 13,
+   "title": "CÔNG TY TNHH NỘI THẤT T&H HOMES T&H家居有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 23,
+   "rows": [
+    {
+     "excelRow": "1744",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1001",
+      "K": "Bộ nồi inox INP1001",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "526,852 ₫",
+      "O": "1,053,704 ₫",
+      "P": "84,296 ₫",
+      "Q": "1,138,000 ₫",
+      "V": "1,138,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1745",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1002",
+      "K": "Bộ nồi inox INP1002",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "693,519 ₫",
+      "O": "1,387,037 ₫",
+      "P": "110,963 ₫",
+      "Q": "1,498,000 ₫",
+      "V": "1,498,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1746",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1003",
+      "K": "Bộ nồi inox INP1003",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "370,370 ₫",
+      "O": "740,741 ₫",
+      "P": "59,259 ₫",
+      "Q": "800,000 ₫",
+      "V": "800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1747",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1202",
+      "K": "Nồi Inox INP1202",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "518,519 ₫",
+      "O": "1,037,037 ₫",
+      "P": "82,963 ₫",
+      "Q": "1,120,000 ₫",
+      "V": "1,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1748",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "129,630 ₫",
+      "O": "259,259 ₫",
+      "P": "20,741 ₫",
+      "Q": "280,000 ₫",
+      "V": "280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1749",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "148,148 ₫",
+      "O": "296,296 ₫",
+      "P": "23,704 ₫",
+      "Q": "320,000 ₫",
+      "V": "320,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1750",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "252,778 ₫",
+      "O": "505,556 ₫",
+      "P": "40,444 ₫",
+      "Q": "546,000 ₫",
+      "V": "546,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1751",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "275,000 ₫",
+      "O": "550,000 ₫",
+      "P": "44,000 ₫",
+      "Q": "594,000 ₫",
+      "V": "594,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1752",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-14",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2105",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2105",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "259,259 ₫",
+      "O": "518,519 ₫",
+      "P": "41,481 ₫",
+      "Q": "560,000 ₫",
+      "V": "560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1753",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-16",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "1,143,519 ₫",
+      "O": "2,287,037 ₫",
+      "P": "182,963 ₫",
+      "Q": "2,470,000 ₫",
+      "V": "2,470,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1754",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-16",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6003",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "898,148 ₫",
+      "O": "1,796,296 ₫",
+      "P": "143,704 ₫",
+      "Q": "1,940,000 ₫",
+      "V": "1,940,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1755",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-16",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203,\n1.7L",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "376,852 ₫",
+      "O": "753,704 ₫",
+      "P": "60,296 ₫",
+      "Q": "814,000 ₫",
+      "V": "814,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1756",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-14",
+      "D": "2026-09-18",
+      "E": "BH2026090067",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6204",
+      "K": "Ấm đun nước INP6204,\n1.0L",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "312,037 ₫",
+      "O": "624,074 ₫",
+      "P": "49,926 ₫",
+      "Q": "674,000 ₫",
+      "V": "674,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1873",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-25",
+      "D": "2026-09-25",
+      "E": "BH2026090092",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khốiINP2202",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "928,704 ₫",
+      "O": "928,704 ₫",
+      "P": "74,296 ₫",
+      "Q": "1,003,000 ₫",
+      "V": "1,003,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1874",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-25",
+      "D": "2026-09-24",
+      "E": "BH2026090092",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2103",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2103",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "309,259 ₫",
+      "O": "618,519 ₫",
+      "P": "49,481 ₫",
+      "Q": "668,000 ₫",
+      "V": "668,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1875",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-25",
+      "D": "2026-09-24",
+      "E": "BH2026090092",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP3201",
+      "K": "Chảo gang tráng\nmenINP3201",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "264,815 ₫",
+      "O": "264,815 ₫",
+      "P": "21,185 ₫",
+      "Q": "286,000 ₫",
+      "V": "286,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1876",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-25",
+      "D": "2026-09-24",
+      "E": "BH2026090092",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6103",
+      "K": "Bếp từ đơn INP6103",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "878,704 ₫",
+      "O": "1,757,407 ₫",
+      "P": "140,593 ₫",
+      "Q": "1,898,000 ₫",
+      "V": "1,898,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1877",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-09-25",
+      "D": "2026-09-24",
+      "E": "BH2026090092",
+      "I": "mua bếp từ tặng nồi lẩu 购\n买电磁炉，赠送火锅",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2002",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-10-03",
+      "D": "2026-10-03",
+      "E": "BH2026100110",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP1201",
+      "K": "Nồi Inox INP1201",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "426,852 ₫",
+      "O": "426,852 ₫",
+      "P": "34,148 ₫",
+      "Q": "461,000 ₫",
+      "V": "461,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2003",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-10-03",
+      "D": "2026-10-03",
+      "E": "BH2026100110",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2103",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2103",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "309,259 ₫",
+      "O": "309,259 ₫",
+      "P": "24,741 ₫",
+      "Q": "334,000 ₫",
+      "V": "334,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2004",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-10-03",
+      "D": "2026-10-03",
+      "E": "BH2026100110",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "1,252,778 ₫",
+      "O": "2,505,556 ₫",
+      "P": "200,444 ₫",
+      "Q": "2,706,000 ₫",
+      "V": "2,706,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2049",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100116",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2001",
+      "K": "Bộ nồi inox đúc nguyên\nkhối INP2001",
+      "L": "Cái",
+      "M": "1",
+      "N": "1,148,148 ₫",
+      "O": "1,148,148 ₫",
+      "P": "91,852 ₫",
+      "Q": "1,240,000 ₫",
+      "V": "1,240,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 13
+  },
+  {
+   "page": 14,
+   "title": "CÔNG TY TNHH NỘI THẤT T&H HOMES T&H家居有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "2050",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT\nT&H HOMES T&H家居有限\n公司",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100116",
+      "I": "xuất bán cho CÔNG TY\nTNHH NỘI THẤT T&H\nHOMES",
+      "J": "INP2103",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2103",
+      "L": "Cái",
+      "M": "1",
+      "N": "309,259 ₫",
+      "O": "309,259 ₫",
+      "P": "24,741 ₫",
+      "Q": "334,000 ₫",
+      "V": "334,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 14
+  },
+  {
+   "page": 15,
+   "title": "CÔNG TY TNHH NỘI THẤT T&H HOMES T&H家居有限公司",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 17,
+   "rows": [
+    {
+     "excelRow": "116",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1001",
+      "J": "Bộ nồi inox INP1001",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "526,851.85",
+      "N": "1,053,704 ₫",
+      "O": "84,296 ₫",
+      "P": "1,138,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "117",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1002",
+      "J": "Bộ nồi inox INP1002",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "693,518.52",
+      "N": "1,387,037 ₫",
+      "O": "110,963 ₫",
+      "P": "1,498,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "118",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1003",
+      "J": "Bộ nồi inox INP1003",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "370,370.37",
+      "N": "740,741 ₫",
+      "O": "59,259 ₫",
+      "P": "800,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "119",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1202",
+      "J": "Nồi Inox INP1202",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "518,518.52",
+      "N": "1,037,037 ₫",
+      "O": "82,963 ₫",
+      "P": "1,120,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "120",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1301B",
+      "J": "Nồi mã INP1301B",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "129,629.63",
+      "N": "259,259 ₫",
+      "O": "20,741 ₫",
+      "P": "280,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "121",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP1501",
+      "J": "Ấm đun nước 3L INP1501",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "148,148.15",
+      "N": "296,296 ₫",
+      "O": "23,704 ₫",
+      "P": "320,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "122",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2101",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "252,777.78",
+      "N": "505,556 ₫",
+      "O": "40,444 ₫",
+      "P": "546,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "123",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2102",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "275,000.00",
+      "N": "550,000 ₫",
+      "O": "44,000 ₫",
+      "P": "594,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "124",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP2105",
+      "J": "Chảo inox đúc nguyên khối (không\nchống dính)INP2105",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "259,259.26",
+      "N": "518,519 ₫",
+      "O": "41,481 ₫",
+      "P": "560,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "125",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP6002",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6002",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "1,143,518.52",
+      "N": "2,287,037 ₫",
+      "O": "182,963 ₫",
+      "P": "2,470,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "126",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6003",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "898,148.15",
+      "N": "1,796,296 ₫",
+      "O": "143,704 ₫",
+      "P": "1,940,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "127",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP6203",
+      "J": "Ấm đun nước INP6203, 1.7L",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "376,851.85",
+      "N": "753,704 ₫",
+      "O": "60,296 ₫",
+      "P": "814,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "128",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-14",
+      "D": "BH2026090067",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP6204",
+      "J": "Ấm đun nước INP6204, 1.0L",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "312,037.04",
+      "N": "624,074 ₫",
+      "O": "49,926 ₫",
+      "P": "674,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "191",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-25",
+      "D": "BH2026090092",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP2202",
+      "J": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "K": "Cái",
+      "L": "1",
+      "M": "928,703.70",
+      "N": "928,704",
+      "O": "74,296",
+      "P": "1,003,000.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "192",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-25",
+      "D": "BH2026090092",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP2103",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2103",
+      "K": "Cái",
+      "L": "2",
+      "M": "309,259.26",
+      "N": "618,519",
+      "O": "49,481",
+      "P": "668,000.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "193",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-25",
+      "D": "BH2026090092",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP3201",
+      "J": "Chảo gang tráng menINP3201",
+      "K": "Cái",
+      "L": "1",
+      "M": "264,814.81",
+      "N": "264,815",
+      "O": "21,185",
+      "P": "285,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "194",
+     "values": {
+      "A": "KH092",
+      "B": "CÔNG TY TNHH NỘI THẤT T&H HOMES\nT&H家居有限公司",
+      "C": "2026-09-25",
+      "D": "BH2026090092",
+      "H": "xuất bán cho CÔNG TY TNHH NỘI THẤT\nT&H HOMES",
+      "I": "INP6103",
+      "J": "Bếp từ đơn INP6103",
+      "K": "Cái",
+      "L": "2",
+      "M": "878,703.70",
+      "N": "1,757,407",
+      "O": "140,593",
+      "P": "1,897,999.99"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 15
+  },
+  {
+   "page": 16,
+   "title": "SHENZHEN MEISHENGFA TRADE CO.,LTD",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 15,
+   "rows": [
+    {
+     "excelRow": "1770",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005",
+      "L": "Cái",
+      "M": "-80.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1771",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006",
+      "L": "Cái",
+      "M": "-260.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1772",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007",
+      "L": "Cái",
+      "M": "-392.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1773",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009",
+      "L": "Cái",
+      "M": "-80.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1774",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010",
+      "L": "Cái",
+      "M": "-480.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1775",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011",
+      "L": "Cái",
+      "M": "-480.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1776",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6012",
+      "K": "Nồi cơm điện INP6012",
+      "L": "Cái",
+      "M": "-440.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1777",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-09-17",
+      "D": "2026-09-17",
+      "E": "NK2026090019",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP6209",
+      "L": "Cái",
+      "M": "-144.00",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1992",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6151",
+      "K": "Bếp hồng ngoại\nINP6151",
+      "L": "Cái",
+      "M": "-1062.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1993",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6152",
+      "K": "Bếp hồng ngoại\nINP6152",
+      "L": "Cái",
+      "M": "-1062.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1994",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6153",
+      "K": "Bếp hồng ngoại\nINP6153",
+      "L": "Cái",
+      "M": "-1062.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1995",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6154",
+      "K": "Bếp hồng ngoại\nINP6154",
+      "L": "Cái",
+      "M": "-1062.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1996",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "-1008.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1997",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6208",
+      "K": "Ấm siêu tốc INP6208",
+      "L": "Cái",
+      "M": "-1008.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1998",
+     "values": {
+      "A": "NCC01",
+      "B": "SHENZHEN MEISHENGFA\nTRADE CO.,LTD",
+      "C": "2026-10-02",
+      "D": "2026-10-02",
+      "E": "NK2026100024",
+      "I": "mua hàng của SHENZHEN\nMEISHENGFA TRADE\nCO.,LTD",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP6209",
+      "L": "Cái",
+      "M": "-1872.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 16
+  },
+  {
+   "page": 17,
+   "title": "Louie",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 5,
+   "rows": [
+    {
+     "excelRow": "1832",
+     "values": {
+      "A": "KH030",
+      "B": "Louie",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090089",
+      "I": "tặng Nhà Phân Phối 送给经\n销商",
+      "J": "14000001",
+      "K": "Quần áo màu xanh S",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1833",
+     "values": {
+      "A": "KH030",
+      "B": "Louie",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090089",
+      "I": "tặng Nhà Phân Phối 送给经\n销商",
+      "J": "14000002",
+      "K": "Quần áo màu xanh M",
+      "L": "Cái",
+      "M": "3.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1834",
+     "values": {
+      "A": "KH030",
+      "B": "Louie",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090089",
+      "I": "tặng Nhà Phân Phối 送给经\n销商",
+      "J": "14000003",
+      "K": "Quần áo màu xanh L",
+      "L": "Cái",
+      "M": "4.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1835",
+     "values": {
+      "A": "KH030",
+      "B": "Louie",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090089",
+      "I": "tặng Nhà Phân Phối 送给经\n销商",
+      "J": "14000004",
+      "K": "Quần áo màu xanh XL",
+      "L": "Cái",
+      "M": "3.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1836",
+     "values": {
+      "A": "KH030",
+      "B": "Louie",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090089",
+      "I": "tặng Nhà Phân Phối 送给经\n销商",
+      "J": "14000005",
+      "K": "Quần áo màu xanh 2XL",
+      "L": "Cái",
+      "M": "3.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 17
+  },
+  {
+   "page": 18,
+   "title": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa 陶氏琼花个体工商户",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 11,
+   "rows": [
+    {
+     "excelRow": "1837",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090086",
+      "F": "2026-09-28",
+      "H": "00000320",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1502",
+      "K": "Ấm đun nước 4L\nINP1502",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "138,889 ₫",
+      "O": "1,666,667 ₫",
+      "P": "133,333 ₫",
+      "Q": "1,800,000 ₫",
+      "V": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1838",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "E": "BH2026090086",
+      "F": "2026-09-28",
+      "H": "00000320",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1503",
+      "K": "Ấm đun nước 5L\nINP1503",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "148,148 ₫",
+      "O": "1,777,778 ₫",
+      "P": "142,222 ₫",
+      "Q": "1,920,000 ₫",
+      "V": "1,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1839",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-22",
+      "D": "2026-09-22",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "3,720,000 ₫",
+      "V": "3,720,000 ₫",
+      "W": "BH2026090086"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1915",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-28",
+      "D": "2026-09-25",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "3,720,001 ₫",
+      "V": "3,720,001 ₫",
+      "W": "BH2026090086"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1916",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-28",
+      "D": "2026-09-25",
+      "I": "Trả lại khách tiền mặt",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "3,720,000 ₫",
+      "V": "3,720,000 ₫",
+      "W": "BH2026090086"
+     },
+     "red": [
+      "R"
+     ]
+    },
+    {
+     "excelRow": "1954",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-09-29",
+      "D": "2026-09-28",
+      "E": "BH2026090103",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1503",
+      "K": "Ấm đun nước 5L\nINP1503",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "148,148 ₫",
+      "O": "1,777,778 ₫",
+      "P": "142,222 ₫",
+      "Q": "1,920,000 ₫",
+      "V": "1,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1999",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "D": "2026-10-02",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "1,920,000 ₫",
+      "V": "1,920,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2074",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-10-09",
+      "D": "2026-10-10",
+      "E": "BH2026100123",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1501",
+      "K": "Ấm Đun Nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "12",
+      "N": "129,630 ₫",
+      "O": "1,555,556 ₫",
+      "P": "124,444 ₫",
+      "Q": "1,680,000 ₫",
+      "V": "1,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2075",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-10-09",
+      "D": "2026-10-10",
+      "E": "BH2026100123",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1502",
+      "K": "Ấm Đun Nước 4L\nINP1502",
+      "L": "Cái",
+      "M": "12",
+      "N": "138,889 ₫",
+      "O": "1,666,667 ₫",
+      "P": "133,333 ₫",
+      "Q": "1,800,000 ₫",
+      "V": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2076",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-10-09",
+      "D": "2026-10-10",
+      "E": "BH2026100123",
+      "I": "Xuất bán cho Hộ Kinh\nDoanh Đào Thị Quỳnh Hoa\n陶氏琼花个体工商户销售产\n品",
+      "J": "INP1503",
+      "K": "Ấm đun nước 5L\nINP1503",
+      "L": "Cái",
+      "M": "12",
+      "N": "148,148 ₫",
+      "O": "1,777,778 ₫",
+      "P": "142,222 ₫",
+      "Q": "1,920,000 ₫",
+      "V": "1,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2077",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa 陶氏琼花个体\n工商户",
+      "C": "2026-10-09",
+      "D": "2026-10-10",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "5,400,000 ₫",
+      "V": "5,400,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 18
+  },
+  {
+   "page": 19,
+   "title": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa 陶氏琼花个体工商户",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 2,
+   "rows": [
+    {
+     "excelRow": "168",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa 陶\n氏琼花个体工商户",
+      "C": "2026-09-22",
+      "D": "BH2026090086",
+      "E": "2026-09-28",
+      "G": "00000320",
+      "H": "Xuất bán cho Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa陶氏琼花个体工商户销售产品",
+      "I": "INP1502",
+      "J": "Ấm đun nước 4L INP1502",
+      "K": "Cái",
+      "L": "12",
+      "M": "138,888.89",
+      "N": "1,666,667",
+      "O": "133,333 ₫",
+      "P": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "169",
+     "values": {
+      "A": "KH021",
+      "B": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa 陶\n氏琼花个体工商户",
+      "C": "2026-09-22",
+      "D": "BH2026090086",
+      "E": "2026-09-28",
+      "G": "00000320",
+      "H": "Xuất bán cho Hộ Kinh Doanh Đào Thị\nQuỳnh Hoa陶氏琼花个体工商户销售产品",
+      "I": "INP1503",
+      "J": "Ấm đun nước 5L INP1503",
+      "K": "Cái",
+      "L": "12",
+      "M": "148,148.15",
+      "N": "1,777,778",
+      "O": "142,222 ₫",
+      "P": "1,920,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 19
+  },
+  {
+   "page": 20,
+   "title": "Nguyễn Tuấn Hoàng",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 5,
+   "rows": [
+    {
+     "excelRow": "1906",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "2026-09-25",
+      "E": "BH2026090093",
+      "I": "Xuất bán cho Nguyễn Tuấn\nHoàng",
+      "J": "INP2001",
+      "K": "Bộ nồi inox đúc nguyên\nkhối INP2001",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "1,127,000 ₫",
+      "O": "1,127,000 ₫",
+      "P": "0 ₫",
+      "Q": "1,127,000 ₫",
+      "V": "1,127,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1907",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "2026-09-23",
+      "E": "BH2026090093",
+      "I": "Xuất bán cho Nguyễn Tuấn\nHoàng",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "1,280,000 ₫",
+      "O": "1,280,000 ₫",
+      "P": "0 ₫",
+      "Q": "1,280,000 ₫",
+      "V": "1,280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1908",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "2026-09-23",
+      "E": "BH2026090093",
+      "I": "Xuất bán cho Nguyễn Tuấn\nHoàng",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "420,000 ₫",
+      "O": "420,000 ₫",
+      "P": "0 ₫",
+      "Q": "420,000 ₫",
+      "V": "420,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1909",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "2026-09-23",
+      "E": "BH2026090096",
+      "I": "mang lên công ty để chụp\nảnh拿到公司拍照",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2069",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-10-09",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "R": "2,827,000 ₫",
+      "V": "2,827,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 20
+  }
+ ]
+}

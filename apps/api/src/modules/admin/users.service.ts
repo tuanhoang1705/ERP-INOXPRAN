@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, isPermissionKey, type LoginEvent, type UpdateUser, type UpdateUserPermissions } from '@inoxpran/contracts';
+import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, isPermissionKey, type LoginEvent, requiresMfa, type UpdateUser, type UpdateUserPermissions } from '@inoxpran/contracts';
+import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { type Db, type Document, type Filter, ObjectId } from 'mongodb';
 import { dateRangeFilter } from '../../common/date-range';
@@ -31,10 +32,15 @@ export class UsersAdminService {
   constructor(
     @Inject(MONGO_DATABASE) private readonly db: Db,
     private readonly audit: AuditService,
+    private readonly config: ConfigService,
   ) {}
 
   private users() {
     return this.db.collection('users');
+  }
+
+  private enforceMfa(): boolean {
+    return this.config.get<boolean>('MFA_ENFORCE_PRIVILEGED') ?? false;
   }
 
   private async present(rows: Document[]): Promise<AdminUser[]> {
@@ -56,6 +62,8 @@ export class UsersAdminService {
         status: row.status === 'DISABLED' ? 'DISABLED' : 'ACTIVE',
         root: Boolean(row.root),
         mfaEnabled: Boolean(row.mfaEnabled),
+        mfaRequired: requiresMfa({ roles: (row.roles as string[] | undefined) ?? [], root: Boolean(row.root), mfaRequired: row.mfaRequired as boolean | undefined }, this.enforceMfa()),
+        mfaRequiredSet: typeof row.mfaRequired === 'boolean',
         mustChangePassword: Boolean(row.mustChangePassword),
         ...(row.lockedUntil instanceof Date && row.lockedUntil > new Date() ? { lockedUntil: iso(row.lockedUntil) as string } : {}),
         ...(iso(row.lastLoginAt) ? { lastLoginAt: iso(row.lastLoginAt) as string } : {}),
@@ -231,6 +239,22 @@ export class UsersAdminService {
     sessionCache.invalidate(id);
     await this.record(request, 'USER_PASSWORD_RESET', target);
     return { temporaryPassword: password };
+  }
+
+  /**
+   * Yêu cầu 2 lớp theo tài khoản (MFA-02). Bật: người đó phải quét mã ở lần thao tác tiếp theo (nếu chưa bật).
+   * Tắt: bỏ yêu cầu và tắt luôn 2 lớp đang bật (người đó tự bật lại được ở Tài khoản của tôi). Không đăng xuất phiên.
+   */
+  async setMfaRequired(id: string, required: boolean, request: AuthenticatedRequest) {
+    const target = await this.load(id);
+    this.assertCanManage(request, target);
+    const update: Document = required
+      ? { $set: { mfaRequired: true, updatedAt: new Date() } }
+      : { $set: { mfaRequired: false, mfaEnabled: false, updatedAt: new Date() }, $unset: { mfaSecret: '', pendingMfaSecret: '' } };
+    await this.users().updateOne({ _id: target._id }, update);
+    sessionCache.invalidate(id);
+    await this.record(request, required ? 'USER_MFA_REQUIRED_ON' : 'USER_MFA_REQUIRED_OFF', target, { mfaWasEnabled: Boolean(target.mfaEnabled) });
+    return (await this.present([await this.load(id)]))[0];
   }
 
   /** Mất điện thoại / đổi máy: tắt MFA, người dùng bật lại ở lần đăng nhập sau (bắt buộc với vai trò đặc quyền). */

@@ -166,8 +166,10 @@ export const sections: NavSection[] = [
       {
         title: m.thanh_toan_cong_no(),
         items: [
+          { label: m.cn_nav(), href: '/receivables/customers' },
           { label: m.so_chi_tiet_cong_no(), href: '/receivables' },
           { label: m.tuoi_no_canh_bao_qua_han(), href: '/receivables/overdue' },
+          { label: m.seg_nav(), href: '/receivables/segments' },
         ],
       },
     ],

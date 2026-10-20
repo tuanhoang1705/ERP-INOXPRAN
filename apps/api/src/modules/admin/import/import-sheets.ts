@@ -168,6 +168,72 @@ export const IMPORT_SHEETS: SheetDef[] = [
   },
 ];
 
+/**
+ * Nhập lịch sử công nợ theo khách (IMP-AR-01, 16/10/2026) — file riêng (không nằm trong file mẫu nhập dữ liệu ban đầu):
+ * mỗi dòng một chứng từ / khoản thu / phí vận chuyển / trả hàng của sổ công nợ cũ; dòng hàng chi tiết và số đối chiếu kèm theo.
+ */
+export const AR_HISTORY_TYPES = {
+  BAN_HANG: ['ban hang', 'xuat ban', 'ban'],
+  HOAN_TIEN: ['hoan tien', 'tra lai tien', 'tra lai khach tien mat'],
+  TRA_HANG: ['tra hang', 'tra lai hang', 'dieu chinh giam', 'tra hang / dieu chinh giam'],
+  THU_TIEN: ['thu tien', 'da thanh toan'],
+  PHI_VAN_CHUYEN: ['phi van chuyen', 'van chuyen', 'cuoc'],
+  GIAM_GIA: ['giam gia', 'chiet khau'],
+  TRU_LUONG: ['tru luong', 'tru vao luong'],
+} as const;
+export type ArHistoryType = keyof typeof AR_HISTORY_TYPES;
+export const AR_HISTORY_SHEETS: SheetDef[] = [
+  {
+    name: 'CONG_NO_LICH_SU', title: 'Lịch sử công nợ', note: 'Mỗi dòng một chứng từ bán / trả hàng, khoản thu tiền, phí vận chuyển khách trả, giảm giá. Mã dòng không được trùng.',
+    columns: [
+      { key: 'id', label: 'Mã dòng', required: true, type: 'code', width: 12 },
+      { key: 'customerCode', label: 'Mã KH', required: true, type: 'code', width: 10 },
+      { key: 'date', label: 'Ngày chứng từ', required: true, type: 'date', width: 13 },
+      {
+        key: 'type', label: 'Loại', required: true, type: 'enum', values: AR_HISTORY_TYPES as unknown as Record<string, string[]>, width: 16,
+        hint: 'Bán hàng / Trả hàng / Thu tiền / Phí vận chuyển / Giảm giá / Trừ lương / Hoàn tiền',
+        choices: ['Bán hàng', 'Trả hàng', 'Thu tiền', 'Phí vận chuyển', 'Giảm giá', 'Trừ lương', 'Hoàn tiền'],
+      },
+      { key: 'documentNo', label: 'Số chứng từ', width: 16 },
+      { key: 'invoiceNo', label: 'Số hóa đơn', width: 12 },
+      {
+        key: 'erpOrderNo', label: 'Phiếu ERP (trùng)', width: 16,
+        hint: 'Chỉ điền khi cùng một lần xuất đã có phiếu BH trên ERP (VD sổ cũ ghi theo ngày đơn, kho xuất sang tháng sau): ghi số phiếu ERP — dòng này không nhập, giữ phiếu ERP',
+      },
+      { key: 'amount', label: 'Số tiền', required: true, type: 'money', width: 16 },
+      { key: 'description', label: 'Diễn giải', width: 36 },
+      { key: 'note', label: 'Ghi chú', width: 24 },
+      { key: 'source', label: 'Nguồn', width: 40 },
+      { key: 'flags', label: 'Cờ kiểm tra', width: 30 },
+    ],
+  },
+  {
+    name: 'CONG_NO_LICH_SU_HANG', title: 'Dòng hàng của chứng từ lịch sử', note: 'Chi tiết hàng của chứng từ bán / trả (chỉ để xem lại).',
+    columns: [
+      { key: 'entryId', label: 'Mã dòng', required: true, type: 'code', width: 12 },
+      { key: 'sku', label: 'Mã hàng', width: 12 },
+      { key: 'productName', label: 'Tên hàng', width: 36 },
+      { key: 'unit', label: 'ĐVT', width: 8 },
+      { key: 'quantity', label: 'Số lượng', width: 10 },
+      { key: 'unitPrice', label: 'Đơn giá', width: 14 },
+      { key: 'amount', label: 'Thành tiền', type: 'money', width: 16 },
+      { key: 'source', label: 'Nguồn', width: 30 },
+    ],
+  },
+  {
+    name: 'DOI_CHIEU_CONG_NO', title: 'Số đối chiếu theo khách', note: 'Số tổng trên sổ cũ để đối chiếu sau khi nhập (không ghi vào hệ thống).',
+    columns: [
+      { key: 'customerCode', label: 'Mã KH', required: true, type: 'code', width: 10 },
+      { key: 'tongCongNo', label: 'Tổng công nợ', width: 16 },
+      { key: 'daThanhToan', label: 'Đã thanh toán', width: 16 },
+      { key: 'phiVanChuyen', label: 'Phí vận chuyển', width: 16 },
+      { key: 'conLai', label: 'Còn lại', width: 16 },
+      { key: 'sheet', label: 'Sheet đối chiếu', width: 18 },
+      { key: 'note', label: 'Ghi chú', width: 40 },
+    ],
+  },
+];
+
 export const normalize = (value: string): string =>
   value.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 

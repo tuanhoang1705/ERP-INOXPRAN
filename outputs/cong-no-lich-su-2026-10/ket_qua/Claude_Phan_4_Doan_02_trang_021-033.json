@@ -1,0 +1,1881 @@
+{
+ "file": "Claude_Phan_4_Doan_02_trang_021-033.pdf",
+ "part": 4,
+ "sha256": "1c33f96e4c3779488cefa888554bd2ecced999613670095642db57e6088c3775",
+ "pages": [
+  {
+   "page": 1,
+   "title": "Nguyễn Tuấn Hoàng",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "217",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "BH2026090093",
+      "H": "Xuất bán cho Nguyễn Tuấn Hoàng",
+      "I": "INP2001",
+      "J": "Bộ nồi inox đúc nguyên khối\nINP2001",
+      "K": "Cái",
+      "L": "1",
+      "M": "1,127,000.00",
+      "N": "1,127,000",
+      "O": "90,160",
+      "P": "1,217,160.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "218",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "BH2026090093",
+      "H": "Xuất bán cho Nguyễn Tuấn Hoàng",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Cái",
+      "L": "1",
+      "M": "1,280,000.00",
+      "N": "1,280,000",
+      "O": "102,400",
+      "P": "1,382,400.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "219",
+     "values": {
+      "A": "KH094",
+      "B": "Nguyễn Tuấn Hoàng",
+      "C": "2026-09-25",
+      "D": "BH2026090093",
+      "H": "Xuất bán cho Nguyễn Tuấn Hoàng",
+      "I": "INP7951",
+      "J": "Máy sấy tóc INP7951",
+      "K": "Cái",
+      "L": "1",
+      "M": "420,000.00",
+      "N": "420,000",
+      "O": "33,600",
+      "P": "453,600.00"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 21
+  },
+  {
+   "page": 2,
+   "title": "CÔNG TY TNHH DỊCH VỤ THƯƠNG MẠI VÀ TỔNG HỢP AN THỊNH（安盛综合贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "2006",
+     "values": {
+      "A": "KH080",
+      "B": "CÔNG TY TNHH DỊCH VỤ\nTHƯƠNG MẠI VÀ TỔNG\nHỢP AN THỊNH（安盛综合\n贸易服务有限公司",
+      "C": "2026-10-03",
+      "D": "2026-10-04",
+      "E": "BH2026100109",
+      "I": "xuất bán cho CÔNG TY\nTNHH DỊCH VỤ THƯƠNG\nMẠI VÀ TỔNG HỢP AN\nTHỊNH（安盛综合贸易服务\n有限公司销售产品",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "36.00",
+      "N": "129,630 ₫",
+      "O": "4,666,667 ₫",
+      "P": "373,333 ₫",
+      "Q": "5,040,000 ₫",
+      "V": "5,040,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2007",
+     "values": {
+      "A": "KH080",
+      "B": "CÔNG TY TNHH DỊCH VỤ\nTHƯƠNG MẠI VÀ TỔNG\nHỢP AN THỊNH（安盛综合\n贸易服务有限公司",
+      "C": "2026-10-03",
+      "D": "2026-10-04",
+      "E": "BH2026100109",
+      "I": "xuất bán cho CÔNG TY\nTNHH DỊCH VỤ THƯƠNG\nMẠI VÀ TỔNG HỢP AN\nTHỊNH（安盛综合贸易服务\n有限公司销售产品",
+      "J": "INP1502",
+      "K": "Ấm đun nước 3L\nINP1502",
+      "L": "Cái",
+      "M": "24.00",
+      "N": "138,889 ₫",
+      "O": "3,333,333 ₫",
+      "P": "266,667 ₫",
+      "Q": "3,600,000 ₫",
+      "V": "3,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2008",
+     "values": {
+      "A": "KH080",
+      "B": "CÔNG TY TNHH DỊCH VỤ\nTHƯƠNG MẠI VÀ TỔNG\nHỢP AN THỊNH（安盛综合\n贸易服务有限公司",
+      "C": "2026-10-03",
+      "D": "2026-10-04",
+      "E": "BH2026100109",
+      "I": "xuất bán cho CÔNG TY\nTNHH DỊCH VỤ THƯƠNG\nMẠI VÀ TỔNG HỢP AN\nTHỊNH（安盛综合贸易服务\n有限公司销售产品",
+      "J": "INP1503",
+      "K": "Ấm đun nước 3L\nINP1503",
+      "L": "Cái",
+      "M": "24.00",
+      "N": "148,148 ₫",
+      "O": "3,555,556 ₫",
+      "P": "284,444 ₫",
+      "Q": "3,840,000 ₫",
+      "V": "3,840,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 22
+  },
+  {
+   "page": 3,
+   "title": "Thanh Anh（清英 )",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "2012",
+     "values": {
+      "A": "KH056",
+      "B": "Thanh Anh（清英 )",
+      "C": "2026-10-03",
+      "D": "2026-10-04",
+      "E": "BH2026100108",
+      "I": "xuất bán cho Thanh Anh（\n清英 销售产品)",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Cái",
+      "M": "5.00",
+      "N": "333,333 ₫",
+      "O": "1,666,667 ₫",
+      "P": "133,333 ₫",
+      "Q": "1,800,000 ₫",
+      "V": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2013",
+     "values": {
+      "A": "KH056",
+      "B": "Thanh Anh（清英 )",
+      "C": "2026-10-03",
+      "D": "2026-10-04",
+      "E": "BH2026100108",
+      "I": "xuất bán cho Thanh Anh（\n清英 销售产品)",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "5.00",
+      "N": "129,630 ₫",
+      "O": "648,148 ₫",
+      "P": "51,852 ₫",
+      "Q": "700,000 ₫",
+      "V": "700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2071",
+     "values": {
+      "A": "KH056",
+      "B": "Thanh Anh（清英 )",
+      "C": "2026-10-09",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "R": "2,500,000 ₫",
+      "V": "2,500,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 23
+  },
+  {
+   "page": 4,
+   "title": "KHO",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 4,
+   "rows": [
+    {
+     "excelRow": "2054",
+     "values": {
+      "A": "KHO",
+      "B": "KHO",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100118",
+      "I": "hàng mẫu mang lên vp\ndưới kho",
+      "J": "INP1403",
+      "K": "Nồi áp suất INP1403",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2055",
+     "values": {
+      "A": "KHO",
+      "B": "KHO",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100118",
+      "I": "hàng mẫu mang lên vp\ndưới kho",
+      "J": "INP6901",
+      "K": "Nồi áp suất điện\nINP6901",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2056",
+     "values": {
+      "A": "KHO",
+      "B": "KHO",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100118",
+      "I": "hàng mẫu mang lên vp\ndưới kho",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2057",
+     "values": {
+      "A": "KHO",
+      "B": "KHO",
+      "C": "2026-10-07",
+      "D": "2026-10-08",
+      "E": "BH2026100118",
+      "I": "hàng mẫu mang lên vp\ndưới kho",
+      "J": "INP6903",
+      "K": "Nồi áp suất điện\nINP6903",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 24
+  },
+  {
+   "page": 5,
+   "title": "Nguyễn Anh Tuấn",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 2,
+   "rows": [
+    {
+     "excelRow": "2079",
+     "values": {
+      "B": "Nguyễn Anh Tuấn",
+      "C": "2026-10-09",
+      "D": "2026-10-12",
+      "E": "BH2026100127",
+      "I": "Xuất bán cho Nguyễn Anh\nTuấn",
+      "J": "INP6153",
+      "K": "Bếp hồng ngoại\nINP6153",
+      "L": "Cái",
+      "M": "1",
+      "N": "555,556 ₫",
+      "O": "555,556 ₫",
+      "P": "44,444 ₫",
+      "Q": "600,000 ₫",
+      "V": "600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2080",
+     "values": {
+      "B": "Nguyễn Anh Tuấn",
+      "C": "2026-10-09",
+      "D": "2026-10-12",
+      "E": "BH2026100127",
+      "I": "Xuất bán cho Nguyễn Anh\nTuấn",
+      "J": "INP2106",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2106",
+      "L": "Cái",
+      "M": "1",
+      "N": "259,259 ₫",
+      "O": "259,259 ₫",
+      "P": "20,741 ₫",
+      "Q": "280,000 ₫",
+      "V": "280,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 25
+  },
+  {
+   "page": 6,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": 50,
+   "rows": [],
+   "cells": [
+    {
+     "row": "941",
+     "cell": "Q941",
+     "value": "0.00"
+    },
+    {
+     "row": "942",
+     "cell": "Q942",
+     "value": "0.00"
+    },
+    {
+     "row": "943",
+     "cell": "Q943",
+     "value": "0.00"
+    },
+    {
+     "row": "944",
+     "cell": "Q944",
+     "value": "0.00"
+    },
+    {
+     "row": "945",
+     "cell": "Q945",
+     "value": "0.00"
+    },
+    {
+     "row": "946",
+     "cell": "Q946",
+     "value": "0.00"
+    },
+    {
+     "row": "947",
+     "cell": "Q947",
+     "value": "0.00"
+    },
+    {
+     "row": "948",
+     "cell": "Q948",
+     "value": "0.00"
+    },
+    {
+     "row": "949",
+     "cell": "Q949",
+     "value": "0.00"
+    },
+    {
+     "row": "950",
+     "cell": "Q950",
+     "value": "0.00"
+    },
+    {
+     "row": "951",
+     "cell": "Q951",
+     "value": "0.00"
+    },
+    {
+     "row": "952",
+     "cell": "Q952",
+     "value": "0.00"
+    },
+    {
+     "row": "953",
+     "cell": "Q953",
+     "value": "0.00"
+    },
+    {
+     "row": "954",
+     "cell": "Q954",
+     "value": "0.00"
+    },
+    {
+     "row": "955",
+     "cell": "Q955",
+     "value": "0.00"
+    },
+    {
+     "row": "956",
+     "cell": "Q956",
+     "value": "0.00"
+    },
+    {
+     "row": "957",
+     "cell": "Q957",
+     "value": "0.00"
+    },
+    {
+     "row": "958",
+     "cell": "Q958",
+     "value": "0.00"
+    },
+    {
+     "row": "959",
+     "cell": "Q959",
+     "value": "0.00"
+    },
+    {
+     "row": "960",
+     "cell": "Q960",
+     "value": "0.00"
+    },
+    {
+     "row": "961",
+     "cell": "Q961",
+     "value": "0.00"
+    },
+    {
+     "row": "962",
+     "cell": "Q962",
+     "value": "0.00"
+    },
+    {
+     "row": "963",
+     "cell": "Q963",
+     "value": "0.00"
+    },
+    {
+     "row": "964",
+     "cell": "Q964",
+     "value": "0.00"
+    },
+    {
+     "row": "965",
+     "cell": "Q965",
+     "value": "0.00"
+    },
+    {
+     "row": "966",
+     "cell": "Q966",
+     "value": "0.00"
+    },
+    {
+     "row": "967",
+     "cell": "Q967",
+     "value": "0.00"
+    },
+    {
+     "row": "968",
+     "cell": "Q968",
+     "value": "0.00"
+    },
+    {
+     "row": "969",
+     "cell": "Q969",
+     "value": "0.00"
+    },
+    {
+     "row": "970",
+     "cell": "Q970",
+     "value": "0.00"
+    },
+    {
+     "row": "971",
+     "cell": "Q971",
+     "value": "0.00"
+    },
+    {
+     "row": "972",
+     "cell": "Q972",
+     "value": "0.00"
+    },
+    {
+     "row": "973",
+     "cell": "Q973",
+     "value": "0.00"
+    },
+    {
+     "row": "974",
+     "cell": "Q974",
+     "value": "0.00"
+    },
+    {
+     "row": "975",
+     "cell": "Q975",
+     "value": "0.00"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    }
+   ],
+   "originalPage": 26
+  },
+  {
+   "page": 7,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [
+    {
+     "row": "976",
+     "cell": "Q976",
+     "value": "0.00"
+    },
+    {
+     "row": "977",
+     "cell": "Q977",
+     "value": "0.00"
+    },
+    {
+     "row": "978",
+     "cell": "Q978",
+     "value": "0.00"
+    },
+    {
+     "row": "979",
+     "cell": "Q979",
+     "value": "0.00"
+    },
+    {
+     "row": "980",
+     "cell": "Q980",
+     "value": "0.00"
+    },
+    {
+     "row": "981",
+     "cell": "Q981",
+     "value": "0.00"
+    },
+    {
+     "row": "982",
+     "cell": "Q982",
+     "value": "0.00"
+    },
+    {
+     "row": "983",
+     "cell": "Q983",
+     "value": "0.00"
+    },
+    {
+     "row": "984",
+     "cell": "Q984",
+     "value": "0.00"
+    },
+    {
+     "row": "985",
+     "cell": "Q985",
+     "value": "0.00"
+    },
+    {
+     "row": "986",
+     "cell": "Q986",
+     "value": "0.00"
+    },
+    {
+     "row": "987",
+     "cell": "Q987",
+     "value": "0.00"
+    },
+    {
+     "row": "988",
+     "cell": "Q988",
+     "value": "0.00"
+    },
+    {
+     "row": "989",
+     "cell": "Q989",
+     "value": "0.00"
+    },
+    {
+     "row": "990",
+     "cell": "Q990",
+     "value": "0.00"
+    }
+   ],
+   "index": [],
+   "originalPage": 27
+  },
+  {
+   "page": 8,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 16,
+   "rows": [
+    {
+     "excelRow": "2016",
+     "values": {
+      "C": "2026-10-06",
+      "D": "2026-10-06",
+      "E": "NK2026100025",
+      "I": "hàng lỗi",
+      "J": "INP6403",
+      "K": "Quạt INP6403",
+      "L": "Cái",
+      "M": "-2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2017",
+     "values": {
+      "C": "2026-10-06",
+      "D": "2026-10-06",
+      "E": "NK2026100026",
+      "I": "Nhập hàng dự trữ vào kho",
+      "J": "INP6410",
+      "K": "Quạt tích điện INP6410",
+      "L": "Cái",
+      "M": "-4.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2018",
+     "values": {
+      "C": "2026-10-06",
+      "D": "2026-10-06",
+      "E": "NK2026100026",
+      "I": "Nhập hàng dự trữ vào kho",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "-2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2019",
+     "values": {
+      "C": "2026-10-06",
+      "D": "2026-10-06",
+      "E": "NK2026100026",
+      "I": "Nhập hàng dự trữ vào kho",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "-3.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2020",
+     "values": {
+      "C": "2026-10-06",
+      "D": "2026-10-06",
+      "E": "NK2026100026",
+      "I": "Nhập hàng dự trữ vào kho",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "-4.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2023",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2024",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2025",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2026",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2027",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2028",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2029",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6012",
+      "K": "Nồi cơm điện INP6012\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2030",
+     "values": {
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100112",
+      "I": "kiểm định 检测样",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP 6209",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [
+    {
+     "row": "1918",
+     "cell": "D1918",
+     "value": "2026-09-25"
+    },
+    {
+     "row": "1918",
+     "cell": "V1918",
+     "value": "0 ₫"
+    },
+    {
+     "row": "2102",
+     "cell": "V2102",
+     "value": "0 ₫"
+    },
+    {
+     "row": "2103",
+     "cell": "V2103",
+     "value": "0 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 28
+  },
+  {
+   "page": 9,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [],
+   "cells": [
+    {
+     "row": "248",
+     "cell": "O248",
+     "value": "130,401,641 ₫"
+    },
+    {
+     "row": "248",
+     "cell": "P248",
+     "value": "1,773,281,417 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 29
+  },
+  {
+   "page": 10,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Sheet2",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [],
+   "cells": [
+    {
+     "row": "24",
+     "cell": "I24",
+     "value": "576,080,003 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "J",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 30
+  },
+  {
+   "page": 11,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Sheet6",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [],
+   "cells": [
+    {
+     "row": "100",
+     "cell": "K100",
+     "value": "523,375,925"
+    },
+    {
+     "row": "100",
+     "cell": "L100",
+     "value": "41,483,111"
+    },
+    {
+     "row": "100",
+     "cell": "M100",
+     "value": "562,984,962"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 31
+  },
+  {
+   "page": 12,
+   "title": "PHỤ LỤC - THÔNG TIN CHUNG",
+   "sheet": "Sheet4",
+   "hidden": false,
+   "declaredRows": 0,
+   "rows": [],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "U",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "V",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 32
+  },
+  {
+   "page": 13,
+   "title": "PHỤ LỤC - CẤU TRÚC FILE GỐC",
+   "sheet": null,
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [],
+   "index": [],
+   "originalPage": 33
+  }
+ ]
+}

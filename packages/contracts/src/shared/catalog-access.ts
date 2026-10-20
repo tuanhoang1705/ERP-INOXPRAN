@@ -25,6 +25,8 @@ export const CREDIT_TERMS_ROLES = ['ADMIN', 'DIRECTOR', 'ACCOUNTANT'];
 
 /** Sản phẩm, nhóm hàng, định mức tồn. */
 export const PRODUCT_EDITOR_ROLES = unique(['ADMIN', 'DIRECTOR', 'CATALOG_MANAGER', ...WAREHOUSE_ROLES]);
+/** Thêm mã sản phẩm mới: người sửa danh mục + người lập đơn mua (tạo mã ngay trên đơn mua — PO-NEWSKU-01, 16/10/2026). Sửa / xóa vẫn theo PRODUCT_EDITOR_ROLES. */
+export const PRODUCT_CREATE_ROLES = unique([...PRODUCT_EDITOR_ROLES, 'PROCUREMENT', 'PROCUREMENT_MANAGER']);
 /** Kho, vị trí lưu, điều chỉnh tồn, chuyển kho. */
 export const WAREHOUSE_EDITOR_ROLES = unique(['ADMIN', 'DIRECTOR', ...WAREHOUSE_ROLES]);
 /** Khu vực bán hàng, nhân viên kinh doanh. */

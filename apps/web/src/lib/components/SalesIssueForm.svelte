@@ -30,14 +30,15 @@
   import { defaultReturnDate } from '$shared/sales-purpose';
 
   type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
-  type LoanSource = SalesOrder & { loanRemainder?: Array<{ productId: string; sku: string; quantity: string }> };
+  type LoanSource = SalesOrder & { loanRemainder?: Array<{ productId: string; sku: string; productName?: string; quantity: string }> };
   type CatalogProduct = Product & { available?: string; categoryName?: string };
   type Dealer = {
     id: string; code: string; name: string; province?: string; address?: string; phone?: string; taxCode?: string; customerTier?: string;
     status: string; holdReason?: string; creditLimit: string; paymentTermDays: number; salesRepId?: string; outstanding: string; periodRevenue: string;
   };
   type Employee = { id: string; code: string; name: string; role: string };
-  type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; overrideUnitPrice?: string | undefined };
+  /** name: tên hàng in trên phiếu — mặc định tên trong danh mục, kế toán sửa tay được (SAL-NAME-01). */
+  type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; name?: string | undefined; overrideUnitPrice?: string | undefined };
   type Grant = { id: string; code?: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decidedByName?: string; decisionNote?: string };
 
   let { existing = null, requestMode = false }: { existing?: ExistingOrder | null; requestMode?: boolean } = $props();
@@ -254,7 +255,7 @@
           vatTouched = true;
         }
         lines = existing.lines.map((line) => ({
-          productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift),
+          productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift), name: line.productName,
           ...(line.pricingSource === 'MANUAL_PRICE' && !line.gift ? { overrideUnitPrice: money(String(line.unitPrice)) } : {}),
         }));
         await Promise.all([loadSheet(), loadKeepers()]);
@@ -283,7 +284,7 @@
       const remainder = source.loanRemainder ?? [];
       if (!remainder.length) return;
       loanSource = { id: source.id, code: source.code };
-      lines = remainder.map((line) => ({ productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false }));
+      lines = remainder.map((line) => ({ productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false, name: line.productName }));
       if (source.salesRepId) salesRepId = source.salesRepId;
       note = m.lp_lap_phieu_ban_tu_mau({ code: source.code });
     } catch (caught) {
@@ -405,6 +406,7 @@
   function setProduct(line: Line, product: CatalogProduct | undefined, unit?: string) {
     if (!product) {
       line.productId = '';
+      line.name = '';
       return;
     }
     const duplicate = lines.find((other) => other !== line && other.productId === product.id && other.gift === line.gift);
@@ -415,7 +417,10 @@
       error = m.da_co_tren_phieu_da_cong({ sku: product.sku });
       return;
     }
-    if (line.productId !== product.id) line.overrideUnitPrice = undefined;
+    if (line.productId !== product.id) {
+      line.overrideUnitPrice = undefined;
+      line.name = product.name;
+    }
     line.productId = product.id;
     line.skuInput = product.sku;
     line.unit = line.gift ? product.baseUnit : unit ?? product.baseUnit;
@@ -432,6 +437,13 @@
       if (conversion) return { product, unit: conversion.unit };
     }
     return {};
+  }
+
+  /** Chỉ gửi tên hàng khi khác tên trong danh mục (trống = tên danh mục). */
+  function customName(line: Line): { productName?: string } {
+    const name = line.name?.trim() ?? '';
+    const product = productById.get(line.productId);
+    return name && name !== product?.name ? { productName: name } : {};
   }
 
   function onSkuChange(line: Line) {
@@ -475,7 +487,7 @@
     if (!product) return;
     const existingGift = lines.find((other) => other.productId === product.id && other.gift);
     if (existingGift) existingGift.quantity = String(Number(existingGift.quantity || 0) + 1);
-    else lines.push({ productId: product.id, skuInput: product.sku, unit: product.baseUnit, quantity: '1', gift: true });
+    else lines.push({ productId: product.id, skuInput: product.sku, unit: product.baseUnit, quantity: '1', gift: true, name: line.name || product.name });
   }
   function removeLine(index: number) {
     lines.splice(index, 1);
@@ -503,8 +515,9 @@
       lines: calc.lines.flatMap((computed) => {
         const line = computed ? lines[computed.index] : undefined;
         if (!computed || !line) return [];
-        if (nonSale) return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: false }];
-        return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift, ...(computed.overridden && line.overrideUnitPrice ? { overrideUnitPrice: line.overrideUnitPrice } : {}) }];
+        const name = customName(line);
+        if (nonSale) return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: false, ...name }];
+        return [{ productId: line.productId, unit: line.unit, quantity: computed.quantity, gift: line.gift, ...name, ...(computed.overridden && line.overrideUnitPrice ? { overrideUnitPrice: line.overrideUnitPrice } : {}) }];
       }),
     };
   }
@@ -731,7 +744,7 @@
           <tr class:gift-row={line.gift}>
             <td class="muted">{index + 1}</td>
             <td><input class="input sku" list="sku-list" bind:value={line.skuInput} onchange={() => onSkuChange(line)} placeholder="INP…" aria-label={m.ma_hang_dong({ p0: index + 1 })} /></td>
-            <td class="name">{product?.name ?? ''}{#if line.gift}<span class="pill orange gift-tag">{m.hang_tang()}</span>{/if}</td>
+            <td class="name">{#if product}<input class="input pname" bind:value={line.name} maxlength="300" onblur={() => { if (!line.name?.trim()) line.name = product.name; }} aria-label={m.ten_hang_dong({ p0: index + 1 })} title={line.name && line.name !== product.name ? m.ten_hang_danh_muc({ name: product.name }) : ''} />{/if}{#if line.gift}<span class="pill orange gift-tag">{m.hang_tang()}</span>{/if}</td>
             <td>
               {#if product}
                 <select class="input unit" bind:value={line.unit} onchange={() => (line.overrideUnitPrice = undefined)} disabled={line.gift} aria-label={m.don_vi_dong({ p0: index + 1 })}>
@@ -904,6 +917,7 @@
   td :global(.qty) { width: 92px; text-align: center; font-weight: 600; }
   td :global(.qty.invalid) { border-color: var(--red); background: var(--red-soft); }
   .name { min-width: 190px; }
+  .pname { width: 100%; min-width: 180px; }
   .price span[title] { cursor: help; }
   .price-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px dashed transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
   .price-btn:hover { border-color: var(--line); background: var(--surface-2); }

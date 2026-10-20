@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, 
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { effectivePermissions, pendingSetup } from '@inoxpran/contracts';
+import { effectivePermissions, pendingSetup, requiresMfa } from '@inoxpran/contracts';
 import type { FastifyRequest } from 'fastify';
 import { type Db, ObjectId } from 'mongodb';
 import { ALLOW_PENDING_KEY } from './allow-pending.decorator';
@@ -50,7 +50,8 @@ export class JwtAuthGuard implements CanActivate {
     if (!account || account.status !== 'ACTIVE' || account.tokenVersion !== (payload.tv ?? 0)) {
       throw new UnauthorizedException({ code: 'SESSION_REVOKED', message: 'Phiên đăng nhập đã bị thu hồi, vui lòng đăng nhập lại' });
     }
-    const pending = pendingSetup(account, this.config.get<boolean>('MFA_ENFORCE_PRIVILEGED') ?? false);
+    const enforce = this.config.get<boolean>('MFA_ENFORCE_PRIVILEGED') ?? false;
+    const pending = pendingSetup(account, enforce);
     request.user = {
       sub: account.id,
       email: account.email,
@@ -58,6 +59,7 @@ export class JwtAuthGuard implements CanActivate {
       roles: account.roles,
       warehouseScopes: account.warehouseScopes,
       mfa: account.mfaEnabled,
+      mfaRequired: requiresMfa(account, enforce),
       root: account.root,
       pending,
       permissions: effectivePermissions({ roles: account.roles, root: account.root, permissionOverrides: account.permissionOverrides ?? null }),
@@ -78,7 +80,7 @@ export class JwtAuthGuard implements CanActivate {
     if (!ObjectId.isValid(userId)) return null;
     const user = await this.db.collection('users').findOne(
       { _id: new ObjectId(userId) },
-      { projection: { email: 1, displayName: 1, roles: 1, warehouseScopes: 1, status: 1, tokenVersion: 1, root: 1, mfaEnabled: 1, mustChangePassword: 1, lastSeenAt: 1, permissionGrants: 1, permissionRevokes: 1 } },
+      { projection: { email: 1, displayName: 1, roles: 1, warehouseScopes: 1, status: 1, tokenVersion: 1, root: 1, mfaEnabled: 1, mfaRequired: 1, mustChangePassword: 1, lastSeenAt: 1, permissionGrants: 1, permissionRevokes: 1 } },
     );
     const account: CachedAccount | null = user
       ? {
@@ -91,6 +93,7 @@ export class JwtAuthGuard implements CanActivate {
           tokenVersion: Number(user.tokenVersion ?? 0),
           root: Boolean(user.root),
           mfaEnabled: Boolean(user.mfaEnabled),
+          ...(typeof user.mfaRequired === 'boolean' ? { mfaRequired: user.mfaRequired } : {}),
           mustChangePassword: Boolean(user.mustChangePassword),
           lastSeenAt: user.lastSeenAt as Date | undefined,
           permissionOverrides: overridesOf(user),

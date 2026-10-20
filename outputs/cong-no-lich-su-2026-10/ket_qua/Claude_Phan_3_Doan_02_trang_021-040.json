@@ -1,0 +1,7524 @@
+{
+ "file": "Claude_Phan_3_Doan_02_trang_021-040.pdf",
+ "part": 3,
+ "sha256": "05e77470d0bf372e4a91a2c79f88e2c706f64de8b3dd6ffd52e502388502d02a",
+ "pages": [
+  {
+   "page": 1,
+   "title": "GUOZHUOHAN",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 6,
+   "rows": [
+    {
+     "excelRow": "1324",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-08-20",
+      "E": "BH2026080018",
+      "I": "Xuất mang đi kiểm định 出\n库送去检测",
+      "J": "INP2115",
+      "K": "Chảo inox INP2115",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1825",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-09-21",
+      "D": "2026-09-22",
+      "E": "BH2026090083",
+      "I": "mang lên công ty để chụp\nảnh拿到公司拍照",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP6209",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2181",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-10-15",
+      "D": "2026-10-15",
+      "E": "BH2026100135",
+      "I": "kiểm định 检测样",
+      "J": "INP6151",
+      "K": "Bếp hồng ngoại\nINP6151",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2182",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-10-15",
+      "D": "2026-10-15",
+      "E": "BH2026100135",
+      "I": "kiểm định 检测样",
+      "J": "INP6152",
+      "K": "Bếp hồng ngoại\nINP6152",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2183",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-10-15",
+      "D": "2026-10-15",
+      "E": "BH2026100135",
+      "I": "kiểm định 检测样",
+      "J": "INP6153",
+      "K": "Bếp hồng ngoại\nINP6153",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2184",
+     "values": {
+      "B": "GUOZHUOHAN",
+      "C": "2026-10-15",
+      "D": "2026-10-15",
+      "E": "BH2026100135",
+      "I": "kiểm định 检测样",
+      "J": "INP6154",
+      "K": "Bếp hồng ngoại\nINP6154",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 21
+  },
+  {
+   "page": 2,
+   "title": "Trần Ngọc Dũng",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 32,
+   "rows": [
+    {
+     "excelRow": "1352",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080008",
+      "I": "a Ninh mang về bảo hành宁\n哥带回维修",
+      "J": "INP2001",
+      "K": "Bộ nồi inox INP2001",
+      "L": "Bộ",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1355",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1002",
+      "K": "Bộ nồi inox INP1002",
+      "L": "Bộ",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1356",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Bộ",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1357",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1358",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1202",
+      "K": "Nồi Inox INP1202",
+      "L": "Bộ",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1359",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Bộ",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1360",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khốiINP2202",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1361",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP2301",
+      "K": "Chảo rán INP2301",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1362",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1363",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1364",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6003",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1365",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1366",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1367",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1368",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1369",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6012",
+      "K": "Nồi cơm điện INP6012\n(1,8L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1370",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6103",
+      "K": "Bếp từ đơn INP6103",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1371",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1372",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203,\n1.7L",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1373",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6204",
+      "K": "Ấm đun nước INP6204,\n1.0L",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1374",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6206",
+      "K": "Ấm đun nước INP6206 ,\n1,7 lít",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1375",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6601",
+      "K": "Máy sấy bát đĩa INP6601",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1376",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6901",
+      "K": "Nồi áp suất điện\nINP6901",
+      "L": "Cái",
+      "M": "-2.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1377",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1378",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP6903",
+      "K": "Nồi áp suất điện\nINP6903",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1379",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1380",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-24",
+      "E": "NK2026080006",
+      "I": "hàng mẫu 样品",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "-1.00",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1543",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-08-08",
+      "E": "NK2026080007",
+      "I": "hàng mẫu 样品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "-1.00",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2087",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100128",
+      "I": "hàng mẫu 样品",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2088",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100128",
+      "I": "hàng mẫu 样品",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2089",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100128",
+      "I": "hàng mẫu 样品",
+      "J": "INP6008",
+      "K": "Nồi cơm điện INP6008\n(1,2L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 22
+  },
+  {
+   "page": 3,
+   "title": "Trần Ngọc Dũng",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "2090",
+     "values": {
+      "B": "Trần Ngọc Dũng",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100128",
+      "I": "hàng mẫu 样品",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 23
+  },
+  {
+   "page": 4,
+   "title": "Nguyễn An Ninh 阮安宁",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 100,
+   "rows": [
+    {
+     "excelRow": "1353",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-24",
+      "E": "NK2026080005",
+      "I": "Cảnh Cường gửi bảo hành\nđổi trả景强寄来维修换货",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP 6011",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1354",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-24",
+      "E": "NK2026080005",
+      "I": "Cảnh Cường gửi bảo hành\nđổi trả景强寄来维修换货",
+      "J": "INP6410",
+      "K": "Quạt tích điện INP 6410",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1461",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6103",
+      "K": "Bếp từ đơn INP6103",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1462",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6901",
+      "K": "Nồi áp suất điện\nINP6901",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1463",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1464",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6903",
+      "K": "Nồi áp suất điện\nINP6903",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1465",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6003",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1466",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1467",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203\n1,7 lít",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1468",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6204",
+      "K": "Ấm đun nước INP6204,\n1.0L",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1469",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP6205",
+      "K": "Ấm đun nước INP6205,\n1.0L",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1470",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khối INP2202",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1471",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1472",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-28",
+      "E": "BH2026080034",
+      "I": "hàng mẫu 样品",
+      "J": "INP2301",
+      "K": "Chảo rán INP2301",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1479",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-14",
+      "E": "NK2026080003",
+      "J": "INP6802",
+      "K": "Thùng đựng gạo\ninoxpran INP6802",
+      "L": "Cái",
+      "M": "-9.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1480",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1481",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1482",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1483",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1484",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1485",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1486",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1487",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6101",
+      "K": "Bếp từ đơn INP6101(\n2200W, mặt kính màu\nsữa )",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1488",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1489",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1490",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203\n1,7 lít",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1491",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP6201",
+      "K": "Ấm điện siêu tốc\nINP6201 1,7 lít màu ghi",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1492",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1493",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1494",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1495",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 24
+  },
+  {
+   "page": 5,
+   "title": "Nguyễn An Ninh 阮安宁",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "1496",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1497",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-03",
+      "E": "XK001/082026",
+      "I": "hàng mẫu 样品",
+      "J": "INP2117",
+      "K": "Chảo inox INP2117",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1498",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-06",
+      "E": "XK008/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1499",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-06",
+      "E": "XK008/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1500",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-06",
+      "E": "XK008/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1501",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1502",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1503",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1504",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1505",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6008",
+      "K": "Nồi cơm điện INP6008\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1506",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP 6011",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1507",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP6012",
+      "K": "Nồi cơm điện INP6012\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1508",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1509",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1510",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-11",
+      "E": "XK020/082026",
+      "I": "kiểm định 检测样",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1525",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1526",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1527",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1528",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1529",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1530",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1531",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1532",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6101",
+      "K": "Bếp từ đơn INP6101(\n2200W, mặt kính màu\nsữa )",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1533",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1534",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1535",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203\n1,7 lít",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1536",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP6201",
+      "K": "Ấm điện siêu tốc\nINP6201 1,7 lít màu ghi",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1537",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP1501",
+      "K": "Ấm đun nước 3L\nINP1501",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1538",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Bộ",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1539",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1540",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1541",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1542",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-29",
+      "E": "BH2026080037",
+      "I": "hàng mẫu 样品",
+      "J": "INP2117",
+      "K": "Chảo inox INP2117",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1597",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-08-30",
+      "D": "2026-09-08",
+      "E": "XK00363",
+      "I": "Xuất kho tìm dự án cho\nNguyễn An Ninh 出库寻找项\n目给阮安宁",
+      "J": "INP6404",
+      "K": "Quạt treo tường\nINP6404",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 25
+  },
+  {
+   "page": 6,
+   "title": "Nguyễn An Ninh 阮安宁",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "1613",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "E": "NK2026080011",
+      "I": "hàng mẫu 样品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1615",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-07",
+      "D": "2026-09-09",
+      "E": "NK2026090010",
+      "I": "Nhập lại hàng lỗi 退回入库\n不良品",
+      "J": "INP1202",
+      "K": "Nồi Inox INP1202",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫",
+      "W": "Cảnh Cường"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1616",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-07",
+      "D": "2026-09-09",
+      "E": "NK2026090010",
+      "I": "Nhập lại hàng lỗi 退回入库\n不良品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1618",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "E": "BH2026090052",
+      "I": "kiểm định 检测样",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1619",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "E": "BH2026090052",
+      "I": "kiểm định 检测样",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1623",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "E": "NK2026090013",
+      "I": "trả lại hàng đã mang lên vp\nchụp ảnh 退回带到办公室拍\n照的货物",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1624",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-09",
+      "E": "NK2026090013",
+      "I": "trả lại hàng đã mang lên vp\nchụp ảnh 退回带到办公室拍\n照的货物",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1625",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-10",
+      "E": "NK2026090013",
+      "I": "trả lại hàng đã mang lên vp\nchụp ảnh 退回带到办公室拍\n照的货物",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1626",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-09",
+      "D": "2026-09-10",
+      "E": "NK2026090013",
+      "I": "trả lại hàng đã mang lên vp\nchụp ảnh 退回带到办公室拍\n照的货物",
+      "J": "INP2117",
+      "K": "Chảo inox INP2117",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "1734",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-14",
+      "D": "2026-09-15",
+      "E": "BH2026090071",
+      "I": "kiểm định 检测样",
+      "J": "INP7951",
+      "K": "Máy sấy tóc INP7951",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1735",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-14",
+      "D": "2026-09-15",
+      "E": "BH2026090071",
+      "I": "kiểm định 检测样",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1822",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-21",
+      "D": "2026-09-21",
+      "E": "BH2026090080",
+      "I": "hàng mẫu 样品",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP6209",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1905",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-09-25",
+      "D": "2026-09-25",
+      "E": "NK2026090022",
+      "I": "hàng mẫu 样品",
+      "J": "INP6209",
+      "K": "Ấm siêu tốc INP 6209",
+      "L": "Cái",
+      "M": "-2.00",
+      "N": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2021",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100113",
+      "I": "hàng mẫu 样品",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2022",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-05",
+      "D": "2026-10-06",
+      "E": "BH2026100113",
+      "I": "hàng mẫu 样品",
+      "J": "INP6208",
+      "K": "Ấm siêu tốc INP6208",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2052",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-08",
+      "D": "2026-10-08",
+      "E": "BH2026100119",
+      "I": "hàng mẫu 样品",
+      "J": "INP6209A",
+      "K": "Ấm siêu tốc INP6209A",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2053",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-08",
+      "D": "2026-10-08",
+      "E": "BH2026100119",
+      "I": "hàng mẫu 样品",
+      "J": "INP6209B",
+      "K": "Ấm siêu tốc INP6209B",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2078",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-09",
+      "D": "2026-10-12",
+      "E": "BH2026100124",
+      "I": "Mang đi tặng",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2081",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6151",
+      "K": "Bếp hồng ngoại\nINP6151",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2082",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6152",
+      "K": "Bếp hồng ngoại\nINP6152",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2083",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6153",
+      "K": "Bếp hồng ngoại\nINP6153",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2084",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6154",
+      "K": "Bếp hồng ngoại\nINP6154",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2085",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2086",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-12",
+      "D": "2026-10-12",
+      "E": "BH2026100125",
+      "I": "kiểm định 检测样",
+      "J": "INP6209B",
+      "K": "Ấm siêu tốc INP6209B",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2192",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6008",
+      "K": "Nồi cơm điện INP6008",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2193",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2194",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2195",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6151",
+      "K": "Bếp hồng ngoại\nINP6151",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2196",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6152",
+      "K": "Bếp hồng ngoại\nINP6152",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2197",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6153",
+      "K": "Bếp hồng ngoại\nINP6153",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2198",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6154",
+      "K": "Bếp hồng ngoại\nINP6154",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2199",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6209B",
+      "K": "Ấm siêu tốc INP6209B",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2200",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2201",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6208",
+      "K": "Ấm siêu tốc INP6208",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2202",
+     "values": {
+      "A": "KH093",
+      "B": "Nguyễn An Ninh 阮安宁",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100033",
+      "I": "hàng mẫu 样品",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 26
+  },
+  {
+   "page": 7,
+   "title": "Hồ Thế Anh胡世英",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "1396",
+     "values": {
+      "A": "KH029",
+      "B": "Hồ Thế Anh胡世英",
+      "C": "2026-08-26",
+      "E": "BH2026080027",
+      "I": "Xuất bán cho Hồ Thế Anh胡\n世英销售产品",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "111,111 ₫",
+      "O": "111,111 ₫",
+      "P": "8,889 ₫",
+      "Q": "120,000 ₫",
+      "V": "120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1439",
+     "values": {
+      "A": "KH029",
+      "B": "Hồ Thế Anh胡世英",
+      "C": "2026-08-28",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "120,000 ₫",
+      "V": "120,000 ₫",
+      "W": "BH2026080027"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1612",
+     "values": {
+      "B": "Hồ Thế Anh胡世英",
+      "C": "2026-09-09",
+      "D": "2026-09-07",
+      "E": "BH2026090051",
+      "I": "Xuất bán cho Hồ Thế Anh胡\n世英销售产品",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "111,111 ₫",
+      "O": "222,222 ₫",
+      "P": "17,778 ₫",
+      "Q": "240,000 ₫",
+      "V": "240,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 27
+  },
+  {
+   "page": 8,
+   "title": "Hồ Thế Anh胡世英",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [
+    {
+     "excelRow": "51",
+     "values": {
+      "B": "Hồ Thế Anh胡世英",
+      "C": "2026-09-09",
+      "D": "BH2026090051",
+      "H": "Xuất bán cho Hồ Thế Anh胡世英销售产品",
+      "I": "INP1301B",
+      "J": "Nồi mã INP1301B",
+      "K": "Cái",
+      "L": "2.00",
+      "M": "111,111.11",
+      "N": "222,222 ₫",
+      "O": "17,778 ₫",
+      "P": "240,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 28
+  },
+  {
+   "page": 9,
+   "title": "Hồ Thế Anh胡世英",
+   "sheet": "Sheet6",
+   "hidden": false,
+   "declaredRows": 1,
+   "rows": [
+    {
+     "excelRow": "61",
+     "values": {
+      "B": "Hồ Thế Anh胡世英",
+      "C": "2026-09-09",
+      "D": "BH2026090051",
+      "E": "Xuất bán cho Hồ Thế Anh胡世英销售产品",
+      "F": "INP1301B",
+      "G": "Nồi mã INP1301B",
+      "H": "Cái",
+      "I": "2.00",
+      "J": "111,111",
+      "K": "222,222",
+      "L": "17,778",
+      "M": "240,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 29
+  },
+  {
+   "page": 10,
+   "title": "Anh Huy 辉哥",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "1440",
+     "values": {
+      "A": "KH043",
+      "B": "Anh Huy 辉哥",
+      "C": "2026-08-28",
+      "E": "BH2026080030",
+      "I": "Xuất bán cho Anh Huy 销售\n给辉哥",
+      "J": "INP6105",
+      "K": "Bếp từ đơn INP6105",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "722,222 ₫",
+      "O": "722,222 ₫",
+      "P": "57,778 ₫",
+      "Q": "780,000 ₫",
+      "V": "780,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1441",
+     "values": {
+      "A": "KH043",
+      "B": "Anh Huy 辉哥",
+      "C": "2026-08-28",
+      "E": "BH2026080030",
+      "I": "Xuất bán cho Anh Huy 销售\n给辉哥",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1611",
+     "values": {
+      "A": "KH043",
+      "B": "Anh Huy 辉哥",
+      "C": "2026-09-09",
+      "D": "2026-09-04",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "R": "780,000 ₫",
+      "V": "780,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 30
+  },
+  {
+   "page": 11,
+   "title": "Tuấn Lan 俊兰",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 2,
+   "rows": [
+    {
+     "excelRow": "1478",
+     "values": {
+      "A": "KH059",
+      "B": "Tuấn Lan 俊兰",
+      "C": "2026-08-08",
+      "E": "NK003/0826",
+      "I": "Tuấn Lan Trả lại hàng bán",
+      "J": "INP6901",
+      "K": "Nồi áp suất điện\nINP6901",
+      "L": "Cái",
+      "M": "-1.00",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫",
+      "W": "BH00358 (27/7/2026)"
+     },
+     "red": [
+      "M"
+     ]
+    },
+    {
+     "excelRow": "2015",
+     "values": {
+      "A": "KH059",
+      "B": "Tuấn Lan 俊兰",
+      "C": "2026-10-05",
+      "I": "Thu tiền mặt của khách\nhàng 收取客户现金",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "5,530,000 ₫",
+      "V": "5,530,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 31
+  },
+  {
+   "page": 12,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 52,
+   "rows": [
+    {
+     "excelRow": "1511",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Cái",
+      "M": "12.00",
+      "N": "333,333 ₫",
+      "O": "4,000,000 ₫",
+      "P": "320,000 ₫",
+      "Q": "4,320,000 ₫",
+      "V": "4,320,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1512",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "537,037 ₫",
+      "O": "8,055,556 ₫",
+      "P": "644,444 ₫",
+      "Q": "8,700,000 ₫",
+      "V": "8,700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1513",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "638,889 ₫",
+      "O": "9,583,333 ₫",
+      "P": "766,667 ₫",
+      "Q": "10,350,000 ₫",
+      "V": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1514",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "527,778 ₫",
+      "O": "7,916,667 ₫",
+      "P": "633,333 ₫",
+      "Q": "8,550,000 ₫",
+      "V": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1515",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "481,481 ₫",
+      "O": "7,222,222 ₫",
+      "P": "577,778 ₫",
+      "Q": "7,800,000 ₫",
+      "V": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1516",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "574,074 ₫",
+      "O": "8,611,111 ₫",
+      "P": "688,889 ₫",
+      "Q": "9,300,000 ₫",
+      "V": "9,300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1517",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-03",
+      "G": "BH280.4",
+      "H": "00000288",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "Cái",
+      "M": "16.00",
+      "N": "382,407 ₫",
+      "O": "6,118,519 ₫",
+      "P": "489,481 ₫",
+      "Q": "6,608,000 ₫",
+      "V": "6,608,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1518",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP7901",
+      "K": "Vợt muỗi điện INP7901",
+      "L": "Cái",
+      "M": "40.00",
+      "N": "69,444 ₫",
+      "O": "2,777,778 ₫",
+      "P": "222,222 ₫",
+      "Q": "3,000,000 ₫",
+      "V": "3,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1519",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP7902",
+      "K": "Vợt muỗi điện INP7902",
+      "L": "Cái",
+      "M": "40.00",
+      "N": "97,222 ₫",
+      "O": "3,888,889 ₫",
+      "P": "311,111 ₫",
+      "Q": "4,200,000 ₫",
+      "V": "4,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1520",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6004",
+      "K": "Nồi cơm điện INP6004\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1521",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1522",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1523",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1524",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-08-29",
+      "E": "BH2026080036",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1670",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "638,889 ₫",
+      "O": "9,583,333 ₫",
+      "P": "766,667 ₫",
+      "Q": "10,350,000 ₫",
+      "V": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1671",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "527,778 ₫",
+      "O": "7,916,667 ₫",
+      "P": "633,333 ₫",
+      "Q": "8,550,000 ₫",
+      "V": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1672",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026080061",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1673",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026080061",
+      "F": "2026-09-30",
+      "H": "00000326",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1717",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-12",
+      "D": "2026-09-14",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "280,000 ₫",
+      "V": "280,000 ₫",
+      "W": "BH2026080061"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1718",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-08",
+      "D": "2026-09-14",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "700,000 ₫",
+      "V": "700,000 ₫",
+      "W": "BH2026080036"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1792",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-17",
+      "D": "2026-09-14",
+      "E": "BH2026090075",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "629,630 ₫",
+      "O": "9,444,444 ₫",
+      "P": "755,556 ₫",
+      "Q": "10,200,000 ₫",
+      "V": "10,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1793",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-17",
+      "D": "2026-09-14",
+      "E": "BH2026090075",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1827",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-09-21",
+      "D": "2026-09-22",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "Q": "0 ₫",
+      "S": "150,000 ₫",
+      "V": "150,000 ₫",
+      "W": "BH2026090075"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 32
+  },
+  {
+   "page": 13,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "1968",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "D": "2026-09-30",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "50,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2091",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "F": "2026-10-14",
+      "G": "BH333.4",
+      "H": "00000343",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "6",
+      "N": "824,074 ₫",
+      "O": "4,944,444 ₫",
+      "P": "395,556 ₫",
+      "Q": "5,340,000 ₫",
+      "V": "5,340,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2092",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "F": "2026-10-14",
+      "G": "BH333.4",
+      "H": "00000343",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP1402",
+      "K": "Nồi áp suất 6L INP1402",
+      "L": "Cái",
+      "M": "6",
+      "N": "937,963 ₫",
+      "O": "5,627,778 ₫",
+      "P": "450,222 ₫",
+      "Q": "6,078,000 ₫",
+      "V": "6,078,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2093",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "F": "2026-10-14",
+      "G": "BH333.4",
+      "H": "00000343",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP2002",
+      "K": "Bộ nồi inox đúc nguyên\nkhối INP2002",
+      "L": "Cái",
+      "M": "15",
+      "N": "851,852 ₫",
+      "O": "12,777,778 ₫",
+      "P": "1,022,222 ₫",
+      "Q": "13,800,000 ₫",
+      "V": "13,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2094",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "2",
+      "N": "1,185,185 ₫",
+      "O": "2,370,370 ₫",
+      "P": "189,630 ₫",
+      "Q": "2,560,000 ₫",
+      "V": "2,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2095",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6152",
+      "K": "Bếp hồng ngoại\nINP6152",
+      "L": "Cái",
+      "M": "18",
+      "N": "500,000 ₫",
+      "O": "9,000,000 ₫",
+      "P": "720,000 ₫",
+      "Q": "9,720,000 ₫",
+      "V": "9,720,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2096",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6154",
+      "K": "Bếp hồng ngoại\nINP6154",
+      "L": "Cái",
+      "M": "18",
+      "N": "564,815 ₫",
+      "O": "10,166,667 ₫",
+      "P": "813,333 ₫",
+      "Q": "10,980,000 ₫",
+      "V": "10,980,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2097",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "12",
+      "N": "203,704 ₫",
+      "O": "2,444,444 ₫",
+      "P": "195,556 ₫",
+      "Q": "2,640,000 ₫",
+      "V": "2,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2098",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6208",
+      "K": "Ấm siêu tốc INP6208",
+      "L": "Cái",
+      "M": "12",
+      "N": "203,704 ₫",
+      "O": "2,444,444 ₫",
+      "P": "195,556 ₫",
+      "Q": "2,640,000 ₫",
+      "V": "2,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2099",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6209B",
+      "K": "Ấm siêu tốc INP6209B",
+      "L": "Cái",
+      "M": "12",
+      "N": "212,963 ₫",
+      "O": "2,555,556 ₫",
+      "P": "204,444 ₫",
+      "Q": "2,760,000 ₫",
+      "V": "2,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2100",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "F": "2026-10-14",
+      "G": "BH333.4",
+      "H": "00000343",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP2002",
+      "K": "Bộ nồi inox đúc nguyên\nkhối INP2002",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2101",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-12",
+      "D": "2026-10-13",
+      "E": "BH2026100126",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2113",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6101",
+      "K": "Bếp từ đơn INP6101(\n2200W, mặt kính màu\nsữa )",
+      "L": "Cái",
+      "M": "12",
+      "N": "601,852 ₫",
+      "O": "7,222,222 ₫",
+      "P": "577,778 ₫",
+      "Q": "7,800,000 ₫",
+      "V": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2114",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6105",
+      "K": "Bếp từ đơn INP6105",
+      "L": "Cái",
+      "M": "12",
+      "N": "675,926 ₫",
+      "O": "8,111,111 ₫",
+      "P": "648,889 ₫",
+      "Q": "8,760,000 ₫",
+      "V": "8,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2115",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "12",
+      "N": "814,815 ₫",
+      "O": "9,777,778 ₫",
+      "P": "782,222 ₫",
+      "Q": "10,560,000 ₫",
+      "V": "10,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2116",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6207",
+      "K": "Ấm siêu tốc INP6207",
+      "L": "Cái",
+      "M": "24",
+      "N": "203,704 ₫",
+      "O": "4,888,889 ₫",
+      "P": "391,111 ₫",
+      "Q": "5,280,000 ₫",
+      "V": "5,280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2117",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6208",
+      "K": "Ấm siêu tốc INP6208",
+      "L": "Cái",
+      "M": "24",
+      "N": "203,704 ₫",
+      "O": "4,888,889 ₫",
+      "P": "391,111 ₫",
+      "Q": "5,280,000 ₫",
+      "V": "5,280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2118",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP6209B",
+      "K": "Ấm siêu tốc INP6209B",
+      "L": "Cái",
+      "M": "24",
+      "N": "212,963 ₫",
+      "O": "5,111,111 ₫",
+      "P": "408,889 ₫",
+      "Q": "5,520,000 ₫",
+      "V": "5,520,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2119",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Xuất bán cho CÔNG TY\nTNHH ÁNH LUẬT销售给安律\n有限责任公司",
+      "J": "INP2003",
+      "K": "Bộ nồi inox INP2003",
+      "L": "Cái",
+      "M": "13",
+      "N": "1,185,185 ₫",
+      "O": "15,407,407 ₫",
+      "P": "1,232,593 ₫",
+      "Q": "16,640,000 ₫",
+      "V": "16,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2120",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "Mua 12 INP6101 tặng 1\nINP6203",
+      "J": "INP6203",
+      "K": "Ấm đun nước INP6203,\n1.7L",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2121",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "D": "2026-10-14",
+      "E": "BH2026100129",
+      "I": "mua bếp từ tặng nồi lẩu 购\n买电磁炉，赠送火锅",
+      "J": "INP1301B",
+      "K": "Nồi mã INP1301B",
+      "L": "Cái",
+      "M": "24",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2130",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-13",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "600,000 ₫",
+      "W": "BH2026100126"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2131",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-14",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "650,000 ₫",
+      "W": "BH2026100129"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2203",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100032",
+      "I": "Trả lại hàng lỗi hỏng",
+      "J": "INP6005",
+      "K": "Nồi cơm điện 6005",
+      "L": "Cái",
+      "M": "-1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": [
+      "M"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 33
+  },
+  {
+   "page": 14,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "2204",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100031",
+      "I": "Trả lại hàng bán 退货",
+      "J": "INP6902",
+      "K": "Nồi áp suất INP6902",
+      "L": "Cái",
+      "M": "-3.00",
+      "N": "814,815 ₫",
+      "O": "2,444,444 ₫",
+      "P": "195,556 ₫",
+      "Q": "2,640,000 ₫",
+      "V": "2,640,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2205",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100031",
+      "I": "Trả lại hàng bán 退货",
+      "J": "INP7901",
+      "K": "Vợt muỗi INP7901",
+      "L": "Cái",
+      "M": "-40.00",
+      "N": "69,444 ₫",
+      "O": "2,777,778 ₫",
+      "P": "222,222 ₫",
+      "Q": "3,000,000 ₫",
+      "V": "3,000,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2206",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100031",
+      "I": "Trả lại hàng bán 退货",
+      "J": "INP7902",
+      "K": "Vợt muỗi INP7902",
+      "L": "Cái",
+      "M": "-40.00",
+      "N": "97,222 ₫",
+      "O": "3,888,889 ₫",
+      "P": "311,111 ₫",
+      "Q": "4,200,000 ₫",
+      "V": "4,200,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2207",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "NK2026100031",
+      "I": "Trả lại hàng bán 退货",
+      "J": "INP1003",
+      "K": "Bộ nồi inox INP1003",
+      "L": "Cái",
+      "M": "-12.00",
+      "N": "333,333 ₫",
+      "O": "4,000,000 ₫",
+      "P": "320,000 ₫",
+      "Q": "4,320,000 ₫",
+      "V": "4,320,000 ₫"
+     },
+     "red": [
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2209",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT\n安律有限责任公司",
+      "C": "2026-10-16",
+      "D": "2026-10-16",
+      "E": "BH2026100137",
+      "I": "Đổi lại hàng lỗi cho khách",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 34
+  },
+  {
+   "page": 15,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Ánh Luật ",
+   "hidden": false,
+   "declaredRows": 58,
+   "rows": [
+    {
+     "excelRow": "3",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "K": "Cái",
+      "L": "12.00",
+      "M": "333,333 ₫",
+      "N": "4,000,000 ₫",
+      "O": "320,000 ₫",
+      "P": "4,320,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "4",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6004",
+      "J": "Nồi cơm điện INP6004 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "537,037 ₫",
+      "N": "8,055,556 ₫",
+      "O": "644,444 ₫",
+      "P": "8,700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "5",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "638,889 ₫",
+      "N": "9,583,333 ₫",
+      "O": "766,667 ₫",
+      "P": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "6",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "527,778 ₫",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "7",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "481,481 ₫",
+      "N": "7,222,222 ₫",
+      "O": "577,778 ₫",
+      "P": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "8",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011 (1,8L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "574,074 ₫",
+      "N": "8,611,111 ₫",
+      "O": "688,889 ₫",
+      "P": "9,300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "9",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-03",
+      "F": "BH280.4",
+      "G": "00000288",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701",
+      "K": "Cái",
+      "L": "16.00",
+      "M": "382,407 ₫",
+      "N": "6,118,519 ₫",
+      "O": "489,481 ₫",
+      "P": "6,608,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "10",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP7901",
+      "J": "Vợt muỗi điện INP7901",
+      "K": "Cái",
+      "L": "40.00",
+      "M": "69,444 ₫",
+      "N": "2,777,778 ₫",
+      "O": "222,222 ₫",
+      "P": "3,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "11",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP7902",
+      "J": "Vợt muỗi điện INP7902",
+      "K": "Cái",
+      "L": "40.00",
+      "M": "97,222 ₫",
+      "N": "3,888,889 ₫",
+      "O": "311,111 ₫",
+      "P": "4,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "12",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6004",
+      "J": "Nồi cơm điện INP6004 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "13",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "14",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "15",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "16",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "17",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "638,889 ₫",
+      "N": "9,583,333 ₫",
+      "O": "766,667 ₫",
+      "P": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "18",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "527,778 ₫",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "19",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "20",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "E": "2026-09-30",
+      "G": "00000326",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "21",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-12",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "22",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-08",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "23",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-17",
+      "D": "BH2026090075",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "629,629.63",
+      "N": "9,444,444",
+      "O": "755,556 ₫",
+      "P": "10,200,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "24",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-17",
+      "D": "BH2026090075",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007 (1,8L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "25",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-21",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "150,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "26",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-30",
+      "H": "Thu tiền khách hàng Chuyển khoản\nngân hàng货款通过银行转账",
+      "Q": "50,000,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "27",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "E": "2026-10-14",
+      "F": "BH333.4",
+      "G": "00000343",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "K": "Cái",
+      "L": "6",
+      "M": "824,074.07",
+      "N": "4,944,444",
+      "O": "395,556 ₫",
+      "P": "5,340,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "28",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "E": "2026-10-14",
+      "F": "BH333.4",
+      "G": "00000343",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP1402",
+      "J": "Nồi áp suất 6L INP1402",
+      "K": "Cái",
+      "L": "6",
+      "M": "937,962.96",
+      "N": "5,627,778",
+      "O": "450,222 ₫",
+      "P": "6,078,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "29",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "E": "2026-10-14",
+      "F": "BH333.4",
+      "G": "00000343",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP2002",
+      "J": "Bộ nồi inox đúc nguyên khối\nINP2002",
+      "K": "Cái",
+      "L": "15",
+      "M": "851,851.85",
+      "N": "12,777,778",
+      "O": "1,022,222 ₫",
+      "P": "13,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "30",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "E": "2026-10-14",
+      "F": "BH333.4",
+      "G": "00000343",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Cái",
+      "L": "2",
+      "M": "1,185,185.19",
+      "N": "2,370,370",
+      "O": "189,630 ₫",
+      "P": "2,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "31",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6152",
+      "J": "Bếp hồng ngoại INP6152",
+      "K": "Cái",
+      "L": "18",
+      "M": "500,000.00",
+      "N": "9,000,000",
+      "O": "720,000 ₫",
+      "P": "9,720,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "32",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6154",
+      "J": "Bếp hồng ngoại INP6154",
+      "K": "Cái",
+      "L": "18",
+      "M": "564,814.81",
+      "N": "10,166,667",
+      "O": "813,333 ₫",
+      "P": "10,980,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    }
+   ],
+   "originalPage": 35
+  },
+  {
+   "page": 16,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Ánh Luật ",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "33",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6207",
+      "J": "Ấm siêu tốc INP6207",
+      "K": "Cái",
+      "L": "12",
+      "M": "203,703.70",
+      "N": "2,444,444",
+      "O": "195,556 ₫",
+      "P": "2,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "34",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6208",
+      "J": "Ấm siêu tốc INP6208",
+      "K": "Cái",
+      "L": "12",
+      "M": "203,703.70",
+      "N": "2,444,444",
+      "O": "195,556 ₫",
+      "P": "2,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "35",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6209B",
+      "J": "Ấm siêu tốc INP6209B",
+      "K": "Cái",
+      "L": "12",
+      "M": "212,962.96",
+      "N": "2,555,556",
+      "O": "204,444 ₫",
+      "P": "2,760,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "36",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "E": "2026-10-14",
+      "F": "BH333.4",
+      "G": "00000343",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP2002",
+      "J": "Bộ nồi inox đúc nguyên khối\nINP2002",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "37",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-12",
+      "D": "BH2026100126",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "38",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6101",
+      "J": "Bếp từ đơn INP6101( 2200W,\nmặt kính màu sữa )",
+      "K": "Cái",
+      "L": "12",
+      "M": "601,851.85",
+      "N": "7,222,222",
+      "O": "577,778 ₫",
+      "P": "7,800,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "39",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6105",
+      "J": "Bếp từ đơn INP6105",
+      "K": "Cái",
+      "L": "12",
+      "M": "675,925.93",
+      "N": "8,111,111",
+      "O": "648,889 ₫",
+      "P": "8,760,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "40",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Cái",
+      "L": "12",
+      "M": "814,814.81",
+      "N": "9,777,778",
+      "O": "782,222 ₫",
+      "P": "10,560,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "41",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6207",
+      "J": "Ấm siêu tốc INP6207",
+      "K": "Cái",
+      "L": "24",
+      "M": "203,703.70",
+      "N": "4,888,889",
+      "O": "391,111 ₫",
+      "P": "5,280,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "42",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6208",
+      "J": "Ấm siêu tốc INP6208",
+      "K": "Cái",
+      "L": "24",
+      "M": "203,703.70",
+      "N": "4,888,889",
+      "O": "391,111 ₫",
+      "P": "5,280,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "43",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6209B",
+      "J": "Ấm siêu tốc INP6209B",
+      "K": "Cái",
+      "L": "24",
+      "M": "212,962.96",
+      "N": "5,111,111",
+      "O": "408,889 ₫",
+      "P": "5,520,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "44",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP2003",
+      "J": "Bộ nồi inox INP2003",
+      "K": "Cái",
+      "L": "13",
+      "M": "1,185,185.19",
+      "N": "15,407,407",
+      "O": "1,232,593 ₫",
+      "P": "16,640,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "45",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "Mua 12 INP6101 tặng 1 INP6203",
+      "I": "INP6203",
+      "J": "Ấm đun nước INP6203, 1.7L",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "46",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "D": "BH2026100129",
+      "H": "mua bếp từ tặng nồi lẩu 购买电磁炉\n，赠送火锅",
+      "I": "INP1301B",
+      "J": "Nồi mã INP1301B",
+      "K": "Cái",
+      "L": "24",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "47",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-13",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "600,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "48",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-14",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "650,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "49",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "NK2026100032",
+      "H": "Trả lại hàng lỗi hỏng",
+      "I": "INP6005",
+      "J": "Nồi cơm điện 6005",
+      "K": "Cái",
+      "L": "-1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": [
+      "L"
+     ]
+    },
+    {
+     "excelRow": "50",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "NK2026100031",
+      "H": "Trả lại hàng bán 退货",
+      "I": "INP6902",
+      "J": "Nồi áp suất INP6902",
+      "K": "Cái",
+      "L": "-3.00",
+      "M": "814,815 ₫",
+      "N": "2,444,444 ₫",
+      "O": "195,556 ₫",
+      "P": "2,640,000 ₫"
+     },
+     "red": [
+      "L",
+      "N",
+      "O",
+      "P"
+     ]
+    },
+    {
+     "excelRow": "51",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "NK2026100031",
+      "H": "Trả lại hàng bán 退货",
+      "I": "INP7901",
+      "J": "Vợt muỗi INP7901",
+      "K": "Cái",
+      "L": "-40.00",
+      "M": "69,444 ₫",
+      "N": "2,777,778 ₫",
+      "O": "222,222 ₫",
+      "P": "3,000,000 ₫"
+     },
+     "red": [
+      "L",
+      "N",
+      "O",
+      "P"
+     ]
+    },
+    {
+     "excelRow": "52",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "NK2026100031",
+      "H": "Trả lại hàng bán 退货",
+      "I": "INP7902",
+      "J": "Vợt muỗi INP7902",
+      "K": "Cái",
+      "L": "-40.00",
+      "M": "97,222 ₫",
+      "N": "3,888,889 ₫",
+      "O": "311,111 ₫",
+      "P": "4,200,000 ₫"
+     },
+     "red": [
+      "L",
+      "N",
+      "O",
+      "P"
+     ]
+    },
+    {
+     "excelRow": "53",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "NK2026100031",
+      "H": "Trả lại hàng bán 退货",
+      "I": "INP1003",
+      "J": "Bộ nồi inox INP1003",
+      "K": "Cái",
+      "L": "-12.00",
+      "M": "333,333 ₫",
+      "N": "4,000,000 ₫",
+      "O": "320,000 ₫",
+      "P": "4,320,000 ₫"
+     },
+     "red": [
+      "L",
+      "N",
+      "O",
+      "P"
+     ]
+    },
+    {
+     "excelRow": "54",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-10-16",
+      "D": "BH2026100137",
+      "H": "Đổi lại hàng lỗi cho khách",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [
+    {
+     "row": "55",
+     "cell": "P55",
+     "value": "194,126,000 ₫"
+    },
+    {
+     "row": "55",
+     "cell": "Q55",
+     "value": "50,000,000 ₫"
+    },
+    {
+     "row": "55",
+     "cell": "R55",
+     "value": "2,380,000 ₫"
+    },
+    {
+     "row": "58",
+     "cell": "H58",
+     "value": "Tổng Công nợ"
+    },
+    {
+     "row": "58",
+     "cell": "I58",
+     "value": "194,126,000 ₫"
+    },
+    {
+     "row": "59",
+     "cell": "H59",
+     "value": "Phí vận chuyển"
+    },
+    {
+     "row": "59",
+     "cell": "I59",
+     "value": "2,380,000 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    }
+   ],
+   "originalPage": 36
+  },
+  {
+   "page": 17,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Ánh Luật ",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [
+    {
+     "row": "60",
+     "cell": "H60",
+     "value": "Đã Thanh toán"
+    },
+    {
+     "row": "60",
+     "cell": "I60",
+     "value": "50,000,000 ₫"
+    },
+    {
+     "row": "61",
+     "cell": "H61",
+     "value": "Còn lại"
+    },
+    {
+     "row": "61",
+     "cell": "I61",
+     "value": "141,746,000 ₫"
+    },
+    {
+     "row": "64",
+     "cell": "H64",
+     "value": "CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG\nĐịa chỉ: Số 1369 Đại Lộ Thăng Long, Xã Sơn Đồng, Thành Phố Hà Nội\nSố Điện thoại : 0867024186\nMã số thuế : 0111201600\nTài khoản : 858988999 Ngân hàng: MB-CN Hai Bà Trưng."
+    }
+   ],
+   "index": [],
+   "originalPage": 37
+  },
+  {
+   "page": 18,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 3,
+   "rows": [
+    {
+     "excelRow": "71",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有限责\n任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH LUẬT\n销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "638,888.89",
+      "N": "9,583,333 ₫",
+      "O": "766,667 ₫",
+      "P": "10,350,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "72",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有限责\n任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH LUẬT\n销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "527,777.78",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "146",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有限责\n任公司",
+      "C": "2026-09-17",
+      "D": "BH2026090075",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH LUẬT\n销售给安律有限责任公司",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "629,629.63",
+      "N": "9,444,444",
+      "O": "755,556 ₫",
+      "P": "10,200,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 38
+  },
+  {
+   "page": 19,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Ánh Luật",
+   "hidden": false,
+   "declaredRows": 29,
+   "rows": [
+    {
+     "excelRow": "3",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "K": "Cái",
+      "L": "12.00",
+      "M": "333,333 ₫",
+      "N": "4,000,000 ₫",
+      "O": "320,000 ₫",
+      "P": "4,320,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "4",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6004",
+      "J": "Nồi cơm điện INP6004 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "537,037 ₫",
+      "N": "8,055,556 ₫",
+      "O": "644,444 ₫",
+      "P": "8,700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "5",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "638,889 ₫",
+      "N": "9,583,333 ₫",
+      "O": "766,667 ₫",
+      "P": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "6",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "527,778 ₫",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "7",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "481,481 ₫",
+      "N": "7,222,222 ₫",
+      "O": "577,778 ₫",
+      "P": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "8",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011 (1,8L)",
+      "K": "Cái",
+      "L": "15.00",
+      "M": "574,074 ₫",
+      "N": "8,611,111 ₫",
+      "O": "688,889 ₫",
+      "P": "9,300,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "9",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "E": "2026-09-03",
+      "F": "BH280.4",
+      "G": "00000288",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP6701",
+      "K": "Cái",
+      "L": "16.00",
+      "M": "382,407 ₫",
+      "N": "6,118,519 ₫",
+      "O": "489,481 ₫",
+      "P": "6,608,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "10",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP7901",
+      "J": "Vợt muỗi điện INP7901",
+      "K": "Cái",
+      "L": "40.00",
+      "M": "69,444 ₫",
+      "N": "2,777,778 ₫",
+      "O": "222,222 ₫",
+      "P": "3,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "11",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP7902",
+      "J": "Vợt muỗi điện INP7902",
+      "K": "Cái",
+      "L": "40.00",
+      "M": "97,222 ₫",
+      "N": "3,888,889 ₫",
+      "O": "311,111 ₫",
+      "P": "4,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "12",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6004",
+      "J": "Nồi cơm điện INP6004 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "13",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "14",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "15",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "16",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-08-29",
+      "D": "BH2026080036",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011 (1,8L)",
+      "K": "Cái",
+      "L": "1.00",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "17",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "638,889 ₫",
+      "N": "9,583,333 ₫",
+      "O": "766,667 ₫",
+      "P": "10,350,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "18",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "527,778 ₫",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "19",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005 (1,8L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "20",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-11",
+      "D": "BH2026080061",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "21",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-12",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "280,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "22",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-08",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "700,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "23",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-17",
+      "D": "BH2026090075",
+      "H": "Xuất bán cho CÔNG TY TNHH ÁNH\nLUẬT销售给安律有限责任公司",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007 (1,8L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "629,629.63",
+      "N": "9,444,444",
+      "O": "755,556 ₫",
+      "P": "10,200,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "24",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-17",
+      "D": "BH2026090075",
+      "H": "Mua 15 tặng 1 购买15件，赠送1件",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007 (1,8L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0 ₫",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "25",
+     "values": {
+      "A": "KH091",
+      "B": "CÔNG TY TNHH ÁNH LUẬT安律有\n限责任公司",
+      "C": "2026-09-21",
+      "H": "khách hàng tự trả tiền vận chuyển\n客户自行支付运输费",
+      "R": "150,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [
+    {
+     "row": "27",
+     "cell": "P27",
+     "value": "91,928,000 ₫"
+    },
+    {
+     "row": "27",
+     "cell": "Q27",
+     "value": "0 ₫"
+    },
+    {
+     "row": "27",
+     "cell": "R27",
+     "value": "1,130,000 ₫"
+    },
+    {
+     "row": "30",
+     "cell": "H30",
+     "value": "Tổng Công nợ"
+    },
+    {
+     "row": "30",
+     "cell": "I30",
+     "value": "91,928,000 ₫"
+    }
+   ],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    }
+   ],
+   "originalPage": 39
+  },
+  {
+   "page": 20,
+   "title": "CÔNG TY TNHH ÁNH LUẬT安律有限责任公司",
+   "sheet": "Ánh Luật",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [
+    {
+     "row": "31",
+     "cell": "H31",
+     "value": "Phí vận chuyển"
+    },
+    {
+     "row": "31",
+     "cell": "I31",
+     "value": "1,130,000 ₫"
+    },
+    {
+     "row": "32",
+     "cell": "H32",
+     "value": "Đã Thanh toán"
+    },
+    {
+     "row": "32",
+     "cell": "I32",
+     "value": "0 ₫"
+    },
+    {
+     "row": "33",
+     "cell": "H33",
+     "value": "Còn lại"
+    },
+    {
+     "row": "33",
+     "cell": "I33",
+     "value": "90,798,000 ₫"
+    },
+    {
+     "row": "36",
+     "cell": "H36",
+     "value": "CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG\nĐịa chỉ: Số 1369 Đại Lộ Thăng Long, Xã Sơn Đồng, Thành Phố Hà Nội\nSố Điện thoại : 0867024186\nMã số thuế : 0111201600\nTài khoản : 858988999 Ngân hàng: MB-CN Hai Bà Trưng."
+    }
+   ],
+   "index": [],
+   "originalPage": 40
+  }
+ ]
+}

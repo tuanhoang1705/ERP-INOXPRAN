@@ -3,7 +3,7 @@ import type { SalesReport } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import ExcelJS from 'exceljs';
 import type { Db, Document, ObjectId } from 'mongodb';
-import { decimalString, toObjectId, vnParts } from '../../common/domain';
+import { decimal, decimalString, toObjectId, vnParts } from '../../common/domain';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
@@ -64,25 +64,38 @@ export class ReportsService {
     return this.db.collection('sales_orders').aggregate(pipeline).toArray();
   }
 
-  /** Công nợ cuối kỳ = giá trị chứng từ phải thu phát sinh trước cuối kỳ trừ các khoản đã thu trước cuối kỳ. */
+  /**
+   * Công nợ cuối kỳ (cùng công thức với sổ chi tiết công nợ theo khách — CN-KH-01): chứng từ phải thu phát sinh trước cuối kỳ
+   * − chứng từ đã hủy trước cuối kỳ − các khoản giảm nợ trước cuối kỳ (thu tiền, phí vận chuyển khách trả, trả hàng).
+   * Khoản khách trả trước (phải thu âm) và phiếu bù trừ chỉ là phân bổ nên không cộng thêm (trước đây phiếu đã thu rồi hủy bị trừ hai lần).
+   */
   private async closingDebt(customerIds: ObjectId[], toExclusive: Date): Promise<Map<string, Decimal>> {
-    const [receivables, payments] = await Promise.all([
-      this.db.collection('receivables').find({ partnerId: { $in: customerIds }, createdAt: { $lt: toExclusive } }).toArray(),
+    const positive = { $gt: decimal('0') };
+    const [debits, voided, reductions] = await Promise.all([
+      this.db.collection('receivables').aggregate([
+        { $match: { partnerId: { $in: customerIds }, createdAt: { $lt: toExclusive }, amount: positive } },
+        { $group: { _id: '$partnerId', total: { $sum: '$amount' } } },
+      ]).toArray(),
+      this.db.collection('receivables').aggregate([
+        { $match: { partnerId: { $in: customerIds }, status: 'VOIDED', amount: positive, $or: [{ voidedAt: { $lt: toExclusive } }, { voidedAt: { $exists: false }, updatedAt: { $lt: toExclusive } }] } },
+        { $group: { _id: '$partnerId', total: { $sum: '$amount' } } },
+      ]).toArray(),
       this.db.collection('payments').aggregate([
-        { $match: { partnerId: { $in: customerIds }, receivedAt: { $lt: toExclusive }, status: 'POSTED' } },
-        { $unwind: '$allocations' },
-        { $group: { _id: '$partnerId', paid: { $sum: '$allocations.amount' } } },
+        { $match: { partnerId: { $in: customerIds }, receivedAt: { $lt: toExclusive }, status: 'POSTED', kind: { $ne: 'OFFSET' } } },
+        { $group: { _id: '$partnerId', total: { $sum: '$amount' } } },
       ]).toArray(),
     ]);
     const debt = new Map<string, Decimal>();
-    for (const row of receivables) {
-      const key = (row.partnerId as ObjectId).toHexString();
-      debt.set(key, (debt.get(key) ?? new Decimal(0)).add(decimalString(row.amount)));
-    }
-    for (const row of payments) {
-      const key = (row._id as ObjectId).toHexString();
-      debt.set(key, (debt.get(key) ?? new Decimal(0)).minus(decimalString(row.paid)));
-    }
+    const add = (rows: Document[], sign: 1 | -1) => {
+      for (const row of rows) {
+        const key = (row._id as ObjectId).toHexString();
+        const value = new Decimal(decimalString(row.total));
+        debt.set(key, (debt.get(key) ?? new Decimal(0)).add(sign === 1 ? value : value.neg()));
+      }
+    };
+    add(debits, 1);
+    add(voided, -1);
+    add(reductions, -1);
     return debt;
   }
 

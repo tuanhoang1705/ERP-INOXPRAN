@@ -1,0 +1,6817 @@
+{
+ "file": "Claude_Phan_1_Doan_05_trang_078-097.pdf",
+ "part": 1,
+ "sha256": "e906e7208dbccee236aa560e46abc7f47d6ffc736d426d4e8a759f6a6efbdb2c",
+ "pages": [
+  {
+   "page": 1,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "342",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-03-12",
+      "F": "23/04/2026",
+      "H": "00000126",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6003",
+      "M": "8.00",
+      "N": "851,852 ₫",
+      "O": "6,814,815 ₫",
+      "P": "545,185 ₫",
+      "Q": "7,360,000 ₫",
+      "V": "7,360,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "343",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-03-12",
+      "F": "23/04/2026",
+      "H": "00000126",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "M": "40.00",
+      "N": "361,111 ₫",
+      "O": "14,444,444 ₫",
+      "P": "1,155,556 ₫",
+      "Q": "15,600,000 ₫",
+      "V": "15,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "344",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-03-12",
+      "F": "23/04/2026",
+      "H": "00000126",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "M": "4.00",
+      "N": "1,097,222 ₫",
+      "O": "4,388,889 ₫",
+      "P": "351,111 ₫",
+      "Q": "4,740,000 ₫",
+      "V": "4,740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "345",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-11-14",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "100,000,000 ₫",
+      "V": "100,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "346",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "M": "50.00",
+      "N": "81,731 ₫",
+      "O": "4,086,538 ₫",
+      "P": "326,923 ₫",
+      "Q": "4,413,461 ₫",
+      "V": "4,413,461 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "347",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "M": "30.00",
+      "N": "234,259 ₫",
+      "O": "7,027,778 ₫",
+      "P": "562,222 ₫",
+      "Q": "7,590,000 ₫",
+      "V": "7,590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "348",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "M": "80.00",
+      "N": "256,481 ₫",
+      "O": "20,518,518 ₫",
+      "P": "1,641,481 ₫",
+      "Q": "22,160,000 ₫",
+      "V": "22,160,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "349",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2103",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2103",
+      "M": "160.00",
+      "N": "281,481 ₫",
+      "O": "45,037,037 ₫",
+      "P": "3,602,963 ₫",
+      "Q": "48,640,000 ₫",
+      "V": "48,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "350",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6201",
+      "K": "Ấm điện siêu tốc\nINP6201 1,7 lít màu ghi",
+      "M": "36.00",
+      "N": "324,074 ₫",
+      "O": "11,666,667 ₫",
+      "P": "933,333 ₫",
+      "Q": "12,600,000 ₫",
+      "V": "12,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "351",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu ghi",
+      "M": "120.00",
+      "N": "325,926 ₫",
+      "O": "39,111,110 ₫",
+      "P": "3,128,889 ₫",
+      "Q": "42,239,999 ₫",
+      "V": "42,239,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "352",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "04/05/2026",
+      "H": "00000133",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "M": "200.00",
+      "N": "361,111 ₫",
+      "O": "72,222,222 ₫",
+      "P": "5,777,778 ₫",
+      "Q": "78,000,000 ₫",
+      "V": "78,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "353",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-04-28",
+      "F": "27/05/2026",
+      "H": "00000161",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2104",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2104",
+      "M": "220.00",
+      "N": "298,148 ₫",
+      "O": "65,592,591 ₫",
+      "P": "5,247,407 ₫",
+      "Q": "70,839,998 ₫",
+      "V": "70,839,998 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "354",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-05-19",
+      "F": "27/05/2026",
+      "H": "00000161",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2104",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2104",
+      "M": "10.00",
+      "N": "298,148 ₫",
+      "O": "2,981,481 ₫",
+      "P": "238,519 ₫",
+      "Q": "3,220,000 ₫",
+      "V": "3,220,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 78
+  },
+  {
+   "page": 2,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "355",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "I": "chiết khấu 3% cho khách\nchương trình dầu năm cho\nđơn trên 500 triệu",
+      "T": "15,000,944 ₫",
+      "V": "15,000,944 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "356",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-05-11",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "100,000,000 ₫",
+      "V": "100,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "357",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-05-06",
+      "F": "chưa xuất\nHĐ",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6401",
+      "K": "Quạt đứng INP6401",
+      "M": "100.00",
+      "N": "509,259 ₫",
+      "O": "50,925,926 ₫",
+      "P": "4,074,074 ₫",
+      "Q": "55,000,000 ₫",
+      "V": "55,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "358",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-06-17",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "100,000,000 ₫",
+      "V": "100,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "359",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-06-23",
+      "F": "25/06/2026",
+      "H": "00000189",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1401",
+      "K": "Nồi áp suất 4.5L\nINP1401",
+      "L": "Cái",
+      "M": "10.00",
+      "N": "824,074 ₫",
+      "O": "8,240,741 ₫",
+      "P": "659,259 ₫",
+      "Q": "8,900,000 ₫",
+      "V": "8,900,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "360",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-06-23",
+      "F": "25/06/2026",
+      "H": "00000189",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1402",
+      "K": "Nồi áp suất 6L INP1402",
+      "M": "10.00",
+      "N": "937,964 ₫",
+      "O": "9,379,640 ₫",
+      "P": "750,371 ₫",
+      "Q": "10,130,011 ₫",
+      "V": "10,130,011 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "361",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-06-23",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6402",
+      "K": "Quạt điện đứng\nINP6402",
+      "M": "10.00",
+      "N": "574,074 ₫",
+      "O": "5,740,741 ₫",
+      "P": "459,259 ₫",
+      "Q": "6,200,000 ₫",
+      "V": "6,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "362",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-06-23",
+      "F": "25/07/2026",
+      "H": "00000237",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6403",
+      "K": "Quạt điện đứng\nINP6403",
+      "M": "100.00",
+      "N": "694,444 ₫",
+      "O": "69,444,444 ₫",
+      "P": "5,555,556 ₫",
+      "Q": "75,000,000 ₫",
+      "V": "75,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "363",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "F": "05/08/2026",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "R": "100,000,000 ₫",
+      "V": "100,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "364",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "F": "05/08/2026",
+      "H": "00000259",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1001",
+      "K": "Bộ nồi inox INP1001",
+      "M": "20.00",
+      "N": "480,556 ₫",
+      "O": "9,611,111 ₫",
+      "P": "768,889 ₫",
+      "Q": "10,380,000 ₫",
+      "V": "10,380,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "365",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "F": "05/08/2026",
+      "H": "00000259",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1101",
+      "K": "Bộ nồi inox INP1101",
+      "M": "20.00",
+      "N": "483,333 ₫",
+      "O": "9,666,667 ₫",
+      "P": "773,333 ₫",
+      "Q": "10,440,000 ₫",
+      "V": "10,440,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "366",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "F": "05/08/2026",
+      "H": "00000259",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "M": "40.00",
+      "N": "324,074 ₫",
+      "O": "12,962,963 ₫",
+      "P": "1,037,037 ₫",
+      "Q": "14,000,000 ₫",
+      "V": "14,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "367",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "F": "05/08/2026",
+      "H": "00000259",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "M": "10.00",
+      "N": "814,815 ₫",
+      "O": "8,148,148 ₫",
+      "P": "651,852 ₫",
+      "Q": "8,800,000 ₫",
+      "V": "8,800,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 79
+  },
+  {
+   "page": 3,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "368",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6005",
+      "K": "Nồi cơm điện INP6005\n(1,8L)",
+      "M": "1.00",
+      "N": "644,444 ₫",
+      "O": "644,444 ₫",
+      "P": "51,556 ₫",
+      "Q": "696,000 ₫",
+      "V": "696,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "369",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "M": "120.00",
+      "N": "629,630 ₫",
+      "O": "75,555,556 ₫",
+      "P": "6,044,444 ₫",
+      "Q": "81,600,000 ₫",
+      "V": "81,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "370",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "M": "1.00",
+      "N": "694,444 ₫",
+      "O": "694,444 ₫",
+      "P": "55,556 ₫",
+      "Q": "750,000 ₫",
+      "V": "750,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "371",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "M": "1.00",
+      "N": "574,074 ₫",
+      "O": "574,074 ₫",
+      "P": "45,926 ₫",
+      "Q": "620,000 ₫",
+      "V": "620,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "372",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-07-30",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "M": "12.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1280",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "30.00",
+      "N": "574,074 ₫",
+      "O": "17,222,222 ₫",
+      "P": "1,377,778 ₫",
+      "Q": "18,600,000 ₫",
+      "V": "18,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1281",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "F": "2026-08-25",
+      "G": "BH275.4",
+      "H": "00000283",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "10.00",
+      "N": "814,815 ₫",
+      "O": "8,148,148 ₫",
+      "P": "651,852 ₫",
+      "Q": "8,800,000 ₫",
+      "V": "8,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1282",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP7952",
+      "K": "Máy sấy tóc INP7952",
+      "L": "Cái",
+      "M": "50.00",
+      "N": "292,593 ₫",
+      "O": "14,629,630 ₫",
+      "P": "1,170,370 ₫",
+      "Q": "15,800,000 ₫",
+      "V": "15,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1283",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP7953",
+      "K": "Máy sấy tóc INP7953",
+      "L": "Cái",
+      "M": "50.00",
+      "N": "231,481 ₫",
+      "O": "11,574,074 ₫",
+      "P": "925,926 ₫",
+      "Q": "12,500,000 ₫",
+      "V": "12,500,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1284",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6011",
+      "K": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1285",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-17",
+      "E": "BH2026080009",
+      "F": "2026-08-25",
+      "G": "BH275.4",
+      "H": "00000283",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6802",
+      "K": "Thùng đựng gạo\ninoxpran INP6802",
+      "L": "Thù\nng",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1295",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-18",
+      "I": "phí shíp 16 thùng hàng giao\nngày 18/8 30.000/thùng",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "480,000 ₫",
+      "V": "480,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1474",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-08-28",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "Q": "0 ₫",
+      "R": "50,000,000 ₫",
+      "V": "50,000,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 80
+  },
+  {
+   "page": 4,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "1663",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "F": "2026-09-15",
+      "G": "BH294.4",
+      "H": "00000305",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6003",
+      "L": "Cái",
+      "M": "2.00",
+      "N": "851,852 ₫",
+      "O": "1,703,704 ₫",
+      "P": "136,296 ₫",
+      "Q": "1,840,000 ₫",
+      "V": "1,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1664",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "F": "2026-09-15",
+      "G": "BH294.4",
+      "H": "00000305",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Cái",
+      "M": "20.00",
+      "N": "814,815 ₫",
+      "O": "16,296,296 ₫",
+      "P": "1,303,704 ₫",
+      "Q": "17,600,000 ₫",
+      "V": "17,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1665",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "527,778 ₫",
+      "O": "7,916,667 ₫",
+      "P": "633,333 ₫",
+      "Q": "8,550,000 ₫",
+      "V": "8,550,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1666",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "481,481 ₫",
+      "O": "7,222,222 ₫",
+      "P": "577,778 ₫",
+      "Q": "7,800,000 ₫",
+      "V": "7,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1667",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090058",
+      "F": "2026-09-15",
+      "G": "BH294.4",
+      "H": "00000305",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "Cái",
+      "M": "30.00",
+      "N": "234,259 ₫",
+      "O": "7,027,778 ₫",
+      "P": "562,222 ₫",
+      "Q": "7,590,000 ₫",
+      "V": "7,590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1668",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090060",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6006",
+      "K": "Nồi cơm điện INP6006\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1669",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-11",
+      "E": "BH2026090060",
+      "I": "Mua 15 tặng 1 购买15件，赠\n送1件",
+      "J": "INP6010",
+      "K": "Nồi cơm điện INP6010\n(1,2L)",
+      "L": "Cái",
+      "M": "1.00",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1732",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-09-11",
+      "D": "2026-09-14",
+      "I": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "S": "660,000 ₫",
+      "V": "660,000 ₫",
+      "W": "BH2026080060"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "2104",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "F": "2026-10-15",
+      "G": "BH334.4",
+      "H": "00000344",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Cái",
+      "M": "100",
+      "N": "333,333 ₫",
+      "O": "33,333,333 ₫",
+      "P": "2,666,667 ₫",
+      "Q": "36,000,000 ₫",
+      "V": "36,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2105",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP6402",
+      "K": "Quạt điện đứng\nINP6402",
+      "L": "Cái",
+      "M": "1",
+      "N": "574,074 ₫",
+      "O": "574,074 ₫",
+      "P": "45,926 ₫",
+      "Q": "620,000 ₫",
+      "V": "620,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2106",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "F": "2026-10-15",
+      "G": "BH334.4",
+      "H": "00000344",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "Cái",
+      "M": "30",
+      "N": "234,259 ₫",
+      "O": "7,027,778 ₫",
+      "P": "562,222 ₫",
+      "Q": "7,590,000 ₫",
+      "V": "7,590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2107",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "F": "2026-10-15",
+      "G": "BH334.4",
+      "H": "00000344",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "Cái",
+      "M": "30",
+      "N": "256,481 ₫",
+      "O": "7,694,444 ₫",
+      "P": "615,556 ₫",
+      "Q": "8,310,000 ₫",
+      "V": "8,310,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2108",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "F": "2026-10-15",
+      "G": "BH334.4",
+      "H": "00000344",
+      "I": "xuất bán CÔNG TY TNHH\nPHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ\nRỒNG VIỆT向越南龙发展生\n产贸易服务有限公司销售产\n品",
+      "J": "INP2104",
+      "K": "Chảo inox chống dính\nđúc nguyên khối\nINP2104",
+      "L": "Cái",
+      "M": "30",
+      "N": "298,148 ₫",
+      "O": "8,944,445 ₫",
+      "P": "715,556 ₫",
+      "Q": "9,660,000 ₫",
+      "V": "9,660,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 81
+  },
+  {
+   "page": 5,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "2109",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "I": "Trả bảo hành 售后保修退货",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "2110",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG\nMẠI DỊCH VỤ RỒNG VIỆT\n越南龙发展生产贸易服务有\n限公司",
+      "C": "2026-10-09",
+      "D": "2026-10-13",
+      "E": "BH2026100122",
+      "I": "Trả bảo hành 售后保修退货",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "Cái",
+      "M": "1",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "V": "0 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 82
+  },
+  {
+   "page": 6,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Doanh số t9",
+   "hidden": false,
+   "declaredRows": 5,
+   "rows": [
+    {
+     "excelRow": "66",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南\n龙发展生产贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "2026-09-15",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG\nVIỆT向越南龙发展生产贸易服务有限公司销\n售产品",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm điện đa\nnăng giảm đường) INP6003",
+      "K": "Cái",
+      "L": "2",
+      "M": "851,851.85",
+      "N": "1,703,704 ₫",
+      "O": "136,296 ₫",
+      "P": "1,840,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "67",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南\n龙发展生产贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "2026-09-15",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG\nVIỆT向越南龙发展生产贸易服务有限公司销\n售产品",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Cái",
+      "L": "20",
+      "M": "814,814.81",
+      "N": "16,296,296 ₫",
+      "O": "1,303,704 ₫",
+      "P": "17,600,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "68",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南\n龙发展生产贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "xuất bán CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG\nVIỆT向越南龙发展生产贸易服务有限公司销\n售产品",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006 (1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "527,777.78",
+      "N": "7,916,667 ₫",
+      "O": "633,333 ₫",
+      "P": "8,550,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "69",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南\n龙发展生产贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "xuất bán CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG\nVIỆT向越南龙发展生产贸易服务有限公司销\n售产品",
+      "I": "IINP6010",
+      "J": "Nồi cơm điện INP6010 (1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "481,481.48",
+      "N": "7,222,222 ₫",
+      "O": "577,778 ₫",
+      "P": "7,800,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "70",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT\nTHƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南\n龙发展生产贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "2026-09-15",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG\nVIỆT向越南龙发展生产贸易服务有限公司销\n售产品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc nguyên\nkhốiINP2101",
+      "K": "Cái",
+      "L": "30",
+      "M": "234,259.26",
+      "N": "7,027,778 ₫",
+      "O": "562,222 ₫",
+      "P": "7,590,000"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    }
+   ],
+   "originalPage": 83
+  },
+  {
+   "page": 7,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": 82,
+   "rows": [
+    {
+     "excelRow": "2",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "13/1/2026",
+      "G": "00000017",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "L": "100",
+      "M": "324,074 ₫",
+      "N": "32,407,407 ₫",
+      "O": "2,592,593 ₫",
+      "P": "35,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "3",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "13/1/2026",
+      "G": "00000017",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP3201",
+      "J": "Chảo gang tráng\nmenINP3201",
+      "L": "12",
+      "M": "194,444 ₫",
+      "N": "2,333,333 ₫",
+      "O": "186,667 ₫",
+      "P": "2,520,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "4",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "13/1/2026",
+      "G": "00000017",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1501",
+      "J": "Ấm đun nước 3L INP1501",
+      "L": "12",
+      "M": "120,370 ₫",
+      "N": "1,444,444 ₫",
+      "O": "115,556 ₫",
+      "P": "1,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "5",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "13/1/2026",
+      "G": "00000017",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1502",
+      "J": "Ấm đun nước 4L INP1502",
+      "L": "12",
+      "M": "129,630 ₫",
+      "N": "1,555,556 ₫",
+      "O": "124,444 ₫",
+      "P": "1,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "6",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "13/1/2026",
+      "G": "00000017",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1503",
+      "J": "Ấm đun nước 5L INP1503",
+      "L": "12",
+      "M": "138,889 ₫",
+      "N": "1,666,667 ₫",
+      "O": "133,333 ₫",
+      "P": "1,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "7",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm INP\n6701",
+      "L": "8",
+      "M": "361,111 ₫",
+      "N": "2,888,889 ₫",
+      "O": "231,111 ₫",
+      "P": "3,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "8",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "03/04/2026",
+      "G": "00000094",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6102",
+      "J": "Bếp từ đơn INP 6102\n(2500W), 2 quạt tán",
+      "L": "6",
+      "M": "937,963 ₫",
+      "N": "5,627,778 ₫",
+      "O": "450,222 ₫",
+      "P": "6,078,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "9",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "03/04/2026",
+      "G": "00000094",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6104",
+      "J": "Bếp từ đơn INP 6104\n(2500W)",
+      "L": "6",
+      "M": "1,007,407 ₫",
+      "N": "6,044,444 ₫",
+      "O": "483,556 ₫",
+      "P": "6,528,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "10",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-13",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "mua bếp từ tặng nồi lẩu 购买电\n磁炉，赠送火锅",
+      "I": "INP1301",
+      "J": "Nồi mã INP1301",
+      "L": "12"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "11",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-16",
+      "G": "NTTK00004",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "20,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "12",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-21",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "L": "120",
+      "M": "324,074 ₫",
+      "N": "38,888,890 ₫",
+      "O": "3,111,111 ₫",
+      "P": "42,000,001 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "13",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-01-22",
+      "G": "NTTK00005",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "22,560,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "14",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2101",
+      "L": "30",
+      "M": "234,259 ₫",
+      "N": "7,027,778 ₫",
+      "O": "562,222 ₫",
+      "P": "7,590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "15",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2102",
+      "L": "30",
+      "M": "256,481 ₫",
+      "N": "7,694,444 ₫",
+      "O": "615,556 ₫",
+      "P": "8,310,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "16",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2103",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2103",
+      "L": "40",
+      "M": "281,481 ₫",
+      "N": "11,259,259 ₫",
+      "O": "900,741 ₫",
+      "P": "12,160,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 84
+  },
+  {
+   "page": 8,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "17",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6001",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm\nđường) INP6001",
+      "L": "20",
+      "M": "1,138,889 ₫",
+      "N": "22,777,778 ₫",
+      "O": "1,822,222 ₫",
+      "P": "24,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "18",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6201",
+      "J": "Ấm điện siêu tốc INP6201\n1,7 lít màu ghi",
+      "L": "12",
+      "M": "324,074 ₫",
+      "N": "3,888,889 ₫",
+      "O": "311,111 ₫",
+      "P": "4,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "19",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6202",
+      "J": "Ấm điện siêu tốc INP6202\n1,7 lít màu đen",
+      "L": "12",
+      "M": "325,926 ₫",
+      "N": "3,911,111 ₫",
+      "O": "312,889 ₫",
+      "P": "4,224,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "20",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "03/03/2026",
+      "G": "00000087",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6203",
+      "J": "Ấm đun nước INP6203, 1.7L",
+      "L": "12",
+      "M": "312,037 ₫",
+      "N": "3,744,444 ₫",
+      "O": "299,556 ₫",
+      "P": "4,044,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "21",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm\nINP6701",
+      "L": "32",
+      "M": "361,111 ₫",
+      "N": "11,555,556 ₫",
+      "O": "924,444 ₫",
+      "P": "12,480,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "22",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-02-03",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6002",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm\nđường) INP6002",
+      "L": "24",
+      "M": "1,097,222 ₫",
+      "N": "26,333,333 ₫",
+      "O": "2,106,667 ₫",
+      "P": "28,440,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "23",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "35,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "24",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2101",
+      "L": "50",
+      "M": "234,259 ₫",
+      "N": "11,712,963 ₫",
+      "O": "937,037 ₫",
+      "P": "12,650,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "25",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2102",
+      "L": "50",
+      "M": "256,481 ₫",
+      "N": "12,824,074 ₫",
+      "O": "1,025,926 ₫",
+      "P": "13,850,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "26",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2103",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2103",
+      "L": "100",
+      "M": "281,481 ₫",
+      "N": "28,148,148 ₫",
+      "O": "2,251,852 ₫",
+      "P": "30,400,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "27",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6001",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm\nđường) INP6001",
+      "L": "16",
+      "M": "1,138,889 ₫",
+      "N": "18,222,222 ₫",
+      "O": "1,457,778 ₫",
+      "P": "19,680,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "28",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm\nđường) INP6003",
+      "L": "8",
+      "M": "851,852 ₫",
+      "N": "6,814,815 ₫",
+      "O": "545,185 ₫",
+      "P": "7,360,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "29",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm\nINP6701",
+      "L": "40",
+      "M": "361,111 ₫",
+      "N": "14,444,444 ₫",
+      "O": "1,155,556 ₫",
+      "P": "15,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "30",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-03-12",
+      "E": "23/04/2026",
+      "G": "00000126",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6002",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm\nđường) INP6002",
+      "L": "4",
+      "M": "1,097,222 ₫",
+      "N": "4,388,889 ₫",
+      "O": "351,111 ₫",
+      "P": "4,740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "31",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-11",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "100,000,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 85
+  },
+  {
+   "page": 9,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "32",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1301",
+      "J": "Nồi mã INP1301",
+      "L": "50",
+      "M": "81,731 ₫",
+      "N": "4,086,538 ₫",
+      "O": "326,923 ₫",
+      "P": "4,413,461 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "33",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2101",
+      "L": "30",
+      "M": "234,259 ₫",
+      "N": "7,027,778 ₫",
+      "O": "562,222 ₫",
+      "P": "7,590,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "34",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2102",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2102",
+      "L": "80",
+      "M": "256,481 ₫",
+      "N": "20,518,518 ₫",
+      "O": "1,641,481 ₫",
+      "P": "22,160,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "35",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2103",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2103",
+      "L": "160",
+      "M": "281,481 ₫",
+      "N": "45,037,037 ₫",
+      "O": "3,602,963 ₫",
+      "P": "48,640,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "36",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6201",
+      "J": "Ấm điện siêu tốc INP6201\n1,7 lít màu ghi",
+      "L": "36",
+      "M": "324,074 ₫",
+      "N": "11,666,667 ₫",
+      "O": "933,333 ₫",
+      "P": "12,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "37",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6202",
+      "J": "Ấm điện siêu tốc INP6202\n1,7 lít màu ghi",
+      "L": "120",
+      "M": "325,926 ₫",
+      "N": "39,111,110 ₫",
+      "O": "3,128,889 ₫",
+      "P": "42,239,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "38",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "05/04/2026",
+      "G": "00000133",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6701",
+      "J": "Máy xay thực phẩm\nINP6701",
+      "L": "200",
+      "M": "361,111 ₫",
+      "N": "72,222,222 ₫",
+      "O": "5,777,778 ₫",
+      "P": "78,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "39",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-04-28",
+      "E": "27/5/2026",
+      "G": "00000161",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2104",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2104",
+      "L": "220",
+      "M": "298,148 ₫",
+      "N": "65,592,591 ₫",
+      "O": "5,247,407 ₫",
+      "P": "70,839,998 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "40",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-05-19",
+      "E": "27/5/2026",
+      "G": "00000161",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2104",
+      "J": "Chảo inox chống dính đúc\nnguyên\nkhốiINP2104",
+      "L": "10",
+      "M": "298,148 ₫",
+      "N": "2,981,481 ₫",
+      "O": "238,519 ₫",
+      "P": "3,220,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "41",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "H": "chiết khấu 3% cho khách\nchương trình dầu năm cho đơn\ntrên 500 triệu",
+      "S": "15,000,944 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "42",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-05-11",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "100,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "43",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-05",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6401",
+      "J": "Quạt đứng INP6401",
+      "L": "100",
+      "M": "509,259 ₫",
+      "N": "50,925,926 ₫",
+      "O": "4,074,074 ₫",
+      "P": "55,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "44",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-17",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "100,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "45",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-23",
+      "E": "25/6/2026",
+      "G": "00000189",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1401",
+      "J": "Nồi áp suất 4.5L INP1401",
+      "L": "10",
+      "M": "824,074 ₫",
+      "N": "8,240,741 ₫",
+      "O": "659,259 ₫",
+      "P": "8,900,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "46",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-23",
+      "E": "25/6/2026",
+      "G": "00000189",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1402",
+      "J": "Nồi áp suất 6L INP1402",
+      "L": "10",
+      "M": "937,964 ₫",
+      "N": "9,379,640 ₫",
+      "O": "750,371 ₫",
+      "P": "10,130,011 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 86
+  },
+  {
+   "page": 10,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "47",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-23",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6402",
+      "J": "Quạt điện đứng INP6402",
+      "L": "10",
+      "M": "574,074 ₫",
+      "N": "5,740,741 ₫",
+      "O": "459,259 ₫",
+      "P": "6,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "48",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-06-23",
+      "E": "25/7/2026",
+      "G": "00000237",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6403",
+      "J": "Quạt điện đứng INP6403",
+      "L": "100",
+      "M": "694,444 ₫",
+      "N": "69,444,444 ₫",
+      "O": "5,555,556 ₫",
+      "P": "75,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "49",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "Q": "100,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "50",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "E": "08/05/2026",
+      "G": "00000259",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1001",
+      "J": "Bộ nồi inox INP1001",
+      "L": "20",
+      "M": "480,556 ₫",
+      "N": "9,611,111 ₫",
+      "O": "768,889 ₫",
+      "P": "10,380,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "51",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "E": "08/05/2026",
+      "G": "00000259",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1101",
+      "J": "Bộ nồi inox INP1101",
+      "L": "20",
+      "M": "483,333 ₫",
+      "N": "9,666,667 ₫",
+      "O": "773,333 ₫",
+      "P": "10,440,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "52",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "E": "08/05/2026",
+      "G": "00000259",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP1003",
+      "J": "Bộ nồi Inox INP1003",
+      "L": "40",
+      "M": "324,074 ₫",
+      "N": "12,962,963 ₫",
+      "O": "1,037,037 ₫",
+      "P": "14,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "53",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "E": "08/05/2026",
+      "G": "00000259",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "L": "10",
+      "M": "814,815 ₫",
+      "N": "8,148,148 ₫",
+      "O": "651,852 ₫",
+      "P": "8,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "54",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6005",
+      "J": "Nồi cơm điện INP6005\n(1,8L)",
+      "L": "1",
+      "M": "644,444 ₫",
+      "N": "644,444 ₫",
+      "O": "51,556 ₫",
+      "P": "696,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "55",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "120",
+      "M": "629,630 ₫",
+      "N": "75,555,556 ₫",
+      "O": "6,044,444 ₫",
+      "P": "81,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "56",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6009",
+      "J": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "1",
+      "M": "694,444 ₫",
+      "N": "694,444 ₫",
+      "O": "55,556 ₫",
+      "P": "750,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "57",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011\n(1,8L)",
+      "L": "1",
+      "M": "574,074 ₫",
+      "N": "574,074 ₫",
+      "O": "45,926 ₫",
+      "P": "620,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "58",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-07-30",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6007",
+      "J": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "12",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "59",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011\n(1,8L)",
+      "K": "Cái",
+      "L": "30",
+      "M": "574,074 ₫",
+      "N": "17,222,222 ₫",
+      "O": "1,377,778 ₫",
+      "P": "18,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "60",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "E": "25/08/2026",
+      "F": "BH275.4",
+      "G": "00000283",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Cái",
+      "L": "10",
+      "M": "814,815 ₫",
+      "N": "8,148,148 ₫",
+      "O": "651,852 ₫",
+      "P": "8,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "61",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP7952",
+      "J": "Máy sấy tóc INP7952",
+      "K": "Cái",
+      "L": "50",
+      "M": "292,593 ₫",
+      "N": "14,629,630 ₫",
+      "O": "1,170,370 ₫",
+      "P": "15,800,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 87
+  },
+  {
+   "page": 11,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "62",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP7953",
+      "J": "Máy sấy tóc INP7953",
+      "K": "Cái",
+      "L": "50",
+      "M": "231,481 ₫",
+      "N": "11,574,074 ₫",
+      "O": "925,926 ₫",
+      "P": "12,500,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "63",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "H": "Mua 15 tặng 1 购买15件，赠送1\n件",
+      "I": "INP6011",
+      "J": "Nồi cơm điện INP6011\n(1,8L)",
+      "K": "Cái",
+      "L": "2",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "64",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-17",
+      "D": "BH2026080009",
+      "E": "25/08/2026",
+      "F": "BH275.4",
+      "G": "00000283",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6802",
+      "J": "Thùng đựng gạo inoxpran\nINP6802",
+      "K": "Thùn\ng",
+      "L": "1",
+      "M": "0 ₫",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "65",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-18",
+      "H": "phí shíp 16 thùng hàng giao\nngày 18/8 30.000/thùng",
+      "N": "0 ₫",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "R": "480,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "66",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-08-28",
+      "H": "Thu tiền khách hàng Chuyển\nkhoản ngân hàng货款通过银行\n转账",
+      "P": "0 ₫",
+      "Q": "50,000,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "67",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "15/09/2026",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6003",
+      "J": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm đường)\nINP6003",
+      "K": "Cái",
+      "L": "2",
+      "M": "851,851.85",
+      "N": "1,703,704",
+      "O": "136,296",
+      "P": "1,840,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "68",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "15/09/2026",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6902",
+      "J": "Nồi áp suất điện INP6902",
+      "K": "Cái",
+      "L": "20",
+      "M": "814,814.81",
+      "N": "16,296,296",
+      "O": "1,303,704",
+      "P": "17,600,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "69",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006\n(1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "527,777.78",
+      "N": "7,916,667",
+      "O": "633,333",
+      "P": "8,550,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "70",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "IINP6010",
+      "J": "Nồi cơm điện INP6010\n(1,2L)",
+      "K": "Cái",
+      "L": "15",
+      "M": "481,481.48",
+      "N": "7,222,222",
+      "O": "577,778",
+      "P": "7,800,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "71",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "E": "15/09/2026",
+      "F": "BH294.4",
+      "G": "00000305",
+      "H": "xuất bán CÔNG TY TNHH PHÁT\nTRIỂN SẢN XUẤT THƯƠNG MẠI\nDỊCH VỤ RỒNG VIỆT向越南龙发\n展生产贸易服务有限公司销售产\n品",
+      "I": "INP2101",
+      "J": "Chảo inox chống dính đúc\nnguyên khốiINP2101",
+      "K": "Cái",
+      "L": "30",
+      "M": "234,259.26",
+      "N": "7,027,778",
+      "O": "562,222",
+      "P": "7,590,000"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "72",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "Mua 15 tặng 1 购买15件，赠送1\n件",
+      "I": "INP6006",
+      "J": "Nồi cơm điện INP6006\n(1,2L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "73",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "D": "BH2026080060",
+      "H": "Mua 15 tặng 1 购买15件，赠送1\n件",
+      "I": "IINP6010",
+      "J": "Nồi cơm điện INP6010\n(1,2L)",
+      "K": "Cái",
+      "L": "1",
+      "M": "0.00",
+      "N": "0",
+      "O": "0",
+      "P": "0"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "74",
+     "values": {
+      "A": "KH058",
+      "B": "CÔNG TY TNHH PHÁT TRIỂN\nSẢN XUẤT THƯƠNG MẠI DỊCH\nVỤ RỒNG VIỆT 越南龙发展生产\n贸易服务有限公司",
+      "C": "2026-09-11",
+      "H": "khách hàng tự trả tiền vận\nchuyển客户自行支付运输费",
+      "R": "660,000",
+      "T": "BH2026080060"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "E",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "F",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "G",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "H",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "I",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "J",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "K",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "L",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "M",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "N",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "O",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "P",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "Q",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "R",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "S",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 88
+  },
+  {
+   "page": 12,
+   "title": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT 越南龙发展生产贸易服务有限公司",
+   "sheet": "Rồng Việt",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [],
+   "cells": [
+    {
+     "row": "75",
+     "cell": "N75",
+     "value": "909,179,134 ₫"
+    },
+    {
+     "row": "75",
+     "cell": "O75",
+     "value": "72,734,331 ₫"
+    },
+    {
+     "row": "75",
+     "cell": "P75",
+     "value": "981,913,465 ₫"
+    },
+    {
+     "row": "75",
+     "cell": "Q75",
+     "value": "527,560,000 ₫"
+    },
+    {
+     "row": "75",
+     "cell": "R75",
+     "value": "1,140,000 ₫"
+    },
+    {
+     "row": "75",
+     "cell": "S75",
+     "value": "15,000,944 ₫"
+    },
+    {
+     "row": "77",
+     "cell": "H77",
+     "value": "Tổng công nợ"
+    },
+    {
+     "row": "77",
+     "cell": "I77",
+     "value": "981,913,465 ₫"
+    },
+    {
+     "row": "78",
+     "cell": "H78",
+     "value": "Đã Thanh toán"
+    },
+    {
+     "row": "78",
+     "cell": "I78",
+     "value": "527,560,000 ₫"
+    },
+    {
+     "row": "79",
+     "cell": "H79",
+     "value": "Công nợ quạt"
+    },
+    {
+     "row": "79",
+     "cell": "I79",
+     "value": "136,200,000 ₫"
+    },
+    {
+     "row": "80",
+     "cell": "H80",
+     "value": "chiết khấu(3%)Km đơn trên 500tr"
+    },
+    {
+     "row": "80",
+     "cell": "I80",
+     "value": "15,000,944 ₫"
+    },
+    {
+     "row": "81",
+     "cell": "H81",
+     "value": "Phí vận chuyển"
+    },
+    {
+     "row": "81",
+     "cell": "I81",
+     "value": "1,140,000 ₫"
+    },
+    {
+     "row": "82",
+     "cell": "H82",
+     "value": "còn lại"
+    },
+    {
+     "row": "82",
+     "cell": "I82",
+     "value": "438,212,522 ₫"
+    },
+    {
+     "row": "83",
+     "cell": "H83",
+     "value": "còn lại công nợ ( trừ Quạt )"
+    },
+    {
+     "row": "83",
+     "cell": "I83",
+     "value": "302,012,522 ₫"
+    },
+    {
+     "row": "85",
+     "cell": "H85",
+     "value": "CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG\nĐịa chỉ: Số 1369 Đại Lộ Thăng Long, Xã Sơn Đồng, Thành Phố Hà Nội\nSố Điện thoại : 0867024186\nMã số thuế : 0111201600\nTài khoản : 858988999 Ngân hàng: MB-CN Hai Bà Trưng."
+    }
+   ],
+   "index": [],
+   "originalPage": 89
+  },
+  {
+   "page": 13,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": 57,
+   "rows": [
+    {
+     "excelRow": "771",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2111",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2111",
+      "H": "cái",
+      "I": "10",
+      "J": "277,778.00",
+      "K": "2,777,780.00",
+      "L": "222,222.40",
+      "M": "3000002.40",
+      "Q": "3,000,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "772",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2202",
+      "G": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "H": "cái",
+      "I": "4",
+      "J": "844,444.00",
+      "K": "3,377,776.00",
+      "L": "270,222.08",
+      "M": "3647998.08",
+      "Q": "3,647,998.08"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "773",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP3201",
+      "G": "Chảo gang tráng\nmenINP3201",
+      "H": "cái",
+      "I": "24",
+      "J": "194,444.00",
+      "K": "4,666,656.00",
+      "L": "373,332.48",
+      "M": "5039988.48",
+      "Q": "5,039,988.48"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "774",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1003",
+      "G": "Bộ nồi Inox INP1003",
+      "H": "cái",
+      "I": "12",
+      "J": "314,815.00",
+      "K": "3,777,780.00",
+      "L": "302,222.40",
+      "M": "4080002.40",
+      "Q": "4,080,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "775",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1301",
+      "G": "Nồi mã INP1301",
+      "H": "cái",
+      "I": "10",
+      "J": "78,704.00",
+      "K": "787,040.00",
+      "L": "62,963.20",
+      "M": "850003.20",
+      "Q": "850,003.20"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "776",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2101",
+      "G": "Chảo inox chống dính đúc\nnguyên khốiINP2101",
+      "H": "cái",
+      "I": "10",
+      "J": "234,259.00",
+      "K": "2,342,590.00",
+      "L": "187,407.20",
+      "M": "2529997.20",
+      "Q": "2,529,997.20"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "777",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2102",
+      "G": "Chảo inox chống dính đúc\nnguyên khốiINP2102",
+      "H": "cái",
+      "I": "10",
+      "J": "256,481.00",
+      "K": "2,564,810.00",
+      "L": "205,184.80",
+      "M": "2769994.80",
+      "Q": "2,769,994.80"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "778",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2103",
+      "G": "Chảo inox chống dính đúc\nnguyên khốiINP2103",
+      "H": "cái",
+      "I": "10",
+      "J": "281,481.00",
+      "K": "2,814,810.00",
+      "L": "225,184.80",
+      "M": "3039994.80",
+      "Q": "3,039,994.80"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "779",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2105",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2105",
+      "H": "cái",
+      "I": "10",
+      "J": "227,778.00",
+      "K": "2,277,780.00",
+      "L": "182,222.40",
+      "M": "2460002.40",
+      "Q": "2,460,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "780",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2106",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2106",
+      "H": "cái",
+      "I": "10",
+      "J": "252,778.00",
+      "K": "2,527,780.00",
+      "L": "202,222.40",
+      "M": "2730002.40",
+      "Q": "2,730,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "781",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2108",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2108",
+      "H": "cái",
+      "I": "10",
+      "J": "256,481.00",
+      "K": "2,564,810.00",
+      "L": "205,184.80",
+      "M": "2769994.80",
+      "Q": "2,769,994.80"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "782",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2109",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2109",
+      "H": "cái",
+      "I": "10",
+      "J": "227,778.00",
+      "K": "2,277,780.00",
+      "L": "182,222.40",
+      "M": "2460002.40",
+      "Q": "2,460,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "783",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2110",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2110",
+      "H": "cái",
+      "I": "10",
+      "J": "252,778.00",
+      "K": "2,527,780.00",
+      "L": "202,222.40",
+      "M": "2730002.40",
+      "Q": "2,730,002.40"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "784",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000063",
+      "D": "02/10/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6001",
+      "G": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng\ngiảm đường) INP6001",
+      "H": "cái",
+      "I": "2",
+      "J": "1,138,889.00",
+      "K": "2,277,778.00",
+      "L": "182,222.24",
+      "M": "2460000.24",
+      "Q": "2,460,000.24"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "785",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000063",
+      "D": "02/10/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6003",
+      "G": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng\ngiảm đường) INP6003",
+      "H": "cái",
+      "I": "2",
+      "J": "851,852.00",
+      "K": "1,703,704.00",
+      "L": "136,296.32",
+      "M": "1840000.32",
+      "Q": "1,840,000.32"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "786",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000098",
+      "D": "23/03/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6101",
+      "G": "Bếp từ đơn INP6101( 2200W,\nmặt kính màu\nsữa )",
+      "H": "cái",
+      "I": "12",
+      "J": "601,852.00",
+      "K": "7,222,224.00",
+      "L": "577,777.92",
+      "M": "7800001.92",
+      "Q": "7,800,001.92",
+      "T": "điều chỉnh từ hđ 24"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "787",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000098",
+      "D": "23/03/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6201",
+      "G": "Ấm điện siêu tốc INP6201\n1,7 lít màu ghi",
+      "H": "cái",
+      "I": "12",
+      "J": "324,074.00",
+      "K": "3,888,888.00",
+      "L": "311,111.04",
+      "M": "4199999.04",
+      "Q": "4,199,999.04",
+      "T": "điều chỉnh từ hđ 24"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "788",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000098",
+      "D": "23/03/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6202",
+      "G": "Ấm điện siêu tốc INP6202\n1,7 lít màu đen",
+      "H": "cái",
+      "I": "24",
+      "J": "325,926.00",
+      "K": "7,822,224.00",
+      "L": "625,777.92",
+      "M": "8448001.92",
+      "Q": "8,448,001.92",
+      "T": "điều chỉnh từ hđ 24"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 90
+  },
+  {
+   "page": 14,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "789",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "30/12/2025",
+      "C": "00000025",
+      "D": "30/12/2025",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1301",
+      "G": "Nồi mã INP1301",
+      "H": "cái",
+      "I": "12",
+      "Q": "0.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "790",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "E": "2025年出货的产品给客人2%的折\n扣(62855989.2)",
+      "P": "1257119.78",
+      "Q": "1,257,119.78"
+     },
+     "red": [
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "791",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "01/02/2026",
+      "C": "NTTK00012",
+      "E": "Thu tiền CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "K": "0.00",
+      "L": "0.00",
+      "N": "18656000.00",
+      "Q": "18,656,000.00"
+     },
+     "red": [
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "792",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000047",
+      "D": "02/04/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1203",
+      "G": "Nồi Inox INP1203",
+      "H": "cái",
+      "I": "4",
+      "J": "492,592.59",
+      "K": "1,970,370.36",
+      "L": "157,629.63",
+      "M": "2127999.99",
+      "Q": "2,127,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "793",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000047",
+      "D": "02/04/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1301",
+      "G": "Nồi mã INP1301",
+      "H": "cái",
+      "I": "10",
+      "J": "78,703.70",
+      "K": "787,037.00",
+      "L": "62,962.96",
+      "M": "849999.96",
+      "Q": "849,999.96"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "794",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000047",
+      "D": "02/04/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2111",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2111",
+      "H": "cái",
+      "I": "10",
+      "J": "277,777.77",
+      "K": "2,777,777.70",
+      "L": "222,222.22",
+      "M": "2999999.92",
+      "Q": "2,999,999.92"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "795",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000047",
+      "D": "02/04/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2202",
+      "G": "Nồi luộc gà inox đúc nguyên\nkhốiINP2202",
+      "H": "cái",
+      "I": "2",
+      "J": "844,444.44",
+      "K": "1,688,888.88",
+      "L": "135,111.11",
+      "M": "1823999.99",
+      "Q": "1,823,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "796",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000063",
+      "D": "02/10/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6003",
+      "G": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng\ngiảm đường) INP6003",
+      "H": "cái",
+      "I": "4",
+      "J": "851,852.00",
+      "K": "3,407,408.00",
+      "L": "272,592.64",
+      "M": "3680000.64",
+      "Q": "3,680,000.64"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "797",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "15/02/2026",
+      "D": "15/2/2026",
+      "E": "Thu tiền CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "K": "0.00",
+      "L": "0.00",
+      "N": "35233986.00",
+      "Q": "35,233,986.00"
+     },
+     "red": [
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "798",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "02/03/2026",
+      "C": "00000098",
+      "D": "23/03/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6201",
+      "G": "Ấm điện siêu tốc INP6201\n1,7 lít màu ghi",
+      "H": "cái",
+      "I": "12",
+      "J": "324,074.07",
+      "K": "3,888,888.84",
+      "L": "311,111.11",
+      "M": "4199999.95",
+      "Q": "4,199,999.95"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "799",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "05/05/2026",
+      "E": "Thu tiền CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "K": "0.00",
+      "L": "0.00",
+      "N": "23390844.00",
+      "Q": "23,390,844.00"
+     },
+     "red": [
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "800",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "05/07/2026",
+      "E": "Điều chỉnh giảm",
+      "F": "INP3201",
+      "G": "Chảo gang tráng\nmenINP3201",
+      "H": "cái",
+      "I": "(18)",
+      "J": "194,444.00",
+      "K": "(3,499,992.00)",
+      "L": "(279,999.36)",
+      "M": "(3779991.36)",
+      "Q": "3,779,991.36"
+     },
+     "red": [
+      "I",
+      "K",
+      "L",
+      "M",
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "801",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "05/07/2026",
+      "E": "Điều chỉnh giảm",
+      "F": "INP2101",
+      "G": "Chảo inox chống dính đúc\nnguyên khốiINP2101",
+      "H": "cái",
+      "I": "(10)",
+      "J": "234,259.00",
+      "K": "(2,342,590.00)",
+      "L": "(187,407.20)",
+      "M": "(2529997.20)",
+      "Q": "2,529,997.20"
+     },
+     "red": [
+      "I",
+      "K",
+      "L",
+      "M",
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "802",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "05/07/2026",
+      "E": "Điều chỉnh giảm",
+      "F": "INP2102",
+      "G": "Chảo inox chống dính đúc\nnguyên khốiINP2102",
+      "H": "cái",
+      "I": "(10)",
+      "J": "256,481.00",
+      "K": "(2,564,810.00)",
+      "L": "(205,184.80)",
+      "M": "(2769994.80)",
+      "Q": "2,769,994.80"
+     },
+     "red": [
+      "I",
+      "K",
+      "L",
+      "M",
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "803",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "05/07/2026",
+      "E": "Điều chỉnh giảm",
+      "F": "INP2105",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2105",
+      "H": "cái",
+      "I": "(10)",
+      "J": "227,778.00",
+      "K": "(2,277,780.00)",
+      "L": "(182,222.40)",
+      "M": "(2460002.40)",
+      "Q": "2,460,002.40"
+     },
+     "red": [
+      "I",
+      "K",
+      "L",
+      "M",
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "804",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2001",
+      "G": "Bộ nồi inox đúc nguyên khối\nINP2001",
+      "H": "Bộ",
+      "I": "2",
+      "J": "1,043,518.52",
+      "K": "2,087,037.04",
+      "L": "166,962.96",
+      "M": "2254000.00",
+      "Q": "2,254,000.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "805",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2002",
+      "G": "Bộ nồi inox INP2002",
+      "H": "Bộ",
+      "I": "2",
+      "J": "851,851.85",
+      "K": "1,703,703.70",
+      "L": "136,296.30",
+      "M": "1840000.00",
+      "Q": "1,840,000.00"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "806",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2106",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2106",
+      "H": "cái",
+      "I": "20",
+      "J": "252,777.78",
+      "K": "5,055,555.60",
+      "L": "404,444.45",
+      "M": "5460000.05",
+      "Q": "5,460,000.05"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 91
+  },
+  {
+   "page": 15,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "807",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2110",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2110",
+      "H": "cái",
+      "I": "20",
+      "J": "252,777.78",
+      "K": "5,055,555.60",
+      "L": "404,444.45",
+      "M": "5460000.05",
+      "Q": "5,460,000.05"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "808",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2111",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2111",
+      "H": "cái",
+      "I": "20",
+      "J": "277,777.78",
+      "K": "5,555,555.60",
+      "L": "444,444.45",
+      "M": "6000000.05",
+      "Q": "6,000,000.05"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "809",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6001",
+      "G": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm đường)\nINP6001",
+      "H": "cái",
+      "I": "4",
+      "J": "1,138,889.00",
+      "K": "4,555,556.00",
+      "L": "364,444.48",
+      "M": "4920000.48",
+      "Q": "4,920,000.48"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "810",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6002",
+      "G": "Nồi cơm điện tử (Nồi cơm\nđiện đa năng giảm đường)\nINP6002",
+      "H": "cái",
+      "I": "4",
+      "J": "1,097,222.22",
+      "K": "4,388,888.88",
+      "L": "351,111.11",
+      "M": "4739999.99",
+      "Q": "4,739,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "811",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6202",
+      "G": "Ấm điện siêu tốc INP6202\n1,7 lít màu đen",
+      "H": "cái",
+      "I": "60",
+      "J": "325,925.93",
+      "K": "19,555,555.80",
+      "L": "1,564,444.46",
+      "M": "21120000.26",
+      "Q": "21,120,000.26"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "812",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1301",
+      "G": "Nồi mã INP1301",
+      "H": "cái",
+      "I": "10",
+      "J": "78,703.70",
+      "K": "787,037.00",
+      "L": "62,962.96",
+      "M": "849999.96",
+      "Q": "849,999.96"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "813",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6701",
+      "G": "Máy xay thực phẩm INP6701",
+      "H": "cái",
+      "I": "8",
+      "J": "361,111.11",
+      "K": "2,888,888.88",
+      "L": "231,111.11",
+      "M": "3119999.99",
+      "Q": "3,119,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "814",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2301",
+      "G": "Chảo rán INP2301",
+      "H": "Bộ",
+      "I": "20",
+      "J": "416,666.66",
+      "K": "8,333,333.20",
+      "L": "666,666.66",
+      "M": "8999999.86",
+      "Q": "8,999,999.86"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "815",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000137",
+      "D": "05/07/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP1003",
+      "G": "Bộ nồi Inox INP1003",
+      "H": "Bộ",
+      "I": "11",
+      "J": "324,074.07",
+      "K": "3,564,814.77",
+      "L": "285,185.18",
+      "M": "3849999.95",
+      "Q": "3,849,999.95"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "816",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "05/04/2026",
+      "C": "00000160",
+      "D": "27/5/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2107",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2107",
+      "H": "cái",
+      "I": "20",
+      "J": "268,518.52",
+      "K": "5,370,370.40",
+      "L": "429,629.63",
+      "M": "5800000.03",
+      "Q": "5,800,000.03"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "817",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "06/02/2026",
+      "C": "00000166",
+      "D": "06/02/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2107",
+      "G": "Chảo inox đúc nguyên khối\n(không chống dính)INP2107",
+      "H": "cái",
+      "I": "20",
+      "J": "268,518.52",
+      "K": "5,370,370.40",
+      "L": "429,629.63",
+      "M": "5800000.03",
+      "Q": "5,800,000.03"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "818",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "D": "06/09/2026",
+      "E": "Thu tiền CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "K": "0.00",
+      "L": "0.00",
+      "N": "68674055.00",
+      "Q": "68,674,055.00"
+     },
+     "red": [
+      "Q"
+     ]
+    },
+    {
+     "excelRow": "819",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "06/10/2026",
+      "C": "00000174",
+      "D": "06/12/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP2301",
+      "G": "Chảo rán INP2301",
+      "H": "Bộ",
+      "I": "20",
+      "J": "416,666.66",
+      "K": "8,333,333.20",
+      "L": "666,666.66",
+      "M": "8999999.86",
+      "Q": "8,999,999.86"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "820",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "06/10/2026",
+      "C": "00000174",
+      "D": "06/12/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6701",
+      "G": "Máy xay thực phẩm INP6701",
+      "H": "cái",
+      "I": "24",
+      "J": "361,111.11",
+      "K": "8,666,666.64",
+      "L": "693,333.33",
+      "M": "9359999.97",
+      "Q": "9,359,999.97"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "821",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "06/10/2026",
+      "C": "chưa xuất HĐ",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6401",
+      "G": "Quạt đứng INP6401",
+      "H": "cái",
+      "I": "30",
+      "J": "509,259.26",
+      "K": "15,277,777.80",
+      "L": "1,222,222.22",
+      "M": "16500000.02",
+      "Q": "16,500,000.02"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "822",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "18/6/2026",
+      "C": "chưa xuất HĐ",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6902",
+      "G": "Nồi áp suất điện INP6902",
+      "H": "Nồi",
+      "I": "20",
+      "J": "814,814.81",
+      "K": "16,296,296.20",
+      "L": "1,303,703.70",
+      "M": "17599999.90",
+      "Q": "17,599,999.90"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "823",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "18/6/2026",
+      "C": "chưa xuất HĐ",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6903",
+      "G": "Nồi áp suất điện INP6903",
+      "H": "Nồi",
+      "I": "2",
+      "J": "907,407.41",
+      "K": "1,814,814.82",
+      "L": "145,185.19",
+      "M": "1960000.01",
+      "Q": "1,960,000.01"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "824",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "18/06/2026",
+      "E": "Tiền vận chuyển",
+      "O": "220000.00",
+      "Q": "220,000.00"
+     },
+     "red": [
+      "Q"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 92
+  },
+  {
+   "page": 16,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "Sheet1",
+   "hidden": true,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "825",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "07/07/2026",
+      "C": "chưa xuất HĐ",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6902",
+      "G": "Nồi áp suất điện INP6902",
+      "H": "Nồi",
+      "I": "30",
+      "J": "814,814.81",
+      "K": "24,444,444.30",
+      "L": "1,955,555.54",
+      "M": "26399999.84",
+      "Q": "26,399,999.84"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "826",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "07/07/2026",
+      "C": "00000216",
+      "D": "15/7/2026",
+      "E": "Xuất bán cho CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD",
+      "F": "INP6403",
+      "G": "Quạt điện đứng INP6403",
+      "H": "cái",
+      "I": "2",
+      "J": "694,444.44",
+      "K": "1,388,888.88",
+      "L": "111,111.11",
+      "M": "1499999.99",
+      "Q": "1,499,999.99"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "827",
+     "values": {
+      "A": "CÔNG TY TNHH THƯƠNG MẠI\nVÀ DỊCH VỤ THẢO NGUYÊN\nHD（草原HD贸易与服务有限责\n任公司",
+      "B": "07/08/2026",
+      "E": "Tiền vận chuyển",
+      "O": "425000.00",
+      "Q": "425,000.00"
+     },
+     "red": [
+      "Q"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "diễn giải(中文)"
+    },
+    {
+     "letter": "B",
+     "label": "Ngày tháng ghi sổ"
+    },
+    {
+     "letter": "C",
+     "label": "Chứng từ SH"
+    },
+    {
+     "letter": "D",
+     "label": "Ngày xuất HĐ"
+    },
+    {
+     "letter": "E",
+     "label": "diễn giải"
+    },
+    {
+     "letter": "F",
+     "label": "Mã Hàng"
+    },
+    {
+     "letter": "G",
+     "label": "Tên Hàng"
+    },
+    {
+     "letter": "H",
+     "label": "ĐVT"
+    },
+    {
+     "letter": "I",
+     "label": "số lượng"
+    },
+    {
+     "letter": "J",
+     "label": "Đơn Giá"
+    },
+    {
+     "letter": "K",
+     "label": "Thành tiền chưa thuế"
+    },
+    {
+     "letter": "L",
+     "label": "Thuế GTGT (8%)"
+    },
+    {
+     "letter": "M",
+     "label": "thành tiền （出货）"
+    },
+    {
+     "letter": "N",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "O",
+     "label": "运费"
+    },
+    {
+     "letter": "P",
+     "label": "折扣"
+    },
+    {
+     "letter": "Q",
+     "label": "小计"
+    },
+    {
+     "letter": "R",
+     "label": "còn nợ"
+    },
+    {
+     "letter": "T",
+     "label": ""
+    }
+   ],
+   "originalPage": 93
+  },
+  {
+   "page": 17,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": 84,
+   "rows": [
+    {
+     "excelRow": "373",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2111",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2111",
+      "L": "cái",
+      "M": "10.00",
+      "N": "277,778 ₫",
+      "O": "2,777,780 ₫",
+      "P": "222,222 ₫",
+      "Q": "3,000,002 ₫",
+      "V": "3,000,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "374",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khốiINP2202",
+      "L": "cái",
+      "M": "4.00",
+      "N": "844,444 ₫",
+      "O": "3,377,776 ₫",
+      "P": "270,222 ₫",
+      "Q": "3,647,998 ₫",
+      "V": "3,647,998 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "375",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP3201",
+      "K": "Chảo gang tráng\nmenINP3201",
+      "L": "cái",
+      "M": "24.00",
+      "N": "194,444 ₫",
+      "O": "4,666,656 ₫",
+      "P": "373,332 ₫",
+      "Q": "5,039,988 ₫",
+      "V": "5,039,988 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "376",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "cái",
+      "M": "12.00",
+      "N": "314,815 ₫",
+      "O": "3,777,780 ₫",
+      "P": "302,222 ₫",
+      "Q": "4,080,002 ₫",
+      "V": "4,080,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "377",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "cái",
+      "M": "10.00",
+      "N": "78,704 ₫",
+      "O": "787,040 ₫",
+      "P": "62,963 ₫",
+      "Q": "850,003 ₫",
+      "V": "850,003 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "378",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "cái",
+      "M": "10.00",
+      "N": "234,259 ₫",
+      "O": "2,342,590 ₫",
+      "P": "187,407 ₫",
+      "Q": "2,529,997 ₫",
+      "V": "2,529,997 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "379",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "cái",
+      "M": "10.00",
+      "N": "256,481 ₫",
+      "O": "2,564,810 ₫",
+      "P": "205,185 ₫",
+      "Q": "2,769,995 ₫",
+      "V": "2,769,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "380",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2103",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2103",
+      "L": "cái",
+      "M": "10.00",
+      "N": "281,481 ₫",
+      "O": "2,814,810 ₫",
+      "P": "225,185 ₫",
+      "Q": "3,039,995 ₫",
+      "V": "3,039,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "381",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2105",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2105",
+      "L": "cái",
+      "M": "10.00",
+      "N": "227,778 ₫",
+      "O": "2,277,780 ₫",
+      "P": "182,222 ₫",
+      "Q": "2,460,002 ₫",
+      "V": "2,460,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "382",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2106",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2106",
+      "L": "cái",
+      "M": "10.00",
+      "N": "252,778 ₫",
+      "O": "2,527,780 ₫",
+      "P": "202,222 ₫",
+      "Q": "2,730,002 ₫",
+      "V": "2,730,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "383",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2108",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2108",
+      "L": "cái",
+      "M": "10.00",
+      "N": "256,481 ₫",
+      "O": "2,564,810 ₫",
+      "P": "205,185 ₫",
+      "Q": "2,769,995 ₫",
+      "V": "2,769,995 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "384",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2109",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2109",
+      "L": "cái",
+      "M": "10.00",
+      "N": "227,778 ₫",
+      "O": "2,277,780 ₫",
+      "P": "182,222 ₫",
+      "Q": "2,460,002 ₫",
+      "V": "2,460,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "385",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2110",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2110",
+      "L": "cái",
+      "M": "10.00",
+      "N": "252,778 ₫",
+      "O": "2,527,780 ₫",
+      "P": "202,222 ₫",
+      "Q": "2,730,002 ₫",
+      "V": "2,730,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "386",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "02/10/2026",
+      "H": "00000063",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng\ngiảm đường) INP6001",
+      "L": "cái",
+      "M": "2.00",
+      "N": "1,138,889 ₫",
+      "O": "2,277,778 ₫",
+      "P": "182,222 ₫",
+      "Q": "2,460,000 ₫",
+      "V": "2,460,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 94
+  },
+  {
+   "page": 18,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "387",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "02/10/2026",
+      "H": "00000063",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng\ngiảm đường) INP6003",
+      "L": "cái",
+      "M": "2.00",
+      "N": "851,852 ₫",
+      "O": "1,703,704 ₫",
+      "P": "136,296 ₫",
+      "Q": "1,840,000 ₫",
+      "V": "1,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "388",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "23/03/2026",
+      "H": "00000098",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6101",
+      "K": "Bếp từ đơn INP6101(\n2200W, mặt kính màu\nsữa )",
+      "L": "cái",
+      "M": "12.00",
+      "N": "601,852 ₫",
+      "O": "7,222,224 ₫",
+      "P": "577,778 ₫",
+      "Q": "7,800,002 ₫",
+      "V": "7,800,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "389",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "23/03/2026",
+      "H": "00000098",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6201",
+      "K": "Ấm điện siêu tốc\nINP6201 1,7 lít màu ghi",
+      "L": "cái",
+      "M": "12.00",
+      "N": "324,074 ₫",
+      "O": "3,888,888 ₫",
+      "P": "311,111 ₫",
+      "Q": "4,199,999 ₫",
+      "V": "4,199,999 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "390",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "23/03/2026",
+      "H": "00000098",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "cái",
+      "M": "24.00",
+      "N": "325,926 ₫",
+      "O": "7,822,224 ₫",
+      "P": "625,778 ₫",
+      "Q": "8,448,002 ₫",
+      "V": "8,448,002 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "391",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "30/12/2025",
+      "F": "30/12/2025",
+      "H": "00000025",
+      "I": "mua bếp từ tặng nồi lẩu 购\n买电磁炉，赠送火锅",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "cái",
+      "M": "12.00",
+      "V": "0 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "392",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "I": "Giảm 2%đơn 30/12 phí vận\nchuyển",
+      "S": "1,257,120 ₫",
+      "V": "1,257,120 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "393",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-02-01",
+      "H": "NTTK00012",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "18,656,000 ₫",
+      "V": "18,656,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "394",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "02/04/2026",
+      "H": "00000047",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1203",
+      "K": "Nồi Inox INP1203",
+      "L": "cái",
+      "M": "4.00",
+      "N": "492,593 ₫",
+      "O": "1,970,370 ₫",
+      "P": "157,630 ₫",
+      "Q": "2,128,000 ₫",
+      "V": "2,128,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "395",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "02/04/2026",
+      "H": "00000047",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "cái",
+      "M": "10.00",
+      "N": "78,704 ₫",
+      "O": "787,037 ₫",
+      "P": "62,963 ₫",
+      "Q": "850,000 ₫",
+      "V": "850,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "396",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "02/04/2026",
+      "H": "00000047",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2111",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2111",
+      "L": "cái",
+      "M": "10.00",
+      "N": "277,778 ₫",
+      "O": "2,777,778 ₫",
+      "P": "222,222 ₫",
+      "Q": "3,000,000 ₫",
+      "V": "3,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "397",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "02/04/2026",
+      "H": "00000047",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2202",
+      "K": "Nồi luộc gà inox đúc\nnguyên khốiINP2202",
+      "L": "cái",
+      "M": "2.00",
+      "N": "844,444 ₫",
+      "O": "1,688,889 ₫",
+      "P": "135,111 ₫",
+      "Q": "1,824,000 ₫",
+      "V": "1,824,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "398",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "02/10/2026",
+      "H": "00000063",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6003",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng\ngiảm đường) INP6003",
+      "L": "cái",
+      "M": "4.00",
+      "N": "851,852 ₫",
+      "O": "3,407,408 ₫",
+      "P": "272,593 ₫",
+      "Q": "3,680,001 ₫",
+      "V": "3,680,001 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "399",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "15/02/2026",
+      "F": "15/2/2026",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "35,233,986 ₫",
+      "V": "35,233,986 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "400",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-03-02",
+      "F": "23/03/2026",
+      "H": "00000098",
+      "I": "Xuất bán cho CÔNG TY\nTNHH THƯƠNG MẠI VÀ\nDỊCH VỤ THẢO NGUYÊN HD",
+      "J": "INP6201",
+      "K": "Ấm điện siêu tốc\nINP6201 1,7 lít màu ghi",
+      "L": "cái",
+      "M": "12.00",
+      "N": "324,074 ₫",
+      "O": "3,888,889 ₫",
+      "P": "311,111 ₫",
+      "Q": "4,200,000 ₫",
+      "V": "4,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "401",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "05/05/2026",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "23,390,844 ₫",
+      "V": "23,390,844 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "402",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "05/07/2026",
+      "I": "Điều chỉnh giảm",
+      "J": "INP3201",
+      "K": "Chảo gang tráng\nmenINP3201",
+      "L": "cái",
+      "M": "-18.00",
+      "N": "194,444 ₫",
+      "O": "3,499,992 ₫",
+      "P": "279,999 ₫",
+      "Q": "3,779,991 ₫",
+      "V": "3,779,991 ₫"
+     },
+     "red": [
+      "I",
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 95
+  },
+  {
+   "page": 19,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "403",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "05/07/2026",
+      "I": "Điều chỉnh giảm",
+      "J": "INP2101",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2101",
+      "L": "cái",
+      "M": "-10.00",
+      "N": "234,259 ₫",
+      "O": "2,342,590 ₫",
+      "P": "187,407 ₫",
+      "Q": "2,529,997 ₫",
+      "V": "2,529,997 ₫"
+     },
+     "red": [
+      "I",
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "404",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "05/07/2026",
+      "I": "Điều chỉnh giảm",
+      "J": "INP2102",
+      "K": "Chảo inox chống dính\nđúc nguyên\nkhốiINP2102",
+      "L": "cái",
+      "M": "-10.00",
+      "N": "256,481 ₫",
+      "O": "2,564,810 ₫",
+      "P": "205,185 ₫",
+      "Q": "2,769,995 ₫",
+      "V": "2,769,995 ₫"
+     },
+     "red": [
+      "I",
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "405",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "05/07/2026",
+      "I": "Điều chỉnh giảm",
+      "J": "INP2105",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2105",
+      "L": "cái",
+      "M": "-10.00",
+      "N": "227,778 ₫",
+      "O": "2,277,780 ₫",
+      "P": "182,222 ₫",
+      "Q": "2,460,002 ₫",
+      "V": "2,460,002 ₫"
+     },
+     "red": [
+      "I",
+      "M",
+      "O",
+      "P",
+      "Q",
+      "V"
+     ]
+    },
+    {
+     "excelRow": "406",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2001",
+      "K": "Bộ nồi inox đúc nguyên\nkhối INP2001",
+      "L": "Bộ",
+      "M": "2.00",
+      "N": "1,043,519 ₫",
+      "O": "2,087,037 ₫",
+      "P": "166,963 ₫",
+      "Q": "2,254,000 ₫",
+      "V": "2,254,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "407",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2002",
+      "K": "Bộ nồi inox INP2002",
+      "L": "Bộ",
+      "M": "2.00",
+      "N": "851,852 ₫",
+      "O": "1,703,704 ₫",
+      "P": "136,296 ₫",
+      "Q": "1,840,000 ₫",
+      "V": "1,840,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "408",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2106",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2106",
+      "L": "cái",
+      "M": "20.00",
+      "N": "252,778 ₫",
+      "O": "5,055,556 ₫",
+      "P": "404,444 ₫",
+      "Q": "5,460,000 ₫",
+      "V": "5,460,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "409",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2110",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2110",
+      "L": "cái",
+      "M": "20.00",
+      "N": "252,778 ₫",
+      "O": "5,055,556 ₫",
+      "P": "404,444 ₫",
+      "Q": "5,460,000 ₫",
+      "V": "5,460,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "410",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2111",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2111",
+      "L": "cái",
+      "M": "20.00",
+      "N": "277,778 ₫",
+      "O": "5,555,556 ₫",
+      "P": "444,444 ₫",
+      "Q": "6,000,000 ₫",
+      "V": "6,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "411",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6001",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6001",
+      "L": "cái",
+      "M": "4.00",
+      "N": "1,138,889 ₫",
+      "O": "4,555,556 ₫",
+      "P": "364,444 ₫",
+      "Q": "4,920,000 ₫",
+      "V": "4,920,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "412",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6002",
+      "K": "Nồi cơm điện tử (Nồi\ncơm điện đa năng giảm\nđường) INP6002",
+      "L": "cái",
+      "M": "4.00",
+      "N": "1,097,222 ₫",
+      "O": "4,388,889 ₫",
+      "P": "351,111 ₫",
+      "Q": "4,740,000 ₫",
+      "V": "4,740,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "413",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6202",
+      "K": "Ấm điện siêu tốc\nINP6202 1,7 lít màu đen",
+      "L": "cái",
+      "M": "60.00",
+      "N": "325,926 ₫",
+      "O": "19,555,556 ₫",
+      "P": "1,564,444 ₫",
+      "Q": "21,120,000 ₫",
+      "V": "21,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "414",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1301",
+      "K": "Nồi mã INP1301",
+      "L": "cái",
+      "M": "10.00",
+      "N": "78,704 ₫",
+      "O": "787,037 ₫",
+      "P": "62,963 ₫",
+      "Q": "850,000 ₫",
+      "V": "850,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "415",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "cái",
+      "M": "8.00",
+      "N": "361,111 ₫",
+      "O": "2,888,889 ₫",
+      "P": "231,111 ₫",
+      "Q": "3,120,000 ₫",
+      "V": "3,120,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "416",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2301",
+      "K": "Chảo rán INP2301",
+      "L": "Bộ",
+      "M": "20.00",
+      "N": "416,667 ₫",
+      "O": "8,333,333 ₫",
+      "P": "666,667 ₫",
+      "Q": "9,000,000 ₫",
+      "V": "9,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "417",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "05/07/2026",
+      "H": "00000137",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP1003",
+      "K": "Bộ nồi Inox INP1003",
+      "L": "Bộ",
+      "M": "11.00",
+      "N": "324,074 ₫",
+      "O": "3,564,815 ₫",
+      "P": "285,185 ₫",
+      "Q": "3,850,000 ₫",
+      "V": "3,850,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 96
+  },
+  {
+   "page": 20,
+   "title": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD (HD草原贸易服务有限责任公司)",
+   "sheet": "订单",
+   "hidden": false,
+   "declaredRows": null,
+   "rows": [
+    {
+     "excelRow": "418",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-04-05",
+      "F": "27/5/2026",
+      "H": "00000160",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2107",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2107",
+      "L": "cái",
+      "M": "20.00",
+      "N": "268,519 ₫",
+      "O": "5,370,370 ₫",
+      "P": "429,630 ₫",
+      "Q": "5,800,000 ₫",
+      "V": "5,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "419",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-02-06",
+      "F": "06/02/2026",
+      "H": "00000166",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2107",
+      "K": "Chảo inox đúc nguyên\nkhối (không chống\ndính)INP2107",
+      "L": "cái",
+      "M": "20.00",
+      "N": "268,519 ₫",
+      "O": "5,370,370 ₫",
+      "P": "429,630 ₫",
+      "Q": "5,800,000 ₫",
+      "V": "5,800,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "420",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "F": "06/09/2026",
+      "I": "Thu tiền khách hàng\nChuyển khoản ngân hàng货\n款通过银行转账",
+      "O": "0 ₫",
+      "P": "0 ₫",
+      "Q": "0 ₫",
+      "R": "68,674,055 ₫",
+      "V": "68,674,055 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "421",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-06-10",
+      "F": "12/06/2026",
+      "H": "00000174",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP2301",
+      "K": "Chảo rán INP2301",
+      "L": "Bộ",
+      "M": "20.00",
+      "N": "416,667 ₫",
+      "O": "8,333,333 ₫",
+      "P": "666,667 ₫",
+      "Q": "9,000,000 ₫",
+      "V": "9,000,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "422",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-06-10",
+      "F": "12/06/2026",
+      "H": "00000174",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6701",
+      "K": "Máy xay thực phẩm\nINP6701",
+      "L": "cái",
+      "M": "24.00",
+      "N": "361,111 ₫",
+      "O": "8,666,667 ₫",
+      "P": "693,333 ₫",
+      "Q": "9,360,000 ₫",
+      "V": "9,360,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "423",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-06-10",
+      "H": "chưa xuất\nHĐ",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6401",
+      "K": "Quạt đứng INP6401",
+      "L": "cái",
+      "M": "30.00",
+      "N": "509,259 ₫",
+      "O": "15,277,778 ₫",
+      "P": "1,222,222 ₫",
+      "Q": "16,500,000 ₫",
+      "V": "16,500,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "424",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "18/6/2026",
+      "F": "27/7/2026",
+      "H": "00000250",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Nồi",
+      "M": "20.00",
+      "N": "814,815 ₫",
+      "O": "16,296,296 ₫",
+      "P": "1,303,704 ₫",
+      "Q": "17,600,000 ₫",
+      "V": "17,600,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "425",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "18/6/2026",
+      "F": "27/7/2026",
+      "H": "00000250",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6903",
+      "K": "Nồi áp suất điện\nINP6903",
+      "L": "Nồi",
+      "M": "2.00",
+      "N": "907,407 ₫",
+      "O": "1,814,815 ₫",
+      "P": "145,185 ₫",
+      "Q": "1,960,000 ₫",
+      "V": "1,960,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "426",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "18/06/2026",
+      "I": "Tiền vận chuyển",
+      "S": "220,000 ₫",
+      "V": "220,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "427",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-07-07",
+      "F": "27/7/2026",
+      "H": "00000250",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6902",
+      "K": "Nồi áp suất điện\nINP6902",
+      "L": "Nồi",
+      "M": "30.00",
+      "N": "814,815 ₫",
+      "O": "24,444,444 ₫",
+      "P": "1,955,556 ₫",
+      "Q": "26,400,000 ₫",
+      "V": "26,400,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "428",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-07-07",
+      "F": "15/7/2026",
+      "H": "00000216",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6403",
+      "K": "Quạt điện đứng\nINP6403",
+      "L": "cái",
+      "M": "2.00",
+      "N": "694,444 ₫",
+      "O": "1,388,889 ₫",
+      "P": "111,111 ₫",
+      "Q": "1,500,000 ₫",
+      "V": "1,500,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "429",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-08-07",
+      "I": "Tiền vận chuyển",
+      "S": "425,000 ₫",
+      "V": "425,000 ₫"
+     },
+     "red": [
+      "V"
+     ]
+    },
+    {
+     "excelRow": "1241",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-08-14",
+      "E": "BH2026080005",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6105",
+      "K": "Bếp từ đơn INP6105",
+      "L": "Cái",
+      "M": "6.00",
+      "N": "675,926 ₫",
+      "O": "4,055,556 ₫",
+      "P": "324,444 ₫",
+      "Q": "4,380,000 ₫",
+      "V": "4,380,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1242",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-08-14",
+      "E": "BH2026080005",
+      "F": "2026-10-01",
+      "G": "BH323.4",
+      "H": "00000333",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6007",
+      "K": "Nồi cơm điện INP6007\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "629,630 ₫",
+      "O": "9,444,444 ₫",
+      "P": "755,556 ₫",
+      "Q": "10,200,000 ₫",
+      "V": "10,200,000 ₫"
+     },
+     "red": []
+    },
+    {
+     "excelRow": "1243",
+     "values": {
+      "A": "KH074",
+      "B": "CÔNG TY TNHH THƯƠNG\nMẠI VÀ DỊCH VỤ THẢO\nNGUYÊN HD (HD草原贸易\n服务有限责任公司)",
+      "C": "2026-08-14",
+      "E": "BH2026080005",
+      "F": "2026-10-01",
+      "G": "BH323.4",
+      "H": "00000333",
+      "I": "xuất bán CÔNG TY TNHH\nTHƯƠNG MẠI VÀ DỊCH VỤ\nTHẢO NGUYÊN HD向HD草\n原贸易服务有限责任公司销\n售产品",
+      "J": "INP6009",
+      "K": "Nồi cơm điện INP6009\n(1,8L)",
+      "L": "Cái",
+      "M": "15.00",
+      "N": "694,444 ₫",
+      "O": "10,416,667 ₫",
+      "P": "833,333 ₫",
+      "Q": "11,250,000 ₫",
+      "V": "11,250,000 ₫"
+     },
+     "red": []
+    }
+   ],
+   "cells": [],
+   "index": [],
+   "columns": [
+    {
+     "letter": "A",
+     "label": "mã khách hàng 客户编号"
+    },
+    {
+     "letter": "B",
+     "label": "Tên Khách Hàng(中文)"
+    },
+    {
+     "letter": "C",
+     "label": "Ngày tháng ghi sổ 订单日期"
+    },
+    {
+     "letter": "D",
+     "label": "ngày xuất/nhập kho 出/入单 日期"
+    },
+    {
+     "letter": "E",
+     "label": "số chứng từ 订单编号"
+    },
+    {
+     "letter": "F",
+     "label": "ngày xuất HĐ 发票日期"
+    },
+    {
+     "letter": "G",
+     "label": "số chứng từ mới 发票订单号"
+    },
+    {
+     "letter": "H",
+     "label": "số hóa đơn 发票号"
+    },
+    {
+     "letter": "I",
+     "label": "diễn giải 摘要"
+    },
+    {
+     "letter": "J",
+     "label": "Mã Hàng 型号"
+    },
+    {
+     "letter": "K",
+     "label": "Tên Hàng 产品规格"
+    },
+    {
+     "letter": "L",
+     "label": "ĐVT 单位"
+    },
+    {
+     "letter": "M",
+     "label": "số lượng 数量"
+    },
+    {
+     "letter": "N",
+     "label": "Đơn Giá 单价"
+    },
+    {
+     "letter": "O",
+     "label": "Thành tiền chưa thuế 不含税金额"
+    },
+    {
+     "letter": "P",
+     "label": "Thuế GTGT (8%) 税额"
+    },
+    {
+     "letter": "Q",
+     "label": "thành tiền 含税金额"
+    },
+    {
+     "letter": "R",
+     "label": "Đã thanh toán （收款）"
+    },
+    {
+     "letter": "S",
+     "label": "phí vận chuyển 运费"
+    },
+    {
+     "letter": "T",
+     "label": "giảm giá 折扣"
+    },
+    {
+     "letter": "U",
+     "label": "抵扣工资 trừ vào lương"
+    },
+    {
+     "letter": "V",
+     "label": "cộng 小计"
+    },
+    {
+     "letter": "W",
+     "label": "chú ý 备注"
+    }
+   ],
+   "originalPage": 97
+  }
+ ]
+}

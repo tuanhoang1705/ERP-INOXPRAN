@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateUserSchema, UpdateUserPermissionsSchema, UpdateUserSchema, USER_VIEWER_ROLES } from '@inoxpran/contracts';
+import { CreateUserSchema, SetUserMfaSchema, UpdateUserPermissionsSchema, UpdateUserSchema, USER_VIEWER_ROLES } from '@inoxpran/contracts';
 import { pageRequest } from '../../common/paging';
 import { onlyProvided } from '../../common/patch';
 import { Roles, RootOnly } from '../../common/roles.decorator';
@@ -71,6 +71,13 @@ export class AdminController {
   @HttpCode(200)
   resetMfa(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.users.resetMfa(id, request);
+  }
+
+  /** Bật / tắt yêu cầu 2 lớp cho tài khoản mình quản lý (MFA-02). */
+  @Roles('ADMIN')
+  @Patch('users/:id/mfa')
+  setMfa(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.users.setMfaRequired(id, SetUserMfaSchema.parse(body).required, request);
   }
 
   @Roles('ADMIN')

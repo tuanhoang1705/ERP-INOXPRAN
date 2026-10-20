@@ -1,0 +1,554 @@
+[
+ {
+  "code": "KH001",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI CẢNH CƯỜNG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH002",
+  "name": "CÔNG TY TNHH LỘC HƯNG THÁI",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH003",
+  "name": "CÔNG TY TNHH XUẤT NHẬP KHẨU TỔNG HỢP PHÚ HƯNG THỊNH",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH004",
+  "name": "Lê Thị ánh Nguyệt",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH005",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ ĐẠI PHÁT",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH006",
+  "name": "CÔNG TY CỔ PHẦN GIA DỤNG CHÂU ÂU EUROHI",
+  "tier": "NPP",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH007",
+  "name": "CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI QUỐC TẾ VIỆT LỢI",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH008",
+  "name": "Nguyễn Thị Thuý Hằng",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH009",
+  "name": "CÔNG TY TNHH KỸ THUẬT VÀ THƯƠNG MẠI HOÀN TRANG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH010",
+  "name": "HỘ KINH DOANH GIA DỤNG HÙNG HIỂN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH011",
+  "name": "Hợp Tác Xã Tân Sơn Quảng Ninh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH012",
+  "name": "CÔNG TY TNHH TM GIANG CHÂU",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH014",
+  "name": "CÔNG TY TNHH THỰC PHẨM ĂN UỐNG CHAO NIU",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH015",
+  "name": "CÔNG TY TNHH MARSERRI VIỆT NAM",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH016",
+  "name": "CÔNG TY TNHH PHÁT TRIỂN THIÊN HÀ",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH017",
+  "name": "Nguyễn Thị Thanh Hương",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH018",
+  "name": "CÔNG TY TNHH DRAHO VIỆT NAM",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH019",
+  "name": "Anh Hoàn",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH020",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ ĐIỆN MÁY MẠNH TIẾN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH021",
+  "name": "Hộ Kinh Doanh Đào Thị Quỳnh Hoa",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH022",
+  "name": "Bảo Trâm",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH023",
+  "name": "Chị Huyền",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH024",
+  "name": "CÔNG TY TNHH ĐỒ GIA DỤNG MINH TRÍ",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH025",
+  "name": "CÔNG TY TNHH GIA DỤNG YẾN NGUYỄN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH026",
+  "name": "Nông Thị Lệ",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH027",
+  "name": "Phạm Thị Hương",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH028",
+  "name": "Nguyễn Thị Thu Hương",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH029",
+  "name": "Hồ Thế Anh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH030",
+  "name": "Louie",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH031",
+  "name": "Dư Anh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH032",
+  "name": "Chị Hải Anh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH033",
+  "name": "Hải Nhàn",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH034",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI 319 ĐÔNG ANH",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH035",
+  "name": "HẢI QUAN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH036",
+  "name": "Chị Hằng (Hàng Khoai)",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH037",
+  "name": "Trần Quang Hoan",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH038",
+  "name": "Hồng Đài",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH039",
+  "name": "Hồng Xuân",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH040",
+  "name": "Hùng Hiền",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH041",
+  "name": "Chị Hương Lan (21 Hàng Lược)",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH042",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI TỔNG HỢP BẰNG ÁNH",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH043",
+  "name": "Khách lẻ",
+  "tier": "Lẻ",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH044",
+  "name": "Thế giới đồ gia dụng (Lan Anh)",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH045",
+  "name": "Điện máy Mạnh Tiến",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH046",
+  "name": "NGÂN HÀNG THƯƠNG MẠI CỔ PHẦN QUÂN ĐỘI - CHI NHÁNH HAI BÀ TRƯNG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH047",
+  "name": "NGỌC 玉",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH048",
+  "name": "Phùng Thùy Linh 冯垂玲",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH049",
+  "name": "CÔNG TY TNHH XUẤT NHẬP KHẨU HOÀNG TÂN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH050",
+  "name": "Cửa hàng Phương Bắc",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH051",
+  "name": "Quang Hạnh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH052",
+  "name": "Chị Hằng",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH053",
+  "name": "CÔNG TY TNHH SƠN HÙNG",
+  "tier": "NPP",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH054",
+  "name": "Nguyễn Đức Thắng",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH055",
+  "name": "Nguyễn Lệ Nây",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH056",
+  "name": "Thanh Anh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH057",
+  "name": "Cửa hàng Thành Vân",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH058",
+  "name": "CÔNG TY TNHH PHÁT TRIỂN SẢN XUẤT THƯƠNG MẠI DỊCH VỤ RỒNG VIỆT",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH059",
+  "name": "Tuấn Lan",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH060",
+  "name": "Tùng Ngoãn",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH062",
+  "name": "CÔNG TY TNHH ĐẦU TƯ THƯƠNG MẠI XUÂN HÙNG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH063",
+  "name": "Vũ Thị Hải Yến",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH064",
+  "name": "Hộ kinh doanh Phạm Lê Thu Trà",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH065",
+  "name": "CÔNG TY TNHH QUẢN LÝ CHUỖI CUNG ỨNG MAKO",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH066",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI GIANG MINH NGỌC",
+  "tier": "NPP",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH067",
+  "name": "Nguyễn Minh Ngọc ( Bình Minh)",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH068",
+  "name": "CÔNG TY TNHH NHÂN VƯỢNG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH069",
+  "name": "CÔNG TY TNHH LOAN THÚY VN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH070",
+  "name": "CÔNG TY TNHH DỊCH VỤ THƯƠNG MẠI TÙNG TRANG",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH071",
+  "name": "CÔNG TY TNHH GIA BẢO HP",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH072",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ TỔNG HỢP DŨNG YẾN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH073",
+  "name": "CÔNG TY TNHH VUA THIẾT BỊ",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH074",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THẢO NGUYÊN HD",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH076",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ ĐỨC ĐÀN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH077",
+  "name": "Anh Hải",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH078",
+  "name": "CÔNG TY TNHH THIẾT BỊ NHÀ BẾP ROYAL",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH079",
+  "name": "HỘ KINH DOANH NGUYỄN QUỐC THÀNH",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH080",
+  "name": "CÔNG TY TNHH DỊCH VỤ THƯƠNG MẠI VÀ TỔNG HỢP AN THỊNH",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH081",
+  "name": "CÔNG TY TNHH BẾP ĂN CÔNG NGHIỆP DƯƠNG TRẦN NGHĨA",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH082",
+  "name": "Anh Cương (CÔNG TY TNHH THIẾT BỊ BẾP VÀ GIA DỤNG AN PHÚ)",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH083",
+  "name": "Nguyễn Đức Tuấn",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH084",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI THIẾT BỊ ĐIỆN CÔNG NGHIỆP VĨNH PHÚC",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH085",
+  "name": "Lương Ngọc Thúy",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH086",
+  "name": "Vương Tuyết Mai",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH087",
+  "name": "CÔNG TY TNHH TM VÀ XÂY DỰNG BÌNH NGUYÊN",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH088",
+  "name": "CÔNG TY TNHH THƯƠNG MẠI & DỊCH VỤ SƠN HIỀN SL",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH089",
+  "name": "Nguyễn Văn Y",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH090",
+  "name": "CÔNG TY CỔ PHẦN ĐIỆN MÁY TÂY BẮC",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH091",
+  "name": "CÔNG TY TNHH ÁNH LUẬT",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH092",
+  "name": "CÔNG TY TNHH NỘI THẤT T&H HOMES",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH093",
+  "name": "Nguyễn An Ninh",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH094",
+  "name": "Nguyễn Tuấn Hoàng",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ },
+ {
+  "code": "KH095",
+  "name": "Trần Ngọc Kiên",
+  "tier": "Đại lý",
+  "paymentTermDays": null
+ }
+]

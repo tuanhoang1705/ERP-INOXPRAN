@@ -17,12 +17,14 @@
   type Editable = Product & { model?: string };
   type Field = 'sku' | 'name' | 'baseUnit' | 'listPrice' | 'standardCost' | 'minimumStock' | 'packSize';
 
-  let { open = $bindable(false), product = null, template = null, categories = [], onsaved }: {
+  let { open = $bindable(false), product = null, template = null, initial = null, categories = [], onsaved }: {
     open?: boolean;
     /** null = thêm mới. */
     product?: Editable | null;
     /** Thêm mới bằng cách sao chép một sản phẩm có sẵn (mã SKU để trống; ảnh / tồn không sao chép). */
     template?: Editable | null;
+    /** Thêm mới với mã / tên điền sẵn (tạo mã ngay trên đơn mua — PO-NEWSKU-01). */
+    initial?: { sku?: string; name?: string } | null;
     categories?: Category[];
     onsaved?: (saved: Product) => void;
   } = $props();
@@ -46,7 +48,7 @@
       error = '';
       const source = product ?? template;
       if (!source) {
-        form = blank();
+        form = { ...blank(), sku: (initial?.sku ?? '').trim().toUpperCase(), name: initial?.name ?? '' };
         return;
       }
       const pack = source.unitConversions.find((item) => item.unit === PACK_UNIT);

@@ -13,10 +13,13 @@
   import { onMount } from 'svelte';
   import { company } from '$lib/company';
   import { api } from '$lib/api';
+  import { slipPreparerName, type PrintViewer } from '$lib/print-preparer';
 
   type Order = SalesOrder & { templateCode?: string; warehouseKeeperName?: string; issuedByName?: string; shippedAt?: string; shippedByName?: string; issuedAt?: string };
 
   let order = $state<Order | null>(null);
+  /** Tài khoản đang mở bản in — trang in nằm ngoài AppShell nên tự tải (PRINT-PREP-01). */
+  let viewer = $state<PrintViewer | null>(null);
   let error = $state('');
   const type = $derived(page.url.searchParams.get('type') === 'SWK' ? 'SWK' : 'BH');
   const slipNo = $derived(order ? (type === 'SWK' ? order.warehouseSlipNo : order.code) : '');
@@ -38,7 +41,7 @@
 
   onMount(async () => {
     try {
-      order = await api<Order>(`/sales-orders/${page.params.id}`);
+      [order, viewer] = await Promise.all([api<Order>(`/sales-orders/${page.params.id}`), api<PrintViewer>('/auth/me').catch(() => null)]);
       if (type === 'SWK' && !order.warehouseSlipNo) error = m.phieu_chua_co_so_swk();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_phieu();
@@ -164,7 +167,7 @@
           ? [{ title: order.purpose === 'GIFT' ? 'Người nhận hàng' : 'Người mượn hàng', name: order.salesRepName ?? '' }, { title: 'Kế toán trưởng', name: '' }]
           : [{ title: 'Người mua hàng', name: '' }, { title: 'Kế toán trưởng', name: '' }, { title: 'Nhân viên bán hàng', name: order.salesRepName ?? '' }]),
         { title: 'Thủ kho', name: order.warehouseKeeperName ?? '' },
-        { title: 'Người lập biểu', name: type === 'SWK' ? order.shippedByName ?? '' : order.issuedByName ?? '' },
+        { title: 'Người lập biểu', name: slipPreparerName(type, viewer, order) },
       ] as signer}
         <div><b>{signer.title}</b><i>(Ký, họ tên)</i><span>{signer.name}</span></div>
       {/each}

@@ -1,7 +1,7 @@
-import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { type AuthUser, type ChangePassword, type LoginEvent, type LoginInput, passwordProblem, pendingSetup } from '@inoxpran/contracts';
+import { type AuthUser, type ChangePassword, type LoginEvent, type LoginInput, passwordProblem, pendingSetup, requiresMfa } from '@inoxpran/contracts';
 import { authenticator } from 'otplib';
 import { type Db, ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
@@ -26,6 +26,7 @@ interface UserDocument {
   status: 'ACTIVE' | 'DISABLED';
   root?: boolean;
   mfaEnabled: boolean;
+  mfaRequired?: boolean;
   mfaSecret?: string;
   pendingMfaSecret?: string;
   mustChangePassword?: boolean;
@@ -83,6 +84,7 @@ export class AuthService {
       roles: user.roles,
       warehouseScopes: user.warehouseScopes,
       mfaEnabled: user.mfaEnabled,
+      mfaRequired: requiresMfa(user, this.enforceMfa()),
       ...(user.root ? { root: true } : {}),
       ...(pending.length ? { pending } : {}),
     };
@@ -196,6 +198,22 @@ export class AuthService {
     );
     sessionCache.invalidate(user.sub);
     await this.audit.record({ actorId: user.sub, actorEmail: user.email, correlationId: '', action: 'USER_MFA_ENABLED', entityType: 'User', entityId: user.sub });
+  }
+
+  /** Tự tắt 2 lớp (MFA-02): chỉ khi không bị bắt buộc (gốc / Admin yêu cầu / theo vai trò), phải nhập đúng mã 6 số hiện tại. */
+  async disableMfa(user: RequestUser, totpCode: string): Promise<void> {
+    const account = await this.users().findOne({ _id: new ObjectId(user.sub) });
+    if (!account) throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Không tìm thấy tài khoản' });
+    if (requiresMfa(account, this.enforceMfa())) {
+      throw new ConflictException({ code: 'MFA_REQUIRED_BY_POLICY', message: 'Tài khoản đang được quản trị yêu cầu bật xác thực 2 lớp — không tự tắt được' });
+    }
+    if (!account.mfaEnabled || !account.mfaSecret) throw new ConflictException({ code: 'MFA_NOT_ENABLED', message: 'Xác thực 2 lớp đang tắt' });
+    if (!authenticator.check(totpCode, decryptSecret(account.mfaSecret, this.encryptionKey()))) {
+      throw new UnauthorizedException({ code: 'MFA_INVALID', message: 'Mã xác thực không đúng' });
+    }
+    await this.users().updateOne({ _id: account._id }, { $set: { mfaEnabled: false, updatedAt: new Date() }, $unset: { mfaSecret: '', pendingMfaSecret: '' } });
+    sessionCache.invalidate(user.sub);
+    await this.audit.record({ actorId: user.sub, actorEmail: user.email, correlationId: '', action: 'USER_MFA_DISABLED', entityType: 'User', entityId: user.sub });
   }
 
   /** Lịch sử đăng nhập của chính mình (30 lần gần nhất). */

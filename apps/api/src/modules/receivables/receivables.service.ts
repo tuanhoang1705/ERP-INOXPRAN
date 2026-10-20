@@ -1,9 +1,10 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CreatePayment } from '@inoxpran/contracts';
+import type { CreateCustomerPayment, CreatePayment } from '@inoxpran/contracts';
+import ExcelJS from 'exceljs';
 import Decimal from 'decimal.js';
-import type { Db, Document } from 'mongodb';
+import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
-import { dateRangeFilter } from '../../common/date-range';
+import { dateBounds, dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -11,7 +12,11 @@ import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
-import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, releaseHoldIfCleared, runOverdueReview } from './overdue-review';
+import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, OVERDUE_HOLD_REASON, releaseHoldIfCleared, runOverdueReview } from './overdue-review';
+import { buildLedger, type LedgerPayment, type LedgerReceivable } from './ledger';
+import { loadSegmentItems } from './segment-items';
+import { loadSegmentRules, reallocatePartner } from './segment-store';
+import { normalOutstanding, openParts, planPartsAllocation, segmentOutstanding, type OpenPart } from './segments';
 
 @Injectable()
 export class ReceivablesService {
@@ -38,7 +43,7 @@ export class ReceivablesService {
     ];
     if (search) {
       const pattern = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      pipeline.push({ $match: { $or: [{ code: pattern }, { salesOrderCode: pattern }, { warrantyCode: pattern }, { openingDocumentNo: pattern }, { payerName: pattern }, { 'partner.name': pattern }, { 'partner.code': pattern }] } });
+      pipeline.push({ $match: { $or: [{ code: pattern }, { salesOrderCode: pattern }, { warrantyCode: pattern }, { openingDocumentNo: pattern }, { historyInvoiceNo: pattern }, { historyDocumentNo: pattern }, { payerName: pattern }, { 'partner.name': pattern }, { 'partner.code': pattern }] } });
     }
     pipeline.push({ $sort: includePaid ? { createdAt: -1, _id: -1 } : { dueDate: 1, _id: 1 } });
     let rows: Document[];
@@ -63,10 +68,14 @@ export class ReceivablesService {
     const mapped = rows.map((row) => {
       const { partner, ...receivable } = row;
       const days = Math.max(0, daysOverdue(row.dueDate as Date, now));
-      const open = OPEN_RECEIVABLE_STATUSES.includes(String(row.status));
+      // Quá hạn chỉ xét phần nợ thường (CN-SEG-01): chứng từ chỉ còn phần nhóm tách riêng (VD quạt) không báo quá hạn.
+      const normal = normalOutstanding(row as never);
+      const open = OPEN_RECEIVABLE_STATUSES.includes(String(row.status)) && normal.gt(0);
       return {
         ...serializeDocument(receivable),
         outstandingAmount: new Decimal(decimalString(row.amount)).minus(decimalString(row.paidAmount)).toFixed(2),
+        normalOutstanding: normal.toFixed(2),
+        segmentOutstanding: segmentOutstanding(row as never).toFixed(2),
         partnerName: partner.name,
         partnerCode: partner.code,
         partnerStatus: partner.status,
@@ -89,7 +98,7 @@ export class ReceivablesService {
     ]).toArray();
     const byPartner = new Map<string, {
       partnerId: string; code: string; name: string; province: string | undefined; salesRepName: string | undefined; status: string; holdReason: string | undefined;
-      creditLimit: Decimal; current: Decimal; d1to30: Decimal; d31to60: Decimal; over60: Decimal; maxDays: number; documents: number;
+      creditLimit: Decimal; current: Decimal; d1to30: Decimal; d31to60: Decimal; over60: Decimal; segment: Decimal; maxDays: number; documents: number;
     }>();
     for (const row of rows) {
       const key = (row.partnerId as { toHexString(): string }).toHexString();
@@ -102,16 +111,19 @@ export class ReceivablesService {
         status: String(row.partner.status),
         holdReason: row.partner.holdReason as string | undefined,
         creditLimit: new Decimal(decimalString(row.partner.creditLimit)),
-        current: new Decimal(0), d1to30: new Decimal(0), d31to60: new Decimal(0), over60: new Decimal(0), maxDays: 0, documents: 0,
+        current: new Decimal(0), d1to30: new Decimal(0), d31to60: new Decimal(0), over60: new Decimal(0), segment: new Decimal(0), maxDays: 0, documents: 0,
       };
-      const outstanding = new Decimal(decimalString(row.amount)).minus(decimalString(row.paidAmount));
+      // Tuổi nợ chỉ tính phần nợ thường; phần nhóm công nợ tách riêng (CN-SEG-01) để riêng một cột, không xếp tuổi.
+      const outstanding = normalOutstanding(row as never);
+      const segment = segmentOutstanding(row as never);
+      entry.segment = entry.segment.add(segment);
       const days = daysOverdue(row.dueDate as Date, now);
-      const level = classifyOverdue(days);
+      const level = outstanding.gt(0) ? classifyOverdue(days) : null;
       if (!level) entry.current = entry.current.add(outstanding);
       else if (level === 'REMINDER') entry.d1to30 = entry.d1to30.add(outstanding);
       else if (level === 'WARNING') entry.d31to60 = entry.d31to60.add(outstanding);
       else entry.over60 = entry.over60.add(outstanding);
-      entry.maxDays = Math.max(entry.maxDays, days);
+      if (outstanding.gt(0)) entry.maxDays = Math.max(entry.maxDays, days);
       entry.documents += 1;
       byPartner.set(key, entry);
     }
@@ -130,19 +142,21 @@ export class ReceivablesService {
         d1to30: entry.d1to30.toFixed(2),
         d31to60: entry.d31to60.toFixed(2),
         over60: entry.over60.toFixed(2),
+        segment: entry.segment.toFixed(2),
         total: total.toFixed(2),
         maxDays: Math.max(0, entry.maxDays),
         level: classifyOverdue(entry.maxDays),
         documents: entry.documents,
-        creditUsage: entry.creditLimit.gt(0) ? total.div(entry.creditLimit).mul(100).toDecimalPlaces(1).toNumber() : null,
+        // Hạn mức tính cả phần nợ nhóm tách riêng (vẫn là tiền khách nợ), tuổi nợ thì không.
+        creditUsage: entry.creditLimit.gt(0) ? total.add(entry.segment).div(entry.creditLimit).mul(100).toDecimalPlaces(1).toNumber() : null,
       };
     }).sort((a, b) => b.maxDays - a.maxDays || Number(b.total) - Number(a.total));
-    const sum = (field: 'current' | 'd1to30' | 'd31to60' | 'over60' | 'total') =>
+    const sum = (field: 'current' | 'd1to30' | 'd31to60' | 'over60' | 'segment' | 'total') =>
       partners.reduce((total, entry) => total.add(entry[field]), new Decimal(0)).toFixed(2);
     const lastReview = await this.db.collection<{ _id: string } & Document>('overdue_reviews').find().sort({ ranAt: -1 }).limit(1).next();
     return {
       generatedAt: now.toISOString(),
-      totals: { current: sum('current'), d1to30: sum('d1to30'), d31to60: sum('d31to60'), over60: sum('over60'), total: sum('total') },
+      totals: { current: sum('current'), d1to30: sum('d1to30'), d31to60: sum('d31to60'), over60: sum('over60'), segment: sum('segment'), total: sum('total') },
       partners,
       lastReview: lastReview ? serializeDocument(lastReview) : null,
     };
@@ -176,6 +190,8 @@ export class ReceivablesService {
           const partner = await this.db.collection('partners').findOne({ _id: partnerId }, { session });
           if (!partner) throw new NotFoundException({ code: 'PARTNER_NOT_FOUND', message: 'Không tìm thấy khách hàng' });
 
+          // Thu theo từng chứng từ: trong chứng từ, trả phần nợ thường trước rồi tới phần nhóm tách riêng (CN-SEG-01).
+          const parts: Array<{ receivableId: ObjectId; amount: string; segment: string | null }> = [];
           for (const allocation of input.allocations) {
             const receivableId = toObjectId(allocation.receivableId, 'receivableId');
             const receivable = await this.db.collection('receivables').findOne({ _id: receivableId, partnerId }, { session });
@@ -184,6 +200,9 @@ export class ReceivablesService {
             if (new Decimal(allocation.amount).gt(outstanding)) {
               throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: 'Số tiền phân bổ vượt dư nợ chứng từ' });
             }
+            const plan = planPartsAllocation(openParts({ ...receivable, id: receivableId.toHexString(), code: String(receivable.code), dueDate: receivable.dueDate as Date, createdAt: receivable.createdAt as Date } as never), allocation.amount);
+            if (new Decimal(plan.leftover).gt(0)) parts.push({ receivableId, amount: plan.leftover, segment: null });
+            for (const part of plan.allocations) parts.push({ receivableId, amount: part.amount, segment: part.segment });
           }
 
           const now = new Date();
@@ -195,31 +214,14 @@ export class ReceivablesService {
             method: input.method,
             receivedAt: new Date(input.receivedAt),
             reference: input.reference,
-            allocations: input.allocations.map((allocation) => ({
-              receivableId: toObjectId(allocation.receivableId),
-              amount: decimal(allocation.amount),
-            })),
+            allocations: parts.map((part) => ({ receivableId: part.receivableId, amount: decimal(part.amount), ...(part.segment ? { segment: part.segment } : {}) })),
             status: 'POSTED',
             postedBy: toObjectId(request.user.sub),
             postedAt: now,
             createdAt: now,
           };
-          await this.db.collection('payments').insertOne(payment, { session });
-          for (const allocation of input.allocations) {
-            const receivableId = toObjectId(allocation.receivableId);
-            const receivable = await this.db.collection('receivables').findOne({ _id: receivableId }, { session });
-            if (!receivable) throw new NotFoundException();
-            const nextPaid = new Decimal(decimalString(receivable.paidAmount)).add(allocation.amount);
-            const status = nextPaid.eq(decimalString(receivable.amount)) ? 'PAID' : 'PARTIALLY_PAID';
-            await this.db.collection('receivables').updateOne(
-              { _id: receivableId, version: receivable.version },
-              {
-                $inc: { paidAmount: decimal(allocation.amount), version: 1 },
-                $set: { status, updatedAt: now },
-              },
-              { session },
-            );
-          }
+          await this.db.collection('payments').insertOne({ ...payment, kind: 'RECEIPT', mode: 'DOCUMENT' }, { session });
+          await this.applyAllocations(parts, session, now);
           const released = await releaseHoldIfCleared(this.db, partnerId, session, now);
           await this.audit.record(
             {
@@ -237,5 +239,613 @@ export class ReceivablesService {
           return serializeDocument(payment);
       },
     );
+  }
+
+  /**
+   * Ghi phân bổ vào chứng từ (cộng paidAmount, cập nhật trạng thái) — dùng chung cho thu theo chứng từ, thu theo khách,
+   * bù trừ trả trước và nhập lịch sử. Phân bổ âm chỉ dùng cho khoản trả trước (phải thu âm) khi bù trừ.
+   */
+  async applyAllocations(allocations: ReadonlyArray<{ receivableId: ObjectId; amount: string; segment?: string | null }>, session: ClientSession, now: Date) {
+    for (const allocation of allocations) {
+      const receivable = await this.db.collection('receivables').findOne({ _id: allocation.receivableId }, { session });
+      if (!receivable) throw new NotFoundException({ code: 'RECEIVABLE_NOT_FOUND', message: 'Không tìm thấy khoản phải thu' });
+      const amount = new Decimal(decimalString(receivable.amount));
+      const nextPaid = new Decimal(decimalString(receivable.paidAmount)).add(allocation.amount);
+      const credit = amount.lt(0);
+      if (credit ? nextPaid.lt(amount) || nextPaid.gt(0) : nextPaid.gt(amount) || nextPaid.lt(0)) {
+        throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: `Số tiền phân bổ vượt dư nợ chứng từ ${String(receivable.code)}` });
+      }
+      // Phần nhóm tách riêng (CN-SEG-01): cộng vào "đã trả" của đúng phần, không vượt phần đó.
+      const part = allocation.segment ? ((receivable.segments as Document[] | undefined) ?? []).find((item) => item.code === allocation.segment) : undefined;
+      if (allocation.segment && (!part || new Decimal(decimalString(part.paid)).add(allocation.amount).gt(decimalString(part.amount)))) {
+        throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: `Số tiền phân bổ vượt phần nhóm ${allocation.segment} của chứng từ ${String(receivable.code)}` });
+      }
+      const status = nextPaid.eq(amount) ? 'PAID' : credit ? 'OPEN' : 'PARTIALLY_PAID';
+      const result = await this.db.collection('receivables').updateOne(
+        { _id: allocation.receivableId, version: receivable.version },
+        {
+          $inc: { paidAmount: decimal(allocation.amount), version: 1, ...(allocation.segment ? { 'segments.$[part].paid': decimal(allocation.amount) } : {}) },
+          $set: { status, updatedAt: now },
+        },
+        { session, ...(allocation.segment ? { arrayFilters: [{ 'part.code': allocation.segment }] } : {}) },
+      );
+      if (result.matchedCount !== 1) throw new ConflictException({ code: 'RECEIVABLE_CHANGED', message: 'Chứng từ vừa được người khác cập nhật — tải lại rồi thử lại' });
+    }
+  }
+
+  private async customer(partnerId: ObjectId, session?: ClientSession) {
+    const partner = await this.db.collection('partners').findOne({ _id: partnerId, kind: { $in: ['CUSTOMER', 'BOTH'] } }, session ? { session } : {});
+    if (!partner) throw new NotFoundException({ code: 'PARTNER_NOT_FOUND', message: 'Không tìm thấy khách hàng' });
+    return partner;
+  }
+
+  /** Chứng từ chưa tất toán của khách (cả khoản trả trước âm). */
+  private async openItems(partnerId: ObjectId, session?: ClientSession) {
+    const rows = await this.db.collection('receivables').find({ partnerId, status: { $in: OPEN_RECEIVABLE_STATUSES } }, session ? { session } : {}).toArray();
+    return rows.map((row) => ({
+      id: (row._id as ObjectId).toHexString(),
+      code: String(row.code),
+      amount: new Decimal(decimalString(row.amount)),
+      outstanding: new Decimal(decimalString(row.amount)).minus(decimalString(row.paidAmount)),
+      normal: normalOutstanding(row as never),
+      segment: segmentOutstanding(row as never),
+      dueDate: row.dueDate as Date,
+      createdAt: row.createdAt as Date,
+      document: row,
+    }));
+  }
+
+  /** Các phần còn nợ (nợ thường / từng nhóm) của chứng từ chưa tất toán — dùng để phân bổ tiền thu theo khách. */
+  private static partsOf(open: Awaited<ReturnType<ReceivablesService['openItems']>>): OpenPart[] {
+    return open.filter((item) => item.outstanding.gt(0)).flatMap((item) => openParts({ ...item.document, id: item.id, code: item.code, dueDate: item.dueDate, createdAt: item.createdAt } as never));
+  }
+
+  /** Nhóm công nợ tách riêng đang dùng (CN-SEG-01); kiểm tra mã nhóm khi kế toán chọn "Thu cho nhóm". */
+  private async segmentRule(code: string | null | undefined, session?: ClientSession) {
+    if (!code) return null;
+    const rule = (await loadSegmentRules(this.db, session)).find((item) => item.code === code && item.active);
+    if (!rule) throw new ConflictException({ code: 'SEGMENT_NOT_FOUND', message: `Không có nhóm công nợ ${code}` });
+    return rule;
+  }
+
+  private static documentNo(row: Document | undefined, fallback: string): string {
+    return String(row?.salesOrderCode ?? row?.historyInvoiceNo ?? row?.historyDocumentNo ?? row?.openingDocumentNo ?? row?.warrantyCode ?? fallback);
+  }
+
+  /** Công nợ theo khách hàng (CN-KH-01): phát sinh, đã thu, phí vận chuyển, trả hàng / giảm, khách trả trước, còn nợ. */
+  async customers(search?: string, onlyOpen = false, paging: PageRequest | null = null) {
+    const now = new Date();
+    const open = { $in: ['$status', OPEN_RECEIVABLE_STATUSES] };
+    const outstanding = { $subtract: ['$amount', '$paidAmount'] };
+    // Phần nhóm công nợ tách riêng còn nợ của chứng từ (CN-SEG-01); quá hạn chỉ xét phần nợ thường.
+    const segmentLeft = { $reduce: { input: { $ifNull: ['$segments', []] }, initialValue: decimal('0'), in: { $add: ['$$value', { $subtract: ['$$this.amount', '$$this.paid'] }] } } };
+    const [receivableGroups, paymentGroups, segmentGroups, rules] = await Promise.all([
+      this.db.collection('receivables').aggregate([
+        { $addFields: { segmentLeft } },
+        {
+          $group: {
+            _id: '$partnerId',
+            debit: { $sum: { $cond: [{ $gt: ['$amount', 0] }, '$amount', 0] } },
+            voided: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'VOIDED'] }, { $gt: ['$amount', 0] }] }, '$amount', 0] } },
+            openDebt: { $sum: { $cond: [{ $and: [open, { $gt: [outstanding, 0] }] }, outstanding, 0] } },
+            segment: { $sum: { $cond: [{ $and: [open, { $gt: [outstanding, 0] }] }, '$segmentLeft', 0] } },
+            prepayment: { $sum: { $cond: [{ $and: [open, { $lt: [outstanding, 0] }] }, { $subtract: ['$paidAmount', '$amount'] }, 0] } },
+            oldestDue: { $min: { $cond: [{ $and: [open, { $gt: [{ $subtract: [outstanding, '$segmentLeft'] }, 0] }] }, '$dueDate', null] } },
+            openDocuments: { $sum: { $cond: [{ $and: [open, { $gt: [outstanding, 0] }] }, 1, 0] } },
+            lastActivity: { $max: '$createdAt' },
+          },
+        },
+      ]).toArray(),
+      this.db.collection('payments').aggregate([
+        { $match: { status: 'POSTED' } },
+        { $group: { _id: { partnerId: '$partnerId', kind: { $ifNull: ['$kind', 'RECEIPT'] } }, total: { $sum: '$amount' }, last: { $max: '$receivedAt' } } },
+      ]).toArray(),
+      this.db.collection('receivables').aggregate([
+        { $match: { status: { $in: OPEN_RECEIVABLE_STATUSES }, 'segments.0': { $exists: true } } },
+        { $unwind: '$segments' },
+        { $group: { _id: { partnerId: '$partnerId', code: '$segments.code' }, outstanding: { $sum: { $subtract: ['$segments.amount', '$segments.paid'] } } } },
+      ]).toArray(),
+      loadSegmentRules(this.db),
+    ]);
+    type Entry = { debit: Decimal; receipt: Decimal; freight: Decimal; returns: Decimal; openDebt: Decimal; segment: Decimal; segments: Array<{ code: string; outstanding: string }>; prepayment: Decimal; oldestDue: Date | null; openDocuments: number; lastActivity: Date | null };
+    const byPartner = new Map<string, Entry>();
+    const entry = (id: string): Entry => {
+      let value = byPartner.get(id);
+      if (!value) {
+        value = { debit: new Decimal(0), receipt: new Decimal(0), freight: new Decimal(0), returns: new Decimal(0), openDebt: new Decimal(0), segment: new Decimal(0), segments: [], prepayment: new Decimal(0), oldestDue: null, openDocuments: 0, lastActivity: null };
+        byPartner.set(id, value);
+      }
+      return value;
+    };
+    const rank = new Map(rules.map((rule) => [rule.code, rule.sortOrder]));
+    for (const row of segmentGroups) {
+      const key = row._id as { partnerId?: ObjectId; code: string };
+      const left = new Decimal(decimalString(row.outstanding));
+      if (!key.partnerId || left.lte(0)) continue;
+      entry(key.partnerId.toHexString()).segments.push({ code: key.code, outstanding: left.toFixed(2) });
+    }
+    for (const value of byPartner.values()) value.segments.sort((a, b) => (rank.get(a.code) ?? 99) - (rank.get(b.code) ?? 99) || a.code.localeCompare(b.code));
+    for (const row of receivableGroups) {
+      if (!row._id) continue;
+      const value = entry((row._id as ObjectId).toHexString());
+      value.debit = new Decimal(decimalString(row.debit)).minus(decimalString(row.voided));
+      value.openDebt = new Decimal(decimalString(row.openDebt));
+      value.segment = new Decimal(decimalString(row.segment));
+      value.prepayment = new Decimal(decimalString(row.prepayment));
+      value.oldestDue = (row.oldestDue as Date | null) ?? null;
+      value.openDocuments = Number(row.openDocuments ?? 0);
+      value.lastActivity = (row.lastActivity as Date | null) ?? null;
+    }
+    for (const row of paymentGroups) {
+      const key = row._id as { partnerId?: ObjectId; kind: string };
+      if (!key.partnerId) continue;
+      const value = entry(key.partnerId.toHexString());
+      const total = new Decimal(decimalString(row.total));
+      if (key.kind === 'RECEIPT') value.receipt = value.receipt.add(total);
+      else if (key.kind === 'FREIGHT') value.freight = value.freight.add(total);
+      else if (key.kind === 'RETURN') value.returns = value.returns.add(total);
+      const last = row.last as Date | null;
+      if (last && (!value.lastActivity || last > value.lastActivity)) value.lastActivity = last;
+    }
+    const partnerFilter: Document = { _id: { $in: [...byPartner.keys()].map((id) => new ObjectId(id)) } };
+    if (search?.trim()) {
+      const pattern = { $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      partnerFilter.$or = [{ name: pattern }, { code: pattern }, { shortName: pattern }, { phone: pattern }];
+    }
+    const partners = await this.db.collection('partners').find(partnerFilter, { projection: { code: 1, name: 1, province: 1, salesRepName: 1, status: 1, holdReason: 1, autoHoldExempt: 1 } }).toArray();
+    let rows = partners.map((partner) => {
+      const id = (partner._id as ObjectId).toHexString();
+      const value = byPartner.get(id) as Entry;
+      const balance = value.debit.minus(value.receipt).minus(value.freight).minus(value.returns);
+      const days = value.oldestDue ? Math.max(0, daysOverdue(value.oldestDue, now)) : 0;
+      return {
+        partnerId: id,
+        code: String(partner.code),
+        name: String(partner.name),
+        province: partner.province as string | undefined,
+        salesRepName: partner.salesRepName as string | undefined,
+        status: String(partner.status),
+        holdReason: partner.holdReason as string | undefined,
+        autoHoldExempt: partner.autoHoldExempt === true,
+        debit: value.debit.toFixed(2),
+        receipt: value.receipt.toFixed(2),
+        freight: value.freight.toFixed(2),
+        returns: value.returns.toFixed(2),
+        openDebt: value.openDebt.toFixed(2),
+        prepayment: value.prepayment.toFixed(2),
+        balance: balance.toFixed(2),
+        segmentOutstanding: value.segment.toFixed(2),
+        normalBalance: balance.minus(value.segment).toFixed(2),
+        segments: value.segments,
+        openDocuments: value.openDocuments,
+        maxDaysOverdue: days,
+        overdueLevel: classifyOverdue(days),
+        lastActivity: value.lastActivity?.toISOString(),
+      };
+    });
+    if (onlyOpen) rows = rows.filter((row) => !new Decimal(row.balance).isZero() || new Decimal(row.openDebt).gt(0));
+    rows.sort((a, b) => new Decimal(b.balance).comparedTo(a.balance) || a.code.localeCompare(b.code));
+    const sum = (field: 'debit' | 'receipt' | 'freight' | 'returns' | 'balance' | 'prepayment' | 'segmentOutstanding' | 'normalBalance') => rows.reduce((total, row) => total.add(row[field]), new Decimal(0)).toFixed(2);
+    const totals = { debit: sum('debit'), receipt: sum('receipt'), freight: sum('freight'), returns: sum('returns'), balance: sum('balance'), prepayment: sum('prepayment'), segmentOutstanding: sum('segmentOutstanding'), normalBalance: sum('normalBalance') };
+    const segmentNames = rules.map((rule) => ({ code: rule.code, name: rule.name }));
+    if (!paging) return { rows, totals, segmentNames };
+    return pageOf(rows.slice(paging.skip, paging.skip + paging.pageSize), rows.length, paging, { totals, segmentNames });
+  }
+
+  private async ledgerSources(partnerId: ObjectId) {
+    const [receivables, payments] = await Promise.all([
+      this.db.collection('receivables').find({ partnerId }).toArray(),
+      this.db.collection('payments').find({ partnerId, status: 'POSTED' }).toArray(),
+    ]);
+    const optional = (value: unknown) => (value === undefined || value === null || value === '' ? undefined : String(value));
+    const ledgerReceivables: LedgerReceivable[] = receivables.map((row) => ({
+      id: (row._id as ObjectId).toHexString(),
+      code: String(row.code),
+      amount: decimalString(row.amount),
+      status: String(row.status),
+      createdAt: row.createdAt as Date,
+      voidedAt: row.voidedAt as Date | undefined,
+      updatedAt: row.updatedAt as Date | undefined,
+      sourceType: optional(row.sourceType),
+      salesOrderId: row.salesOrderId ? String(row.salesOrderId) : undefined,
+      salesOrderCode: optional(row.salesOrderCode),
+      warrantyTicketId: row.warrantyTicketId ? String(row.warrantyTicketId) : undefined,
+      warrantyCode: optional(row.warrantyCode),
+      openingDocumentNo: optional(row.openingDocumentNo),
+      historyDocumentNo: optional(row.historyDocumentNo),
+      historyInvoiceNo: optional(row.historyInvoiceNo),
+      note: optional(row.note),
+      voidReason: optional(row.voidReason),
+      segments: ((row.segments as Document[] | undefined) ?? []).map((part) => ({ code: String(part.code), amount: decimalString(part.amount) })),
+    }));
+    const ledgerPayments: LedgerPayment[] = payments.map((row) => ({
+      id: (row._id as ObjectId).toHexString(),
+      code: String(row.code),
+      amount: decimalString(row.amount),
+      kind: String(row.kind ?? 'RECEIPT'),
+      status: String(row.status),
+      receivedAt: row.receivedAt as Date,
+      method: optional(row.method),
+      reference: optional(row.reference),
+      note: optional(row.note),
+      mode: optional(row.mode),
+      documentNo: optional(row.historyDocumentNo),
+    }));
+    return { ledgerReceivables, ledgerPayments };
+  }
+
+  /** Sổ chi tiết công nợ của một khách trong kỳ (CN-KH-01). */
+  async statement(partnerId: string, from?: string, to?: string) {
+    const id = toObjectId(partnerId, 'partnerId');
+    const partner = await this.customer(id);
+    const bounds = dateBounds(from, to);
+    const { ledgerReceivables, ledgerPayments } = await this.ledgerSources(id);
+    const ledger = buildLedger(ledgerReceivables, ledgerPayments, bounds?.$gte, bounds?.$lt);
+    const [open, rules, holdings] = await Promise.all([this.openItems(id), loadSegmentRules(this.db), loadSegmentItems(this.db, { partnerId: id })]);
+    const itemsOf = new Map(holdings.map((holding) => [holding.code, holding]));
+    const now = new Date();
+    const openDocuments = open
+      .filter((item) => item.outstanding.gt(0))
+      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime() || a.createdAt.getTime() - b.createdAt.getTime())
+      .map((item) => ({
+        id: item.id,
+        code: item.code,
+        amount: item.amount.toFixed(2),
+        outstanding: item.outstanding.toFixed(2),
+        normalOutstanding: item.normal.toFixed(2),
+        segmentOutstanding: item.segment.toFixed(2),
+        segments: ((item.document.segments as Document[] | undefined) ?? [])
+          .map((part) => ({ code: String(part.code), outstanding: new Decimal(decimalString(part.amount)).minus(decimalString(part.paid)).toFixed(2) }))
+          .filter((part) => new Decimal(part.outstanding).gt(0)),
+        dueDate: item.dueDate.toISOString(),
+        createdAt: item.createdAt.toISOString(),
+        documentNo: ReceivablesService.documentNo(item.document, item.code),
+        salesOrderId: item.document.salesOrderId ? String(item.document.salesOrderId) : undefined,
+        sourceType: item.document.sourceType ? String(item.document.sourceType) : undefined,
+        segmentTag: item.document.segmentTag ? String(item.document.segmentTag.code) : undefined,
+        // Quá hạn chỉ tính trên phần nợ thường (CN-SEG-01).
+        daysOverdue: item.normal.gt(0) ? Math.max(0, daysOverdue(item.dueDate, now)) : 0,
+      }));
+    const prepayment = open.filter((item) => item.outstanding.lt(0)).reduce((sum, item) => sum.minus(item.outstanding), new Decimal(0));
+    // Nhóm công nợ tách riêng (hiện tại, không theo kỳ): còn nợ từng nhóm, còn lại trừ nhóm.
+    const bySegment = new Map<string, Decimal>();
+    for (const item of open) {
+      if (item.outstanding.lte(0)) continue;
+      for (const part of (item.document.segments as Document[] | undefined) ?? []) {
+        const left = new Decimal(decimalString(part.amount)).minus(decimalString(part.paid));
+        if (left.gt(0)) bySegment.set(String(part.code), (bySegment.get(String(part.code)) ?? new Decimal(0)).add(left));
+      }
+    }
+    const currentBalance = open.reduce((sum, item) => sum.add(item.outstanding), new Decimal(0));
+    const segmentTotal = [...bySegment.values()].reduce((sum, value) => sum.add(value), new Decimal(0));
+    const segments = rules
+      .filter((rule) => bySegment.has(rule.code) || rule.active)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
+      .map((rule) => ({
+        code: rule.code, name: rule.name, active: rule.active, manualOnly: rule.manualOnly, outstanding: (bySegment.get(rule.code) ?? new Decimal(0)).toFixed(2),
+        scope: rule.scope ?? 'ALL',
+        // Nhóm "chọn khách": khách này có được nợ riêng nhóm không.
+        enabled: rule.manualOnly || rule.scope !== 'SELECTED' || (rule.partnerIds ?? []).includes(partnerId),
+        // Hàng khách đang nợ của nhóm (mã + số lượng), theo chứng từ còn nợ.
+        ...(itemsOf.has(rule.code) ? { holding: itemsOf.get(rule.code) } : {}),
+      }));
+    return {
+      partner: {
+        id: partnerId,
+        code: String(partner.code),
+        name: String(partner.name),
+        province: partner.province as string | undefined,
+        salesRepName: partner.salesRepName as string | undefined,
+        status: String(partner.status),
+        holdReason: partner.holdReason as string | undefined,
+        autoHoldExempt: partner.autoHoldExempt === true,
+        paymentTermDays: Number(partner.paymentTermDays ?? 0),
+        creditLimit: decimalString(partner.creditLimit ?? '0'),
+      },
+      period: { from: from ?? null, to: to ?? null },
+      ...ledger,
+      openDebt: openDocuments.reduce((sum, item) => sum.add(item.outstanding), new Decimal(0)).toFixed(2),
+      prepayment: prepayment.toFixed(2),
+      openDocuments,
+      segments,
+      current: { balance: currentBalance.toFixed(2), segment: segmentTotal.toFixed(2), normal: currentBalance.minus(segmentTotal).toFixed(2) },
+    };
+  }
+
+  async statementWorkbook(partnerId: string, from: string | undefined, to: string | undefined, preparedBy: string): Promise<{ buffer: Buffer; fileName: string }> {
+    const statement = await this.statement(partnerId, from, to);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'INOXPRAN ERP';
+    workbook.created = new Date();
+    const navy = 'FF123B5E';
+    const money = '#,##0;[Red]-#,##0';
+    const sheet = workbook.addWorksheet('Sổ công nợ', { views: [{ state: 'frozen', ySplit: 7 }] });
+    sheet.columns = [{ width: 6 }, { width: 12 }, { width: 18 }, { width: 46 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }];
+    const day = (value: Date) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(value);
+    const dayOf = (value: string | undefined) => (value ? day(new Date(`${value}T12:00:00+07:00`)) : '');
+    const period = from || to ? `Từ ${from ? dayOf(from) : 'đầu'} đến ${to ? dayOf(to) : 'nay'}` : 'Toàn bộ';
+    sheet.mergeCells('A1:I1');
+    sheet.getCell('A1').value = 'CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG — INOXPRAN';
+    sheet.getCell('A1').font = { bold: true, color: { argb: navy } };
+    sheet.mergeCells('A2:I2');
+    sheet.getCell('A2').value = 'SỔ CHI TIẾT CÔNG NỢ KHÁCH HÀNG';
+    sheet.getCell('A2').font = { bold: true, size: 15, color: { argb: navy } };
+    sheet.mergeCells('A3:I3');
+    sheet.getCell('A3').value = `Khách hàng: ${statement.partner.code} — ${statement.partner.name}`;
+    sheet.getCell('A3').font = { bold: true };
+    sheet.mergeCells('A4:I4');
+    sheet.getCell('A4').value = `Kỳ: ${period} · Người lập: ${preparedBy} · Ngày kết xuất: ${day(new Date())}`;
+    sheet.mergeCells('A5:I5');
+    sheet.getCell('A5').value = `Số dư đầu kỳ: ${Number(statement.opening).toLocaleString('vi-VN')} đ`;
+    const header = sheet.getRow(7);
+    header.values = ['STT', 'Ngày', 'Chứng từ', 'Diễn giải', 'Phát sinh nợ', 'Đã thu', 'Phí vận chuyển', 'Trả hàng / giảm', 'Còn nợ lũy kế'];
+    header.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: navy } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    });
+    statement.rows.forEach((row, index) => {
+      const excelRow = sheet.addRow([index + 1, day(new Date(row.date)), row.documentNo, row.description, Number(row.debit) || null, Number(row.receipt) || null, Number(row.freight) || null, Number(row.returns) || null, Number(row.balance)]);
+      for (const column of [5, 6, 7, 8, 9]) excelRow.getCell(column).numFmt = money;
+      excelRow.getCell(4).alignment = { wrapText: true };
+    });
+    const total = sheet.addRow(['', '', '', 'CỘNG PHÁT SINH TRONG KỲ', Number(statement.totals.debit), Number(statement.totals.receipt), Number(statement.totals.freight), Number(statement.totals.returns), Number(statement.closing)]);
+    total.font = { bold: true };
+    for (const column of [5, 6, 7, 8, 9]) total.getCell(column).numFmt = money;
+    sheet.addRow([]);
+    // Phần tổng giống sheet đối chiếu của kế toán: thêm công nợ từng nhóm tách riêng và còn lại trừ nhóm (CN-SEG-01).
+    const groups = statement.segments.filter((segment) => new Decimal(segment.outstanding).gt(0));
+    const summary: Array<[string, string]> = [
+      ['Còn nợ cuối kỳ', statement.closing],
+      ['Chứng từ còn nợ (hiện tại)', statement.openDebt],
+      ['Khách trả trước chưa bù trừ (hiện tại)', statement.prepayment],
+      ...groups.map((segment): [string, string] => [`Công nợ ${segment.name} (hiện tại)`, segment.outstanding]),
+      ...(groups.length ? [[`Còn lại trừ ${groups.map((segment) => segment.name).join(', ')} (hiện tại)`, statement.current.normal] as [string, string]] : []),
+    ];
+    for (const [label, value] of summary) {
+      const row = sheet.addRow(['', '', '', label, '', '', '', '', Number(value)]);
+      row.getCell(4).font = { bold: true };
+      row.getCell(9).numFmt = money;
+    }
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    const safe = statement.partner.code.replace(/[^A-Za-z0-9_-]/g, '');
+    return { buffer, fileName: `SoCongNo_${safe}_${from ?? 'dau'}_${to ?? 'nay'}.xlsx` };
+  }
+
+  /** Xem trước cách phân bổ một khoản thu theo khách (chứng từ cũ nhất trước, phần dư thành trả trước). */
+  async previewCustomerPayment(partnerId: string, amount: string, segment?: string) {
+    const id = toObjectId(partnerId, 'partnerId');
+    await this.customer(id);
+    if (!/^\d+(\.\d{1,2})?$/.test(amount) || new Decimal(amount).lte(0)) throw new ConflictException({ code: 'AMOUNT_INVALID', message: 'Số tiền phải lớn hơn 0' });
+    await this.segmentRule(segment);
+    const open = await this.openItems(id);
+    // Nợ thường trước rồi tới phần nhóm tách riêng; "thu cho nhóm" thì phần nhóm đó trước (CN-SEG-01).
+    const parts = ReceivablesService.partsOf(open);
+    const plan = planPartsAllocation(parts, amount, segment || null);
+    const byId = new Map(open.map((item) => [item.id, item]));
+    return {
+      allocations: plan.allocations.map((allocation) => {
+        const item = byId.get(allocation.receivableId);
+        const part = parts.find((row) => row.receivableId === allocation.receivableId && row.segment === allocation.segment);
+        return {
+          receivableId: allocation.receivableId,
+          segment: allocation.segment,
+          code: item?.code ?? '',
+          amount: allocation.amount,
+          outstanding: part?.outstanding ?? item?.outstanding.toFixed(2) ?? '0.00',
+          documentNo: ReceivablesService.documentNo(item?.document, item?.code ?? ''),
+          dueDate: item?.dueDate.toISOString(),
+          createdAt: item?.createdAt.toISOString(),
+        };
+      }),
+      leftover: plan.leftover,
+      openDebt: open.filter((item) => item.outstanding.gt(0)).reduce((sum, item) => sum.add(item.outstanding), new Decimal(0)).toFixed(2),
+    };
+  }
+
+  /**
+   * Thu theo khách (CN-KH-01): NPP trả gối đầu một số tiền — tự phân bổ vào chứng từ còn nợ cũ nhất trước; thu dư thành
+   * khoản khách trả trước (phải thu âm, bù trừ sau). kind FREIGHT = phí vận chuyển khách trả thay công ty (trừ nợ, cột riêng).
+   */
+  async recordCustomerPayment(input: CreateCustomerPayment, request: AuthenticatedRequest, key: string | undefined) {
+    return this.idempotency.execute(`customer-payment:${request.user.sub}`, key, input, async (session) => {
+      const partnerId = toObjectId(input.partnerId, 'partnerId');
+      const partner = await this.customer(partnerId, session);
+      const now = new Date();
+      const receivedAt = new Date(input.receivedAt);
+      await this.segmentRule(input.segment, session);
+      const open = await this.openItems(partnerId, session);
+      const plan = planPartsAllocation(ReceivablesService.partsOf(open), input.amount, input.segment || null);
+      const paymentId = new ObjectId();
+      const code = await this.sequences.next('PAY', session);
+      let prepaymentId: ObjectId | undefined;
+      if (new Decimal(plan.leftover).gt(0)) {
+        prepaymentId = new ObjectId();
+        const farFuture = new Date(now);
+        farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 10);
+        await this.db.collection('receivables').insertOne({
+          _id: prepaymentId,
+          code: await this.sequences.next('AR', session),
+          partnerId,
+          sourceType: 'CUSTOMER_PREPAYMENT',
+          paymentId,
+          paymentCode: code,
+          amount: decimal(`-${plan.leftover}`),
+          paidAmount: decimal('0'),
+          status: 'OPEN',
+          dueDate: farFuture,
+          note: `${input.kind === 'FREIGHT' ? 'Phí vận chuyển' : 'Phiếu thu'} ${code} vượt số còn nợ — khách trả trước`,
+          version: 1,
+          createdAt: receivedAt,
+          updatedAt: now,
+        }, { session });
+      }
+      const payment = {
+        _id: paymentId,
+        code,
+        partnerId,
+        amount: decimal(input.amount),
+        kind: input.kind,
+        mode: 'CUSTOMER',
+        method: input.method,
+        receivedAt,
+        ...(input.reference ? { reference: input.reference } : {}),
+        ...(input.note ? { note: input.note } : {}),
+        ...(input.segment ? { segment: input.segment } : {}),
+        allocations: plan.allocations.map((allocation) => ({ receivableId: new ObjectId(allocation.receivableId), amount: decimal(allocation.amount), ...(allocation.segment ? { segment: allocation.segment } : {}) })),
+        ...(prepaymentId ? { prepaymentReceivableId: prepaymentId, unappliedAmount: decimal(plan.leftover) } : {}),
+        status: 'POSTED',
+        postedBy: toObjectId(request.user.sub),
+        postedAt: now,
+        createdAt: now,
+      };
+      await this.db.collection('payments').insertOne(payment, { session });
+      await this.applyAllocations(plan.allocations.map((allocation) => ({ receivableId: new ObjectId(allocation.receivableId), amount: allocation.amount, segment: allocation.segment })), session, now);
+      const released = await releaseHoldIfCleared(this.db, partnerId, session, now);
+      await this.audit.record(
+        {
+          actorId: request.user.sub,
+          actorEmail: request.user.email,
+          correlationId: request.correlationId,
+          action: input.kind === 'FREIGHT' ? 'CUSTOMER_FREIGHT_POSTED' : 'CUSTOMER_PAYMENT_POSTED',
+          entityType: 'Payment',
+          entityId: paymentId.toHexString(),
+          after: serializeDocument(payment),
+          metadata: { partnerCode: partner.code, allocations: plan.allocations.length, prepayment: plan.leftover, partnerHoldReleased: released },
+        },
+        session,
+      );
+      return { ...serializeDocument(payment), prepayment: plan.leftover, partnerHoldReleased: released };
+    });
+  }
+
+  /** Bù trừ khoản khách trả trước (phải thu âm) vào chứng từ còn nợ, cũ nhất trước — phiếu OFFSET, không đổi số dư. */
+  async applyCredit(partnerId: string, request: AuthenticatedRequest, key: string | undefined) {
+    return this.idempotency.execute(`customer-offset:${request.user.sub}`, key, { partnerId }, async (session) => {
+      const id = toObjectId(partnerId, 'partnerId');
+      const partner = await this.customer(id, session);
+      const open = await this.openItems(id, session);
+      const credits = open.filter((item) => item.outstanding.lt(0)).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      const available = credits.reduce((sum, item) => sum.minus(item.outstanding), new Decimal(0));
+      const plan = planPartsAllocation(ReceivablesService.partsOf(open), available.toFixed(2));
+      const applied = available.minus(plan.leftover);
+      if (applied.lte(0)) throw new ConflictException({ code: 'NOTHING_TO_OFFSET', message: 'Không có khoản trả trước hoặc chứng từ còn nợ để bù trừ' });
+      let remaining = applied;
+      const creditAllocations: Array<{ id: string; amount: string }> = [];
+      for (const credit of credits) {
+        if (remaining.lte(0)) break;
+        const take = Decimal.min(remaining, credit.outstanding.neg());
+        creditAllocations.push({ id: credit.id, amount: take.neg().toFixed(2) });
+        remaining = remaining.minus(take);
+      }
+      const now = new Date();
+      const allocations = [
+        ...plan.allocations.map((allocation) => ({ id: allocation.receivableId, amount: allocation.amount, segment: allocation.segment })),
+        ...creditAllocations.map((allocation) => ({ ...allocation, segment: null })),
+      ];
+      const payment = {
+        _id: new ObjectId(),
+        code: await this.sequences.next('PAY', session),
+        partnerId: id,
+        amount: decimal(applied.toFixed(2)),
+        kind: 'OFFSET',
+        mode: 'CUSTOMER',
+        method: 'OTHER',
+        receivedAt: now,
+        note: 'Bù trừ khoản khách trả trước vào chứng từ còn nợ',
+        allocations: allocations.map((allocation) => ({ receivableId: new ObjectId(allocation.id), amount: decimal(allocation.amount), ...(allocation.segment ? { segment: allocation.segment } : {}) })),
+        status: 'POSTED',
+        postedBy: toObjectId(request.user.sub),
+        postedAt: now,
+        createdAt: now,
+      };
+      await this.db.collection('payments').insertOne(payment, { session });
+      await this.applyAllocations(allocations.map((allocation) => ({ receivableId: new ObjectId(allocation.id), amount: allocation.amount, segment: allocation.segment })), session, now);
+      const released = await releaseHoldIfCleared(this.db, id, session, now);
+      await this.audit.record(
+        {
+          actorId: request.user.sub,
+          actorEmail: request.user.email,
+          correlationId: request.correlationId,
+          action: 'CUSTOMER_CREDIT_OFFSET',
+          entityType: 'Payment',
+          entityId: payment._id.toHexString(),
+          after: serializeDocument(payment),
+          metadata: { partnerCode: partner.code, applied: applied.toFixed(2), partnerHoldReleased: released },
+        },
+        session,
+      );
+      return { ...serializeDocument(payment), applied: applied.toFixed(2) };
+    });
+  }
+
+  /**
+   * Gắn tay cả chứng từ vào một nhóm công nợ tách riêng (CN-SEG-01 — VD "Hàng mẫu", "Đơn 2025") hoặc gỡ ra (segment null).
+   * Tính lại phần nhóm và phân bổ lại tiền đã thu của khách ngay trong giao dịch; có nhật ký.
+   */
+  async setSegmentTag(receivableId: string, input: { segment: string | null; reason: string }, request: AuthenticatedRequest) {
+    const id = toObjectId(receivableId, 'receivableId');
+    const session = this.db.client.startSession();
+    try {
+      let result: Record<string, unknown> = {};
+      await session.withTransaction(async () => {
+        const receivable = await this.db.collection('receivables').findOne({ _id: id }, { session });
+        if (!receivable) throw new NotFoundException({ code: 'RECEIVABLE_NOT_FOUND', message: 'Không tìm thấy khoản phải thu' });
+        if (receivable.status === 'VOIDED' || new Decimal(decimalString(receivable.amount)).lte(0)) {
+          throw new ConflictException({ code: 'RECEIVABLE_NOT_TAGGABLE', message: 'Chỉ gắn nhóm cho chứng từ phải thu còn hiệu lực' });
+        }
+        if (input.segment) await this.segmentRule(input.segment, session);
+        const now = new Date();
+        const before = receivable.segmentTag ?? null;
+        await this.db.collection('receivables').updateOne(
+          { _id: id, version: receivable.version },
+          input.segment
+            ? { $set: { segmentTag: { code: input.segment, reason: input.reason, by: request.user.displayName, byId: toObjectId(request.user.sub), at: now }, updatedAt: now }, $inc: { version: 1 } }
+            : { $unset: { segmentTag: '' }, $set: { updatedAt: now }, $inc: { version: 1 } },
+          { session },
+        );
+        const { plan } = await reallocatePartner(this.db, receivable.partnerId as ObjectId, session, now);
+        const released = await releaseHoldIfCleared(this.db, receivable.partnerId as ObjectId, session, now);
+        await this.audit.record({
+          actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+          action: 'RECEIVABLE_SEGMENT_TAGGED', entityType: 'Receivable', entityId: receivableId,
+          before: { segmentTag: before ? serializeDocument(before) : null },
+          after: { segment: input.segment, reason: input.reason },
+          metadata: { code: receivable.code, partnerHoldReleased: released, before: plan.before, after: plan.after },
+        }, session);
+        result = { receivableId, segment: input.segment, summary: plan.after, partnerHoldReleased: released };
+      });
+      return result;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /** Cờ "Không tự khóa" (CN-KH-01): NPP trả gối đầu không bị khóa lập phiếu khi nợ quá hạn > 60 ngày. Bật thì mở khóa ngay nếu đang bị khóa do quá hạn. */
+  async setAutoHoldExempt(partnerId: string, exempt: boolean, request: AuthenticatedRequest) {
+    const id = toObjectId(partnerId, 'partnerId');
+    const before = await this.customer(id);
+    const now = new Date();
+    const releasing = exempt && before.status === 'ON_HOLD' && before.holdReason === OVERDUE_HOLD_REASON;
+    await this.db.collection('partners').updateOne(
+      { _id: id },
+      {
+        $set: { autoHoldExempt: exempt, autoHoldExemptBy: request.user.displayName, autoHoldExemptAt: now, updatedAt: now, ...(releasing ? { status: 'ACTIVE' } : {}) },
+        ...(releasing ? { $unset: { holdReason: '', heldAt: '' } } : {}),
+        $inc: { version: 1 },
+      },
+    );
+    await this.audit.record({
+      actorId: request.user.sub,
+      actorEmail: request.user.email,
+      correlationId: request.correlationId,
+      action: 'PARTNER_AUTO_HOLD_EXEMPT_CHANGED',
+      entityType: 'Partner',
+      entityId: partnerId,
+      before: { autoHoldExempt: before.autoHoldExempt === true },
+      after: { autoHoldExempt: exempt },
+      metadata: { partnerCode: before.code, released: releasing },
+    });
+    return { partnerId, autoHoldExempt: exempt, released: releasing };
   }
 }

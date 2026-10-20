@@ -245,6 +245,8 @@ export const PartnerSchema = z.object({
   salesRepId: IdSchema.optional(),
   salesRepName: z.string().optional(),
   holdReason: z.string().optional(),
+  /** Không tự khóa khi nợ quá hạn > 60 ngày (CN-KH-01) — NPP trả gối đầu; vẫn cảnh báo quá hạn. Chỉ Admin đổi. */
+  autoHoldExempt: z.boolean().optional(),
   taxCode: z.string().trim().max(30).optional(),
   email: z.string().email().optional(),
   phone: z.string().trim().max(30).optional(),
@@ -358,6 +360,8 @@ export const OrderLineInputSchema = z.object({
   unit: z.string().trim().min(1).max(30),
   /** Hàng tặng kèm / khuyến mãi: đơn giá 0 nhưng vẫn xuất kho. */
   gift: z.boolean().default(false),
+  /** Tên hàng in trên phiếu — kế toán sửa tay được (SAL-NAME-01, 16/10/2026); bỏ trống = tên trong danh mục. */
+  productName: z.string().trim().max(300).optional(),
   /**
    * Đơn giá chưa VAT sửa tay (theo đơn vị bán) — chỉ khi Admin / Giám đốc đã cấp quyền sửa giá cho đúng phiếu này
    * (xem `priceOverrideRequestId`). Dòng sửa giá: CK = 0, giá theo bảng giá vẫn lưu ở `originalUnitPrice`.
@@ -950,6 +954,74 @@ export const CreatePaymentSchema = z.object({
 });
 export type CreatePayment = z.infer<typeof CreatePaymentSchema>;
 
+/**
+ * Loại phiếu giảm nợ (CN-KH-01, 16/10/2026): RECEIPT thu tiền · FREIGHT phí vận chuyển khách / NPP trả thay công ty (trừ nợ,
+ * cột riêng, không tính là tiền thu) · RETURN trả hàng / điều chỉnh giảm (nhập lịch sử) · OFFSET bù trừ khoản trả trước (không đổi số dư).
+ * Bản ghi cũ không có `kind` = RECEIPT.
+ */
+export const PAYMENT_KINDS = ['RECEIPT', 'FREIGHT', 'RETURN', 'OFFSET'] as const;
+export type PaymentKind = (typeof PAYMENT_KINDS)[number];
+/** Thu theo khách (NPP trả gối đầu): hệ thống phân bổ vào chứng từ còn nợ cũ nhất trước; thu dư thành khoản khách trả trước. */
+export const CreateCustomerPaymentSchema = z.object({
+  partnerId: IdSchema,
+  amount: PositiveDecimalStringSchema,
+  kind: z.enum(['RECEIPT', 'FREIGHT']).default('RECEIPT'),
+  method: z.enum(['BANK_TRANSFER', 'CASH', 'OTHER']).default('BANK_TRANSFER'),
+  receivedAt: z.string().datetime(),
+  reference: z.string().trim().max(100).optional(),
+  note: z.string().trim().max(300).optional(),
+  /** "Thu cho nhóm …" (CN-SEG-01): trả phần nợ của nhóm công nợ tách riêng trước; bỏ trống = nợ thường trước. */
+  segment: z.string().trim().max(30).optional(),
+});
+export type CreateCustomerPayment = z.infer<typeof CreateCustomerPaymentSchema>;
+export const SetAutoHoldExemptSchema = z.object({ exempt: z.boolean() });
+
+/**
+ * Nhóm công nợ tách riêng (CN-SEG-01) — VD "Quạt & vợt muỗi": phần nợ của hàng thuộc nhóm hàng / mã hàng được theo dõi
+ * riêng, không tính quá hạn / cảnh báo / tự khóa. manualOnly = chỉ gắn tay theo chứng từ (VD "Hàng mẫu", "Đơn 2025").
+ */
+const DebtSegmentCodeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{1,29}$/, 'Mã nhóm gồm chữ in hoa, số, gạch ngang (2–30 ký tự)');
+const DebtSegmentFields = {
+  name: z.string().trim().min(2, 'Tên nhóm ít nhất 2 ký tự').max(80),
+  categoryIds: z.array(IdSchema).max(50),
+  skus: z.array(z.string().trim().min(1).max(40)).max(200),
+  manualOnly: z.boolean(),
+  active: z.boolean(),
+  sortOrder: z.number().int().min(0).max(999),
+  /** SELECTED = chỉ tách cho các khách trong partnerIds (khách được nợ riêng nhóm này); ALL = mọi khách. */
+  scope: z.enum(['ALL', 'SELECTED']),
+  partnerIds: z.array(IdSchema).max(500),
+};
+export const DebtSegmentInputSchema = z.object({
+  code: DebtSegmentCodeSchema,
+  name: DebtSegmentFields.name,
+  categoryIds: DebtSegmentFields.categoryIds.default([]),
+  skus: DebtSegmentFields.skus.default([]),
+  manualOnly: DebtSegmentFields.manualOnly.default(false),
+  active: DebtSegmentFields.active.default(true),
+  sortOrder: DebtSegmentFields.sortOrder.default(10),
+  scope: DebtSegmentFields.scope.default('SELECTED'),
+  partnerIds: DebtSegmentFields.partnerIds.default([]),
+});
+export type DebtSegmentInput = z.infer<typeof DebtSegmentInputSchema>;
+/** Sửa nhóm: chỉ ghi trường được gửi (zod 4 áp giá trị mặc định cả trong .partial() nên không dựng từ schema thêm mới). */
+export const UpdateDebtSegmentSchema = z.object({ ...DebtSegmentFields, code: DebtSegmentCodeSchema }).partial();
+/** Bật / tắt một khách trong nhóm "chọn khách" (từ sổ công nợ của khách). */
+export const SetSegmentPartnerSchema = z.object({ enabled: z.boolean() });
+export type UpdateDebtSegment = z.infer<typeof UpdateDebtSegmentSchema>;
+/** Gắn tay cả chứng từ vào nhóm (segment null = gỡ, quay về tự xếp theo dòng hàng). */
+export const SetSegmentTagSchema = z.object({
+  segment: z.string().trim().max(30).nullable(),
+  reason: z.string().trim().min(5, 'Lý do ít nhất 5 ký tự').max(300),
+});
+export type SetSegmentTag = z.infer<typeof SetSegmentTagSchema>;
+/** Ghép mã hàng cũ trong sổ công nợ với mã danh mục (productSku null = bỏ ghép). */
+export const SkuAliasSchema = z.object({
+  oldSku: z.string().trim().min(1).max(60),
+  productSku: z.string().trim().min(1).max(60).nullable(),
+});
+export type SkuAlias = z.infer<typeof SkuAliasSchema>;
+
 export const InventoryBalanceSchema = z.object({
   productId: IdSchema,
   warehouseId: IdSchema,
@@ -1117,6 +1189,8 @@ export const AuthUserSchema = z.object({
   roles: z.array(z.string()),
   warehouseScopes: z.array(IdSchema),
   mfaEnabled: z.boolean(),
+  /** Đang bị bắt buộc bật 2 lớp (gốc, Admin yêu cầu, hoặc theo vai trò) — không tự tắt được (MFA-02). */
+  mfaRequired: z.boolean().optional(),
   /** Tài khoản quản trị gốc (tạo bằng script trên máy chủ). */
   root: z.boolean().optional(),
   /** Bước bắt buộc còn thiếu (đổi mật khẩu tạm, bật MFA): phiên chỉ dùng được màn hình thiết lập. */
@@ -1422,6 +1496,9 @@ export interface AdminUser {
   status: 'ACTIVE' | 'DISABLED';
   root: boolean;
   mfaEnabled: boolean;
+  /** Yêu cầu 2 lớp hiệu lực (MFA-02) và có phải Admin đặt riêng không (false = đang theo vai trò). */
+  mfaRequired: boolean;
+  mfaRequiredSet: boolean;
   mustChangePassword: boolean;
   lockedUntil?: string;
   lastLoginAt?: string;
@@ -1434,6 +1511,9 @@ export interface AdminUser {
 }
 /** Quản trị gốc cấp / thu quyền nghiệp vụ: true = cấp, false = thu, null = về mặc định theo vai trò. */
 export const UpdateUserPermissionsSchema = z.object({ overrides: z.record(z.string(), z.boolean().nullable()) });
+/** Admin bật / tắt yêu cầu 2 lớp cho tài khoản mình quản lý (MFA-02). Tắt = bỏ yêu cầu và tắt luôn 2 lớp đang bật. */
+export const SetUserMfaSchema = z.object({ required: z.boolean() });
+export const DisableMfaSchema = z.object({ totpCode: z.string().regex(/^\d{6}$/, 'Mã xác thực gồm 6 số') });
 export type UpdateUserPermissions = z.infer<typeof UpdateUserPermissionsSchema>;
 
 export interface LoginEvent {
@@ -1552,6 +1632,17 @@ export const CreateSupplierReturnSchema = z.object({
 });
 export const CreateStockReturnSchema = z.discriminatedUnion('kind', [CreateCustomerReturnSchema, CreateSupplierReturnSchema]);
 export type CreateStockReturn = z.infer<typeof CreateStockReturnSchema>;
+/**
+ * Nhập lại hàng mẫu KHÔNG có phiếu xuất hàng mẫu trên ERP (NVKD mượn trước khi dùng ERP): thẻ kho "Hàng mẫu nhập lại"
+ * (SAMPLE_IN), phiếu TH loại hàng mẫu ghi người mượn, không qua kế toán. Có phiếu thì nhập lại trên phiếu (loan-returns).
+ */
+export const CreateSampleReturnSchema = z.object({
+  warehouseId: IdSchema,
+  borrowerId: IdSchema,
+  note: z.string().trim().min(5, 'Ghi rõ hàng mẫu mượn từ khi nào, vì sao không có phiếu (ít nhất 5 ký tự)').max(500),
+  lines: z.array(StockReturnLineSchema).min(1).max(100),
+});
+export type CreateSampleReturn = z.infer<typeof CreateSampleReturnSchema>;
 
 export interface StockReturn {
   id: string;

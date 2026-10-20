@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateStockReturnSchema, isInventoryCategory, StockReturnAccountingSchema } from '@inoxpran/contracts';
+import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateSampleReturnSchema, CreateStockReturnSchema, isInventoryCategory, StockReturnAccountingSchema } from '@inoxpran/contracts';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
 import { Roles } from '../../common/roles.decorator';
@@ -167,5 +167,18 @@ export class InventoryController {
     const input = CreateStockReturnSchema.parse(body);
     assertWarehouseAccess(request, input.warehouseId);
     return this.returns.create(input, request, idempotencyKey);
+  }
+
+  /** Nhập lại hàng mẫu không có phiếu xuất mẫu trên ERP (NVKD mượn trước khi dùng ERP) — thẻ kho SAMPLE_IN, không qua kế toán. */
+  @Roles(...WAREHOUSE_EDITOR_ROLES)
+  @Post('returns/samples')
+  createSampleReturn(
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = CreateSampleReturnSchema.parse(body);
+    assertWarehouseAccess(request, input.warehouseId);
+    return this.returns.createSample(input, request, idempotencyKey);
   }
 }

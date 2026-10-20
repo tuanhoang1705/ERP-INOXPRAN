@@ -5,6 +5,8 @@ export interface SessionUser {
   roles: string[];
   warehouseScopes: string[];
   mfa?: boolean;
+  /** Đang bị bắt buộc bật 2 lớp (gốc / Admin yêu cầu / theo vai trò) — không tự tắt được (MFA-02). */
+  mfaRequired?: boolean;
   /** Tài khoản quản trị gốc. */
   root?: boolean;
   /** Bước bắt buộc còn thiếu: đổi mật khẩu tạm, bật MFA. */

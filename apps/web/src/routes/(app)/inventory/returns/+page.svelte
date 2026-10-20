@@ -6,7 +6,7 @@
   import { m } from '$lib/paraglide/messages';
   import type { StockReturn, Warehouse } from '@inoxpran/contracts';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, FileCheck, PackageMinus, PackagePlus } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, FileCheck, PackageCheck, PackageMinus, PackagePlus } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { dateTime, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
@@ -17,6 +17,7 @@
   import { can } from '$lib/permissions';
   import Pagination from '$lib/components/Pagination.svelte';
   import StockReturnDialog from '$lib/components/StockReturnDialog.svelte';
+  import SampleReturnDialog from '$lib/components/SampleReturnDialog.svelte';
 
   let rows = $state<StockReturn[]>([]);
   let total = $state(0);
@@ -28,6 +29,9 @@
   let error = $state('');
   let success = $state('');
   let dialogOpen = $state(false);
+  // Nhập lại hàng mẫu NVKD mượn (SAL-TYPE-01): thủ kho / quản lý kho.
+  let sampleOpen = $state(false);
+  const canSample = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
   let dialogKind = $state<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
   const editable = $derived(can.editWarehouses());
   /** Kế toán / Giám đốc xác nhận đã giảm công nợ / xuất hóa đơn điều chỉnh cho phiếu khách trả. */
@@ -96,6 +100,7 @@
   </div>
   {#if editable}
     <div class="actions">
+      {#if canSample}<button class="btn" onclick={() => (sampleOpen = true)}><PackageCheck size={16} />{m.lp_nhap_lai_hang_mau()}</button>{/if}
       <button class="btn" onclick={() => openDialog('SUPPLIER')}><PackageMinus size={16} />{m.inv_tra_nha_may()}</button>
       <button class="btn primary" onclick={() => openDialog('CUSTOMER')}><PackagePlus size={16} />{m.inv_khach_tra_hang()}</button>
     </div>
@@ -170,6 +175,7 @@
 </Dialog>
 
 <StockReturnDialog bind:open={dialogOpen} kind={dialogKind} {warehouses} onsaved={(code) => { success = m.inv_da_ghi_phieu({ code }); page = 1; void load(); }} />
+{#if canSample}<SampleReturnDialog bind:open={sampleOpen} {warehouses} onsaved={(code) => { success = m.smp_da_nhap({ code }); page = 1; void load(); }} />{/if}
 
 <style>
   .filters { grid-template-columns: minmax(220px, 320px); }

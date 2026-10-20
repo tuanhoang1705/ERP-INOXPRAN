@@ -13,6 +13,7 @@ export interface CachedAccount {
   tokenVersion: number;
   root: boolean;
   mfaEnabled: boolean;
+  mfaRequired?: boolean | undefined;
   mustChangePassword: boolean;
   lastSeenAt?: Date | undefined;
   permissionOverrides?: Record<string, boolean> | undefined;

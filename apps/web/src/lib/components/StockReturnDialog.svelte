@@ -169,6 +169,7 @@
       <button type="button" class="btn small" onclick={() => lines.push({ productId: '', quantity: '' })}><Plus size={15} />{m.crud_them_dong()}</button>
     </div>
     <p class="note span">{customer ? m.inv_khach_tra_ghi_chu() : m.inv_tra_nha_may_ghi_chu()}</p>
+    {#if customer}<p class="note span hint-sample">{m.smp_goi_y_khach_tra()}</p>{/if}
   </form>
   {#snippet footer()}
     <button type="button" class="btn" onclick={() => (open = false)}>{m.huy()}</button>
@@ -186,5 +187,6 @@
   .qty { width: 170px; }
   .qty-box { display: flex; align-items: center; gap: 6px; }
   .note { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .hint-sample { color: var(--navy-2); }
   @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 </style>

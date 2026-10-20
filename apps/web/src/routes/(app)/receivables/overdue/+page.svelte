@@ -9,10 +9,10 @@
 
   type Aging = {
     generatedAt: string;
-    totals: { current: string; d1to30: string; d31to60: string; over60: string; total: string };
+    totals: { current: string; d1to30: string; d31to60: string; over60: string; segment?: string; total: string };
     partners: Array<{
       partnerId: string; code: string; name: string; province?: string; salesRepName?: string; status: string; holdReason?: string;
-      creditLimit: string; current: string; d1to30: string; d31to60: string; over60: string; total: string; maxDays: number;
+      creditLimit: string; current: string; d1to30: string; d31to60: string; over60: string; segment?: string; total: string; maxDays: number;
       level: string | null; documents: number; creditUsage: number | null;
     }>;
     lastReview: { reviewDate: string; ranAt: string; reminder: number; warning: number; danger: number; lockedPartners: string[] } | null;
@@ -84,9 +84,9 @@
   <header class="card-head head"><h2>{m.tuoi_no_theo_dai_ly()}</h2><span class="muted">{m.tong_du_no_2()} <b>{vnd(aging?.totals.total ?? 0)}</b></span></header>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.dai_ly()}</th><th class="num">{m.trong_han()}</th><th class="num">{m.t_1_30_ngay()}</th><th class="num">{m.t_31_60_ngay()}</th><th class="num">{m.t_60_ngay()}</th><th class="num">{m.tong_du_no_3()}</th><th class="num">{m.dung_han_muc()}</th><th>{m.muc_canh_bao()}</th><th>{m.dat_hang()}</th></tr></thead>
+      <thead><tr><th>{m.dai_ly()}</th><th class="num">{m.trong_han()}</th><th class="num">{m.t_1_30_ngay()}</th><th class="num">{m.t_31_60_ngay()}</th><th class="num">{m.t_60_ngay()}</th><th class="num">{m.tong_du_no_3()}</th><th class="num" title={m.seg_khong_tinh_qua_han()}>{m.seg_no_nhom_tach_rieng()}</th><th class="num">{m.dung_han_muc()}</th><th>{m.muc_canh_bao()}</th><th>{m.dat_hang()}</th></tr></thead>
       <tbody>
-        {#if loading}<tr class="empty-row"><td colspan="9">{m.dang_tinh_tuoi_no()}</td></tr>
+        {#if loading}<tr class="empty-row"><td colspan="10">{m.dang_tinh_tuoi_no()}</td></tr>
         {:else if aging?.partners.length}
           {#each aging.partners as row}
             {@const level = row.level ? overdueLevel[row.level] : null}
@@ -97,12 +97,13 @@
               <td class="num" class:amber={Number(row.d31to60) > 0}>{num(row.d31to60)}</td>
               <td class="num" class:red={Number(row.over60) > 0}>{num(row.over60)}</td>
               <td class="num"><b>{num(row.total)}</b></td>
+              <td class="num muted">{Number(row.segment ?? 0) ? num(row.segment ?? '0') : '—'}</td>
               <td class="num" class:red={(row.creditUsage ?? 0) > 100}>{row.creditUsage === null ? '—' : percent(row.creditUsage)}</td>
               <td>{#if level}<span class={`pill ${level.tone}`}>{level.label} · {row.maxDays} {m.ngay()}</span>{:else}<span class="pill success">{m.trong_han()}</span>{/if}</td>
               <td>{#if row.status === 'ON_HOLD'}<span class="pill danger">{m.tam_khoa_2()}</span>{:else}<span class="pill neutral">{m.binh_thuong()}</span>{/if}</td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="9">{m.khong_co_cong_no_dang_mo()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="10">{m.khong_co_cong_no_dang_mo()}</td></tr>{/if}
       </tbody>
     </table>
   </div>

@@ -26,7 +26,12 @@ interface PricingLineInput {
   gift?: boolean | undefined;
   /** Đơn giá chưa VAT sửa tay (đã kiểm tra quyền ở SalesService trước khi gọi). */
   overrideUnitPrice?: string | undefined;
+  /** Tên hàng sửa tay trên phiếu (SAL-NAME-01); trống = tên trong danh mục. */
+  productName?: string | undefined;
 }
+
+/** Tên in trên dòng phiếu: tên sửa tay nếu có, không thì tên sản phẩm trong danh mục. */
+export const lineProductName = (line: { productName?: string | undefined }, product: Document): string => line.productName?.trim() || String(product.name);
 
 export interface CustomerPricingContext {
   tier: string;
@@ -224,7 +229,7 @@ export class PricingService {
       pricedLines.push({
         productId,
         sku: String(product.sku),
-        productName: String(product.name),
+        productName: lineProductName(line, product),
         categoryId: product.categoryId as ObjectId | undefined,
         unit: line.unit,
         quantity: line.quantity,
@@ -291,7 +296,7 @@ export class PricingService {
       return {
         productId,
         sku: String(product.sku),
-        productName: String(product.name),
+        productName: lineProductName(line, product),
         categoryId: product.categoryId as ObjectId | undefined,
         unit: line.unit,
         quantity: line.quantity,

@@ -10,6 +10,7 @@
   import { goto } from '$app/navigation';
   import { CircleAlert, CircleCheck, FileText, PackageCheck, Plus, RefreshCw, Send, ShieldCheck, Ship, Trash2, XCircle } from 'lucide-svelte';
   import { CURRENCIES } from '$shared/currency';
+  import { PRODUCT_CREATE_ROLES } from '$shared/catalog-access';
   import { m } from '$lib/paraglide/messages';
   import { api, ApiRequestError } from '$lib/api';
   import { date, dateTime, num, todayIso, vnd } from '$lib/format';
@@ -22,6 +23,7 @@
   } from '$lib/purchase';
   import Dialog from '$lib/components/Dialog.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import ProductDialog from '$lib/components/ProductDialog.svelte';
   import RecordWindow from './RecordWindow.svelte';
   import RecordSection from './RecordSection.svelte';
   import LineGrid, { type GridColumn } from './LineGrid.svelte';
@@ -61,6 +63,22 @@
 
   const isNew = $derived(!id);
   const roles = $derived(session.user?.roles ?? []);
+  /** Tạo mã sản phẩm ngay trên đơn mua (PO-NEWSKU-01): không phải sang Danh mục rồi quay lại chọn. */
+  const canCreateProduct = $derived(hasRole(roles, [...PRODUCT_CREATE_ROLES]));
+  let newProductOpen = $state(false);
+  let newProductInitial = $state<{ sku?: string } | null>(null);
+  let productCategories = $state<Array<{ id: string; code: string; name: string; status?: string }>>([]);
+  function createProduct(code: string) {
+    newProductInitial = code ? { sku: code } : null;
+    newProductOpen = true;
+    if (!productCategories.length) void api<typeof productCategories>('/product-categories').then((rows) => (productCategories = rows)).catch(() => undefined);
+  }
+  function productCreated(saved: unknown) {
+    const product = saved as PurchaseProduct;
+    products = [...products, product];
+    const problem = addCode(product.sku);
+    success = problem ? '' : m.po_da_tao_ma_them_dong({ sku: product.sku });
+  }
   const draft = $derived(isNew || order?.status === 'DRAFT');
   const editable = $derived(draft && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER']));
   const productById = $derived(new Map(products.map((product) => [product.id, product])));
@@ -423,7 +441,7 @@
         <section class="card">
           <LineGrid bind:rows={lines} {columns} gridKey="purchase-order-lines" readonly={!editable} exportName={order?.code ?? 'don-mua'}
             suggestions={products.map((product) => ({ value: product.sku, label: productName(product) }))}
-            onadd={editable ? addCode : undefined} onremove={editable ? (index) => lines.splice(index, 1) : undefined} />
+            onadd={editable ? addCode : undefined} oncreate={editable && canCreateProduct ? createProduct : undefined} onremove={editable ? (index) => lines.splice(index, 1) : undefined} />
         </section>
       {:else if active === 'receive' && order}
         <section class="card">
@@ -501,6 +519,8 @@
 {:else if loading}
   <div class="card skeleton" style="height: 320px"></div>
 {/if}
+
+<ProductDialog bind:open={newProductOpen} product={null} initial={newProductInitial} categories={productCategories} onsaved={productCreated} />
 
 <style>
   .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; align-items: start; }

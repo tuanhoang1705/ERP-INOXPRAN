@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ChangePasswordSchema, LoginSchema } from '@inoxpran/contracts';
+import { ChangePasswordSchema, DisableMfaSchema, LoginSchema } from '@inoxpran/contracts';
 import { randomBytes } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ConfigService } from '@nestjs/config';
@@ -72,6 +72,14 @@ export class AuthController {
     const code = String((body as { code?: unknown }).code ?? '');
     await this.auth.confirmMfa(request.user, code);
     return { enabled: true };
+  }
+
+  /** Tự tắt 2 lớp khi không bị bắt buộc (MFA-02). */
+  @Post('mfa/disable')
+  @HttpCode(200)
+  async disableMfa(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    await this.auth.disableMfa(request.user, DisableMfaSchema.parse(body).totpCode);
+    return { enabled: false };
   }
 
   @Public()

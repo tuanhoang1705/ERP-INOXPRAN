@@ -104,3 +104,91 @@ Khi bị chặn, sửa trực tiếp trên hồ sơ, hoặc nhập một file b�
    - tạo tài khoản người dùng.
    - liên kết tài khoản của từng NVKD với hồ sơ NVKD (*Danh mục › Khu vực & nhân viên KD › Sửa › Tài khoản đăng nhập*) để khách do NVKD tạo tự gán người phụ trách.
 3. Thí điểm 2 tuần theo [production-readiness.md](production-readiness.md).
+
+## 8. Nhập lịch sử công nợ theo khách (từ 16/10/2026)
+
+Dùng để chuyển **sổ công nợ cũ** (Excel `每日订单汇总表`) vào ERP: chứng từ bán / trả hàng, khoản thu, phí vận chuyển khách trả. Khác với sheet `CONG_NO_DAU_KY` (một số dư mỗi chứng từ), lịch sử giữ từng bút toán với **ngày chứng từ thật**, để sổ chi tiết theo khách (*Công nợ → Công nợ theo khách hàng*) hiện đúng diễn biến.
+
+**Màn hình:** cùng trang *Nhập dữ liệu ban đầu*, ô **Nhập lịch sử công nợ theo khách** (chỉ quản trị gốc).
+
+**File** — gồm 3 sheet:
+
+| Sheet | Nội dung | Cột bắt buộc |
+| --- | --- | --- |
+| `CONG_NO_LICH_SU` | Mỗi dòng một bút toán. Cột: Mã dòng, Mã KH, Ngày chứng từ, Loại, Số chứng từ, Số hóa đơn, Số tiền (số dương), Diễn giải, Ghi chú, Nguồn, Cờ kiểm tra | Mã dòng, Mã KH, Ngày chứng từ, Loại, Số tiền |
+| `CONG_NO_LICH_SU_HANG` | Dòng hàng của chứng từ bán / trả (mã, tên, ĐVT, số lượng, đơn giá, thành tiền) — chỉ để xem lại | Mã dòng |
+| `DOI_CHIEU_CONG_NO` | Số tổng trên sheet đối chiếu của sổ cũ theo từng khách: Tổng công nợ, Đã thanh toán, Phí vận chuyển, Còn lại | Mã KH |
+
+**Loại** và tác động lên nợ:
+- **Tăng nợ:** *Bán hàng*, *Hoàn tiền* (trả tiền lại cho khách).
+- **Giảm nợ:**
+  - *Thu tiền*: vào cột Đã thu;
+  - *Phí vận chuyển*: khách / NPP trả cước thay công ty, cột riêng, không tính là tiền thu;
+  - *Trả hàng*, *Giảm giá*, *Trừ lương*: vào cột Trả hàng / giảm.
+
+**Ngày chốt** (mặc định 30/09/2026): chỉ nhập dòng **đến hết** ngày chốt. Từ 19/10/2026, dòng **sau** ngày chốt **không nhập**: từ ngày chốt, kế toán nhập trên ERP. Hệ thống vẫn so các dòng này với ERP để làm danh sách việc:
+- số chứng từ trùng phiếu BH đã có → **Đã có trên ERP**, kèm công nợ phiếu ERP và chênh so với sổ cũ;
+- khoản giảm nợ trùng khách + ngày + số tiền + loại với phiếu thu ERP → **Nghi trùng**;
+- phiếu bán khớp một phiếu BH trên ERP khác số (cùng khách, cùng tiền hoặc cùng dòng hàng, ngày gần nhau) → **Nghi trùng**, ghi số phiếu gợi ý;
+- còn lại → **Chưa có trên ERP — kế toán nhập**.
+
+**Cột "Phiếu ERP (trùng)"** (sheet `CONG_NO_LICH_SU`, không bắt buộc) dùng khi một lần xuất đã có phiếu BH trên ERP nhưng sổ cũ ghi khác số. Ví dụ: sổ cũ ghi theo ngày đơn 30/09, kho xuất 01/10 nên phiếu được lập lại trên ERP. Ghi số phiếu ERP vào cột này:
+- dòng sổ cũ không nhập, công nợ nằm ở phiếu ERP;
+- phiếu phải có trên ERP, chưa hủy, cùng khách; sai thì báo lỗi theo dòng.
+
+Chạy thử có bảng **"Trùng với phiếu BH trên ERP"**:
+- dòng đã ghép;
+- chứng từ bán trong 30 ngày trước ngày chốt mà nghi đã được lập lại trên ERP. Chỉ là cảnh báo: dòng này vẫn nhập, kế toán kiểm chứng từ xuất kho rồi ghép.
+
+**Các bước**
+
+1. **Trước khi ghi:** tích **Không tự khóa** cho các NPP trả gối đầu (*Công nợ theo khách hàng* → mở khách). Chạy thử liệt kê khách **sẽ bị khóa** (còn nợ quá hạn > 60 ngày); không tích thì lần rà soát 06:00 hôm sau sẽ khóa đặt hàng của họ.
+2. Chọn file, kiểm tra ngày chốt, bấm **Kiểm tra (chạy thử)**. Xem các phần:
+   - bảng theo khách: số bút toán, phát sinh, đã thu, phí vận chuyển, trả hàng / giảm, còn lại, so với *Còn lại (sổ cũ)*;
+   - danh sách sau ngày chốt;
+   - các dòng gắn cờ: ngày bị đảo ngày / tháng, thiếu ngày, ngày tương lai…
+3. Bấm **Ghi vào hệ thống**:
+   - chứng từ tăng nợ thành khoản phải thu (`AR…`): ngày phát sinh = ngày chứng từ, hạn = ngày chứng từ + số ngày nợ của khách;
+   - khoản giảm nợ thành phiếu (`PAY…`), tự phân bổ vào chứng từ **hạn cũ nhất trước**;
+   - phần dư thành **khoản trả trước** của khách.
+4. Bấm **Đối chiếu** trên lô: so số trong file với số đã ghi và với số tổng sổ cũ theo từng khách, rồi **Xác nhận đã đối chiếu**.
+
+**Chặn và hoàn tác**
+- Không ghi được: file đã ghi ở lô khác, hoặc mã dòng đã nhập ở lô trước (hoàn tác lô cũ trước).
+- **Hoàn tác:** xóa toàn bộ khoản phải thu và phiếu của lô.
+  - Phiếu thu theo khách ngoài lô được phân bổ lại sang chứng từ khác của khách.
+  - Bị chặn khi phiếu thu theo từng chứng từ / bù trừ trả trước trỏ vào chứng từ của lô, hoặc không còn chứng từ để giữ tiền đã thu.
+
+### Thay lô bằng file mới (từ 17/10/2026)
+
+Dùng khi lô đã ghi và kế toán đã thu tiền vào chứng từ của lô, nên hoàn tác rồi ghi lại không tiện. Ví dụ: thay bản trích PDF (làm tròn đồng) bằng bản đọc thẳng từ Excel gốc (giữ số lẻ).
+
+1. Dòng lô "Lịch sử công nợ" → **Thay bằng file mới** → chọn file. Hệ thống chạy thử với **cùng ngày chốt** của lô; file đang dùng hoặc đã ghi ở lô khác bị chặn.
+2. Hộp thoại hiện:
+   - bảng còn lại từng khách *Hiện tại → File mới* và mức chênh;
+   - **Giữ số đã thu theo chứng từ:** chứng từ kế toán đã thu đủ theo số cũ, số mới nhỏ hơn dưới 1 đ → giữ số đã thu làm số chứng từ (ghi số theo file). Lệch từ 1 đ, hoặc file mới không còn chứng từ đó → báo lỗi, chỉ rõ phiếu thu;
+   - bảng "Trùng với phiếu BH trên ERP" (đã ghép / nghi trùng);
+   - dòng sau ngày chốt (không nhập), có trạng thái đã có / nghi trùng / chưa có trên ERP, kèm công nợ phiếu ERP và chênh so với sổ cũ. Lô ghi theo quy tắc cũ có bút toán sau chốt "nhập kèm" thì khi thay lô, phần đó được gỡ ra.
+3. **Thay lô** (một giao dịch):
+   - chứng từ / phiếu cùng mã dòng giữ nguyên mã `AR…` / `PAY…`, nên phiếu thu ngoài lô vẫn trỏ đúng;
+   - phân bổ lại từng khách (nhóm công nợ tách riêng, nợ thường trước);
+   - lô giữ mã, đổi file / SHA-256 / số tổng, ghi lịch sử thay; xác nhận đối chiếu cũ bị xóa;
+   - nhật ký `IMPORT_REPLACED`.
+4. Hộp **Đối chiếu** tự mở → **Xác nhận đã đối chiếu** lại.
+- Hàng trong lịch sử **không** tính vào doanh thu, tồn kho hay danh sách phiếu BH: chỉ là công nợ.
+
+### Nhóm công nợ tách riêng (từ 17/10/2026)
+
+Kế toán tách riêng "công nợ quạt" (hoặc quạt + vợt muỗi, hàng mẫu…) như trên sheet đối chiếu: phần này không tính quá hạn / tự khóa, tiền thu trừ nợ thường trước (quy tắc CN-SEG-01).
+
+- **Lô ghi từ 17/10/2026:** dòng hàng của phiếu trả hàng được lưu. Khi ghi, hệ thống tự tách phần nhóm theo cấu hình đang dùng và phân bổ nợ thường trước.
+- **Lô ghi trước ngày đó** (lô bản PDF trên production): làm một lần.
+  1. *Nhập dữ liệu ban đầu* → dòng lô "Lịch sử công nợ" → **Bổ sung dòng hàng phiếu trả** → chọn đúng file đã ghi (cùng SHA-256, file khác bị chặn). Nếu thay lô bằng file mới (mục trên) thì bỏ qua bước này: file mới đã lưu dòng hàng phiếu trả.
+  2. *Công nợ → Nhóm công nợ tách riêng*:
+     - tạo nhóm;
+     - chọn **Áp dụng cho**: *Chỉ khách được chọn* (mặc định) + danh sách khách được nợ riêng, hoặc *Mọi khách*;
+     - ghép các mã hàng cũ chưa có trong danh mục (gợi ý sẵn: NP1002 → INP1002, INP1301A → INP1301-A…). Mã cũ không ghép được (VD INP6401 không rõ màu) thì ghi vào *Mã hàng thêm*;
+     - **Xem trước** → **Áp dụng**.
+- **Hoàn tác:**
+  - Hoàn tác lần áp dụng: được khi các chứng từ đã đổi chưa bị thu tiền / sửa tiếp.
+  - Hoàn tác lô lịch sử: phiếu thu theo khách ngoài lô được phân bổ lại. Chỉ bị chặn khi phiếu thu theo từng chứng từ / bù trừ trỏ vào chứng từ của lô, hoặc khi không còn chứng từ để giữ tiền đã thu.

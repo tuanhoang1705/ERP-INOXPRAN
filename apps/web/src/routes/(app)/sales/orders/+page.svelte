@@ -152,7 +152,7 @@
   <header class="card-head list-head"><h2>{loading && !rows.length ? m.dang_tai() : m.phieu({ p0: num(total) })}</h2><span class="muted">{m.tong_gia_tri()} <b>{num(totalValue)} {m.d()}</b></span></header>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.so_phieu_bh()}</th><th>{m.so_phieu_swk()}</th><th>{m.khach_hang()}</th><th>{m.lp_loai_phieu()}</th><th>{m.nv_ban_hang()}</th><th>{m.ngay_chung_tu()}</th><th class="num">{m.so_dong()}</th><th class="num">{m.tong_thanh_toan_2()}</th><th>{m.buoc_xu_ly()}</th></tr></thead>
+      <thead><tr><th>{m.so_phieu_bh()}</th><th>{m.ngay_chung_tu()}</th><th>{m.so_phieu_swk()}</th><th>{m.khach_hang()}</th><th>{m.lp_loai_phieu()}</th><th>{m.nv_ban_hang()}</th><th class="num">{m.so_dong()}</th><th class="num">{m.tong_thanh_toan_2()}</th><th>{m.buoc_xu_ly()}</th></tr></thead>
       <tbody>
         {#if loading && !rows.length}<tr class="empty-row"><td colspan="9">{m.dang_tai_phieu()}</td></tr>
         {:else if rows.length}
@@ -160,6 +160,7 @@
             {@const info = orderStage(row)}
             <tr>
               <td><a class="code" href={`/sales/orders/${row.id}`}>{row.code}</a></td>
+              <td>{date(row.orderDate ?? row.createdAt)}</td>
               <td class="code slip">{row.warehouseSlipNo ?? '—'}{#if row.warehouseKeeperName}<small>{m.thu_kho_2()} {row.warehouseKeeperName}</small>{/if}</td>
               {#if row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT'}
                 {@const age = loanAge(row)}
@@ -169,7 +170,6 @@
               {/if}
               <td><span class="tag" class:b2c={row.channel === 'B2C' && !row.purpose?.match(/SAMPLE|INSPECTION|GIFT/)} class:loan={row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT'}>{slipTypeShort(slipTypeOf(row))}</span></td>
               <td class="muted">{row.salesRepName ?? '—'}</td>
-              <td>{date(row.orderDate ?? row.createdAt)}</td>
               <td class="num">{row.lineCount ?? row.lines.length}</td>
               <td class="num"><b>{num(row.grandTotal)}</b></td>
               <td><span class={`pill ${info.tone}`}>{info.label}</span></td>

@@ -1,7 +1,8 @@
 import Decimal from 'decimal.js';
 import { type ClientSession, type Db, ObjectId } from 'mongodb';
 import type { NotificationTemplate, TextParams } from '@inoxpran/contracts';
-import { decimalString, vnDayStart, vnParts } from '../../common/domain';
+import { vnDayStart, vnParts } from '../../common/domain';
+import { normalOutstanding } from './segments';
 
 /** Giải thuật 3 của đồ án: phân mức cảnh báo theo số ngày quá hạn. */
 export type OverdueLevel = 'REMINDER' | 'WARNING' | 'DANGER';
@@ -76,11 +77,13 @@ export async function runOverdueReview(db: Db, now = new Date()): Promise<Overdu
   let overdueAmount = new Decimal(0);
   const dangerPartners = new Set<string>();
   const updates = receivables.map((row) => {
+    // Chỉ phần nợ thường tính quá hạn; phần nhóm công nợ tách riêng (CN-SEG-01 — VD quạt) không cảnh báo, không khóa.
+    const normal = normalOutstanding(row as never);
     const days = daysOverdue(row.dueDate as Date, now);
-    const level = classifyOverdue(days);
+    const level = normal.gt(0) ? classifyOverdue(days) : null;
     if (level) {
       counts[level] += 1;
-      overdueAmount = overdueAmount.add(new Decimal(decimalString(row.amount)).minus(decimalString(row.paidAmount)));
+      overdueAmount = overdueAmount.add(normal);
       if (level === 'DANGER') dangerPartners.add((row.partnerId as ObjectId).toHexString());
     }
     return {
@@ -96,8 +99,9 @@ export async function runOverdueReview(db: Db, now = new Date()): Promise<Overdu
 
   const lockedPartners: string[] = [];
   for (const partnerId of dangerPartners) {
+    // Khách "Không tự khóa" (CN-KH-01 — NPP trả gối đầu): vẫn tính cảnh báo quá hạn nhưng không khóa lập phiếu.
     const locked = await db.collection('partners').findOneAndUpdate(
-      { _id: new ObjectId(partnerId), status: 'ACTIVE' },
+      { _id: new ObjectId(partnerId), status: 'ACTIVE', autoHoldExempt: { $ne: true } },
       { $set: { status: 'ON_HOLD', holdReason: OVERDUE_HOLD_REASON, heldAt: now, updatedAt: now }, $inc: { version: 1 } },
       { returnDocument: 'after' },
     );
@@ -109,7 +113,7 @@ export async function runOverdueReview(db: Db, now = new Date()): Promise<Overdu
     .toArray();
   const releasedPartners: string[] = [];
   for (const partner of releasable) {
-    if (dangerPartners.has((partner._id as ObjectId).toHexString())) continue;
+    if (dangerPartners.has((partner._id as ObjectId).toHexString()) && partner.autoHoldExempt !== true) continue;
     await db.collection('partners').updateOne(
       { _id: partner._id, status: 'ON_HOLD', holdReason: OVERDUE_HOLD_REASON },
       { $set: { status: 'ACTIVE', updatedAt: now }, $unset: { holdReason: '', heldAt: '' }, $inc: { version: 1 } },
@@ -169,11 +173,11 @@ export async function releaseHoldIfCleared(db: Db, partnerId: ObjectId, session:
   const partner = await db.collection('partners').findOne({ _id: partnerId }, { session });
   if (partner?.status !== 'ON_HOLD' || partner.holdReason !== OVERDUE_HOLD_REASON) return false;
   const threshold = new Date(vnDayStart(now).getTime() - 60 * DAY_MS);
-  const stillDangerous = await db.collection('receivables').countDocuments(
+  const old = await db.collection('receivables').find(
     { partnerId, status: { $in: OPEN_RECEIVABLE_STATUSES }, dueDate: { $lt: threshold } },
-    { session },
-  );
-  if (stillDangerous > 0) return false;
+    { session, projection: { amount: 1, paidAmount: 1, segments: 1 } },
+  ).toArray();
+  if (old.some((row) => normalOutstanding(row as never).gt(0))) return false;
   await db.collection('partners').updateOne(
     { _id: partnerId },
     { $set: { status: 'ACTIVE', updatedAt: now }, $unset: { holdReason: '', heldAt: '' }, $inc: { version: 1 } },

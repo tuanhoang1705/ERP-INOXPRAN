@@ -21,7 +21,7 @@ import { Roles, RootOnly } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { CatalogService } from './catalog.service';
 import { MasterDataService } from './master-data.service';
-import { PARTNER_CREATE_ROLES, PARTNER_MANAGER_ROLES, PRODUCT_EDITOR_ROLES, SALES_STRUCTURE_ROLES, SUPPLIER_MANAGER_ROLES, WAREHOUSE_EDITOR_ROLES } from './partner-access';
+import { PARTNER_CREATE_ROLES, PARTNER_MANAGER_ROLES, PRODUCT_CREATE_ROLES, PRODUCT_EDITOR_ROLES, SALES_STRUCTURE_ROLES, SUPPLIER_MANAGER_ROLES, WAREHOUSE_EDITOR_ROLES } from './partner-access';
 
 const UpdateCategorySchema = ProductCategoryInputSchema.partial().extend({ status: z.enum(['ACTIVE', 'INACTIVE']).optional() });
 const UpdateLocationSchema = LocationInputSchema.omit({ warehouseId: true }).partial();
@@ -63,7 +63,7 @@ export class CatalogController {
     return this.catalog.productOverview(id);
   }
 
-  @Roles(...PRODUCT_EDITOR_ROLES)
+  @Roles(...PRODUCT_CREATE_ROLES)
   @Post('products')
   createProduct(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.catalog.createProduct(CreateProductSchema.parse(body), request);

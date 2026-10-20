@@ -28,6 +28,7 @@
   h2 { margin: 0; font-size: 16px; font-weight: 700; }
   .close { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: var(--muted); }
   .close:hover { background: var(--surface-2); }
-  .body { display: grid; gap: 14px; padding: 20px 22px; }
+  /* minmax(0, 1fr): bảng rộng bên trong cuộn ngang trong .table-wrap thay vì kéo giãn rồi bị cắt mép hộp thoại. */
+  .body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px 22px; }
   footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px 18px; border-top: 1px solid var(--line-soft); }
 </style>
