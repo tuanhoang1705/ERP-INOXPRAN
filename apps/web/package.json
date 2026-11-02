@@ -17,7 +17,7 @@
     "@fontsource/be-vietnam-pro": "^5.2.8",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@inoxpran/contracts": "*",
-    "cookie": "0.7.2",
+    "cookie": "2.0.1",
     "lucide-svelte": "^0.545.0",
     "pdfmake": "0.3.13",
     "qrcode": "^1.5.4"
