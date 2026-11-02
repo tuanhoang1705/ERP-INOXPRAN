@@ -1,28 +1,31 @@
+import { canDeliverOrder, canShipOrder, isKeeperOnly, KEEPER_ROLES } from '@inoxpran/contracts';
 import type { Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
+import { seesCancelled } from '../../common/hidden-documents';
 import type { RequestUser } from '../../common/request-context';
 
-/** Vai trò được xem toàn bộ phiếu xuất kho bán hàng (quản lý kho xem hết để điều phối, nhưng chỉ thao tác phiếu giao cho mình). */
-const FULL_VIEW_ROLES = ['ADMIN', 'DIRECTOR', 'ACCOUNTANT', 'SALES', 'SALES_MANAGER', 'AUDITOR', 'WAREHOUSE_MANAGER'];
-export const KEEPER_ROLES = ['WAREHOUSE', 'WAREHOUSE_MANAGER'];
+export { isKeeperOnly, KEEPER_ROLES };
+
+type ScopeUser = Pick<RequestUser, 'roles' | 'sub' | 'root' | 'permissions'>;
+
+const keeperOf = (order: Document) => (order.warehouseKeeperId as ObjectId | undefined)?.toHexString();
 
 /**
- * Nhân viên thủ kho (vai trò WAREHOUSE, không kiêm vai trò xem toàn bộ): chỉ thấy phiếu kế toán đã chọn mình
- * làm thủ kho xuất hàng, và chỉ sau khi phiếu đã phát hành (không thấy nháp / phiếu hủy).
+ * Điều kiện lọc phiếu theo người xem (rỗng = xem tất cả). Thủ kho thuần (vai trò WAREHOUSE, không kiêm vai trò xem toàn bộ,
+ * không được phân bước văn phòng — SAL-STEP-01) chỉ thấy phiếu kế toán chọn mình làm thủ kho, sau khi phát hành.
+ * Phiếu đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01): danh sách, chi tiết, Tổng quan, ảnh đối chiếu, tạo đề nghị.
  */
-export function isKeeperOnly(user: Pick<RequestUser, 'roles'>): boolean {
-  return user.roles.includes('WAREHOUSE') && !user.roles.some((role) => FULL_VIEW_ROLES.includes(role));
+export function salesOrderScope(user: ScopeUser): Document {
+  if (isKeeperOnly(user)) return { warehouseKeeperId: new ObjectId(user.sub), status: { $nin: ['DRAFT', 'CANCELLED'] } };
+  return seesCancelled(user) ? {} : { status: { $ne: 'CANCELLED' } };
 }
 
-/** Điều kiện lọc phiếu theo người xem (rỗng = xem tất cả). */
-export function salesOrderScope(user: Pick<RequestUser, 'roles' | 'sub'>): Document {
-  if (!isKeeperOnly(user)) return {};
-  return { warehouseKeeperId: new ObjectId(user.sub), status: { $nin: ['DRAFT', 'CANCELLED'] } };
+/** Lập SWK & xuất kho phiếu này: được phân công bước 4 và là thủ kho của phiếu (ADMIN luôn được). */
+export function isAssignedKeeper(user: ScopeUser, order: Document): boolean {
+  return canShipOrder(user, keeperOf(order));
 }
 
-/** Người dùng có phải thủ kho được giao phiếu này (ADMIN luôn được). */
-export function isAssignedKeeper(user: Pick<RequestUser, 'roles' | 'sub'>, order: Document): boolean {
-  if (user.roles.includes('ADMIN')) return true;
-  const keeperId = order.warehouseKeeperId as ObjectId | undefined;
-  return Boolean(keeperId && keeperId.toHexString() === user.sub);
+/** Xác nhận giao phiếu này (bước 5): người có vai trò kho chỉ phiếu mình là thủ kho; người khác được phân bước 5 giao mọi phiếu. */
+export function canDeliverSalesOrder(user: ScopeUser, order: Document): boolean {
+  return canDeliverOrder(user, keeperOf(order));
 }

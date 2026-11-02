@@ -7,6 +7,19 @@ x-logging: &logging
   driver: json-file
   options: { max-size: "10m", max-file: "3" }
 
+# Log ứng dụng (caddy, api, web, worker) đẩy lên CloudWatch Logs nhóm <PARAM_PREFIX>/app, giữ 30 ngày (D7, 22/10/2026) —
+# không mất log khi cập nhật phiên bản. Docker vẫn giữ bản sao cục bộ nên `docker compose logs` dùng như cũ.
+# non-blocking: CloudWatch chậm / mất mạng thì bỏ bớt log trong bộ đệm, ứng dụng không bị treo.
+x-cloud-logging: &cloud-logging
+  driver: awslogs
+  options:
+    awslogs-region: ${AWS_REGION}
+    awslogs-group: ${PARAM_PREFIX}/app
+    awslogs-create-group: "false"
+    tag: "{{.Name}}"
+    mode: non-blocking
+    max-buffer-size: 4m
+
 services:
   # HTTPS tự động (Let's Encrypt) cho tên miền của môi trường, chuyển tiếp vào web.
   caddy:
@@ -21,7 +34,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     depends_on: [web]
-    logging: *logging
+    logging: *cloud-logging
 
   api:
     image: ${API_IMAGE}:${IMAGE_TAG}
@@ -54,7 +67,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    logging: *logging
+    logging: *cloud-logging
 
   # Nginx của image web gọi API qua 127.0.0.1:3000 (như task ECS) → dùng chung network với api.
   web:
@@ -63,7 +76,7 @@ services:
     network_mode: service:api
     depends_on:
       api: { condition: service_healthy }
-    logging: *logging
+    logging: *cloud-logging
 
   worker:
     image: ${API_IMAGE}:${IMAGE_TAG}
@@ -81,7 +94,7 @@ services:
       NODE_OPTIONS: --max-old-space-size=256
     depends_on:
       api: { condition: service_healthy }
-    logging: *logging
+    logging: *cloud-logging
 
   # MongoDB một node dạng replica set (ứng dụng cần transaction), không mở cổng ra ngoài, bật xác thực
   # (keyFile + tài khoản root / erpapp do start.sh và mongo-init.js tạo). Dữ liệu trên ổ EBS riêng gắn ở /data

@@ -2,16 +2,19 @@
   import { m } from '$lib/paraglide/messages';
   import type { WarrantyFaultCode, WarrantyFaultLine, WarrantyTicket } from '@inoxpran/contracts';
   import { page } from '$app/state';
-  import { CalendarClock, CircleAlert, CircleCheck, Plus, Printer, TriangleAlert, X } from 'lucide-svelte';
+  import { goto } from '$app/navigation';
+  import { untrack } from 'svelte';
+  import { CalendarClock, CircleAlert, CircleCheck, Pencil, Plus, Printer, TriangleAlert, X } from 'lucide-svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import WarrantyPhotos from '$lib/components/WarrantyPhotos.svelte';
+  import WarrantyIntakeDialog from '$lib/components/WarrantyIntakeDialog.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
   import { api } from '$lib/api';
   import { date, dateTime, todayIso, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
   import { session } from '$lib/session.svelte';
   import {
-    actionText, channelText, coverageText, coverageTone, exclusionText, planText, resolutionText, slaText, statusText, statusTone, toneText,
+    actionText, channelText, coverageTone, ticketCoverageText, exclusionText, planText, resolutionText, slaText, statusText, statusTone, toneText,
     WARRANTY_APPROVERS, WARRANTY_STAFF, type SlaView,
   } from '$lib/warranty';
   import {
@@ -41,6 +44,10 @@
   let reason = $state('');
   let cancelOpen = $state(false);
   let refundAmount = $state('');
+  /** Trả khách đổi mới / hoàn tiền (20/10/2026): hàng đổi đã giao trước; số phiếu trả hàng đã nhập hàng lỗi (chỉ liên kết). */
+  let exchangeDelivered = $state(false);
+  let returnSlipCode = $state('');
+  let editOpen = $state(false);
   let faultCodes = $state<WarrantyFaultCode[]>([]);
 
   const isStaff = $derived(hasRole(session.user?.roles, WARRANTY_STAFF));
@@ -58,17 +65,25 @@
   const resolutionNow = $derived(ticket?.result?.resolution);
   const billable = $derived(Boolean(ticket?.result && ticket.result.chargedTo === 'CUSTOMER' && Number(ticket.result.cost) > 0 && ticket.result.resolution !== 'REJECTED'));
 
-  async function load() {
+  /** Danh mục mã lỗi tải một lần (danh mục có thể trống — không dùng độ dài mảng làm cờ). */
+  let faultCodesLoaded = false;
+  async function load(id = page.params.id) {
     try {
-      if (!faultCodes.length) faultCodes = await api<WarrantyFaultCode[]>('/warranty/fault-codes?all=1').catch(() => []);
-      prepare(await api<Ticket>(`/warranty/tickets/${page.params.id}`));
+      if (!faultCodesLoaded) {
+        faultCodesLoaded = true;
+        faultCodes = await api<WarrantyFaultCode[]>('/warranty/fault-codes?all=1').catch(() => []);
+      }
+      prepare(await api<Ticket>(`/warranty/tickets/${id}`));
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.wr_load_error();
     }
   }
+  // Chỉ tải lại khi đổi phiếu (id). untrack: load() đọc / ghi state (faultCodes, ticket…) — nếu effect theo dõi các state đó thì
+  // mỗi lần gán lại sẽ chạy lại effect. Lỗi 20/10/2026: danh mục mã lỗi production trống → `faultCodes = []` kích hoạt lại effect
+  // → tải lặp vô hạn (~874 yêu cầu/phút) → bị giới hạn tần suất, báo "thao tác quá nhanh, thử lại sau".
   $effect(() => {
-    void page.params.id;
-    void load();
+    const id = page.params.id;
+    untrack(() => void load(id));
   });
 
   /** Đổ dữ liệu phiếu vào các form của bước tiếp theo. */
@@ -86,6 +101,8 @@
     newDate = next.promisedDate;
     reason = '';
     refundAmount = '';
+    exchangeDelivered = false;
+    returnSlipCode = '';
   }
 
   $effect(() => {
@@ -99,6 +116,11 @@
     try {
       const photos = ticket.photos;
       const next = await api<Ticket>(`/warranty/tickets/${ticket.id}/actions`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: ticket.version, ...body }) });
+      // Phiếu đã hủy chỉ quản trị gốc còn mở được (DOC-HIDE-01): người khác về danh sách kèm thông báo.
+      if (body.type === 'CANCEL' && !session.user?.root) {
+        await goto(`/warranty?cancelled=${encodeURIComponent(ticket.code)}`);
+        return;
+      }
       // Kết quả thao tác không kèm ảnh: giữ danh sách ảnh đang có.
       prepare({ ...next, photos });
       notice = 'saved';
@@ -140,12 +162,13 @@
       <h1 class="page-title">{ticket.code}</h1>
       <p class="pills">
         <span class={`pill ${statusTone[ticket.status]}`}>{statusText(ticket.status)}</span>
-        <span class={`pill ${coverageTone[ticket.coverage]}`}>{coverageText(ticket.coverage)}{ticket.exclusion ? ` · ${exclusionText(ticket.exclusion)}` : ''}</span>
+        <span class={`pill ${coverageTone[ticket.coverage]}`}>{ticketCoverageText(ticket)}{ticket.exclusion ? ` · ${exclusionText(ticket.exclusion)}` : ''}</span>
         <span class={`pill tone-${sla.tone}`}>{toneText(sla.tone)} · {slaText(sla)}</span>
         {#if serviceNumber > 1}<span class="pill orange">{m.wr_repeat_badge({ count: serviceNumber })}</span>{/if}
       </p>
     </div>
     <div class="actions">
+      {#if isStaff && !['RETURNED', 'CANCELLED'].includes(ticket.status)}<button class="btn" onclick={() => (editOpen = true)}><Pencil size={16} />{m.wr_act_edit()}</button>{/if}
       {#if isStaff && actions.includes('RESCHEDULE')}<button class="btn" onclick={() => (rescheduleOpen = true)}><CalendarClock size={16} />{m.wr_reschedule()}</button>{/if}
       {#if isStaff && actions.includes('CANCEL')}<button class="btn danger" onclick={() => (cancelOpen = true)}><X size={16} />{m.wr_act_cancel()}</button>{/if}
       <a class="btn navy" href={`/print/warranty/${ticket.id}`} target="_blank" rel="noopener"><Printer size={16} />{m.wr_print()}</a>
@@ -153,7 +176,7 @@
   </section>
 
   {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span></div>{/if}
-  {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : m.wr_saved({ code: ticket.code })}</div>{/if}
+  {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : m.wr_saved({ code: ticket.code })}</div>{/if}
 
   <article class={`card sla tone-${sla.tone}`}>
     <header class="card-head"><h2>{m.wr_sla_title()}</h2><b class="sla-text">{slaText(sla)}</b></header>
@@ -192,7 +215,7 @@
     <article class="card">
       <header class="card-head"><h2>{m.wr_info_warranty()}</h2></header>
       <dl class="facts">
-        <div><dt>{m.wr_invoice_no()}</dt><dd>{ticket.invoice ? `${ticket.invoice.number} · ${date(ticket.invoice.date)}` : m.wr_ex_no_invoice()}</dd></div>
+        <div><dt>{m.wr_invoice_no()}</dt><dd>{ticket.invoice ? `${ticket.invoice.number} · ${date(ticket.invoice.date)}` : ticket.invoicelessWarranty ? m.wr_noinv_ticket({ decision: m.wr_noinv_warranty() }) : m.wr_ex_no_invoice()}{#if ticket.declaredPurchaseDate}<small>{m.wr_noinv_declared_on({ date: date(ticket.declaredPurchaseDate) })}</small>{/if}</dd></div>
         <div><dt>{m.wr_warranty_start()}</dt><dd>{ticket.warranty.startsOn ? date(ticket.warranty.startsOn) : '—'}</dd></div>
         <div><dt>{m.wr_warranty_end()}</dt><dd>{ticket.warranty.expiresOn ? date(ticket.warranty.expiresOn) : '—'}{#if ticket.warranty.extensionDays}<small>+{m.wr_days_count({ days: ticket.warranty.extensionDays })}</small>{/if}</dd></div>
         <div><dt>{m.wr_warranty_left()}</dt><dd>{warrantyLeft === null ? '—' : warrantyLeft >= 0 ? m.wr_days_count({ days: warrantyLeft }) : m.wr_expired()}</dd></div>
@@ -254,7 +277,10 @@
         {#if ticket.stock}
           <div><dt>{m.wr_stock_link()}</dt><dd>
             {#if ticket.stock.exchange}{m.wr_stock_exchange_out({ warehouse: ticket.stock.exchange.warehouseName, sku: ticket.product.sku })}<br />{/if}
-            {m.wr_stock_defect_in({ warehouse: ticket.stock.defect.warehouseName })}
+            {#if ticket.stock.exchangeDelivered}{m.wr_stock_exchange_delivered()}<br />{/if}
+            {#if ticket.stock.defect}{m.wr_stock_defect_in({ warehouse: ticket.stock.defect.warehouseName })}
+            {:else if ticket.stock.returnSlip}<a class="link" href="/inventory/returns">{m.wr_stock_return_slip({ code: ticket.stock.returnSlip.code, warehouse: ticket.stock.returnSlip.warehouseName })}</a>
+            {:else}<span class="muted">{m.wr_stock_no_slip()}</span>{/if}
             <small><a class="link" href={`/inventory/movements?productId=${ticket.product.productId}`}>{m.the_kho()}</a> · {dateTime(ticket.stock.movedAt)}</small></dd></div>
         {/if}
         {#if ticket.receivable}
@@ -343,11 +369,15 @@
             <p class="info-note">{m.wr_return_refund_note()}</p>
             <div class="field"><label for="refund">{m.wr_refund_amount()} <span class="req">*</span></label><NumberInput id="refund" bind:value={refundAmount} /><small class="hint">{vnd(refundAmount || 0)}</small></div>
           {/if}
+          {#if resolutionNow === 'EXCHANGED'}<label class="check"><input type="checkbox" bind:checked={exchangeDelivered} />{m.wr_exchange_delivered()}</label>{/if}
+          {#if resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED'}
+            <div class="field"><label for="return-slip">{m.wr_return_slip()}</label><input id="return-slip" value={returnSlipCode} maxlength="40" placeholder="NK2026100007" autocomplete="off" oninput={(event) => (returnSlipCode = event.currentTarget.value.toUpperCase())} /><small class="hint">{m.wr_return_slip_hint()}</small></div>
+          {/if}
           {#if billable}<p class="info-note">{m.wr_return_bill_note({ amount: vnd(ticket.result?.cost ?? 0) })}</p>{/if}
           <div class="field"><label for="receiver">{m.wr_returned_to()}</label><input id="receiver" bind:value={receiverName} required minlength="2" /></div>
           <div class="field"><label for="return-note">{m.wr_note()}</label><textarea id="return-note" rows="2" bind:value={note}></textarea></div>
           <p class="hint">{m.wr_return_signed_hint()}</p>
-          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount))} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}) })}>{m.wr_return_btn()}</button>
+          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount))} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}), ...(resolutionNow === 'EXCHANGED' && exchangeDelivered ? { exchangeDelivered: true } : {}), ...((resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED') && returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}) })}>{m.wr_return_btn()}</button>
         {/if}
       </div>
     </article>
@@ -361,6 +391,8 @@
       {/each}
     </ol>
   </section>
+
+  <WarrantyIntakeDialog bind:open={editOpen} {ticket} onsaved={(next) => { prepare({ ...(next as Ticket), photos: ticket?.photos }); notice = 'edited'; }} />
 
   <Dialog bind:open={rescheduleOpen} title={m.wr_reschedule_title()}>
     <div class="field"><label for="new-date">{m.wr_new_date()}</label><input id="new-date" type="date" bind:value={newDate} min={ticket.receivedDate} /></div>

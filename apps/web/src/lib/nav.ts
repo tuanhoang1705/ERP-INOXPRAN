@@ -42,7 +42,7 @@ export const sections: NavSection[] = [
         items: [
           { label: m.bang_dieu_khien(), href: '/' },
           { label: m.phieu_xuat_kho_ban_hang(), href: '/sales/orders' },
-          { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
+          { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', permissions: ['sales.step.confirm'] },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
           { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
           { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
@@ -91,11 +91,13 @@ export const sections: NavSection[] = [
       {
         title: m.phieu_xuat_kho_ban_hang(),
         items: [
-          { label: m.lap_phieu_xuat_kho_bh(), href: '/sales/orders/new', roles: ['ACCOUNTANT', 'SALES', 'SALES_MANAGER'] },
+          // 5 bước phiếu BH theo người được Admin phân công (SAL-STEP-01).
+          { label: m.lap_phieu_xuat_kho_bh(), href: '/sales/orders/new', permissions: ['sales.step.create'] },
           { label: m.tat_ca_phieu(), href: '/sales/orders' },
-          { label: m.cho_ke_toan_phat_hanh_sua(), href: '/sales/orders?stage=draft', roles: ['ACCOUNTANT', 'SALES', 'SALES_MANAGER'] },
-          { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', roles: ['SALES', 'SALES_MANAGER', 'ACCOUNTANT'] },
+          { label: m.cho_ke_toan_phat_hanh_sua(), href: '/sales/orders?stage=draft', permissions: ['sales.step.create', 'sales.step.issue'] },
+          { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', permissions: ['sales.step.confirm'] },
           { label: m.cho_kho_lap_phieu_swk(), href: '/sales/orders?stage=warehouse' },
+          { label: m.sst_nav_cho_giao(), href: '/sales/orders?stage=shipping', permissions: ['sales.step.deliver'] },
           { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
           { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
           { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
@@ -160,8 +162,8 @@ export const sections: NavSection[] = [
   {
     key: 'receivables',
     label: m.cong_no(),
-    href: '/receivables',
-    match: ['/receivables'],
+    href: '/receivables/customers',
+    match: ['/receivables', '/payables'],
     groups: [
       {
         title: m.thanh_toan_cong_no(),
@@ -170,6 +172,8 @@ export const sections: NavSection[] = [
           { label: m.so_chi_tiet_cong_no(), href: '/receivables' },
           { label: m.tuoi_no_canh_bao_qua_han(), href: '/receivables/overdue' },
           { label: m.seg_nav(), href: '/receivables/segments' },
+          // Sổ phải trả nhà cung cấp (D2, 22/10/2026).
+          { label: m.apb_nav(), href: '/payables', roles: ['ACCOUNTANT', 'DIRECTOR', 'AUDITOR', 'PROCUREMENT', 'PROCUREMENT_MANAGER'] },
         ],
       },
     ],
@@ -179,15 +183,16 @@ export const sections: NavSection[] = [
     label: m.wr_nav(),
     href: '/warranty',
     match: ['/warranty'],
-    roles: ['WARRANTY', 'DIRECTOR'],
+    // Quản lý kho có mọi quyền bảo hành và duyệt (WAR-ROLE-01, 28/10/2026); Giám đốc chỉ xem.
+    roles: ['WARRANTY', 'WAREHOUSE_MANAGER', 'DIRECTOR'],
     groups: [
       {
         title: m.wr_nav_group(),
         items: [
           { label: m.wr_nav_list(), href: '/warranty' },
-          { label: m.wr_nav_new(), href: '/warranty/new', roles: ['WARRANTY'] },
+          { label: m.wr_nav_new(), href: '/warranty/new', roles: ['WARRANTY', 'WAREHOUSE_MANAGER'] },
           { label: m.wr_nav_overdue(), href: '/warranty?tone=overdue' },
-          { label: m.wr_nav_approval(), href: '/warranty?status=PENDING_APPROVAL', roles: ['DIRECTOR'] },
+          { label: m.wr_nav_approval(), href: '/warranty?status=PENDING_APPROVAL', roles: ['WAREHOUSE_MANAGER'] },
           { label: m.wr_nav_reports(), href: '/warranty/reports' },
           { label: m.wr_nav_fault_codes(), href: '/warranty/fault-codes' },
         ],

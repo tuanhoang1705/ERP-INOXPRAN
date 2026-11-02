@@ -144,6 +144,12 @@ variable "protect_data" {
   default     = true
 }
 
+variable "log_retention_days" {
+  type        = number
+  description = "Số ngày giữ log ứng dụng trên CloudWatch Logs (nhóm /<project>/<môi trường>/app)."
+  default     = 30
+}
+
 variable "backup_monthly_days" {
   type        = number
   description = "Số ngày giữ bản sao lưu ngày mùng 1 hằng tháng (S3 backups/monthly/)."

@@ -33,7 +33,7 @@
   let saving = $state(false);
   let form = $state(blank());
   const canLog = $derived(can.logActivities());
-  const supervisor = $derived((session.user?.roles ?? []).some((role) => ['ADMIN', 'DIRECTOR', 'SALES_MANAGER'].includes(role)));
+  const supervisor = $derived((session.user?.roles ?? []).some((role) => ['ADMIN', 'SALES_MANAGER'].includes(role)));
   const today = todayIso();
 
   async function load() {

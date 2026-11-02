@@ -15,6 +15,8 @@
   type Movement = {
     id: string; movementType: string; direction: 'IN' | 'OUT'; quantity: string; referenceType: string; referenceId: string;
     reason?: string; salesOrderCode?: string; occurredAt: string; category?: string;
+    /** Nguyên nhân / ghi chú của dòng phiếu trả hàng (20/10/2026). */
+    lineNote?: string; correctionOf?: string;
   };
   let products = $state<Product[]>([]);
   let productId = $state('');
@@ -110,7 +112,7 @@
               <td class="muted">{dateTime(row.occurredAt)}</td>
               <td><span class={`pill ${row.direction === 'IN' ? 'success' : 'orange'}`} title={movementLabel[row.movementType] ?? row.movementType}>{categoryLabel(movementCategory(row))}</span></td>
               <td class="code">{row.referenceId}</td>
-              <td class="muted">{row.salesOrderCode ? m.theo_don({ salesOrderCode: row.salesOrderCode }) : row.reason ?? '—'}</td>
+              <td class="muted">{row.salesOrderCode && !row.correctionOf ? m.theo_don({ salesOrderCode: row.salesOrderCode }) : row.reason ?? '—'}{#if row.lineNote}<small class="line-note">{m.inv_nguyen_nhan()}: {row.lineNote}</small>{/if}</td>
               <td class="num">{row.direction === 'IN' ? num(row.quantity) : ''}</td>
               <td class="num">{row.direction === 'OUT' ? num(row.quantity) : ''}</td>
               <td class="num"><b>{num(row.balance)}</b></td>
@@ -127,5 +129,6 @@
   .filters { grid-template-columns: minmax(280px, 2fr) 1fr 1fr; }
   .meta { display: grid; gap: 4px; padding-bottom: 8px; }
   .meta span { color: var(--subtle); font-size: 12px; }
+  .line-note { display: block; color: var(--muted); font-size: 12px; }
   @media (max-width: 800px) { .filters { grid-template-columns: 1fr; } }
 </style>

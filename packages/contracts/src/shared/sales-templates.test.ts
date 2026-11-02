@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, expandSalesOrderCode, nextSalesOrderSequence, normalizeSalesOrderCode, periodOfDate, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from './sales-templates.js';
+import { cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, NEW_SALES_ISSUE_TEMPLATE, expandSalesOrderCode, nextSalesOrderSequence, normalizeSalesOrderCode, periodOfDate, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from './sales-templates.js';
 
 describe('mẫu chứng từ phiếu xuất kho bán hàng', () => {
   it('PXK-001 là mẫu mặc định, một thuế suất cho cả phiếu', () => {
     expect(DEFAULT_SALES_ISSUE_TEMPLATE).toBe('PXK-001');
     expect(SALES_ISSUE_TEMPLATES).toContain('PXK-001');
     expect(salesIssueTemplate('PXK-001')).toMatchObject({ code: 'PXK-001', vatMode: 'DOCUMENT' });
+  });
+
+  it('PXK-002 (27/10/2026): thuế suất từng dòng, mẫu cho phiếu lập mới', () => {
+    expect(SALES_ISSUE_TEMPLATES).toContain('PXK-002');
+    expect(salesIssueTemplate('PXK-002')).toMatchObject({ code: 'PXK-002', vatMode: 'LINE' });
+    expect(NEW_SALES_ISSUE_TEMPLATE).toBe('PXK-002');
   });
 
   it('phiếu cũ chưa có mã mẫu được coi là PXK-001', () => {

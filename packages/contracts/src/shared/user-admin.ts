@@ -26,6 +26,11 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const PRIVILEGED_ROLES: readonly string[] = ['ADMIN', 'DIRECTOR', 'ACCOUNTANT'];
 /** Xem (chỉ đọc) danh sách người dùng, lịch sử đăng nhập, giám sát hệ thống, nhật ký: quản trị, Giám đốc, kiểm soát nội bộ. */
 export const USER_VIEWER_ROLES = ['ADMIN', 'DIRECTOR', 'AUDITOR'];
+/**
+ * Vai trò chỉ xem (ROLE-DIR-01, 28/10/2026): Giám đốc xem mọi khu vực như trước nhưng không thêm / sửa / xóa; chỉ còn
+ * duyệt phiếu BH ngoại lệ, duyệt đơn mua và duyệt sửa đơn giá (API đánh dấu từng thao tác được phép bằng AllowReadOnly).
+ */
+export const READ_ONLY_ROLES: readonly string[] = ['DIRECTOR'];
 export const MIN_PASSWORD_LENGTH = 12;
 
 /** Bước bắt buộc trước khi dùng hệ thống: đổi mật khẩu tạm, bật xác thực 2 lớp. */
@@ -63,6 +68,12 @@ export interface TargetUser {
   id: string;
   roles: readonly string[];
   root?: boolean | undefined;
+}
+
+/** Tài khoản chỉ xem: mọi vai trò đều là vai trò chỉ xem. Giám đốc kiêm vai trò khác vẫn làm được việc của vai trò kia. */
+export function isReadOnlyUser(user: { roles: readonly string[]; root?: boolean | undefined } | null | undefined): boolean {
+  if (!user || user.root || user.roles.length === 0) return false;
+  return user.roles.every((role) => READ_ONLY_ROLES.includes(role));
 }
 
 /** Người thao tác có được sửa / khóa / đặt lại tài khoản này không. */

@@ -1,22 +1,27 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { intlLocale, templateDescription } from '$lib/i18n';
-  import type { SalesOrder, Warehouse } from '@inoxpran/contracts';
+  import type { SalesOrder, SalesStepOwners, Warehouse } from '@inoxpran/contracts';
   import { vndInWords } from '$lib/vnd-words';
   import { vatLabel } from '$shared/sales-math';
   import { salesIssueTemplate } from '$shared/sales-templates';
+  import { canDeliverOrder, canShipOrder } from '$shared/sales-steps';
+  import { zeroPriceKindOf } from '$shared/sales-line-kind';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { Ban, Check, CircleAlert, CircleCheck, Hourglass, MessageSquareWarning, Paperclip, Pencil, Printer, Send, ShieldAlert, ShieldCheck, Trash2, Warehouse as WarehouseIcon } from 'lucide-svelte';
   import { goto } from '$app/navigation';
   import ChangeRequestDialog from '$lib/components/ChangeRequestDialog.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import { deliveryConfirmation } from '$lib/delivery';
   import CustomerConfirmationDialog from '$lib/components/CustomerConfirmationDialog.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import WarehouseIssueDialog from '$lib/components/WarehouseIssueDialog.svelte';
   import { api } from '$lib/api';
   import { date, dateTime, num, vnd } from '$lib/format';
-  import { approvalReason, hasRole, orderStage, tierLabel } from '$lib/labels';
-  import { can, session } from '$lib/session.svelte';
+  import { approvalReason, hasRole, orderStage, tierLabel, zeroPriceRowClass } from '$lib/labels';
+  import LineKindPill from '$lib/components/LineKindPill.svelte';
+  import { can, session, stepActor } from '$lib/session.svelte';
   import { changeKindLabel, type ChangeKind, type ChangeRequest } from '$lib/change-requests';
   import LoanPanel, { type LoanLine, type LoanReturnRow } from '$lib/components/LoanPanel.svelte';
   import { isLoanPurpose, isNonSalePurpose, loanAge, partyName, slipTypeOf, slipTypeShort } from '$lib/slip-type';
@@ -28,12 +33,13 @@
     lines: Line[]; province?: string; customerTier?: string; templateCode?: string;
     requestedByName?: string; issuedAt?: string; issuedByName?: string; approvedAt?: string; approvedByName?: string;
     confirmedAt?: string; confirmedByName?: string; revisionRequestedAt?: string; revisionRequestedByName?: string;
-    shippedAt?: string; shippedByName?: string; receiverName?: string; carrier?: string; warehouseNote?: string; deliveredAt?: string;
+    shippedAt?: string; shippedByName?: string; receiverName?: string; carrier?: string; warehouseNote?: string; deliveredAt?: string; deliveredByName?: string;
     warehouseKeeperId?: string; warehouseKeeperName?: string;
     loanLines?: LoanLine[]; loanReturns?: LoanReturnRow[];
     confirmationEvidence?: Array<{ id: string; fileName: string; contentType: string; size: number; sha256: string; uploadedAt: string; uploadedByName: string; decision?: string; scan?: { result: string; engine: string; scannedAt: string } }>;
   };
-  type Step = { label: string; who?: string | undefined; at?: string | undefined; done: boolean; current?: boolean; cancelled?: boolean };
+  /** `owner`: người được phân công bước chưa làm (SAL-STEP-01); `warn`: bước chưa có ai được phân công. */
+  type Step = { label: string; who?: string | undefined; at?: string | undefined; done: boolean; current?: boolean; cancelled?: boolean; owner?: string | undefined; warn?: boolean };
 
   let order = $state<Order | null>(null);
   let warehouses = $state<Warehouse[]>([]);
@@ -53,11 +59,20 @@
 
   const roles = $derived(session.user?.roles ?? []);
   const stage = $derived(order ? orderStage(order) : null);
-  const isAccountant = $derived(hasRole(roles, ['ACCOUNTANT']));
-  const isSales = $derived(hasRole(roles, ['SALES', 'SALES_MANAGER']));
-  const isWarehouse = $derived(hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
-  /** Hai bước cuối chỉ do thủ kho được giao phiếu thực hiện (ADMIN luôn được). */
-  const isAssignedKeeper = $derived(Boolean(order && (roles.includes('ADMIN') || (isWarehouse && order.warehouseKeeperId === session.user?.sub))));
+  // 5 bước phiếu BH theo người được Admin phân công (SAL-STEP-01): lập / phát hành / đối chiếu / xuất kho (thủ kho của phiếu) / xác nhận giao.
+  const canCreate = $derived(can('sales.step.create'));
+  const canIssue = $derived(can('sales.step.issue'));
+  const canConfirm = $derived(can('sales.step.confirm'));
+  const canShipThis = $derived(Boolean(order && canShipOrder(stepActor(), order.warehouseKeeperId)));
+  const canDeliverThis = $derived(Boolean(order && canDeliverOrder(stepActor(), order.warehouseKeeperId)));
+  let owners = $state<SalesStepOwners | null>(null);
+  /** "Chờ: <người được phân công>" cho bước chưa làm; không có ai thì cảnh báo. */
+  const ownerOf = (key: 'ISSUE' | 'CONFIRM' | 'SHIP' | 'DELIVER'): { owner?: string; warn?: boolean } => {
+    const item = owners?.steps?.[key];
+    if (!item) return {};
+    if (!item.names.length) return { owner: m.sst_chua_ai(), warn: true };
+    return { owner: m.sst_cho({ names: `${item.names.join(', ')}${item.more ? ` +${item.more}` : ''}` }) };
+  };
   const evidence = $derived(order?.confirmationEvidence ?? []);
   /** Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không khách, không tiền; hàng mang về nhập lại theo phiếu. */
   const nonSale = $derived(isNonSalePurpose(order?.purpose));
@@ -120,15 +135,35 @@
       await goto(`/sales/orders?deleted=${encodeURIComponent(result.orderCode)}`);
       return;
     }
+    if (result.status === 'APPLIED' && (result.kind === 'VOID' || result.kind === 'CANCEL') && (await leftCancelled(result.orderCode))) return;
     await load();
   }
+  /** Phiếu vừa hủy chỉ quản trị gốc còn mở được (DOC-HIDE-01): người khác về danh sách kèm thông báo. */
+  async function leftCancelled(code: string) {
+    if (session.user?.root) return false;
+    await goto(`/sales/orders?cancelled=${encodeURIComponent(code)}`);
+    return true;
+  }
   const shippedStage = $derived(Boolean(order && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(order.status)));
+  /** Phiếu có thuế dòng (27/10/2026) → hiện cột % thuế GTGT / Tiền thuế GTGT; phiếu cũ thuế tính một lần cho cả phiếu. */
+  const lineTax = $derived(Boolean(order?.lines.some((line) => line.taxAmount !== undefined && line.taxAmount !== null)));
+  // Đơn thanh toán ngay (AR-PAYNOW-01): kế toán bỏ phiếu thu tự động khi khách thực tế chưa trả.
+  const canUndoPayNow = $derived(Boolean(order?.payNowReceipt) && hasRole(roles, ['ACCOUNTANT']));
+  let payNowOpen = $state(false);
+  let payNowReason = $state('');
+  async function undoPayNow() {
+    if (!order?.payNowReceipt || payNowReason.trim().length < 5) return;
+    payNowOpen = false;
+    const receipt = order.payNowReceipt.code;
+    await command('pay-now/undo', { reason: payNowReason.trim() }, m.pn_da_bo_ghi_thu({ codes: receipt, code: order.code }));
+    payNowReason = '';
+  }
   let voidOpen = $state(false);
   let voidReason = $state('');
   async function voidOrder() {
     if (!order || voidReason.trim().length < 5) return;
     voidOpen = false;
-    await command('void', { reason: voidReason.trim() }, m.root_da_huy_phieu_da_giao());
+    await command('void', { reason: voidReason.trim() }, m.root_da_huy_phieu_da_giao(), true);
     voidReason = '';
   }
   const cancellable = $derived(Boolean(order && ['PENDING_APPROVAL', 'APPROVED', 'RESERVED'].includes(order.status) && !order.warehouseSlipNo));
@@ -143,12 +178,18 @@
     const rank = ['DRAFT', 'PENDING_APPROVAL', 'RESERVED', 'SHIPPED', 'DELIVERED'].indexOf(status);
     const list: Step[] = [
       { label: order.requestedByName ? m.kd_de_nghi_xuat() : m.lap_phieu(), who: order.requestedByName, at: order.createdAt, done: true },
-      { label: m.kt_phat_hanh_phieu_bh(), who: order.issuedByName, at: order.issuedAt, done: rank >= 1, current: status === 'DRAFT' },
+      { label: m.kt_phat_hanh_phieu_bh(), who: order.issuedByName, at: order.issuedAt, done: rank >= 1, current: status === 'DRAFT', ...(rank < 1 ? ownerOf('ISSUE') : {}) },
     ];
     if (order.approvalStatus !== 'NOT_REQUIRED') {
       list.push({ label: m.duyet_ngoai_le(), who: order.approvedByName, at: order.approvedAt, done: rank >= 2, current: status === 'PENDING_APPROVAL' });
     }
-    const keeperStep = { label: m.kho_lap_swk_xuat(), who: order.warehouseSlipNo ? `${order.warehouseSlipNo} · ${order.shippedByName ?? ''}` : order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.shippedAt, done: rank >= 3, current: status === 'RESERVED' && confirmationStatus !== 'PENDING' };
+    const keeperOwner = rank < 3 ? ownerOf('SHIP') : {};
+    const keeperStep = {
+      label: m.kho_lap_swk_xuat(),
+      who: order.warehouseSlipNo ? `${order.warehouseSlipNo} · ${order.shippedByName ?? ''}` : order.warehouseKeeperName && !keeperOwner.warn ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : keeperOwner.owner,
+      at: order.shippedAt, done: rank >= 3, current: status === 'RESERVED' && confirmationStatus !== 'PENDING',
+      ...(keeperOwner.warn ? { owner: order.warehouseKeeperName ? m.sst_thu_kho_mat_quyen({ name: order.warehouseKeeperName }) : keeperOwner.owner, warn: true } : order.warehouseKeeperName || rank >= 3 ? {} : keeperOwner),
+    };
     if (order.purpose === 'GIFT') {
       // Xuất tặng: không đối chiếu khách, không thu hồi — xong khi kho xuất.
       list.push(keeperStep);
@@ -161,9 +202,10 @@
       });
     } else {
       list.push(
-        { label: m.kd_doi_chieu_voi_khach(), who: order.confirmedByName ? `${order.confirmedByName}${evidence.length ? m.anh_3({ length: evidence.filter((item) => item.decision !== 'REVISION_REQUESTED').length }) : ''}` : undefined, at: order.confirmedAt, done: rank >= 3 || confirmationStatus === 'CONFIRMED', current: status === 'RESERVED' && confirmationStatus === 'PENDING' },
+        { label: m.kd_doi_chieu_voi_khach(), who: order.confirmedByName ? `${order.confirmedByName}${evidence.length ? m.anh_3({ length: evidence.filter((item) => item.decision !== 'REVISION_REQUESTED').length }) : ''}` : undefined, at: order.confirmedAt, done: rank >= 3 || confirmationStatus === 'CONFIRMED', current: status === 'RESERVED' && confirmationStatus === 'PENDING', ...(rank >= 3 || confirmationStatus === 'CONFIRMED' ? {} : ownerOf('CONFIRM')) },
         keeperStep,
-        { label: m.giao_hang_thanh_cong(), who: order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined, at: order.deliveredAt, done: rank >= 4, current: status === 'SHIPPED' },
+        // Bước 5: người xác nhận giao (phiếu cũ trước 26/10/2026 không lưu → hiện thủ kho); chưa giao → người được phân công.
+        { label: m.giao_hang_thanh_cong(), who: order.deliveredByName ?? (order.warehouseKeeperName ? m.thu_kho_3({ warehouseKeeperName: order.warehouseKeeperName }) : undefined), at: order.deliveredAt, done: rank >= 4, current: status === 'SHIPPED', ...(rank < 4 ? ownerOf('DELIVER') : {}) },
       );
     }
     if (cancelled) {
@@ -180,6 +222,7 @@
     error = '';
     try {
       order = await api<Order>(`/sales-orders/${page.params.id}`);
+      owners = await api<SalesStepOwners>(`/sales-orders/${page.params.id}/step-owners`).catch(() => null);
       pendingChange = canRequestChange || canApproveChange
         ? (await api<ChangeRequest[]>(`/sales-change-requests?orderId=${page.params.id}&status=PENDING`).catch(() => []))[0] ?? null
         : null;
@@ -207,13 +250,14 @@
     await load();
   });
 
-  async function command(path: string, body: Record<string, unknown>, message: string) {
+  async function command(path: string, body: Record<string, unknown>, message: string, cancels = false) {
     if (!order) return;
     working = true;
     error = '';
     success = '';
     try {
       await api(`/sales-orders/${order.id}/${path}`, { method: 'POST', body: JSON.stringify({ version: order.version, ...body }), idempotentCommand: true });
+      if (cancels && (await leftCancelled(order.code))) return;
       success = message;
       await load();
     } catch (caught) {
@@ -226,6 +270,9 @@
   const issue = () => command('submit', {}, m.da_phat_hanh_phieu_bh_phieu());
   const approve = () => command('approve', {}, m.da_duyet_phieu_va_giu_ton());
   const deliver = () => command('deliver', {}, m.da_xac_nhan_giao_hang_thanh());
+  /** Hỏi lại trước khi xác nhận giao: lúc này mới ghi doanh thu và công nợ (AR-DLV-01). */
+  let deliverAsk = $state(false);
+  const deliverText = $derived(order ? deliveryConfirmation(order) : null);
   async function requestRevision() {
     if (!revisionNote.trim()) return;
     revisionOpen = false;
@@ -247,6 +294,7 @@
       await api(`/sales-orders/${order.id}/cancel`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: order.version, reason: discardReason.trim() }) });
       discardOpen = false;
       discardReason = '';
+      if (await leftCancelled(order.code)) return;
       success = m.bh_da_huy_phieu();
       await load();
     } catch (caught) {
@@ -282,15 +330,15 @@
     <div class="actions">
       {#if order.status !== 'DRAFT' && order.status !== 'CANCELLED'}<button class="btn" onclick={() => printSlip('BH')}><Printer size={16} />{m.in_phieu_bh()}</button>{/if}
       {#if order.warehouseSlipNo && order.status !== 'CANCELLED'}<button class="btn" onclick={() => printSlip('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>{/if}
-      {#if order.status === 'DRAFT' && (isAccountant || isSales)}<a class="btn soft" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.sua_phieu()}</a>{/if}
-      {#if order.status === 'DRAFT' && isAccountant}<button class="btn primary" disabled={working} onclick={issue}>{m.phat_hanh_phieu_bh()}</button>{/if}
+      {#if order.status === 'DRAFT' && (canCreate || canIssue)}<a class="btn soft" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.sua_phieu()}</a>{/if}
+      {#if order.status === 'DRAFT' && canIssue}<button class="btn primary" disabled={working} onclick={issue}>{m.phat_hanh_phieu_bh()}</button>{/if}
       {#if order.status === 'PENDING_APPROVAL' && hasRole(roles, ['SALES_MANAGER', 'DIRECTOR'])}<button class="btn primary" disabled={working} onclick={approve}>{m.duyet_giu_hang()}</button>{/if}
-      {#if order.status === 'RESERVED' && order.confirmationStatus === 'PENDING' && (isAccountant || isSales)}
+      {#if order.status === 'RESERVED' && order.confirmationStatus === 'PENDING' && canConfirm}
         <button class="btn danger-soft" disabled={working} onclick={() => (revisionOpen = true)}><MessageSquareWarning size={16} />{m.yeu_cau_sua()}</button>
         <button class="btn primary" disabled={working} onclick={() => (confirmTarget = order)}><Paperclip size={16} />{m.xac_nhan_doi_chieu_kem_anh()}</button>
       {/if}
-      {#if order.status === 'RESERVED' && order.confirmationStatus !== 'PENDING' && isAssignedKeeper}<button class="btn primary" disabled={working} onclick={() => (issueTarget = order)}>{m.lap_phieu_swk_xuat_kho()}</button>{/if}
-      {#if order.status === 'SHIPPED' && isAssignedKeeper && !nonSale}<button class="btn navy" disabled={working} onclick={deliver}>{m.xac_nhan_da_giao()}</button>{/if}
+      {#if order.status === 'RESERVED' && order.confirmationStatus !== 'PENDING' && canShipThis}<button class="btn primary" disabled={working} onclick={() => (issueTarget = order)}>{m.lap_phieu_swk_xuat_kho()}</button>{/if}
+      {#if order.status === 'SHIPPED' && canDeliverThis && !nonSale}<button class="btn navy" disabled={working} onclick={() => (deliverAsk = true)}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
       {#if canEditIssued && issuedStage}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
@@ -332,10 +380,14 @@
         <span>{#if step.done}<Check size={14} strokeWidth={3} />{/if}</span>
         <b>{step.label}</b>
         <small>{step.done && step.at ? dateTime(step.at) : step.current ? m.dang_cho() : '—'}</small>
-        {#if step.who && (step.done || step.current)}<small class="who">{step.who}</small>{/if}
+        {#if step.who && (step.done || step.current) && !step.owner}<small class="who">{step.who}</small>
+        {:else if step.owner && !step.done}<small class="who owner" class:warn={step.warn}>{step.owner}</small>{/if}
       </li>
     {/each}
   </ol>
+  {#if steps.some((step) => step.warn && !step.done) && roles.includes('ADMIN')}
+    <div class="banner warning"><CircleAlert size={17} /><span>{m.sst_phieu_thieu_nguoi()} <a href="/admin/users?tab=steps">{m.sst_tab()}</a></span></div>
+  {/if}
 
   {#if order.priceOverrideApprovedByName && order.lines.some((line) => line.pricingSource === 'MANUAL_PRICE')}
     <div class="banner info"><Pencil size={17} /><span>{m.gia_phieu_co_sua_gia({ by: order.priceOverrideApprovedByName, reason: order.priceOverrideReason ?? '—' })}</span></div>
@@ -352,7 +404,7 @@
   {#if order.status === 'RESERVED' && order.confirmationStatus === 'PENDING'}
     <div class="banner info"><CircleAlert size={17} /><span>{m.hang_da_duoc_giu_in_phieu()} <b>{m.ma_hang_va_so_luong()}</b> {m.voi_khach_roi_bam()} <b>{m.xac_nhan_doi_chieu()}</b> {m.va_dinh_kem()} <b>{m.anh_chup_man_hinh_xac_nhan()}</b> {m.vd_tin_nhan_zalo_sau_buoc()}{order.warehouseKeeperName ? ` ${order.warehouseKeeperName}` : ''}.</span></div>
   {/if}
-  {#if order.status === 'RESERVED' && order.confirmationStatus === 'CONFIRMED' && !isAssignedKeeper && (isAccountant || isSales)}
+  {#if order.status === 'RESERVED' && order.confirmationStatus === 'CONFIRMED' && !canShipThis && (canCreate || canIssue || canConfirm)}
     <div class="banner info"><WarehouseIcon size={17} /><span>{m.da_doi_chieu_xong_phan_viec()} <b>{order.warehouseKeeperName ?? '—'}</b>.</span></div>
   {/if}
   {#if reasons.length}
@@ -382,7 +434,12 @@
           <div><dt>{m.nhan_vien_ban_hang()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
           <div class="wide2"><dt>{m.dia_diem_giao_hang()}</dt><dd>{order.deliveryLocation ?? m.khach_lay_tai_kho()}</dd></div>
           <div><dt>{m.kho_xuat()}</dt><dd>{warehouses.find((item) => item.id === order?.warehouseId)?.name ?? '—'}</dd></div>
-          <div><dt>{m.dieu_khoan()}</dt><dd>{order.paymentTermDays ? m.cong_no_ngay_2({ paymentTermDays: order.paymentTermDays }) : m.thanh_toan_ngay()} · <span class="tag" class:b2c={order.channel === 'B2C'}>{order.channel ?? 'B2B'}</span></dd></div>
+          <div><dt>{m.dieu_khoan()}</dt><dd>{order.paymentTermDays ? m.cong_no_ngay_2({ paymentTermDays: order.paymentTermDays }) : `${m.thanh_toan_ngay()}${order.payNowMethod ? ` (${order.payNowMethod === 'CASH' ? m.pn_tien_mat() : m.pn_chuyen_khoan()})` : ''}`} · <span class="tag" class:b2c={order.channel === 'B2C'}>{order.channel ?? 'B2B'}</span></dd></div>
+          {#if order.payNowReceipt}
+            <div class="wide pay-now"><dt>{m.pn_hinh_thuc_thu()}</dt><dd><CircleCheck size={15} />{m.pn_da_tu_ghi_thu({ amount: vnd(order.payNowReceipt.amount), code: order.payNowReceipt.code, method: order.payNowReceipt.method === 'CASH' ? m.pn_tien_mat() : m.pn_chuyen_khoan(), date: date(order.payNowReceipt.receivedAt) })}{#if canUndoPayNow}<button class="btn small" disabled={working} onclick={() => { payNowReason = ''; payNowOpen = true; }}>{m.pn_bo_ghi_thu()}</button>{/if}</dd></div>
+          {:else if order.payNowUndone}
+            <div class="wide pay-now undone"><dt>{m.pn_hinh_thuc_thu()}</dt><dd>{m.pn_da_bo_truoc_do({ name: order.payNowUndone.byName, date: date(order.payNowUndone.at), reason: order.payNowUndone.reason })}</dd></div>
+          {/if}
           {/if}
           <div class="wide2"><dt>{m.thu_kho_xuat_hang()}</dt><dd>{order.warehouseKeeperName ?? (order.status === 'DRAFT' ? m.ke_toan_chon_khi_phat_hanh() : '—')}</dd></div>
           {#if order.warehouseSlipNo}
@@ -392,7 +449,7 @@
             <div class="wide2"><dt>{m.van_chuyen()}</dt><dd>{order.carrier ?? '—'}</dd></div>
           {/if}
           {#if order.note || order.warehouseNote}
-            <div class="wide"><dt>{m.ghi_chu_noi_bo()}</dt><dd>{[order.note, order.warehouseNote ? `Kho: ${order.warehouseNote}` : ''].filter(Boolean).join(' · ')}</dd></div>
+            <div class="wide"><dt>{m.ghi_chu()}</dt><dd class="order-note">{[order.note, order.warehouseNote ? `Kho: ${order.warehouseNote}` : ''].filter(Boolean).join(' · ')}</dd></div>
           {/if}
         </dl>
       </article>
@@ -429,21 +486,22 @@
       {/if}
 
       <article class="card">
-        <header class="card-head lines-head"><h2>{m.hang_hoa()}</h2><span class="muted">{order.lines.length} {m.dong_3()} {order.lines.filter((line) => line.gift).length} {m.dong_hang_tang()}</span></header>
+        <header class="card-head lines-head"><h2>{m.hang_hoa()}</h2><span class="muted">{order.lines.length} {m.dong_3()} {order.lines.filter((line) => line.gift).length} {m.bh_dong_hang_khac()}</span></header>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>{m.stt()}</th><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.so_luong()}</th><th class="num">{m.don_gia()}</th><th class="num">CK (%)</th><th class="num">{m.thanh_tien()}</th></tr></thead>
+            <thead><tr><th>{m.stt()}</th><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.so_luong()}</th><th class="num">{m.don_gia()}</th><th class="num">CK (%)</th><th class="num">{m.thanh_tien()}</th>{#if lineTax}<th class="num">{m.bh_phan_tram_thue()}</th><th class="num">{m.bh_tien_thue_dong()}</th>{/if}</tr></thead>
             <tbody>
               {#each order.lines as line, index}
-                <tr class:gift-row={line.gift}>
+                <tr class={line.gift ? zeroPriceRowClass(zeroPriceKindOf(line) ?? 'GIFT') : ''}>
                   <td class="muted">{index + 1}</td>
                   <td class="code">{line.sku}</td>
-                  <td>{line.productName}{#if line.gift}<span class="pill orange gift-tag">{m.hang_tang()}</span>{/if}{#if line.promotionCode}<small>{m.khuyen_mai()} {line.promotionCode}</small>{/if}</td>
+                  <td>{line.productName}{#if line.gift}<LineKindPill kind={zeroPriceKindOf(line) ?? 'GIFT'} />{/if}{#if line.promotionCode}<small>{m.khuyen_mai()} {line.promotionCode}</small>{/if}</td>
                   <td>{line.unit}</td>
                   <td class="num">{num(line.quantity)}</td>
-                  <td class="num">{Number(line.unitPrice).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{#if line.pricingSource === 'MANUAL_PRICE'}<small class="manual-price">{m.gia_dong_sua_tay({ price: Number(line.originalUnitPrice ?? 0).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</small>{/if}</td>
+                  <td class="num">{Number(line.unitPrice).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{#if line.pricingSource === 'CUSTOMER_PRICE'}<small class="own-price">{m.gr_nguon_gia()}</small>{/if}{#if line.pricingSource === 'MANUAL_PRICE'}<small class="manual-price">{m.gia_dong_sua_tay({ price: Number(line.originalUnitPrice ?? 0).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</small>{/if}</td>
                   <td class="num" title={m.bac_doanh_so_khuyen_mai({ p0: line.salesTierDiscountRate ?? 0, p1: line.promotionDiscountRate ?? 0 })}>{line.gift ? '' : Number(line.discountRate).toLocaleString(intlLocale())}</td>
                   <td class="num"><b>{num(line.netAmount ?? line.lineTotal)}</b></td>
+                  {#if lineTax}<td class="num">{vatLabel(line.vatRate ?? order.taxRate ?? '8', '')}</td><td class="num">{num(line.taxAmount ?? 0)}</td>{/if}
                 </tr>
               {/each}
             </tbody>
@@ -468,7 +526,7 @@
         <div class="minor"><dt>{m.tien_hang_theo_gia_niem_yet()}</dt><dd>{vnd(order.subtotal)}</dd></div>
         <div class="minor"><dt>{m.chiet_khau_bac_ds_ctkm()}</dt><dd>− {vnd(order.discountTotal)}</dd></div>
         <div><dt>{m.cong_tien_hang()}</dt><dd>{vnd(netTotal)}</dd></div>
-        <div><dt>{m.thue_suat_gtgt()}</dt><dd>{vatLabel(order.taxRate ?? '10')}</dd></div>
+        <div><dt>{m.thue_suat_gtgt()}</dt><dd>{order.taxRate === 'MIXED' ? m.thue_theo_dong() : vatLabel(order.taxRate ?? '10')}</dd></div>
         <div><dt>{m.tien_thue_gtgt()}</dt><dd>{order.taxRate === 'KCT' ? m.khong_chiu_thue_2() : vnd(order.taxTotal)}</dd></div>
         <div class="total"><dt>{m.tong_tien_thanh_toan()}</dt><dd>{vnd(order.grandTotal)}</dd></div>
       </dl>
@@ -503,6 +561,19 @@
   {/snippet}
 </Dialog>
 
+<Dialog bind:open={payNowOpen} title={m.pn_bo_ghi_thu()}>
+  <p class="lead">{m.pn_bo_ghi_thu_giai_thich({ code: order?.payNowReceipt?.code ?? '' })}</p>
+  <div class="field">
+    <label for="pay-now-reason">{m.pn_ly_do()} <span class="req">*</span></label>
+    <textarea id="pay-now-reason" rows="3" maxlength="300" bind:value={payNowReason}></textarea>
+    {#if payNowReason.trim() && payNowReason.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}
+  </div>
+  {#snippet footer()}
+    <button class="btn" onclick={() => (payNowOpen = false)}>{m.dong()}</button>
+    <button class="btn danger" disabled={payNowReason.trim().length < 5 || working} onclick={undoPayNow}>{m.pn_bo_ghi_thu()}</button>
+  {/snippet}
+</Dialog>
+
 <Dialog bind:open={voidOpen} title={m.root_huy_tieu_de({ code: order?.code ?? '' })}>
   <p class="lead">{m.root_huy_giai_thich()}</p>
   <div class="field">
@@ -533,6 +604,8 @@
 
 <CustomerConfirmationDialog bind:order={confirmTarget} ondone={(count) => { success = m.da_xac_nhan_doi_chieu_kem({ count: count, p1: order?.warehouseKeeperName ?? '' }); load(); }} />
 
+{#if deliverText}<ConfirmDialog bind:open={deliverAsk} title={deliverText.title} message={deliverText.message} confirmLabel={deliverText.confirmLabel} tone="navy" onconfirm={deliver} />{/if}
+
 <WarehouseIssueDialog bind:order={issueTarget} ondone={(result) => { success = m.da_lap_phieu_tru_ton_va_2({ shipmentCode: result.shipmentCode }); load(); }} />
 
 <style>
@@ -545,8 +618,11 @@
   .overdue { color: var(--red); font-weight: 600; }
   .btn.danger-soft { border-color: #f3c9c9; background: var(--red-soft); color: var(--red); }
   .timeline li.cancelled b { color: var(--red); }
+  .timeline .who.owner { color: var(--muted); font-style: italic; }
+  .timeline .who.owner.warn { color: var(--red); font-style: normal; font-weight: 600; }
   .btn.root { border-color: var(--navy-2); color: var(--navy); }
   .manual-price { display: block; color: var(--orange); font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .own-price { display: block; color: var(--green); font-size: 11px; font-weight: 600; white-space: nowrap; }
   .timeline li.cancelled span { border-color: var(--red) !important; background: var(--red) !important; color: #fff; }
   .banner.info { background: #eaf2fb; color: var(--navy); }
   .evidence h2 { display: flex; align-items: center; gap: 8px; }
@@ -581,8 +657,10 @@
   .info dt { color: var(--subtle); font-size: 12px; }
   .info dd { margin: 4px 0 0; font-weight: 500; }
   .lines-head { padding-bottom: 14px; }
-  .gift-row { background: #fffaf6; }
-  .gift-tag { margin-left: 8px; }
+  .order-note { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .pay-now dd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--green); font-weight: 500; }
+  .pay-now dd .btn { margin-left: auto; }
+  .pay-now.undone dd { color: var(--amber); font-weight: 400; }
   .summary { position: sticky; top: calc(var(--topbar) + 20px); overflow: hidden; }
   .summary h2 { margin: 0; padding: 16px 22px; background: var(--navy); color: #fff; font-size: 14.5px; font-weight: 700; text-transform: uppercase; }
   .summary dl { margin: 0; padding: 10px 22px 6px; }

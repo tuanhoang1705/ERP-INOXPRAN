@@ -2,7 +2,9 @@
   /** Danh sách lô hàng nhập (container / B/L) theo trạng thái đi đường. */
   import { m } from '$lib/paraglide/messages';
   import { onMount } from 'svelte';
-  import { CircleAlert } from 'lucide-svelte';
+  import { page as route } from '$app/state';
+  import { session } from '$lib/session.svelte';
+  import { CircleAlert, CircleCheck } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { date, num, vnd } from '$lib/format';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
@@ -22,6 +24,9 @@
   let pageSize = $state(initialPageSize());
   let loading = $state(true);
   let error = $state('');
+  /** Lô vừa hủy (chuyển từ hồ sơ lô): lô đã hủy không còn hiện với người dùng (DOC-HIDE-01); lọc "Đã hủy" chỉ quản trị gốc. */
+  const cancelledCode = route.url.searchParams.get('cancelled') ?? '';
+  const statuses = $derived(['PLANNED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', ...(session.user?.root ? ['CANCELLED'] : [])]);
   const statusLabel = (value: string) => ({ PLANNED: m.ls_ke_hoach(), IN_TRANSIT: m.ls_dang_van_chuyen(), ARRIVED: m.ls_da_cap_cang(), RECEIVED: m.ls_da_nhap_kho(), CANCELLED: m.ls_da_huy() })[value] ?? value;
   const statusTone = (value: string) => ({ IN_TRANSIT: 'warning', ARRIVED: '', RECEIVED: 'success', CANCELLED: 'neutral' })[value] ?? 'neutral';
 
@@ -62,11 +67,12 @@
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ls_tim_kiem()} /></div>
   <DateRangeFilter bind:from bind:to label={m.dr_ngay_lap()} id="shipment-date" onchange={refilter} />
   <div class="field"><label for="status">{m.trang_thai()}</label>
-    <select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each ['PLANNED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', 'CANCELLED'] as value}<option {value}>{statusLabel(value)}</option>{/each}</select>
+    <select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each statuses as value}<option {value}>{statusLabel(value)}</option>{/each}</select>
   </div>
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if cancelledCode}<div class="banner success"><CircleCheck size={17} />{m.doc_da_huy_khong_hien({ code: cancelledCode })}</div>{/if}
 
 <section class="card">
   <div class="table-wrap">

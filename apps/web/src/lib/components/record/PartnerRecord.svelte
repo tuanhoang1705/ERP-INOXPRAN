@@ -19,12 +19,16 @@
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import TerritoryFields from '$lib/components/TerritoryFields.svelte';
+  import { provinceLabel } from '$shared/provinces';
+  import { loadTerritories, territoryOwner } from '$lib/territories.svelte';
   import RecordWindow from './RecordWindow.svelte';
   import RecordSection from './RecordSection.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
   import AttachmentsPanel from './AttachmentsPanel.svelte';
   import ActivityLog from './ActivityLog.svelte';
   import RelatedTable from './RelatedTable.svelte';
+  import CustomerPricesPanel from '$lib/components/CustomerPricesPanel.svelte';
 
   type Summary = {
     outstanding: string; overdue: string; revenueTotal: string; revenueYearToDate: string; orderCount: number;
@@ -39,15 +43,15 @@
   let { id, kind }: { id: string; kind: 'customer' | 'supplier' } = $props();
 
   const isCustomer = $derived(kind === 'customer');
+  let priceCount = $state<number | undefined>(undefined);
   const listHref = $derived(isCustomer ? '/catalog/dealers' : '/catalog/suppliers');
-  const TEXT_FIELDS = ['name', 'shortName', 'taxCode', 'phone', 'email', 'website', 'address', 'province', 'regionCode', 'salesRepId', 'customerTier', 'grade', 'source', 'businessLines', 'paymentMethod', 'note', 'status', 'creditLimit', 'paymentTermDays'] as const;
+  const TEXT_FIELDS = ['name', 'shortName', 'nameZh', 'taxCode', 'phone', 'email', 'website', 'address', 'provinceNewCode', 'provinceOldCode', 'territoryChannel', 'salesRepId', 'customerTier', 'grade', 'source', 'businessLines', 'paymentMethod', 'note', 'status', 'creditLimit', 'paymentTermDays'] as const;
   type FieldKey = (typeof TEXT_FIELDS)[number];
-  const CLEARABLE: FieldKey[] = ['shortName', 'taxCode', 'phone', 'email', 'website', 'address', 'province', 'regionCode', 'grade', 'source', 'businessLines', 'paymentMethod', 'note'];
+  const CLEARABLE: FieldKey[] = ['shortName', 'nameZh', 'taxCode', 'phone', 'email', 'website', 'address', 'provinceNewCode', 'provinceOldCode', 'territoryChannel', 'grade', 'source', 'businessLines', 'paymentMethod', 'note'];
   const CREDIT: FieldKey[] = ['creditLimit', 'paymentTermDays'];
   const SOURCES = [m.crm_nguon_gioi_thieu(), m.crm_nguon_hoi_cho(), 'Zalo', 'Website', 'Facebook', m.crm_nguon_cong_ty_me(), m.crm_nguon_khac()];
 
   let partner = $state<Detail | null>(null);
-  let regions = $state<Array<{ code: string; name: string }>>([]);
   let employees = $state<Option[]>([]);
   let form = $state<Record<FieldKey, string>>(Object.fromEntries(TEXT_FIELDS.map((key) => [key, ''])) as Record<FieldKey, string>);
   let contacts = $state<PartnerContact[]>([]);
@@ -65,7 +69,10 @@
   let attachmentCount = $state<number | undefined>(undefined);
   let deleteOpen = $state(false);
   let convertOpen = $state(false);
-  let convert = $state({ customerTier: 'TIER_2', creditLimit: '0', paymentTermDays: '0', salesRepId: '' });
+  let convert = $state({ customerTier: 'TIER_2', creditLimit: '0', paymentTermDays: '0', salesRepId: '', exceptionReason: '' });
+  /** Lý do ngoại lệ phân vùng (PV-01) khi Admin giao NVKD khác người phụ trách vùng. */
+  let exceptionReason = $state('');
+  const convertOwner = $derived(partner ? territoryOwner(partner.provinceOldCode, partner.territoryChannel) : null);
   let converting = $state(false);
   let convertError = $state('');
 
@@ -111,7 +118,7 @@
   });
   $effect(() => {
     if (!isCustomer) return;
-    void api<Array<{ code: string; name: string }>>('/regions').then((rows) => (regions = rows)).catch(() => undefined);
+    void loadTerritories();
     void api<Option[]>('/employees').then((rows) => (employees = rows)).catch(() => undefined);
   });
 
@@ -153,6 +160,7 @@
       }
       body[key] = key === 'paymentTermDays' ? Number(value) : value;
     }
+    if (exceptionReason.trim() && exceptionReason.trim() !== (partner?.territoryException?.reason ?? '')) body.territoryExceptionReason = exceptionReason.trim();
     if (JSON.stringify(contacts) !== JSON.stringify(before.contacts)) body.contacts = cleanContacts();
     if (JSON.stringify(addresses) !== JSON.stringify(before.addresses)) body.addresses = cleanAddresses();
     if (JSON.stringify(banks) !== JSON.stringify(before.banks)) body.bankAccounts = cleanBanks();
@@ -204,6 +212,7 @@
           version: partner.version,
           customerTier: convert.customerTier,
           ...(convert.salesRepId ? { salesRepId: convert.salesRepId } : {}),
+          ...(convert.exceptionReason.trim() ? { territoryExceptionReason: convert.exceptionReason.trim() } : {}),
           ...(can.editCreditTerms() ? { creditLimit: convert.creditLimit || '0', paymentTermDays: Number(convert.paymentTermDays || 0) } : {}),
         }),
       });
@@ -241,6 +250,8 @@
     { id: 'addresses', label: m.crm_dia_chi_nhan_hang(), badge: addresses.length, hidden: !isCustomer },
     { id: 'bank', label: m.crm_ngan_hang(), badge: banks.length },
     { id: 'sales', label: m.crm_lich_su_ban(), badge: partner?.summary.orderCount, hidden: !isCustomer },
+    // Giá riêng từng khách (PRI-CUST-01): kế toán / Admin sửa, người khác xem.
+    { id: 'prices', label: m.gr_tab(), badge: priceCount, hidden: !isCustomer },
     { id: 'receivables', label: m.crm_cong_no(), hidden: !isCustomer },
     { id: 'warranty', label: m.crm_bao_hanh(), hidden: !isCustomer },
     { id: 'purchases', label: m.crm_don_mua(), badge: partner?.summary.purchaseOrderCount, hidden: isCustomer },
@@ -248,7 +259,7 @@
     { id: 'history', label: m.rw_lich_su() },
   ]);
   const fieldLabels = $derived<Record<string, string>>({
-    name: isCustomer ? m.kh_ten_phap_ly() : m.ten_nha_cung_cap(), shortName: m.crm_ten_viet_tat(), taxCode: m.ma_so_thue(), phone: m.dien_thoai(), email: m.kh_email(),
+    name: isCustomer ? m.kh_ten_phap_ly() : m.ten_nha_cung_cap(), shortName: m.crm_ten_viet_tat(), nameZh: m.crm_ten_tieng_trung(), taxCode: m.ma_so_thue(), phone: m.dien_thoai(), email: m.kh_email(),
     website: 'Website', address: m.dia_chi(), province: m.kh_tinh_thanh(), regionCode: m.crm_khu_vuc(), salesRepId: m.crm_nvkd(), salesRepName: m.crm_nvkd(),
     customerTier: m.crm_cap_gia(), grade: m.crm_xep_hang(), source: m.crm_nguon_khach(), businessLines: m.crm_nganh_hang(), paymentMethod: m.crm_hinh_thuc_tt(),
     note: m.ghi_chu(), status: m.trang_thai(), creditLimit: m.kh_han_muc_cong_no(), paymentTermDays: m.kh_so_ngay_no(), contacts: m.crm_nguoi_lien_he_tab(),
@@ -302,7 +313,7 @@
       {/if}
     {/snippet}
     {#snippet extra()}
-      {#if prospect && can.convertProspects()}<button class="btn small navy" onclick={() => { convertError = ''; convert.salesRepId = partner?.salesRepId ?? ''; convertOpen = true; }}><UserCheck size={15} />{m.crm_chuyen_chinh_thuc()}</button>{/if}
+      {#if prospect && can.convertProspects()}<button class="btn small navy" onclick={() => { convertError = ''; convert.salesRepId = convertOwner?.employeeId ?? partner?.salesRepId ?? ''; convert.exceptionReason = ''; convertOpen = true; }}><UserCheck size={15} />{m.crm_chuyen_chinh_thuc()}</button>{/if}
     {/snippet}
     {#snippet children(active)}
       {#if partner}
@@ -331,15 +342,15 @@
             <div class="field"><label for="pt-code">{m.ma()}</label><input id="pt-code" value={partner.code} readonly /></div>
             {@render input('shortName', m.crm_ten_viet_tat(), { maxlength: 60 })}
             {@render input('name', isCustomer ? m.kh_ten_phap_ly() : m.ten_nha_cung_cap(), { required: true, span: true })}
+            {#if isCustomer}{@render input('nameZh', m.crm_ten_tieng_trung(), { maxlength: 120 })}{/if}
             {@render input('taxCode', m.ma_so_thue(), { maxlength: 30 })}
             {@render input('phone', m.dien_thoai(), { maxlength: 30, type: 'tel' })}
             {@render input('email', m.kh_email(), { maxlength: 160, type: 'email' })}
             {@render input('website', 'Website', { maxlength: 200 })}
             {@render input('address', m.dia_chi(), { maxlength: 500, span: true })}
             {#if isCustomer}
-              {@render input('province', m.kh_tinh_thanh(), { maxlength: 80 })}
-              <div class="field"><label for="pt-region">{m.crm_khu_vuc()}</label><select id="pt-region" bind:value={form.regionCode} disabled={!editable}><option value="">—</option>{#each regions as region}<option value={region.code}>{region.name}</option>{/each}</select></div>
-              <div class="field"><label for="pt-rep">{m.crm_nvkd()}</label><select id="pt-rep" bind:value={form.salesRepId} disabled={!editable}><option value="">—</option>{#each employees as employee}<option value={employee.id}>{employee.code} — {employee.name}</option>{/each}</select></div>
+              <TerritoryFields idPrefix="pt" {employees} disabled={!editable} bind:provinceNewCode={form.provinceNewCode} bind:provinceOldCode={form.provinceOldCode}
+                bind:territoryChannel={form.territoryChannel} bind:salesRepId={form.salesRepId} bind:exceptionReason currentException={partner.territoryException ?? null} />
               <div class="field"><label for="pt-grade">{m.crm_xep_hang()}</label><select id="pt-grade" bind:value={form.grade} disabled={!editable}><option value="">—</option>{#each ['A', 'B', 'C', 'D'] as grade}<option value={grade}>{m.crm_hang({ grade })}</option>{/each}</select></div>
               {@render input('source', m.crm_nguon_khach(), { maxlength: 60, list: 'pt-sources' })}
               <datalist id="pt-sources">{#each SOURCES as source}<option value={source}></option>{/each}</datalist>
@@ -443,6 +454,8 @@
           { label: m.crm_tong_tien(), value: (row: Row) => vnd(text(row.grandTotal)), num: true },
           { label: m.trang_thai(), value: (row: Row) => salesStatus[text(row.status)]?.label ?? text(row.status), tone: (row: Row) => salesStatus[text(row.status)]?.tone ?? '' },
         ]} />
+      {:else if active === 'prices' && isCustomer}
+        <CustomerPricesPanel partnerId={partner.id} editable={can.editPricing()} oncount={(count) => (priceCount = count)} />
       {:else if active === 'receivables' && isCustomer}
         <p class="ledger-link"><a class="btn small" href={`/receivables/customers/${partner.id}`}>{m.cn_so_khach_title()}</a>{#if partner.autoHoldExempt}<span class="pill neutral" title={m.cn_khong_tu_khoa_giai_thich()}>{m.cn_khong_tu_khoa()}</span>{/if}</p>
         <RelatedTable endpoint={`/receivables?partnerId=${partner.id}&includePaid=true`} empty={m.crm_khong_co_cong_no()} columns={[
@@ -484,8 +497,12 @@
       {#if convertError}<div class="banner error"><CircleAlert size={17} /><span>{convertError}</span></div>{/if}
       <div class="field"><label for="cv-tier">{m.crm_cap_gia()} <span class="req">*</span></label><select id="cv-tier" bind:value={convert.customerTier}>{#each Object.entries(tierLabel) as [value, label]}<option {value}>{label}</option>{/each}</select></div>
       <div class="field"><label for="cv-rep">{m.crm_nvkd()} <span class="req">*</span></label>
-        <select id="cv-rep" bind:value={convert.salesRepId}><option value="">—</option>{#each employees.filter((row) => row.status !== 'INACTIVE' || row.id === convert.salesRepId) as employee (employee.id)}<option value={employee.id}>{employee.code} — {employee.name}</option>{/each}</select>
+        <select id="cv-rep" bind:value={convert.salesRepId} disabled={Boolean(convertOwner) && !can.overrideTerritory()}><option value="">—</option>{#each employees.filter((row) => row.status !== 'INACTIVE' || row.id === convert.salesRepId) as employee (employee.id)}<option value={employee.id}>{employee.code} — {employee.name}</option>{/each}</select>
+        {#if convertOwner}<span class="hint">{m.pv_theo_vung({ region: provinceLabel(partner.provinceOldCode), name: convertOwner.employeeName })}</span>{/if}
       </div>
+      {#if convertOwner && convert.salesRepId && convert.salesRepId !== convertOwner.employeeId}
+        <div class="field"><label for="cv-reason">{m.pv_ly_do_ngoai_le()} <span class="req">*</span></label><input id="cv-reason" bind:value={convert.exceptionReason} maxlength="300" /></div>
+      {/if}
       {#if can.editCreditTerms()}
         <div class="field"><label for="cv-limit">{m.kh_han_muc_cong_no()}</label><NumberInput id="cv-limit" bind:value={convert.creditLimit} /><span class="hint">{vnd(convert.creditLimit || 0)}</span></div>
         <div class="field"><label for="cv-days">{m.kh_so_ngay_no()}</label><NumberInput id="cv-days" bind:value={convert.paymentTermDays} /></div>

@@ -90,7 +90,7 @@
     {#if editable}<a class="btn" href="/inventory/counts"><ClipboardCheck size={16} />{m.kk_nut()}</a>{/if}
     <a class="btn" href="/inventory/movements">{m.the_kho()}</a>
     {#if editable}<button class="btn" onclick={() => adjust()}><SlidersHorizontal size={16} />{m.crud_dieu_chinh_ton()}</button>{/if}
-    <a class="btn primary" href="/procurement/new">{m.lap_don_nhap_hang()}</a>
+    {#if can.createPurchaseOrders()}<a class="btn primary" href="/procurement/new">{m.lap_don_nhap_hang()}</a>{/if}
   </div>
 </section>
 
@@ -103,7 +103,7 @@
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if asOf}<div class="banner warning"><CircleAlert size={17} /><span>{m.dr_dang_xem_ngay({ date: date(`${asOf}T00:00:00+07:00`) })}</span></div>{/if}
-{#each openCounts as item (item.id)}<div class="banner warning"><ClipboardCheck size={17} /><span>{m.kk_dang_mo({ warehouse: item.warehouseName, code: item.code })} <a class="link" href={`/inventory/counts/${item.id}`}>{m.kk_lam_tiep()}</a></span></div>{/each}
+{#each openCounts as item (item.id)}<div class="banner warning"><ClipboardCheck size={17} /><span>{m.kk_dang_mo({ warehouse: item.scope === 'ALL' ? m.tat_ca_kho() : item.warehouseName, code: item.code })} <a class="link" href={`/inventory/counts/${item.id}`}>{m.kk_lam_tiep()}</a></span></div>{/each}
 {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
 
 <section class="card">
@@ -121,9 +121,9 @@
               <td>{row.productName}</td>
               <td>{row.unit}</td>
               <td class="muted">{row.locationCode ?? '—'}</td>
-              <td class="num">{num(row.onHand)}</td>
+              <td class="num">{num(row.onHand)}{#if Number(row.defectiveOnHand ?? 0) > 0}<small class="defect">{m.inv_gom_hang_loi({ count: num(row.defectiveOnHand) })}</small>{/if}</td>
               <td class="num muted">{num(row.reserved)}</td>
-              <td class="num"><b class:warn={low} class:zero={Number(row.available) <= 0}>{num(row.available)}</b></td>
+              <td class="num"><b class:warn={low} class:zero={!row.defective && Number(row.available) <= 0}>{num(row.available)}</b></td>
               <td class="num muted">{num(row.minimumStock)}</td>
               <td class="muted nowrap">{dateTime(row.updatedAt)}</td>
               {#if editable}<td class="row-actions"><button class="icon-btn" title={m.crud_dieu_chinh_ton()} aria-label={`${m.crud_dieu_chinh_ton()} ${row.sku}`} onclick={() => adjust(row.productId)}><SlidersHorizontal size={15} /></button></td>{/if}
@@ -147,6 +147,7 @@
   tr.low td:first-child { box-shadow: inset 3px 0 var(--amber); }
   .warn { color: var(--orange); }
   .zero { color: var(--red); }
+  .defect { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .actions-col { width: 48px; }
   @media (max-width: 900px) { .filters { grid-template-columns: 1fr 1fr; } }
 </style>

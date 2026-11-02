@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * Duyệt quyền sửa đơn giá phiếu BH (Admin / Giám đốc): kế toán xin kèm lý do khi đang lập phiếu; duyệt xong ô đơn giá
+   * Duyệt quyền sửa đơn giá phiếu BH (Admin, Kế toán, Giám đốc): kế toán xin kèm lý do khi đang lập phiếu; duyệt xong ô đơn giá
    * trên máy kế toán tự mở khóa — quyền chỉ dùng cho đúng phiếu đó. Từ chối phải ghi lý do.
    */
   import { m } from '$lib/paraglide/messages';

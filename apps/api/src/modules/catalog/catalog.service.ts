@@ -14,6 +14,7 @@ import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import { canCreatePartnerKind } from './partner-access';
 import { pageOf, type PageRequest } from '../../common/paging';
+import { enforceTerritory, normalizeProvinces } from '../../common/territories';
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -177,7 +178,7 @@ export class CatalogService {
         { $project: { code: 1, customerName: 1, status: 1, orderDate: 1, line: '$lines' } },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: since } } },
+        { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: since } } },
         { $unwind: '$lines' },
         { $match: { 'lines.productId': productId } },
         { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: '$lines.netAmount' }, orders: { $addToSet: '$_id' } } },
@@ -278,15 +279,24 @@ export class CatalogService {
       });
     }
     const now = new Date();
-    const { stage, ...rest } = normalizePartnerLists(input);
+    const { stage, territoryExceptionReason, ...rest } = normalizePartnerLists(input);
+    const customer = input.kind !== 'SUPPLIER';
+    const refs: Document = await this.master.partnerRefs(input);
+    const provinces = customer ? normalizeProvinces(input) : {};
+    // Phân vùng NVKD (PV-01): vùng đã giao thì NVKD tự điền / phải khớp người phụ trách (ngoại lệ: Admin ghi lý do).
+    const territory = customer
+      ? await enforceTerritory(this.db, { provinceOldCode: provinces.provinceOldCode, territoryChannel: input.territoryChannel, salesRepId: refs.salesRepId }, request.user, territoryExceptionReason)
+      : { set: {} as Document };
     const document = {
       _id: new ObjectId(),
       ...rest,
       // Nhà cung cấp không có giai đoạn chăm sóc; khách cơ hội chưa có cấp giá.
       ...(input.kind === 'SUPPLIER' ? {} : { stage }),
-      ...(await this.master.partnerRefs(input)),
-      // Khách do NVKD tạo mà chưa chọn người phụ trách: gán NVKD gắn với tài khoản đang đăng nhập.
-      ...(input.kind === 'CUSTOMER' && !input.salesRepId ? ((await this.master.employeeOfUser(request.user.sub)) ?? {}) : {}),
+      ...refs,
+      ...provinces,
+      ...territory.set,
+      // Khách do NVKD tạo mà chưa chọn người phụ trách (vùng chưa giao ai): gán NVKD gắn với tài khoản đang đăng nhập.
+      ...(input.kind === 'CUSTOMER' && !input.salesRepId && !territory.set.salesRepId ? ((await this.master.employeeOfUser(request.user.sub)) ?? {}) : {}),
       creditLimit: decimal(input.creditLimit),
       version: 1,
       createdAt: now,
@@ -355,12 +365,13 @@ export class CatalogService {
           $group: {
             _id: null,
             total: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } },
-            yearToDate: { $sum: { $cond: [{ $gte: ['$orderDate', yearStart] }, { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] }, 0] } },
+            yearToDate: { $sum: { $cond: [{ $gte: ['$deliveredAt', yearStart] }, { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] }, 0] } },
             orders: { $sum: 1 },
           },
         },
       ]).toArray(),
-      this.db.collection('sales_orders').findOne({ customerId: partnerId }, { sort: { orderDate: -1 }, projection: { code: 1, orderDate: 1 } }),
+      // Phiếu đã hủy không tính là đơn gần nhất (DOC-HIDE-01).
+      this.db.collection('sales_orders').findOne({ customerId: partnerId, status: { $ne: 'CANCELLED' } }, { sort: { orderDate: -1 }, projection: { code: 1, orderDate: 1 } }),
       this.db.collection('purchase_orders').aggregate([
         { $match: { supplierId: partnerId, status: { $ne: 'CANCELLED' } } },
         { $group: { _id: null, orderCount: { $sum: 1 }, purchaseTotal: { $sum: '$total' }, lastOrderAt: { $max: '$createdAt' } } },

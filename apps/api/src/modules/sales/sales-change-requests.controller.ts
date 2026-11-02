@@ -33,8 +33,8 @@ export class SalesChangeRequestsController {
 
   @RequirePermission('sales.change_request', 'sales.change_approve')
   @Get('sales-change-requests/:id')
-  get(@Param('id') id: string) {
-    return this.requests.get(id);
+  get(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.requests.get(id, request);
   }
 
   @RequirePermission('sales.change_approve')

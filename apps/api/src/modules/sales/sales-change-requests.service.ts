@@ -7,6 +7,7 @@ import { serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import { pageOf, type PageRequest } from '../../common/paging';
+import { seesCancelled } from '../../common/hidden-documents';
 import { can, userIdsWithPermission } from '../../common/permissions';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
@@ -147,12 +148,26 @@ export class SalesChangeRequestsService {
     });
   }
 
+  /**
+   * Đề nghị của phiếu đã hủy / đã xóa (gồm đề nghị hủy / xóa đã duyệt) chỉ quản trị gốc thấy (DOC-HIDE-01).
+   * Trả bộ lọc thêm cho người xem, `null` khi không cần lọc.
+   */
+  private async hiddenFilter(request: AuthenticatedRequest): Promise<Document | null> {
+    if (seesCancelled(request.user)) return null;
+    const orderIds = (await this.db.collection(COLLECTION).distinct('orderId')) as ObjectId[];
+    const live = new Set((await this.db.collection('sales_orders').distinct('_id', { _id: { $in: orderIds }, status: { $ne: 'CANCELLED' } })).map(String));
+    const hidden = orderIds.filter((id) => !live.has(String(id)));
+    return hidden.length ? { orderId: { $nin: hidden } } : null;
+  }
+
   /** Người duyệt thấy mọi đề nghị; người khác thấy đề nghị của mình (hoặc của một phiếu cụ thể khi mở phiếu). */
   async list(filter: { status?: string | undefined; orderId?: string | undefined }, request: AuthenticatedRequest, paging: PageRequest | null) {
-    const query: Document = {};
-    if (filter.status) query.status = filter.status;
-    if (filter.orderId) query.orderId = toObjectId(filter.orderId, 'orderId');
-    else if (!can(request.user, 'sales.change_approve')) query.requestedBy = toObjectId(request.user.sub);
+    const own: Document = {};
+    if (filter.status) own.status = filter.status;
+    if (filter.orderId) own.orderId = toObjectId(filter.orderId, 'orderId');
+    else if (!can(request.user, 'sales.change_approve')) own.requestedBy = toObjectId(request.user.sub);
+    const hidden = await this.hiddenFilter(request);
+    const query: Document = hidden ? { $and: [own, hidden] } : own;
     const cursor = this.db.collection(COLLECTION).find(query).sort({ requestedAt: -1, _id: -1 });
     if (!paging) return (await cursor.limit(200).toArray()).map((row) => this.present(row));
     const [rows, total] = await Promise.all([cursor.skip(paging.skip).limit(paging.pageSize).toArray(), this.db.collection(COLLECTION).countDocuments(query)]);
@@ -160,8 +175,9 @@ export class SalesChangeRequestsService {
   }
 
   async pendingCount(request: AuthenticatedRequest) {
-    const query: Document = { status: 'PENDING', ...(can(request.user, 'sales.change_approve') ? {} : { requestedBy: toObjectId(request.user.sub) }) };
-    return { pending: await this.db.collection(COLLECTION).countDocuments(query) };
+    const own: Document = { status: 'PENDING', ...(can(request.user, 'sales.change_approve') ? {} : { requestedBy: toObjectId(request.user.sub) }) };
+    const hidden = await this.hiddenFilter(request);
+    return { pending: await this.db.collection(COLLECTION).countDocuments(hidden ? { $and: [own, hidden] } : own) };
   }
 
   /** Duyệt: thực hiện thao tác bằng tài khoản người duyệt; phiếu đã đổi / thao tác không hợp lệ → "Không thực hiện được". */
@@ -254,9 +270,12 @@ export class SalesChangeRequestsService {
     return this.present(updated);
   }
 
-  async get(id: string) {
+  async get(id: string, request: AuthenticatedRequest) {
     const row = await this.db.collection(COLLECTION).findOne({ _id: toObjectId(id) });
     if (!row) throw new NotFoundException({ code: 'SALES_CHANGE_NOT_FOUND', message: 'Không tìm thấy đề nghị' });
-    return { ...this.present(row), order: serializeDocument((await this.db.collection('sales_orders').findOne({ _id: row.orderId as ObjectId })) ?? {}) };
+    const order = await this.db.collection('sales_orders').findOne({ _id: row.orderId as ObjectId });
+    // Phiếu đã hủy / đã xóa: đề nghị chỉ quản trị gốc mở được (DOC-HIDE-01).
+    if (!seesCancelled(request.user) && (!order || order.status === 'CANCELLED')) throw new NotFoundException({ code: 'SALES_CHANGE_NOT_FOUND', message: 'Không tìm thấy đề nghị' });
+    return { ...this.present(row), order: serializeDocument(order ?? {}) };
   }
 }

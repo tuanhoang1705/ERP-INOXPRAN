@@ -55,6 +55,7 @@ export function buildWarrantyReport(
   let rejected = 0;
   let exchanged = 0;
   let refunded = 0;
+  let invoicelessWarranty = 0;
   let companyCost = new Decimal(0);
   let serviceRevenue = new Decimal(0);
 
@@ -64,6 +65,7 @@ export function buildWarrantyReport(
     if (inRange(receivedMonth) && ticket.status !== 'CANCELLED') {
       received += 1;
       byMonth.get(receivedMonth)!.received += 1;
+      if (ticket.invoicelessWarranty === true) invoicelessWarranty += 1;
       const entry = products.get(product.sku) ?? { sku: product.sku, name: product.name, count: 0, companyCost: new Decimal(0) };
       entry.count += 1;
       products.set(product.sku, entry);
@@ -136,6 +138,7 @@ export function buildWarrantyReport(
       rejectionRate: rate(rejected, returned),
       exchanged,
       refunded,
+      invoicelessWarranty,
       companyCost: companyCost.toFixed(0),
       serviceRevenue: serviceRevenue.toFixed(0),
     },

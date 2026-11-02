@@ -31,4 +31,8 @@ export const can = {
   convertProspects: () => isAdmin() || canConvertProspect(roles()),
   logActivities: () => isAdmin() || canLogActivity(roles()),
   editPricing: () => isAdmin() || canEditPricing(roles()),
+  /** Lập đơn mua (BUYERS của API): phòng mua hàng. */
+  createPurchaseOrders: () => hasRole(roles(), ['PROCUREMENT', 'PROCUREMENT_MANAGER']),
+  /** Giao NVKD khác người phụ trách vùng (ngoại lệ phân vùng PV-01): Admin / quản trị gốc. */
+  overrideTerritory: () => isAdmin() || Boolean(session.user?.root),
 };

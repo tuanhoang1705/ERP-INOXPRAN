@@ -5,6 +5,7 @@ import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
 import { toObjectId } from '../../common/domain';
+import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -17,8 +18,9 @@ const GRANT_TTL_MS = 12 * 3_600_000;
 const isApprover = (user: AuthenticatedRequest['user']) => can(user, 'sales.price_override_approve');
 
 /**
- * Quyền sửa đơn giá trên phiếu BH (12/10/2026): kế toán xin kèm lý do → Admin / Giám đốc duyệt từ xa → quyền chỉ dùng
- * cho đúng một phiếu (phiên lập phiếu đã xin, hoặc phiếu nháp đang sửa). Lập phiếu khác phải xin lại.
+ * Quyền sửa đơn giá trên phiếu BH (12/10/2026): người lập phiếu ghi lý do → người có quyền duyệt sửa giá duyệt từ xa (người
+ * lập có sẵn quyền duyệt — Admin, Kế toán từ 29/10/2026 — thì tự cấp ngay) → quyền chỉ dùng cho đúng một phiếu (phiên lập
+ * phiếu đã xin, hoặc phiếu nháp đang sửa). Lập phiếu khác phải xin lại.
  */
 @Injectable()
 export class PriceOverridesService {
@@ -62,7 +64,7 @@ export class PriceOverridesService {
         throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Chỉ xin sửa giá cho phiếu đang nháp' });
       }
       const now = new Date();
-      // Admin / Giám đốc tự lập phiếu thì đã có thẩm quyền: quyền được duyệt ngay.
+      // Người có quyền duyệt sửa giá (Admin, Kế toán — từ 29/10/2026) tự lập phiếu thì quyền được duyệt ngay.
       const selfApproved = isApprover(request.user);
       const document: Document = {
         _id: new ObjectId(),
@@ -75,7 +77,7 @@ export class PriceOverridesService {
         requestedAt: now,
         ...(customer ? { customerId: customer._id, customerName: `${String(customer.code)} — ${String(customer.name)}` } : order ? { customerName: String(order.customerName) } : {}),
         ...(order ? { salesOrderId: order._id, salesOrderCode: String(order.code) } : {}),
-        ...(selfApproved ? { decidedBy: toObjectId(request.user.sub), decidedByName: request.user.displayName, decidedAt: now, decisionNote: 'Tự cấp (Admin / Giám đốc lập phiếu)', expiresAt: new Date(now.getTime() + GRANT_TTL_MS) } : {}),
+        ...(selfApproved ? { decidedBy: toObjectId(request.user.sub), decidedByName: request.user.displayName, decidedAt: now, decisionNote: 'Tự cấp (người lập phiếu có quyền duyệt sửa giá)', expiresAt: new Date(now.getTime() + GRANT_TTL_MS) } : {}),
         createdAt: now,
         updatedAt: now,
       };
@@ -107,8 +109,9 @@ export class PriceOverridesService {
     });
   }
 
-  async list(status: string | undefined) {
-    const filter: Document = status ? { status } : {};
+  /** Yêu cầu đã rút (CANCELLED) chỉ quản trị gốc thấy (DOC-HIDE-01). */
+  async list(status: string | undefined, viewer: Viewer) {
+    const filter: Document = hideStatus(status ? { status } : {}, viewer);
     const rows = await this.db.collection(COLLECTION).find(filter).sort({ requestedAt: -1 }).limit(200).toArray();
     return rows.map((row) => this.view(row));
   }
@@ -116,7 +119,7 @@ export class PriceOverridesService {
   async get(id: string, request: AuthenticatedRequest) {
     const row = await this.db.collection(COLLECTION).findOne({ _id: toObjectId(id) });
     if (!row) throw new NotFoundException({ code: 'PRICE_OVERRIDE_NOT_FOUND', message: 'Không tìm thấy yêu cầu sửa giá' });
-    if (!isApprover(request.user) && String(row.requestedBy) !== request.user.sub) {
+    if ((!isApprover(request.user) && String(row.requestedBy) !== request.user.sub) || (row.status === 'CANCELLED' && !seesCancelled(request.user))) {
       throw new NotFoundException({ code: 'PRICE_OVERRIDE_NOT_FOUND', message: 'Không tìm thấy yêu cầu sửa giá' });
     }
     return this.view(row);
@@ -184,7 +187,7 @@ export class PriceOverridesService {
    */
   async assertUsable(grantId: string | undefined, formSessionId: string | undefined, orderId: ObjectId | null, request: AuthenticatedRequest, session: ClientSession): Promise<Document> {
     const denied = (message: string) => new ForbiddenException({ code: 'PRICE_OVERRIDE_NOT_GRANTED', message });
-    if (!grantId) throw denied('Sửa đơn giá cần Admin / Giám đốc cấp quyền cho phiếu này');
+    if (!grantId) throw denied('Sửa đơn giá cần được cấp quyền cho phiếu này');
     const grant = await this.db.collection(COLLECTION).findOne({ _id: toObjectId(grantId, 'priceOverrideRequestId') }, { session });
     if (!grant || grant.status !== 'APPROVED') throw denied('Quyền sửa đơn giá chưa được duyệt');
     if (grant.salesOrderId) {

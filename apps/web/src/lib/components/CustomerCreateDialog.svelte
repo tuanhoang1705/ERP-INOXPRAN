@@ -1,9 +1,9 @@
 <script module lang="ts">
   /**
    * Vai trò được thêm khách hàng — theo canCreatePartnerKind($shared/catalog-access.ts); ADMIN luôn được.
-   * Kế toán thêm khách ngay khi lập phiếu BH; phòng Kinh doanh và Giám đốc quản lý (sửa / xóa) hồ sơ khách.
+   * Kế toán thêm khách ngay khi lập phiếu BH; phòng Kinh doanh quản lý (sửa / xóa) hồ sơ khách; Giám đốc chỉ xem.
    */
-  export const CUSTOMER_CREATE_ROLES = ['DIRECTOR', 'ACCOUNTANT', 'CATALOG_MANAGER', 'SALES_MANAGER', 'PROCUREMENT_MANAGER'];
+  export const CUSTOMER_CREATE_ROLES = ['ACCOUNTANT', 'CATALOG_MANAGER', 'SALES_MANAGER', 'PROCUREMENT_MANAGER'];
 
   /** Mã KHnnn kế tiếp theo các mã đang có — chỉ là gợi ý, khách đã có mã trên sổ sách/MISA thì dùng mã đó. */
   export function nextCustomerCode(codes: string[]): string {
@@ -32,12 +32,14 @@
   import { session } from '$lib/session.svelte';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import TerritoryFields from './TerritoryFields.svelte';
 
-  type Employee = { id: string; code: string; name: string; role: string };
+  type Employee = { id: string; code: string; name: string; role: string; status?: string };
   type Field = 'code' | 'name' | 'customerTier' | 'email' | 'creditLimit' | 'paymentTermDays';
 
   type Editable = Pick<Partner, 'id' | 'code' | 'name' | 'version' | 'creditLimit' | 'paymentTermDays' | 'status'> & {
     customerTier?: string | undefined; regionCode?: string | undefined; province?: string | undefined; salesRepId?: string | undefined;
+    provinceOldCode?: string | undefined; provinceNewCode?: string | undefined; territoryChannel?: string | undefined; territoryException?: { reason: string; byName: string } | undefined;
     taxCode?: string | undefined; phone?: string | undefined; email?: string | undefined; address?: string | undefined;
   };
   let { open = $bindable(false), existingCodes = [], partner = null, allowProspect = false, oncreated }: {
@@ -51,14 +53,13 @@
   } = $props();
 
   const blank = () => ({
-    code: '', name: '', customerTier: '', regionCode: '', province: '', salesRepId: '',
+    code: '', name: '', customerTier: '', provinceNewCode: '', provinceOldCode: '', territoryChannel: '', exceptionReason: '', salesRepId: '',
     taxCode: '', phone: '', email: '', address: '', creditLimit: '0', paymentTermDays: '0', status: 'ACTIVE', stage: 'CUSTOMER',
   });
   let form = $state(blank());
   let errors = $state<Partial<Record<Field, string>>>({});
   let error = $state('');
   let saving = $state(false);
-  let regions = $state<Array<{ code: string; name: string }>>([]);
   let employees = $state<Employee[]>([]);
   let referenceLoaded = false;
 
@@ -76,7 +77,8 @@
     untrack(() => {
       form = partner
         ? {
-            code: partner.code, name: partner.name, customerTier: partner.customerTier ?? '', regionCode: partner.regionCode ?? '', province: partner.province ?? '',
+            code: partner.code, name: partner.name, customerTier: partner.customerTier ?? '',
+            provinceNewCode: partner.provinceNewCode ?? '', provinceOldCode: partner.provinceOldCode ?? '', territoryChannel: partner.territoryChannel ?? '', exceptionReason: partner.territoryException?.reason ?? '',
             salesRepId: partner.salesRepId ?? '', taxCode: partner.taxCode ?? '', phone: partner.phone ?? '', email: partner.email ?? '', address: partner.address ?? '',
             creditLimit: String(Math.round(Number(partner.creditLimit ?? 0))), paymentTermDays: String(partner.paymentTermDays ?? 0), status: partner.status, stage: 'CUSTOMER',
           }
@@ -90,11 +92,7 @@
   async function loadReference() {
     referenceLoaded = true;
     try {
-      const [regionRows, employeeRows] = await Promise.all([
-        api<Array<{ code: string; name: string }>>('/regions'),
-        api<Employee[]>('/employees'),
-      ]);
-      regions = regionRows;
+      const employeeRows = await api<Employee[]>('/employees');
       employees = employeeRows.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER');
     } catch (caught) {
       referenceLoaded = false;
@@ -150,9 +148,12 @@
           ...(partner ? { version: partner.version, status: form.status } : { code: form.code.trim(), kind: 'CUSTOMER', stage: prospect ? 'PROSPECT' : 'CUSTOMER' }),
           name: form.name.trim(),
           ...(prospect ? {} : { customerTier: form.customerTier }),
-          regionCode: optional(form.regionCode),
-          province: optional(form.province),
+          provinceNewCode: optional(form.provinceNewCode),
+          provinceOldCode: optional(form.provinceOldCode),
+          territoryChannel: optional(form.territoryChannel),
           salesRepId: optional(form.salesRepId),
+          territoryExceptionReason: optional(form.exceptionReason),
+          ...(partner ? { clear: (['provinceNewCode', 'provinceOldCode', 'territoryChannel'] as const).filter((key) => !form[key] && partner?.[key]) } : {}),
           taxCode: optional(form.taxCode),
           phone: optional(form.phone),
           email: optional(form.email),
@@ -223,24 +224,9 @@
       <input id="kh-email" type="email" bind:value={form.email} aria-invalid={Boolean(errors.email)} />
       {#if errors.email}<span class="error">{errors.email}</span>{/if}
     </div>
-    <div class="field">
-      <label for="kh-rep">{m.nv_phu_trach()}</label>
-      <select id="kh-rep" bind:value={form.salesRepId}>
-        <option value="">{m.chon_nhan_vien()}</option>
-        {#each employees as row}<option value={row.id}>{row.name} ({row.code})</option>{/each}
-      </select>
-    </div>
-    <div class="field">
-      <label for="kh-region">{m.khu_vuc()}</label>
-      <select id="kh-region" bind:value={form.regionCode}>
-        <option value="">{m.toan_quoc()}</option>
-        {#each regions as row}<option value={row.code}>{row.name}</option>{/each}
-      </select>
-    </div>
-    <div class="field">
-      <label for="kh-province">{m.kh_tinh_thanh()}</label>
-      <input id="kh-province" bind:value={form.province} maxlength="80" />
-    </div>
+    <TerritoryFields idPrefix="kh" {employees} bind:provinceNewCode={form.provinceNewCode} bind:provinceOldCode={form.provinceOldCode}
+      bind:territoryChannel={form.territoryChannel} bind:salesRepId={form.salesRepId} bind:exceptionReason={form.exceptionReason}
+      currentException={partner?.territoryException ?? null} />
     {#if !prospect}
     <div class="field">
       <label for="kh-credit">{m.kh_han_muc_cong_no()}</label>

@@ -1,8 +1,10 @@
-import { Controller, Get, Inject, NotFoundException, Param, Query } from '@nestjs/common';
+import { Controller, Get, Inject, NotFoundException, Param, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { HistoryEntry } from '@inoxpran/contracts';
 import { ObjectId, type Db, type Document } from 'mongodb';
+import { seesCancelled } from '../../common/hidden-documents';
 import { pageOf, pageRequest } from '../../common/paging';
+import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { diffFields } from './history-diff';
 
@@ -23,11 +25,17 @@ export class HistoryController {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
   @Get(':type/:id')
-  async list(@Param('type') type: string, @Param('id') id: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  async list(@Param('type') type: string, @Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     const target = ENTITY_TYPES[type];
     if (!target || !ObjectId.isValid(id)) throw new NotFoundException({ code: 'ENTITY_NOT_FOUND', message: 'Không tìm thấy hồ sơ' });
     const paging = pageRequest(page, pageSize) ?? { page: 1, pageSize: 20, skip: 0 };
     const filter: Document = { entityType: target.entityType, entityId: id };
+    // Hủy / xóa chỉ quản trị gốc thấy (DOC-HIDE-01): hồ sơ đã hủy → không tìm thấy; sự kiện hủy / xóa (VD xóa thanh toán NCC) bị ẩn.
+    if (!seesCancelled(request.user)) {
+      const entity = await this.db.collection(target.collection).findOne({ _id: new ObjectId(id) }, { projection: { status: 1 } });
+      if (entity?.status === 'CANCELLED') throw new NotFoundException({ code: 'ENTITY_NOT_FOUND', message: 'Không tìm thấy hồ sơ' });
+      filter.action = { $not: /_(CANCELLED|DELETED|VOIDED)$/ };
+    }
     const [events, total] = await Promise.all([
       this.db.collection('audit_events').find(filter).sort({ occurredAt: -1, _id: -1 }).skip(paging.skip).limit(paging.pageSize).toArray(),
       this.db.collection('audit_events').countDocuments(filter),

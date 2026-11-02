@@ -11,7 +11,7 @@
   import { api, download } from '$lib/api';
   import { billions, date, num, percent, time, vnd, vnToday, isoFromParts, lastDayOfMonth } from '$lib/format';
   import { hasRole, orderStage } from '$lib/labels';
-  import { session } from '$lib/session.svelte';
+  import { can, session } from '$lib/session.svelte';
 
   const PAGE_SIZE = 5;
   let summary = $state<DashboardSummary | null>(null);
@@ -24,8 +24,9 @@
 
   const roles = $derived(session.user?.roles ?? []);
   const canApprove = $derived(hasRole(roles, ['SALES_MANAGER', 'DIRECTOR']));
-  const canIssue = $derived(hasRole(roles, ['ACCOUNTANT']));
-  const canRequest = $derived(hasRole(roles, ['SALES', 'SALES_MANAGER']));
+  // Lập phiếu BH / gửi đề nghị theo bước được Admin phân công (SAL-STEP-01).
+  const canIssue = $derived(can('sales.step.create') && can('sales.step.issue'));
+  const canRequest = $derived(can('sales.step.create'));
   const canExport = $derived(hasRole(roles, ['DIRECTOR', 'SALES_MANAGER', 'ACCOUNTANT', 'AUDITOR']));
   const totalPages = $derived(summary ? Math.max(1, Math.ceil(summary.recentOrdersTotal / PAGE_SIZE)) : 1);
   const monthLabel = $derived(summary ? summary.period.label.slice(0, 2) : '');
@@ -99,15 +100,22 @@
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if notice}<div class="banner success">{notice}</div>{/if}
 
-<section class="kpis">
+<!-- DB-REV-02 (31/10/2026): doanh thu trước thuế là số chính, sau thuế là dòng phụ; thêm card tiền đã thu trong tháng. -->
+<section class="kpis five">
   <article class="card kpi top green">
-    <p class="label">{m.doanh_so_thang()} {monthLabel}</p>
+    <p class="label">{m.doanh_thu_thang()} {monthLabel} · <span class="basis">{m.dt_truoc_thue()}</span></p>
     <p class="value">{summary ? vnd(summary.revenueThisMonth) : '—'}</p>
+    <p class="gross">{m.dt_sau_thue()}: <b>{summary ? vnd(summary.revenueThisMonthGross) : '—'}</b></p>
     <p class="note">
       {#if summary?.revenueChangePercent !== null && summary?.revenueChangePercent !== undefined}
         <span class="dot" class:red={summary.revenueChangePercent < 0}></span>{summary.revenueChangePercent >= 0 ? '+' : ''}{percent(summary.revenueChangePercent)} {m.so_voi()} {periodText(summary.revenueComparisonLabel)}
       {:else if summary}<span class="dot"></span>{m.dau_thang_thang_truoc_dat()} {vnd(summary.revenuePreviousMonth)}{/if}
     </p>
+  </article>
+  <article class="card kpi top blue">
+    <p class="label">{m.da_thu_thang()} {monthLabel}</p>
+    <p class="value">{summary ? vnd(summary.collectedThisMonth) : '—'}</p>
+    <p class="note"><span class="dot blue"></span>{m.so_phieu_thu({ count: summary?.collectedCount ?? 0 })}{#if summary && Number(summary.collectedPayNow) > 0}{' · '}{m.gom_thanh_toan_ngay({ amount: vnd(summary.collectedPayNow) })}{/if}</p>
   </article>
   <article class="card kpi top amber">
     <p class="label">{m.don_hang_cho_duyet()}</p>
@@ -221,6 +229,17 @@
   .kpi.top { border-top: 4px solid var(--green); }
   .kpi.amber { border-top-color: var(--amber); }
   .kpi.red { border-top-color: var(--red); }
+  .kpi.blue { border-top-color: var(--navy-2); }
+  .dot.blue { background: var(--navy-2); }
+  /* Card doanh thu rộng hơn: số trước thuế + dòng sau thuế không bị cắt. */
+  .kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .kpis.five .value { font-size: clamp(17px, 1.3vw, 23px); }
+  .kpi .basis { color: var(--green); font-weight: 600; }
+  .kpi .gross { margin: -2px 0 6px; color: var(--muted); font-size: 12.5px; }
+  .kpi .gross b { color: var(--text); font-weight: 600; }
+  @media (max-width: 1360px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 1100px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .kpis.five { grid-template-columns: 1fr; } }
   .middle { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(320px, 1fr); gap: 18px; margin-bottom: 18px; }
   .chip { padding: 6px 14px; border-radius: 7px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
   .legend { display: flex; gap: 22px; margin: 6px 0 0 34px; color: var(--muted); font-size: 12.5px; }

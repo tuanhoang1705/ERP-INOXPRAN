@@ -30,15 +30,18 @@ describe('canCreatePartnerKind', () => {
     expect(canCreatePartnerKind(['WAREHOUSE'], 'CUSTOMER')).toBe(false);
   });
 
-  it('lets the director manage every partner and warehouse accounts manage suppliers only', () => {
-    expect(canManagePartnerKind(['DIRECTOR'], 'CUSTOMER')).toBe(true);
+  it('lets partner managers manage every partner, warehouse accounts suppliers only, and the director only view (ROLE-DIR-01)', () => {
+    expect(canManagePartnerKind(['SALES_MANAGER'], 'CUSTOMER')).toBe(true);
+    expect(canManagePartnerKind(['DIRECTOR'], 'CUSTOMER')).toBe(false);
+    expect(canManagePartnerKind(['DIRECTOR'], 'SUPPLIER')).toBe(false);
     expect(canManagePartnerKind(['WAREHOUSE'], 'SUPPLIER')).toBe(true);
     expect(canManagePartnerKind(['WAREHOUSE_MANAGER'], 'CUSTOMER')).toBe(false);
     expect(canManagePartnerKind(['ACCOUNTANT'], 'CUSTOMER')).toBe(false);
   });
 
-  it('keeps credit terms with the director, accountant and admin', () => {
-    expect(canChangeCreditTerms(['DIRECTOR'])).toBe(true);
+  it('keeps credit terms with the accountant and admin (the director only views since 28/10/2026)', () => {
+    expect(canChangeCreditTerms(['DIRECTOR'])).toBe(false);
+    expect(canChangeCreditTerms(['ADMIN'])).toBe(true);
     expect(canChangeCreditTerms(['ACCOUNTANT'])).toBe(true);
     expect(canChangeCreditTerms(['SALES_MANAGER'])).toBe(false);
   });

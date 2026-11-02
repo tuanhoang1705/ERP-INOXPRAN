@@ -9,14 +9,14 @@
   import { CircleAlert, ClipboardPaste, ImagePlus, LoaderCircle, ShieldCheck, X } from 'lucide-svelte';
   import Dialog from './Dialog.svelte';
   import { api } from '$lib/api';
+  import { prepareImage } from '$lib/image';
 
   type Target = { id: string; code: string; version: number; customerName?: string | undefined; warehouseKeeperName?: string | undefined };
   type Item = { key: string; name: string; preview: string; size: number; status: 'uploading' | 'done' | 'error'; attachment?: AttachmentMeta; error?: string };
 
-  const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp'];
+  // image/jpeg đứng đầu: Safari / iPhone đổi ảnh HEIC sang định dạng đầu danh sách accept.
+  const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
   const MAX_BYTES = 8 * 1024 * 1024;
-  /** Ảnh lớn hơn ngưỡng này được thu nhỏ trên trình duyệt trước khi tải (chữ trong ảnh chụp màn hình vẫn đọc rõ). */
-  const COMPRESS_ABOVE = 4 * 1024 * 1024;
   const MAX_FILES = 6;
 
   let { order = $bindable(null), ondone }: { order?: Target | null; ondone: (count: number) => void } = $props();
@@ -62,19 +62,6 @@
 
   const kb = (size: number) => (size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`);
 
-  /** Thu nhỏ ảnh quá lớn (tối đa cạnh dài 2400 px, JPEG chất lượng 0,9). */
-  async function shrink(file: File): Promise<Blob> {
-    if (file.size <= COMPRESS_ABOVE) return file;
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error(m.khong_nen_duoc_anh()))), 'image/jpeg', 0.9));
-  }
-
   function addFiles(files: File[]) {
     error = '';
     for (const file of files) {
@@ -101,12 +88,13 @@
       if (index >= 0) items[index] = { ...(items[index] as Item), ...patch };
     };
     try {
-      const blob = await shrink(file);
+      // Ảnh chụp màn hình lớn hơn 2 MB được nén (chữ vẫn nét) — lib/image.ts.
+      const blob = await prepareImage(file, 'screenshot');
       if (blob.size > MAX_BYTES) throw new Error(m.anh_vuot_qua_8_mb());
       const attachment = await api<AttachmentMeta>(`/sales-orders/${target.id}/attachments`, {
         method: 'POST',
         body: blob,
-        headers: { 'content-type': blob.type, 'x-file-name': encodeURIComponent(blob === file ? name : name.replace(/\.\w+$/, '.jpg')) },
+        headers: { 'content-type': blob.type, 'x-file-name': encodeURIComponent(blob === file ? name : name.replace(/\.\w+$/, blob.name.slice(blob.name.lastIndexOf('.')))) },
       });
       if (!items.some((item) => item.key === key)) {
         // Người dùng đã bỏ ảnh trong lúc đang tải: xóa luôn trên máy chủ.

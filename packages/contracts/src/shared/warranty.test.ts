@@ -12,8 +12,18 @@ describe('hạn bảo hành', () => {
     expect(warrantyExpiry('2026-10-03', 12, 11)).toBe('2027-10-14');
   });
 
-  it('bắt buộc có hóa đơn', () => {
+  it('không hóa đơn, nhân viên chọn sửa có tính phí (mặc định): không thuộc diện bảo hành', () => {
     expect(coverageFor({ invoiceDate: null, receivedDate: '2026-10-03' })).toEqual({ coverage: 'NOT_COVERED', exclusion: 'NO_INVOICE' });
+    expect(coverageFor({ invoiceDate: null, receivedDate: '2026-10-03', noInvoiceWarranty: false })).toEqual({ coverage: 'NOT_COVERED', exclusion: 'NO_INVOICE' });
+  });
+
+  it('không hóa đơn, nhân viên xác nhận vẫn bảo hành (WAR-NOINV-01)', () => {
+    expect(coverageFor({ invoiceDate: null, receivedDate: '2026-10-28', noInvoiceWarranty: true })).toEqual({ coverage: 'IN_WARRANTY', invoiceless: true });
+    expect(coverageFor({ invoiceDate: null, receivedDate: '2026-10-28', noInvoiceWarranty: true, declaredPurchaseDate: '2026-03-01' }))
+      .toEqual({ coverage: 'IN_WARRANTY', invoiceless: true, startsOn: '2026-03-01', expiresOn: '2027-03-01', declaredExpired: false });
+    // Ngày khách khai đã quá 12 tháng: vẫn theo lựa chọn của nhân viên, chỉ cảnh báo.
+    expect(coverageFor({ invoiceDate: null, receivedDate: '2026-10-28', noInvoiceWarranty: true, declaredPurchaseDate: '2025-06-01' }))
+      .toMatchObject({ coverage: 'IN_WARRANTY', invoiceless: true, declaredExpired: true });
   });
 
   it('còn / hết bảo hành theo ngày tiếp nhận', () => {

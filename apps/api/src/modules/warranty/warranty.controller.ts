@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateWarrantyTicketSchema, isDateOnly, WARRANTY_PHOTO_KINDS, WarrantyActionSchema, WarrantyFaultCodeInputSchema } from '@inoxpran/contracts';
+import { CreateWarrantyTicketSchema, UpdateWarrantyIntakeSchema, isDateOnly, WARRANTY_PHOTO_KINDS, WarrantyActionSchema, WarrantyFaultCodeInputSchema } from '@inoxpran/contracts';
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { pageRequest } from '../../common/paging';
@@ -15,11 +15,14 @@ const CoveragePreviewSchema = z.object({
   invoiceNumber: z.string().trim().max(40).optional(),
   invoiceDate: z.string().refine(isDateOnly).optional(),
   receivedDate: z.string().refine(isDateOnly, 'Ngày tiếp nhận phải có dạng YYYY-MM-DD'),
+  /** Không hóa đơn: nhân viên chọn vẫn bảo hành (WAR-NOINV-01). */
+  noInvoiceWarranty: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  declaredPurchaseDate: z.string().refine(isDateOnly).optional(),
 });
 const PhotoKindSchema = z.enum(WARRANTY_PHOTO_KINDS).default('OTHER');
 const UpdateFaultCodeSchema = WarrantyFaultCodeInputSchema.omit({ code: true }).partial();
-/** Danh mục mã lỗi: nhân viên bảo hành và Giám đốc quản lý. */
-const FAULT_CODE_EDITORS = ['ADMIN', 'DIRECTOR', 'WARRANTY'];
+/** Danh mục mã lỗi: nhân viên bảo hành và Quản lý kho quản lý (Giám đốc chỉ xem). */
+const FAULT_CODE_EDITORS = ['ADMIN', 'WARRANTY', 'WAREHOUSE_MANAGER'];
 
 @ApiTags('Warranty')
 @Controller('warranty')
@@ -45,8 +48,7 @@ export class WarrantyController {
   @Roles(...WARRANTY_STAFF_ROLES)
   @Get('coverage')
   coverage(@Query() query: unknown) {
-    const input = CoveragePreviewSchema.parse(query);
-    return this.warranty.coveragePreview(input.productId, input.invoiceNumber, input.invoiceDate, input.receivedDate);
+    return this.warranty.coveragePreview(CoveragePreviewSchema.parse(query));
   }
 
   /** Báo cáo: tỉ lệ đúng hẹn, thời gian xử lý, lỗi theo mã hàng / mã lỗi, chi phí, từ chối, sản phẩm bảo hành từ 3 lần. */
@@ -88,16 +90,17 @@ export class WarrantyController {
   @Roles(...WARRANTY_VIEWER_ROLES)
   @Get('tickets')
   list(
+    @Req() request: AuthenticatedRequest,
     @Query('status') status?: string, @Query('tone') tone?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
     @Query('customerId') customerId?: string, @Query('from') from?: string, @Query('to') to?: string,
   ) {
-    return this.warranty.list({ status, tone, search, customerId, from, to }, pageRequest(page, pageSize));
+    return this.warranty.list({ status, tone, search, customerId, from, to }, pageRequest(page, pageSize), request.user);
   }
 
   @Roles(...WARRANTY_VIEWER_ROLES)
   @Get('tickets/:id')
-  get(@Param('id') id: string) {
-    return this.warranty.get(id);
+  get(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.warranty.get(id, request.user);
   }
 
   @Roles(...WARRANTY_STAFF_ROLES)
@@ -106,7 +109,14 @@ export class WarrantyController {
     return this.warranty.create(CreateWarrantyTicketSchema.parse(body), request, key);
   }
 
-  /** Nhân viên bảo hành cập nhật phiếu; Giám đốc duyệt (service kiểm tra quyền theo từng thao tác). */
+  /** Sửa thông tin tiếp nhận (phiếu chưa trả / chưa hủy), ghi lý do vào lịch sử — 20/10/2026. */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Patch('tickets/:id')
+  updateIntake(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
+    return this.warranty.updateIntake(id, UpdateWarrantyIntakeSchema.parse(body), request, key);
+  }
+
+  /** Nhân viên bảo hành / Quản lý kho cập nhật phiếu; Quản lý kho duyệt (service kiểm tra quyền theo từng thao tác). */
   @Roles(...WARRANTY_VIEWER_ROLES)
   @Post('tickets/:id/actions')
   act(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {

@@ -113,14 +113,17 @@ async function main(): Promise<void> {
     body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNgYGD4z8DAwMDAwMAAAA4AAf8d6ZoGAAAAAElFTkSuQmCC', 'base64'),
   });
   await request(`/sales-orders/${salesOrder.id}/customer-confirmation`, { method: 'POST', body: JSON.stringify({ version: await latestVersion(), decision: 'CONFIRMED', evidenceIds: [evidence.id] }) });
-  const shipment = await request<{ shipmentCode: string; receivableId: string }>(`/sales-orders/${salesOrder.id}/ship`, {
+  const shipment = await request<{ shipmentCode: string; receivableId?: string }>(`/sales-orders/${salesOrder.id}/ship`, {
     method: 'POST',
     body: JSON.stringify({ version: await latestVersion(), receiverName: 'Smoke Receiver', carrier: 'Khách tự lấy tại kho' }),
   });
   if (!/^SWK\d{10}$/.test(shipment.shipmentCode)) throw new Error(`Số phiếu SWK sai định dạng: ${shipment.shipmentCode}`);
+  // Công nợ ghi khi xác nhận giao thành công (AR-DLV-01), không phải lúc lập SWK.
+  if (shipment.receivableId) throw new Error('Lập SWK không được ghi công nợ');
+  const delivered = await request<{ receivableId?: string }>(`/sales-orders/${salesOrder.id}/deliver`, { method: 'POST', body: JSON.stringify({ version: await latestVersion() }) });
   const receivables = await request<Array<{ id: string; partnerId: string; outstandingAmount: string }>>('/receivables');
-  const receivable = receivables.find((item) => item.id === shipment.receivableId);
-  if (!receivable) throw new Error('Shipment did not create a receivable');
+  const receivable = receivables.find((item) => item.id === delivered.receivableId);
+  if (!receivable) throw new Error('Delivery did not create a receivable');
   await request('/payments', { method: 'POST', body: JSON.stringify({ partnerId: receivable.partnerId, amount: receivable.outstandingAmount, method: 'BANK_TRANSFER', receivedAt: new Date().toISOString(), reference: 'SMOKE', allocations: [{ receivableId: receivable.id, amount: receivable.outstandingAmount }] }) });
 
   const purchaseOrder = await request<{ id: string; version: number; code: string }>('/purchase-orders', {

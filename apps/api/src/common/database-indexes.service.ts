@@ -13,6 +13,9 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('products').createIndex({ name: 'text', sku: 'text' }),
       this.db.collection('partners').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('partners').createIndex({ name: 'text', code: 'text' }),
+      // Phân vùng NVKD theo tỉnh cũ (PV-01): mỗi (tỉnh, kênh) một NVKD.
+      this.db.collection('sales_territories').createIndex({ provinceCode: 1, channel: 1 }, { unique: true }),
+      this.db.collection('partners').createIndex({ provinceOldCode: 1, territoryChannel: 1 }),
       this.db.collection('partners').createIndex({ kind: 1, stage: 1, grade: 1 }),
       this.db.collection('partner_activities').createIndex({ partnerId: 1, occurredAt: -1 }),
       this.db.collection('partner_activities').createIndex({ done: 1, followUpOn: 1, ownerId: 1 }),
@@ -22,6 +25,10 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('sales_change_requests').createIndex({ status: 1, requestedAt: -1 }),
       this.db.collection('sales_change_requests').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('promotions').createIndex({ code: 1 }, { unique: true }),
+      // Kiểm kê gộp (KK-ALL-01): chỉ một phiếu gộp đang mở.
+      this.db.collection('stock_counts').createIndex({ open: 1 }, { unique: true, partialFilterExpression: { open: true, scope: 'ALL' }, name: 'one_open_combined_count' }),
+      // Giá riêng từng khách (PRI-CUST-01): một giá mỗi (khách, mã).
+      this.db.collection('customer_prices').createIndex({ partnerId: 1, productId: 1 }, { unique: true }),
       this.db.collection('product_categories').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('debt_segments').createIndex({ code: 1 }, { unique: true }),
       this.db.collection('sku_aliases').createIndex({ oldSku: 1 }, { unique: true }),
@@ -32,6 +39,9 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('sales_orders').createIndex({ customerId: 1, createdAt: -1 }),
       this.db.collection('sales_orders').createIndex({ createdAt: -1 }),
       this.db.collection('sales_orders').createIndex({ warehouseKeeperId: 1, status: 1, orderDate: -1 }),
+      // Doanh thu theo ngày giao (AR-DLV-01) và phiếu đã xuất chờ giao theo khách (hạn mức công nợ).
+      this.db.collection('sales_orders').createIndex({ status: 1, deliveredAt: -1 }),
+      this.db.collection('sales_orders').createIndex({ customerId: 1, status: 1 }),
       this.db.collection('attachments').createIndex({ entityType: 1, entityId: 1, purpose: 1, status: 1 }),
       this.db.collection('attachments').createIndex({ status: 1, expiresAt: 1 }),
       this.db.collection('attachments').dropIndex('expiresAt_1').catch(() => undefined),
@@ -44,6 +54,12 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('receivables').createIndex({ sourceType: 1, partnerId: 1, openingDocumentNo: 1 }),
       this.db.collection('import_shipments').createIndex({ purchaseOrderIds: 1, status: 1 }),
       this.db.collection('goods_receipts').createIndex({ importShipmentId: 1 }),
+      // Rà soát 22/10/2026: truy vấn nóng còn quét cả bảng khi dữ liệu lớn dần.
+      this.db.collection('goods_receipts').createIndex({ purchaseOrderId: 1, postedAt: -1 }),
+      this.db.collection('inventory_movements').createIndex({ referenceType: 1, referenceId: 1 }),
+      this.db.collection('receivables').createIndex({ salesOrderId: 1 }, { sparse: true }),
+      this.db.collection('payments').createIndex({ partnerId: 1, receivedAt: -1 }),
+      this.db.collection('payments').createIndex({ 'allocations.receivableId': 1 }),
       this.db.collection('inventory_balances').createIndex({ warehouseId: 1, productId: 1 }, { unique: true }),
       this.db.collection('inventory_movements').createIndex({ productId: 1, warehouseId: 1, occurredAt: -1 }),
       this.db.collection('inventory_transfers').createIndex({ code: 1 }, { unique: true }),

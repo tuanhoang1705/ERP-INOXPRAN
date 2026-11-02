@@ -7,6 +7,7 @@ import {
   packingTotals,
   sumAmounts,
   toVnd,
+  type CorrectGoodsReceipt,
   type CreateGoodsReceipt,
   type CreatePurchaseOrder,
   type SupplierPayment,
@@ -18,6 +19,7 @@ import { ObjectId } from 'mongodb';
 import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
+import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -25,6 +27,7 @@ import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { InventoryService } from '../inventory/inventory.service';
+import { unitCosts, valueOf } from './payables';
 
 type LineInput = CreatePurchaseOrder['lines'][number];
 /** Điều khoản hợp đồng nhập khẩu lưu trên đơn mua (giai đoạn 4). */
@@ -53,6 +56,13 @@ export function packingInputOf(product: Document | undefined, quantity: string) 
   };
 }
 
+/** Một dòng chênh lệch khi sửa phiếu nhập kho (đơn vị cơ bản; âm = nhận ít hơn đã ghi). */
+export interface ReceiptDelta {
+  productId: string;
+  sku: string;
+  delta: Decimal;
+}
+
 export interface ReceiptPosting {
   order: Document;
   lines: Array<{ productId: string; quantity: string; locationCode?: string | undefined }>;
@@ -75,23 +85,25 @@ export class ProcurementService {
     return { actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId };
   }
 
-  async list(status?: string, search?: string, paging: PageRequest | null = null, supplierId?: string, from?: string, to?: string) {
+  async list(status?: string, search?: string, paging: PageRequest | null = null, supplierId?: string, from?: string, to?: string, viewer?: Viewer) {
     // Lọc theo ngày lập đơn (LIST-DATE-01).
-    const filter: Document = { ...(status ? { status } : {}), ...dateRangeFilter('createdAt', from, to) };
-    if (supplierId) filter.supplierId = toObjectId(supplierId, 'supplierId');
+    const own: Document = { ...(status ? { status } : {}), ...dateRangeFilter('createdAt', from, to) };
+    if (supplierId) own.supplierId = toObjectId(supplierId, 'supplierId');
     if (search) {
       const pattern = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      filter.$or = [{ code: pattern }, { supplierName: pattern }, { supplierContractNo: pattern }];
+      own.$or = [{ code: pattern }, { supplierName: pattern }, { supplierContractNo: pattern }];
     }
+    // Đơn mua đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01).
+    const filter = hideStatus(own, viewer);
     const cursor = this.db.collection('purchase_orders').find(filter).sort({ createdAt: -1, _id: -1 });
     if (!paging) return (await cursor.limit(250).toArray()).map(serializeDocument);
     const [rows, total] = await Promise.all([cursor.skip(paging.skip).limit(paging.pageSize).toArray(), this.db.collection('purchase_orders').countDocuments(filter)]);
     return pageOf(rows.map((row) => ({ ...serializeDocument(row), currency: row.currency ?? 'VND', totalVnd: orderValueVnd(row) })), total, paging);
   }
 
-  async get(id: string) {
+  async get(id: string, viewer?: Viewer) {
     const order = await this.db.collection('purchase_orders').findOne({ _id: toObjectId(id) });
-    if (!order) throw new NotFoundException({ code: 'PURCHASE_ORDER_NOT_FOUND', message: 'Không tìm thấy đơn mua' });
+    if (!order || (order.status === 'CANCELLED' && !seesCancelled(viewer))) throw new NotFoundException({ code: 'PURCHASE_ORDER_NOT_FOUND', message: 'Không tìm thấy đơn mua' });
     const lines = order.lines as Document[];
     const [products, supplier] = await Promise.all([
       this.db.collection('products').find({ _id: { $in: lines.map((line) => line.productId as ObjectId) } }).toArray(),
@@ -426,7 +438,228 @@ export class ProcurementService {
       { ...this.actor(request), action: 'GOODS_RECEIPT_POSTED', entityType: 'GoodsReceipt', entityId: receipt._id.toHexString(), after: serializeDocument(receipt) },
       session,
     );
+    await this.notifyPayable(order, receiptCode, movementLines.map((line) => ({ productId: line.productId, quantity: line.quantity })), 'POST', session);
     return receipt;
+  }
+
+  /**
+   * Báo kế toán phải trả nhà cung cấp thay đổi (D2, 22/10/2026): nhập kho theo đơn mua (POST) hoặc sửa số nhận (CORRECT, số lượng
+   * là phần chênh lệch). Giá trị theo đơn giá đơn mua, tiền tệ của đơn.
+   */
+  private async notifyPayable(order: Document, receiptCode: string, quantities: Array<{ productId: string; quantity: string }>, action: 'POST' | 'CORRECT', session: ClientSession) {
+    const costs = unitCosts((order.lines as Document[]).map((line) => ({
+      productId: (line.productId as ObjectId).toHexString(),
+      baseQuantity: decimalString(line.baseQuantity),
+      receivedBaseQuantity: decimalString(line.receivedBaseQuantity ?? '0'),
+      lineTotal: decimalString(line.lineTotal),
+    })));
+    const value = valueOf(quantities, costs);
+    if (value.isZero()) return;
+    const currency = String(order.currency ?? 'VND');
+    const amount = value.toFixed(2);
+    const shown = `${Number(amount).toLocaleString('vi-VN', { maximumFractionDigits: currency === 'VND' ? 0 : 2 })} ${currency === 'VND' ? 'đ' : currency}`;
+    await this.outbox.enqueue(
+      {
+        eventType: 'NOTIFICATION_REQUESTED',
+        aggregateType: 'GoodsReceipt',
+        aggregateId: receiptCode,
+        payload: {
+          category: 'PROCUREMENT',
+          targetRoles: ['ACCOUNTANT'],
+          level: 'INFO',
+          title: action === 'POST'
+            ? `Nhập kho ${receiptCode} theo ${String(order.code)} — phải trả ${String(order.supplierName)} tăng ${shown}`
+            : `Sửa phiếu nhập ${receiptCode} (${String(order.code)}) — phải trả ${String(order.supplierName)} ${value.gt(0) ? 'tăng' : 'giảm'} ${shown.replace('-', '')}`,
+          message: 'Kiểm tra sổ phải trả nhà cung cấp và lịch thanh toán.',
+          href: `/payables/${String(order.supplierId)}`,
+          template: 'PURCHASE_RECEIPT_PAYABLE',
+          params: { code: receiptCode, order: String(order.code), supplier: String(order.supplierName), amount, currency, action },
+        },
+      },
+      session,
+    );
+  }
+
+  /** Phiếu nhập kho đã ghi của một đơn mua / một lô hàng (màn đơn mua, lô hàng: xem và sửa). */
+  async listReceipts(filter: { purchaseOrderId?: string | undefined; importShipmentId?: string | undefined }) {
+    const query: Document = {};
+    if (filter.purchaseOrderId) query.purchaseOrderId = toObjectId(filter.purchaseOrderId, 'purchaseOrderId');
+    if (filter.importShipmentId) query.importShipmentId = toObjectId(filter.importShipmentId, 'importShipmentId');
+    if (!Object.keys(query).length) throw new BadRequestException({ code: 'RECEIPT_FILTER_REQUIRED', message: 'Chọn đơn mua hoặc lô hàng' });
+    const rows = await this.db.collection('goods_receipts').find(query).sort({ postedAt: -1, _id: -1 }).limit(200).toArray();
+    return Promise.all(rows.map((row) => this.receiptView(row)));
+  }
+
+  async getReceipt(id: string) {
+    const row = await this.db.collection('goods_receipts').findOne({ _id: toObjectId(id) });
+    if (!row) throw new NotFoundException({ code: 'GOODS_RECEIPT_NOT_FOUND', message: 'Không tìm thấy phiếu nhập kho' });
+    return this.receiptView(row);
+  }
+
+  private async receiptView(row: Document, session?: ClientSession) {
+    const options = session ? { session } : {};
+    const [order, warehouse, shipment] = await Promise.all([
+      this.db.collection('purchase_orders').findOne({ _id: row.purchaseOrderId as ObjectId }, options),
+      this.db.collection('warehouses').findOne({ _id: row.warehouseId as ObjectId }, { projection: { name: 1, code: 1 }, ...options }),
+      row.importShipmentId ? this.db.collection('import_shipments').findOne({ _id: row.importShipmentId as ObjectId }, { projection: { code: 1, lines: 1 }, ...options }) : Promise.resolve(null),
+    ]);
+    const orderLines = (order?.lines as Document[] | undefined) ?? [];
+    const ids = [...new Set([...orderLines.map((line) => String(line.productId)), ...(row.lines as Document[]).map((line) => String(line.productId))])];
+    const products = new Map((await this.db.collection('products').find({ _id: { $in: ids.map((id) => new ObjectId(id)) } }, { projection: { sku: 1, name: 1, baseUnit: 1 }, ...options }).toArray()).map((product) => [String(product._id), product]));
+    const info = (productId: unknown) => {
+      const product = products.get(String(productId));
+      return { sku: String(product?.sku ?? ''), productName: String(product?.name ?? ''), unit: String(product?.baseUnit ?? '') };
+    };
+    const inShipment = (productId: unknown) => (shipment?.lines as Document[] | undefined)?.find((line) => String(line.purchaseOrderId) === String(row.purchaseOrderId) && String(line.productId) === String(productId));
+    return {
+      id: String(row._id),
+      code: String(row.code),
+      version: Number(row.version ?? 0),
+      purchaseOrderId: String(row.purchaseOrderId),
+      purchaseOrderCode: String(order?.code ?? ''),
+      ...(row.importShipmentId ? { importShipmentId: String(row.importShipmentId), importShipmentCode: String(shipment?.code ?? '') } : {}),
+      warehouseId: String(row.warehouseId),
+      warehouseName: warehouse ? `${String(warehouse.code)} — ${String(warehouse.name)}` : '',
+      ...(row.supplierDocumentReference ? { supplierDocumentReference: String(row.supplierDocumentReference) } : {}),
+      postedAt: (row.postedAt as Date).toISOString(),
+      lines: (row.lines as Document[]).map((line) => ({ productId: String(line.productId), ...info(line.productId), quantity: decimalString(line.quantity), ...(line.locationCode ? { locationCode: String(line.locationCode) } : {}) })),
+      orderLines: orderLines.map((line) => {
+        const cap = inShipment(line.productId);
+        return {
+          productId: String(line.productId),
+          ...info(line.productId),
+          ordered: decimalString(line.baseQuantity),
+          received: decimalString(line.receivedBaseQuantity ?? '0'),
+          ...(cap ? { shipmentQuantity: decimalString(cap.quantity) } : {}),
+        };
+      }),
+      corrections: ((row.corrections as Document[] | undefined) ?? []).map((entry) => serializeDocument(entry)),
+    };
+  }
+
+  /**
+   * Sửa phiếu nhập kho đã ghi (20/10/2026) trong phiên giao dịch có sẵn: số thực nhận / vị trí lưu từng mã.
+   * - Chênh lệch ghi thẻ kho RECEIPT_CORRECTION loại Nhập mua vào đúng ngày phiếu gốc (báo cáo tháng đó tự đúng);
+   *   giảm số nhận = xuất bớt khỏi kho → hàng đã bán / chuyển đi thì báo thiếu tồn, không sửa được.
+   * - Số đã nhận của đơn mua và trạng thái đơn tính lại; `caps` = số trong lô hàng nhập (phiếu thuộc lô).
+   * Trả về các dòng chênh lệch để lô hàng cập nhật số nhận / giá vốn.
+   */
+  async applyReceiptCorrection(
+    input: { receipt: Document; input: CorrectGoodsReceipt; caps?: Map<string, Decimal> },
+    request: AuthenticatedRequest,
+    session: ClientSession,
+  ) {
+    const { receipt } = input;
+    const code = String(receipt.code);
+    const order = await this.db.collection('purchase_orders').findOne({ _id: receipt.purchaseOrderId as ObjectId }, { session });
+    if (!order) throw new NotFoundException({ code: 'PURCHASE_ORDER_NOT_FOUND', message: 'Không tìm thấy đơn mua của phiếu nhập' });
+    const orderLines = order.lines as Array<{ productId: ObjectId; baseQuantity: unknown; receivedBaseQuantity: unknown }>;
+    const current = new Map((receipt.lines as Document[]).map((line) => [String(line.productId), { quantity: new Decimal(decimalString(line.quantity)), locationCode: line.locationCode as string | undefined }]));
+    const next = new Map(current);
+    for (const line of input.input.lines) {
+      const productId = toObjectId(line.productId, 'productId').toHexString();
+      if (!orderLines.some((row) => row.productId.toHexString() === productId)) throw new BadRequestException({ code: 'PRODUCT_NOT_IN_ORDER', message: 'Sản phẩm không thuộc đơn mua', details: [{ path: ['lines'] }] });
+      next.set(productId, { quantity: new Decimal(line.quantity), locationCode: line.locationCode ?? current.get(productId)?.locationCode });
+    }
+    const products = new Map((await this.db.collection('products').find({ _id: { $in: [...next.keys()].map((id) => new ObjectId(id)) } }, { session }).toArray()).map((product) => [String(product._id), product]));
+    const skuOf = (productId: string) => String(products.get(productId)?.sku ?? productId);
+
+    const deltas: ReceiptDelta[] = [];
+    const changes: Array<{ sku: string; from: string; to: string; fromLocation?: string; toLocation?: string }> = [];
+    const relocate: Array<{ productId: string; locationCode: string }> = [];
+    for (const [productId, line] of next) {
+      const before = current.get(productId) ?? { quantity: new Decimal(0), locationCode: undefined };
+      const delta = line.quantity.sub(before.quantity);
+      const moved = Boolean(line.locationCode) && line.locationCode !== before.locationCode;
+      if (delta.isZero() && !moved) continue;
+      const ordered = orderLines.find((row) => row.productId.toHexString() === productId) as (typeof orderLines)[number];
+      const received = new Decimal(decimalString(ordered.receivedBaseQuantity ?? '0')).add(delta);
+      if (received.lt(0)) throw new ConflictException({ code: 'RECEIPT_CORRECTION_NEGATIVE', message: `${skuOf(productId)}: số đã nhận của đơn mua sẽ âm` });
+      if (received.gt(decimalString(ordered.baseQuantity))) {
+        throw new ConflictException({ code: 'RECEIPT_EXCEEDS_ORDER', message: `${skuOf(productId)}: tổng số nhận vượt số đặt (${decimalString(ordered.baseQuantity)})`, details: [{ path: ['lines'] }] });
+      }
+      const cap = input.caps?.get(productId);
+      if (cap && line.quantity.gt(cap)) {
+        throw new ConflictException({ code: 'RECEIPT_EXCEEDS_SHIPMENT', message: `${skuOf(productId)}: số thực nhận vượt số trong lô (${cap.toString()})`, details: [{ path: ['lines'] }] });
+      }
+      ordered.receivedBaseQuantity = decimal(received.toDecimalPlaces(4).toString());
+      if (!delta.isZero()) deltas.push({ productId, sku: skuOf(productId), delta });
+      if (moved && line.locationCode) relocate.push({ productId, locationCode: line.locationCode });
+      changes.push({
+        sku: skuOf(productId),
+        from: before.quantity.toString(),
+        to: line.quantity.toString(),
+        ...(moved ? { fromLocation: before.locationCode ?? '', toLocation: line.locationCode ?? '' } : {}),
+      });
+    }
+    if (!changes.length) throw new BadRequestException({ code: 'RECEIPT_UNCHANGED', message: 'Phiếu nhập chưa có thay đổi nào' });
+
+    const warehouseId = (receipt.warehouseId as ObjectId).toHexString();
+    const reason = `Sửa phiếu nhập ${code}: ${input.input.reason}`;
+    // Nhập thêm trước, xuất bớt sau.
+    for (const direction of ['IN', 'OUT'] as const) {
+      const lines = deltas
+        .filter((row) => (direction === 'IN' ? row.delta.gt(0) : row.delta.lt(0)))
+        .map((row) => ({ productId: row.productId, quantity: row.delta.abs().toString(), ...(direction === 'IN' && next.get(row.productId)?.locationCode ? { locationCode: next.get(row.productId)?.locationCode } : {}) }));
+      if (!lines.length) continue;
+      try {
+        await this.inventory.applyPhysicalMovement(
+          {
+            warehouseId, referenceType: 'GoodsReceipt', referenceId: code, movementType: 'RECEIPT_CORRECTION', direction, category: 'PURCHASE_IN',
+            lines, reason, actorId: request.user.sub, extra: { purchaseOrderCode: String(order.code) }, occurredAt: receipt.postedAt as Date, anyProductStatus: true,
+          },
+          session,
+        );
+      } catch (error) {
+        if ((error as { response?: { code?: string } }).response?.code === 'INSUFFICIENT_AVAILABLE_STOCK') {
+          throw new ConflictException({ code: 'RECEIPT_CORRECTION_NO_STOCK', message: `${(error as Error).message} để giảm số nhận của phiếu ${code} — hàng đã xuất / chuyển đi. Kiểm tra thẻ kho` });
+        }
+        throw error;
+      }
+    }
+    for (const row of relocate) {
+      await this.db.collection('inventory_balances').updateOne({ warehouseId: receipt.warehouseId, productId: new ObjectId(row.productId) }, { $set: { locationCode: row.locationCode, updatedAt: new Date() } }, { session });
+    }
+
+    const now = new Date();
+    const anyReceived = orderLines.some((line) => new Decimal(decimalString(line.receivedBaseQuantity ?? '0')).gt(0));
+    const fullyReceived = orderLines.every((line) => new Decimal(decimalString(line.receivedBaseQuantity ?? '0')).eq(decimalString(line.baseQuantity)));
+    const status = fullyReceived ? 'RECEIVED' : anyReceived ? 'PARTIALLY_RECEIVED' : 'APPROVED';
+    const updated = await this.db.collection('purchase_orders').updateOne(
+      { _id: order._id, version: order.version },
+      { $set: { lines: orderLines, status, updatedAt: now }, $inc: { version: 1 } },
+      { session },
+    );
+    if (updated.modifiedCount !== 1) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Đơn mua vừa được cập nhật, hãy tải lại rồi sửa' });
+    const lines = [...next].map(([productId, line]) => ({ productId: new ObjectId(productId), quantity: line.quantity.toString(), ...(line.locationCode ? { locationCode: line.locationCode } : {}) }));
+    return { lines, deltas, changes, now };
+  }
+
+  /** Ghi kết quả sửa vào phiếu nhập (dòng mới, lịch sử sửa, phiên bản) — sau khi lô hàng (nếu có) đã cập nhật giá vốn. */
+  async saveReceiptCorrection(
+    receipt: Document,
+    result: Awaited<ReturnType<ProcurementService['applyReceiptCorrection']>>,
+    reason: string,
+    costChanges: Array<{ sku: string; before?: string; after: string }>,
+    request: AuthenticatedRequest,
+    session: ClientSession,
+  ) {
+    const correction = { at: result.now, by: toObjectId(request.user.sub), byName: request.user.displayName, reason, changes: result.changes, ...(costChanges.length ? { costChanges } : {}) };
+    const after = await this.db.collection('goods_receipts').findOneAndUpdate(
+      { _id: receipt._id, ...(receipt.version === undefined ? { version: { $exists: false } } : { version: receipt.version }) },
+      { $set: { lines: result.lines, updatedAt: result.now }, $inc: { version: 1 }, $push: { corrections: correction } } as Document,
+      { session, returnDocument: 'after' },
+    );
+    if (!after) throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu nhập ${String(receipt.code)} vừa được người khác sửa, vui lòng tải lại` });
+    await this.audit.record(
+      { ...this.actor(request), action: 'GOODS_RECEIPT_CORRECTED', entityType: 'GoodsReceipt', entityId: String(receipt._id), before: serializeDocument(receipt), after: serializeDocument(after), metadata: { reason, changes: result.changes, costChanges } },
+      session,
+    );
+    if (result.deltas.length) {
+      const order = await this.db.collection('purchase_orders').findOne({ _id: receipt.purchaseOrderId as ObjectId }, { session });
+      if (order) await this.notifyPayable(order, String(receipt.code), result.deltas.map((row) => ({ productId: row.productId, quantity: row.delta.toString() })), 'CORRECT', session);
+    }
+    return this.receiptView(after, session);
   }
 
   async receive(input: CreateGoodsReceipt, request: AuthenticatedRequest, key: string | undefined) {
@@ -434,6 +667,10 @@ export class ProcurementService {
       const orderId = toObjectId(input.purchaseOrderId, 'purchaseOrderId');
       const order = await this.db.collection('purchase_orders').findOne({ _id: orderId, status: { $in: ['APPROVED', 'PARTIALLY_RECEIVED'] } }, { session });
       if (!order) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Đơn mua chưa sẵn sàng nhập kho' });
+      // PO-FLOW-02 (31/10/2026): đơn nhập khẩu (ngoại tệ) nhận hàng theo lô — có chi phí lô để tính giá vốn, không bỏ sót lô hàng.
+      if (String(order.currency ?? 'VND') !== 'VND') {
+        throw new BadRequestException({ code: 'PO_RECEIVE_VIA_SHIPMENT', message: `Đơn nhập khẩu ${String(order.code)} nhận hàng theo lô — tạo lô hàng nhập trong đơn rồi bấm "Nhập kho lô"` });
+      }
       const receipt = await this.postReceipt({ order, lines: input.lines, supplierDocumentReference: input.supplierDocumentReference }, request, session);
       return serializeDocument(receipt);
     });

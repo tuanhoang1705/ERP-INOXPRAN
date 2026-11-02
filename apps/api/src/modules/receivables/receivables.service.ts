@@ -1,19 +1,23 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateCustomerPayment, CreatePayment } from '@inoxpran/contracts';
-import ExcelJS from 'exceljs';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { dateBounds, dateRangeFilter } from '../../common/date-range';
+import { seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { AuditService } from '../../common/audit.service';
-import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
+import { decimal, decimalString, serializeDocument, toObjectId, vnMonthStart, vnParts } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
+import { addBodyRow, brandSheet, brandWorkbook, exportedAt, finalize, FORMATS, kpiStrip, signatureBlock, tableHeader, titleBlock, toBuffer, totalRow, type BrandColumn } from '../../common/excel-brand';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
+import { applyAllocations } from './allocation-store';
 import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, OVERDUE_HOLD_REASON, releaseHoldIfCleared, runOverdueReview } from './overdue-review';
 import { buildLedger, type LedgerPayment, type LedgerReceivable } from './ledger';
+import { buildSummaryWorkbook, type SummaryCustomer, type SummaryMonth } from './summary-workbook';
+import { pendingDeliveryOf } from './pending-delivery';
 import { loadSegmentItems } from './segment-items';
 import { loadSegmentRules, reallocatePartner } from './segment-store';
 import { normalOutstanding, openParts, planPartsAllocation, segmentOutstanding, type OpenPart } from './segments';
@@ -27,10 +31,14 @@ export class ReceivablesService {
     private readonly sequences: SequenceService,
   ) {}
 
-  /** Mặc định chỉ trả khoản còn dư nợ (sắp theo hạn); includePaid trả cả khoản đã thu, mới nhất trước. */
-  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null, from?: string, to?: string) {
+  /**
+   * Mặc định chỉ trả khoản còn dư nợ (sắp theo hạn); includePaid trả cả khoản đã thu, mới nhất trước — chứng từ đã hủy chỉ
+   * quản trị gốc thấy (DOC-HIDE-01).
+   */
+  async list(partnerId?: string, overdueOnly = false, includePaid = false, search?: string, paging: PageRequest | null = null, from?: string, to?: string, viewer?: Viewer) {
     // Lọc theo ngày phát sinh công nợ (LIST-DATE-01); "quá hạn" vẫn lọc riêng theo hạn trả.
-    const filter: Document = { ...(includePaid ? {} : { status: { $in: OPEN_RECEIVABLE_STATUSES } }), ...dateRangeFilter('createdAt', from, to) };
+    const shown = seesCancelled(viewer) ? {} : { status: { $ne: 'VOIDED' } };
+    const filter: Document = { ...(includePaid ? shown : { status: { $in: OPEN_RECEIVABLE_STATUSES } }), ...dateRangeFilter('createdAt', from, to) };
     if (partnerId) filter.partnerId = toObjectId(partnerId, 'partnerId');
     if (overdueOnly) {
       filter.dueDate = { $lt: new Date() };
@@ -241,36 +249,9 @@ export class ReceivablesService {
     );
   }
 
-  /**
-   * Ghi phân bổ vào chứng từ (cộng paidAmount, cập nhật trạng thái) — dùng chung cho thu theo chứng từ, thu theo khách,
-   * bù trừ trả trước và nhập lịch sử. Phân bổ âm chỉ dùng cho khoản trả trước (phải thu âm) khi bù trừ.
-   */
+  /** Ghi phân bổ vào chứng từ (allocation-store.ts). */
   async applyAllocations(allocations: ReadonlyArray<{ receivableId: ObjectId; amount: string; segment?: string | null }>, session: ClientSession, now: Date) {
-    for (const allocation of allocations) {
-      const receivable = await this.db.collection('receivables').findOne({ _id: allocation.receivableId }, { session });
-      if (!receivable) throw new NotFoundException({ code: 'RECEIVABLE_NOT_FOUND', message: 'Không tìm thấy khoản phải thu' });
-      const amount = new Decimal(decimalString(receivable.amount));
-      const nextPaid = new Decimal(decimalString(receivable.paidAmount)).add(allocation.amount);
-      const credit = amount.lt(0);
-      if (credit ? nextPaid.lt(amount) || nextPaid.gt(0) : nextPaid.gt(amount) || nextPaid.lt(0)) {
-        throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: `Số tiền phân bổ vượt dư nợ chứng từ ${String(receivable.code)}` });
-      }
-      // Phần nhóm tách riêng (CN-SEG-01): cộng vào "đã trả" của đúng phần, không vượt phần đó.
-      const part = allocation.segment ? ((receivable.segments as Document[] | undefined) ?? []).find((item) => item.code === allocation.segment) : undefined;
-      if (allocation.segment && (!part || new Decimal(decimalString(part.paid)).add(allocation.amount).gt(decimalString(part.amount)))) {
-        throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: `Số tiền phân bổ vượt phần nhóm ${allocation.segment} của chứng từ ${String(receivable.code)}` });
-      }
-      const status = nextPaid.eq(amount) ? 'PAID' : credit ? 'OPEN' : 'PARTIALLY_PAID';
-      const result = await this.db.collection('receivables').updateOne(
-        { _id: allocation.receivableId, version: receivable.version },
-        {
-          $inc: { paidAmount: decimal(allocation.amount), version: 1, ...(allocation.segment ? { 'segments.$[part].paid': decimal(allocation.amount) } : {}) },
-          $set: { status, updatedAt: now },
-        },
-        { session, ...(allocation.segment ? { arrayFilters: [{ 'part.code': allocation.segment }] } : {}) },
-      );
-      if (result.matchedCount !== 1) throw new ConflictException({ code: 'RECEIVABLE_CHANGED', message: 'Chứng từ vừa được người khác cập nhật — tải lại rồi thử lại' });
-    }
+    await applyAllocations(this.db, allocations, session, now);
   }
 
   private async customer(partnerId: ObjectId, session?: ClientSession) {
@@ -390,7 +371,7 @@ export class ReceivablesService {
     const partnerFilter: Document = { _id: { $in: [...byPartner.keys()].map((id) => new ObjectId(id)) } };
     if (search?.trim()) {
       const pattern = { $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      partnerFilter.$or = [{ name: pattern }, { code: pattern }, { shortName: pattern }, { phone: pattern }];
+      partnerFilter.$or = [{ name: pattern }, { code: pattern }, { shortName: pattern }, { nameZh: pattern }, { phone: pattern }];
     }
     const partners = await this.db.collection('partners').find(partnerFilter, { projection: { code: 1, name: 1, province: 1, salesRepName: 1, status: 1, holdReason: 1, autoHoldExempt: 1 } }).toArray();
     let rows = partners.map((partner) => {
@@ -432,11 +413,20 @@ export class ReceivablesService {
     return pageOf(rows.slice(paging.skip, paging.skip + paging.pageSize), rows.length, paging, { totals, segmentNames });
   }
 
-  private async ledgerSources(partnerId: ObjectId) {
+  /**
+   * Chứng từ đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01): người khác không có dòng phát sinh + dòng "Hủy chứng từ" của nó
+   * (hai dòng bù nhau nên số dư cuối kỳ không đổi).
+   */
+  private async ledgerSources(partnerId: ObjectId, viewer?: Viewer) {
     const [receivables, payments] = await Promise.all([
-      this.db.collection('receivables').find({ partnerId }).toArray(),
+      this.db.collection('receivables').find(seesCancelled(viewer) ? { partnerId } : { partnerId, status: { $ne: 'VOIDED' } }).toArray(),
       this.db.collection('payments').find({ partnerId, status: 'POSTED' }).toArray(),
     ]);
+    return this.toLedger(receivables, payments);
+  }
+
+  /** Chứng từ / phiếu thu (bản ghi Mongo) → dữ liệu dựng sổ chi tiết (ledger.ts). */
+  private toLedger(receivables: Document[], payments: Document[]) {
     const optional = (value: unknown) => (value === undefined || value === null || value === '' ? undefined : String(value));
     const ledgerReceivables: LedgerReceivable[] = receivables.map((row) => ({
       id: (row._id as ObjectId).toHexString(),
@@ -474,14 +464,116 @@ export class ReceivablesService {
     return { ledgerReceivables, ledgerPayments };
   }
 
+  /**
+   * Bảng tổng hợp công nợ theo tháng giống mẫu 收付明细汇总表 của kế toán (AR-XLS-02, 31/10/2026): mỗi tháng một sheet, khách đã
+   * chọn (bỏ trống = mọi khách có phát sinh / số dư). Số liệu cùng quy tắc sổ chi tiết (buildLedger): đầu kỳ, phí vận chuyển khách
+   * trả hộ, bán hàng, trả hàng / điều chỉnh giảm, thu tiền, cuối kỳ. Cột 备注: hàng khách trả trong tháng; tháng hiện tại thêm phần
+   * nợ nhóm tách riêng còn lại.
+   */
+  async summaryWorkbook(fromMonth: string, toMonth: string, customerIds: readonly string[]) {
+    const parse = (value: string, field: string) => {
+      const match = /^(\d{4})-(\d{2})$/.exec(value);
+      const month = match ? Number(match[2]) : 0;
+      if (!match || month < 1 || month > 12) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Tháng không hợp lệ (yyyy-mm)', details: [{ path: [field] }] });
+      return { year: Number(match[1]), month };
+    };
+    const from = parse(fromMonth, 'fromMonth');
+    const to = parse(toMonth, 'toMonth');
+    const index = (period: SummaryMonth) => period.year * 12 + period.month - 1;
+    const today = vnParts(new Date());
+    const current = today.year * 12 + today.month - 1;
+    if (index(to) < index(from)) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Đến tháng phải sau hoặc bằng từ tháng', details: [{ path: ['toMonth'] }] });
+    if (index(to) > current) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Chưa tới tháng đã chọn', details: [{ path: ['toMonth'] }] });
+    if (index(to) - index(from) >= 12) throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Xuất tối đa 12 tháng mỗi lần', details: [{ path: ['fromMonth'] }] });
+    const months: SummaryMonth[] = Array.from({ length: index(to) - index(from) + 1 }, (_, offset) => ({ year: Math.floor((index(from) + offset) / 12), month: ((index(from) + offset) % 12) + 1 }));
+    const starts = [...months.map((period) => vnMonthStart(period.year, period.month)), vnMonthStart(to.year, to.month + 1)];
+    const rangeStart = starts[0]!;
+    const rangeEnd = starts[starts.length - 1]!;
+
+    const chosen = customerIds.map((id) => toObjectId(id, 'customerIds'));
+    const partnerIds = chosen.length
+      ? chosen
+      : [...new Set([
+          ...(await this.db.collection('receivables').distinct('partnerId', { status: { $ne: 'VOIDED' } })),
+          ...(await this.db.collection('payments').distinct('partnerId', { status: 'POSTED' })),
+        ].map(String))].map((id) => new ObjectId(id));
+    const [partners, receivables, payments, returns, rules] = await Promise.all([
+      this.db.collection('partners').find({ _id: { $in: partnerIds }, kind: { $in: ['CUSTOMER', 'BOTH'] } }, { projection: { code: 1, name: 1, nameZh: 1, salesRepName: 1 } }).toArray(),
+      this.db.collection('receivables').find({ partnerId: { $in: partnerIds }, status: { $ne: 'VOIDED' } }).toArray(),
+      this.db.collection('payments').find({ partnerId: { $in: partnerIds }, status: 'POSTED' }).toArray(),
+      this.db.collection('stock_returns').find(
+        { kind: 'CUSTOMER', partnerId: { $in: partnerIds }, status: { $ne: 'VOIDED' }, $or: [{ receivedAt: { $gte: rangeStart, $lt: rangeEnd } }, { receivedAt: { $exists: false }, createdAt: { $gte: rangeStart, $lt: rangeEnd } }] },
+        { projection: { partnerId: 1, receivedAt: 1, createdAt: 1, lines: 1, code: 1 } },
+      ).toArray(),
+      loadSegmentRules(this.db),
+    ]);
+    if (chosen.length && partners.length !== new Set(chosen.map(String)).size) {
+      throw new NotFoundException({ code: 'CUSTOMER_NOT_FOUND', message: 'Có khách hàng không tồn tại', details: [{ path: ['customerIds'] }] });
+    }
+    const group = (rows: Document[]) => {
+      const map = new Map<string, Document[]>();
+      for (const row of rows) map.set(String(row.partnerId), [...(map.get(String(row.partnerId)) ?? []), row]);
+      return map;
+    };
+    const receivablesOf = group(receivables);
+    const paymentsOf = group(payments);
+    const returnsOf = group(returns);
+    const segmentName = new Map(rules.map((rule) => [rule.code, rule.name]));
+    const vnd = (value: number) => Math.round(value).toLocaleString('vi-VN');
+    const customers: SummaryCustomer[] = partners.map((partner) => {
+      const id = String(partner._id);
+      const { ledgerReceivables, ledgerPayments } = this.toLedger(receivablesOf.get(id) ?? [], paymentsOf.get(id) ?? []);
+      const figures = months.map((_, at) => {
+        const ledger = buildLedger(ledgerReceivables, ledgerPayments, starts[at], starts[at + 1]);
+        return {
+          opening: Number(ledger.opening), freight: Number(ledger.totals.freight), sales: Number(ledger.totals.debit),
+          returns: Number(ledger.totals.returns), receipt: Number(ledger.totals.receipt), closing: Number(ledger.closing),
+        };
+      });
+      const notes = months.map((_, at) => (returnsOf.get(id) ?? [])
+        .filter((slip) => {
+          const when = (slip.receivedAt ?? slip.createdAt) as Date;
+          return when >= starts[at]! && when < starts[at + 1]!;
+        })
+        .map((slip) => {
+          const lines = ((slip.lines as Document[] | undefined) ?? []).map((line) => `${new Decimal(decimalString(line.quantity)).toString()} ${String(line.unit ?? 'cái')} ${String(line.sku)}`);
+          return `trả lại ${lines.join(', ')} (${String(slip.code)})`;
+        }));
+      // Tháng hiện tại: phần nợ nhóm tách riêng còn lại (CN-SEG-01) của các chứng từ đang mở.
+      if (index(to) === current) {
+        const segments = new Map<string, Decimal>();
+        for (const row of receivablesOf.get(id) ?? []) {
+          if (!(OPEN_RECEIVABLE_STATUSES as readonly string[]).includes(String(row.status))) continue;
+          for (const part of (row.segments as Document[] | undefined) ?? []) {
+            const left = new Decimal(decimalString(part.amount)).minus(decimalString(part.paid ?? '0'));
+            if (left.gt(0)) segments.set(String(part.code), (segments.get(String(part.code)) ?? new Decimal(0)).add(left));
+          }
+        }
+        if (segments.size) notes[notes.length - 1]!.push(`Nợ nhóm tách riêng: ${[...segments].map(([code, amount]) => `${segmentName.get(code) ?? code} ${vnd(amount.toNumber())}`).join(', ')}`);
+      }
+      return {
+        id,
+        ...(partner.code ? { code: String(partner.code) } : {}),
+        name: String(partner.name),
+        ...(partner.nameZh ? { nameZh: String(partner.nameZh) } : {}),
+        ...(partner.salesRepName ? { salesRepName: String(partner.salesRepName) } : {}),
+        figures,
+        notes,
+      };
+    });
+    const workbook = buildSummaryWorkbook(months, customers, { includeZero: chosen.length > 0 });
+    const tag = (period: SummaryMonth) => `${period.year}-${String(period.month).padStart(2, '0')}`;
+    return { buffer: await toBuffer(workbook), fileName: `CongNo_TongHop_${tag(from)}_${tag(to)}.xlsx`, displayName: `收付明细汇总表_${tag(from)}_${tag(to)}.xlsx` };
+  }
+
   /** Sổ chi tiết công nợ của một khách trong kỳ (CN-KH-01). */
-  async statement(partnerId: string, from?: string, to?: string) {
+  async statement(partnerId: string, from?: string, to?: string, viewer?: Viewer) {
     const id = toObjectId(partnerId, 'partnerId');
     const partner = await this.customer(id);
     const bounds = dateBounds(from, to);
-    const { ledgerReceivables, ledgerPayments } = await this.ledgerSources(id);
+    const { ledgerReceivables, ledgerPayments } = await this.ledgerSources(id, viewer);
     const ledger = buildLedger(ledgerReceivables, ledgerPayments, bounds?.$gte, bounds?.$lt);
-    const [open, rules, holdings] = await Promise.all([this.openItems(id), loadSegmentRules(this.db), loadSegmentItems(this.db, { partnerId: id })]);
+    const [open, rules, holdings, pendingDelivery] = await Promise.all([this.openItems(id), loadSegmentRules(this.db), loadSegmentItems(this.db, { partnerId: id }), pendingDeliveryOf(this.db, id)]);
     const itemsOf = new Map(holdings.map((holding) => [holding.code, holding]));
     const now = new Date();
     const openDocuments = open
@@ -549,50 +641,53 @@ export class ReceivablesService {
       openDocuments,
       segments,
       current: { balance: currentBalance.toFixed(2), segment: segmentTotal.toFixed(2), normal: currentBalance.minus(segmentTotal).toFixed(2) },
+      // Đã xuất kho, chờ giao: chưa vào công nợ (AR-DLV-01) — để kế toán đối chiếu.
+      pendingDelivery,
     };
   }
 
-  async statementWorkbook(partnerId: string, from: string | undefined, to: string | undefined, preparedBy: string): Promise<{ buffer: Buffer; fileName: string }> {
-    const statement = await this.statement(partnerId, from, to);
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'INOXPRAN ERP';
-    workbook.created = new Date();
-    const navy = 'FF123B5E';
-    const money = '#,##0;[Red]-#,##0';
-    const sheet = workbook.addWorksheet('Sổ công nợ', { views: [{ state: 'frozen', ySplit: 7 }] });
-    sheet.columns = [{ width: 6 }, { width: 12 }, { width: 18 }, { width: 46 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }];
+  /** Sổ chi tiết công nợ khách theo bộ chuẩn Excel thương hiệu (XLS-01): khối chỉ số, bảng phát sinh, phần tổng như sheet đối chiếu, ký tên. */
+  async statementWorkbook(partnerId: string, from: string | undefined, to: string | undefined, preparedBy: string, viewer?: Viewer): Promise<{ buffer: Buffer; fileName: string }> {
+    const statement = await this.statement(partnerId, from, to, viewer);
+    const workbook = brandWorkbook();
     const day = (value: Date) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(value);
     const dayOf = (value: string | undefined) => (value ? day(new Date(`${value}T12:00:00+07:00`)) : '');
     const period = from || to ? `Từ ${from ? dayOf(from) : 'đầu'} đến ${to ? dayOf(to) : 'nay'}` : 'Toàn bộ';
-    sheet.mergeCells('A1:I1');
-    sheet.getCell('A1').value = 'CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG — INOXPRAN';
-    sheet.getCell('A1').font = { bold: true, color: { argb: navy } };
-    sheet.mergeCells('A2:I2');
-    sheet.getCell('A2').value = 'SỔ CHI TIẾT CÔNG NỢ KHÁCH HÀNG';
-    sheet.getCell('A2').font = { bold: true, size: 15, color: { argb: navy } };
-    sheet.mergeCells('A3:I3');
-    sheet.getCell('A3').value = `Khách hàng: ${statement.partner.code} — ${statement.partner.name}`;
-    sheet.getCell('A3').font = { bold: true };
-    sheet.mergeCells('A4:I4');
-    sheet.getCell('A4').value = `Kỳ: ${period} · Người lập: ${preparedBy} · Ngày kết xuất: ${day(new Date())}`;
-    sheet.mergeCells('A5:I5');
-    sheet.getCell('A5').value = `Số dư đầu kỳ: ${Number(statement.opening).toLocaleString('vi-VN')} đ`;
-    const header = sheet.getRow(7);
-    header.values = ['STT', 'Ngày', 'Chứng từ', 'Diễn giải', 'Phát sinh nợ', 'Đã thu', 'Phí vận chuyển', 'Trả hàng / giảm', 'Còn nợ lũy kế'];
-    header.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: navy } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    });
+    const columns: BrandColumn[] = [
+      { key: 'stt', header: 'STT', width: 6, type: 'int' },
+      { key: 'date', header: 'Ngày', width: 12, type: 'date' },
+      { key: 'doc', header: 'Chứng từ', width: 18, type: 'code' },
+      { key: 'text', header: 'Diễn giải', width: 44, wrap: true },
+      { key: 'debit', header: 'Phát sinh nợ (đ)', width: 17, type: 'money' },
+      { key: 'receipt', header: 'Đã thu (đ)', width: 17, type: 'money', tint: 'in' },
+      { key: 'freight', header: 'Phí vận chuyển (đ)', width: 16, type: 'money' },
+      { key: 'returns', header: 'Trả hàng / giảm (đ)', width: 17, type: 'money' },
+      { key: 'balance', header: 'Còn nợ lũy kế (đ)', width: 19, type: 'money', emphasis: true },
+    ];
+    const sheet = brandSheet(workbook, 'Sổ công nợ', columns);
+    let rowNo = titleBlock(sheet, columns.length, 'Sổ chi tiết công nợ khách hàng', [
+      `Khách hàng: ${statement.partner.code} — ${statement.partner.name}`,
+      `Kỳ: ${period} · Người lập: ${preparedBy} · Xuất lúc ${exportedAt()}`,
+    ]);
+    rowNo = kpiStrip(sheet, rowNo, columns.length, [
+      { label: 'SỐ DƯ ĐẦU KỲ (Đ)', value: Number(statement.opening), format: FORMATS.money },
+      { label: 'PHÁT SINH NỢ (Đ)', value: Number(statement.totals.debit), format: FORMATS.money },
+      { label: 'ĐÃ THU (Đ)', value: Number(statement.totals.receipt), format: FORMATS.money, tone: 'good' },
+      { label: 'CÒN NỢ CUỐI KỲ (Đ)', value: Number(statement.closing), format: FORMATS.money, tone: Number(statement.closing) > 0 ? 'danger' : 'good' },
+    ]);
+    const header = rowNo;
+    tableHeader(sheet, header, columns);
     statement.rows.forEach((row, index) => {
-      const excelRow = sheet.addRow([index + 1, day(new Date(row.date)), row.documentNo, row.description, Number(row.debit) || null, Number(row.receipt) || null, Number(row.freight) || null, Number(row.returns) || null, Number(row.balance)]);
-      for (const column of [5, 6, 7, 8, 9]) excelRow.getCell(column).numFmt = money;
-      excelRow.getCell(4).alignment = { wrapText: true };
+      addBodyRow(sheet, columns, {
+        stt: index + 1, date: new Date(new Date(row.date).getTime() + 7 * 3_600_000), doc: row.documentNo, text: row.description,
+        debit: Number(row.debit) || null, receipt: Number(row.receipt) || null, freight: Number(row.freight) || null, returns: Number(row.returns) || null, balance: Number(row.balance),
+      }, index, { cells: Number(row.balance) < 0 ? { balance: { color: 'green' } } : {} });
     });
-    const total = sheet.addRow(['', '', '', 'CỘNG PHÁT SINH TRONG KỲ', Number(statement.totals.debit), Number(statement.totals.receipt), Number(statement.totals.freight), Number(statement.totals.returns), Number(statement.closing)]);
-    total.font = { bold: true };
-    for (const column of [5, 6, 7, 8, 9]) total.getCell(column).numFmt = money;
-    sheet.addRow([]);
+    totalRow(sheet, columns, {
+      text: 'CỘNG PHÁT SINH TRONG KỲ', debit: Number(statement.totals.debit), receipt: Number(statement.totals.receipt),
+      freight: Number(statement.totals.freight), returns: Number(statement.totals.returns), balance: Number(statement.closing),
+    });
+    finalize(sheet, header, header + statement.rows.length, columns.length);
     // Phần tổng giống sheet đối chiếu của kế toán: thêm công nợ từng nhóm tách riêng và còn lại trừ nhóm (CN-SEG-01).
     const groups = statement.segments.filter((segment) => new Decimal(segment.outstanding).gt(0));
     const summary: Array<[string, string]> = [
@@ -602,12 +697,10 @@ export class ReceivablesService {
       ...groups.map((segment): [string, string] => [`Công nợ ${segment.name} (hiện tại)`, segment.outstanding]),
       ...(groups.length ? [[`Còn lại trừ ${groups.map((segment) => segment.name).join(', ')} (hiện tại)`, statement.current.normal] as [string, string]] : []),
     ];
-    for (const [label, value] of summary) {
-      const row = sheet.addRow(['', '', '', label, '', '', '', '', Number(value)]);
-      row.getCell(4).font = { bold: true };
-      row.getCell(9).numFmt = money;
-    }
-    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+    sheet.addRow([]);
+    summary.forEach(([label, value], index) => addBodyRow(sheet, columns, { text: label, balance: Number(value) }, index, index === 0 ? { cells: { text: { bold: true }, balance: { bold: true } } } : {}));
+    signatureBlock(sheet, columns.length, preparedBy, ['Người lập biểu', 'Kế toán trưởng', 'Xác nhận của khách hàng']);
+    const buffer = await toBuffer(workbook);
     const safe = statement.partner.code.replace(/[^A-Za-z0-9_-]/g, '');
     return { buffer, fileName: `SoCongNo_${safe}_${from ?? 'dau'}_${to ?? 'nay'}.xlsx` };
   }

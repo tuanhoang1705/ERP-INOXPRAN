@@ -11,7 +11,10 @@ import { vnToday } from './follow-up-review';
 type ActivityPatch = { [Key in keyof PartnerActivityInput]?: PartnerActivityInput[Key] | undefined } & { done?: boolean | undefined };
 
 /** Quản lý xem / sửa nhật ký của mọi người; nhân viên kinh doanh sửa / xóa nhật ký của chính mình. */
-const CRM_SUPERVISORS = ['ADMIN', 'DIRECTOR', 'SALES_MANAGER'];
+/** Sửa / xóa nhật ký của người khác. */
+const CRM_SUPERVISORS = ['ADMIN', 'SALES_MANAGER'];
+/** Xem lịch chăm sóc của cả đội (Giám đốc chỉ xem — ROLE-DIR-01). */
+const CRM_TEAM_VIEWERS = [...CRM_SUPERVISORS, 'DIRECTOR'];
 
 /** Nhật ký chăm sóc khách hàng (collection partner_activities) và danh sách hẹn chăm sóc lại. */
 @Injectable()
@@ -119,7 +122,7 @@ export class CrmService {
     const today = vnToday();
     const weekEnd = vnToday(new Date(Date.now() + 7 * 86_400_000));
     const range: Document = due === 'overdue' ? { $lt: today } : due === 'today' ? { $eq: today } : due === 'week' ? { $lte: weekEnd } : { $exists: true };
-    const supervisor = request.user.roles.some((role) => CRM_SUPERVISORS.includes(role));
+    const supervisor = request.user.roles.some((role) => CRM_TEAM_VIEWERS.includes(role));
     const filter: Document = { done: false, followUpOn: range, ...(!supervisor || mine ? { ownerId: toObjectId(request.user.sub) } : {}) };
     const [rows, total, overdue, todayCount] = await Promise.all([
       this.db.collection('partner_activities').find(filter).sort({ followUpOn: 1, _id: 1 }).skip(paging.skip).limit(paging.pageSize).toArray(),

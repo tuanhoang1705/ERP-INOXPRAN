@@ -12,6 +12,7 @@ import { pageOf, type PageRequest } from '../../common/paging';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { SequenceService } from '../../common/sequence.service';
 import { defectiveWarehouseIds } from '../../common/warehouses';
+import { hiddenMovementFilter } from './hidden-movements';
 
 interface StockLine {
   productId: string;
@@ -19,6 +20,8 @@ interface StockLine {
   locationCode?: string | undefined;
   /** Tồn đầu kỳ từ Excel: số lượng nhập ban đầu (初始入库) để tính % tồn còn lại. */
   initialQuantity?: string | undefined;
+  /** Nguyên nhân / ghi chú của dòng (phiếu trả hàng) — ghi lên dòng thẻ kho (lineNote). */
+  note?: string | undefined;
 }
 
 interface ReservationLine {
@@ -40,14 +43,39 @@ export class InventoryService {
   /**
    * Tồn kho theo kho / mã. `asOf` (YYYY-MM-DD, LIST-DATE-01): tồn cuối ngày đó theo giờ Việt Nam = tồn hiện tại trừ các phát sinh
    * thẻ kho sau thời điểm đó; xem ngày cũ thì không có số giữ chỗ và bỏ lọc "dưới định mức".
+   * INV-ALL-01 (31/10/2026): không chọn kho = mỗi mã một dòng, cộng mọi kho; khả dụng / dưới định mức chỉ tính kho bán được, phần ở
+   * kho hàng lỗi ghi riêng (defectiveOnHand). Xem kho hàng lỗi thì bỏ các mã đã hết (tồn 0).
    */
   async listBalances(warehouseId?: string, search?: string, lowOnly = false, paging: PageRequest | null = null, asOf?: string) {
     const asOfEnd = asOf ? dateBounds(asOf, asOf)?.$lt ?? null : null;
     if (asOfEnd) lowOnly = false;
+    // Kho hàng lỗi không cảnh báo dưới định mức và không tính vào khả dụng.
+    const defective = await defectiveWarehouseIds(this.db);
+    const grouped = !warehouseId;
     const match: Document = {};
-    if (warehouseId) match.warehouseId = toObjectId(warehouseId, 'warehouseId');
+    if (warehouseId) {
+      match.warehouseId = toObjectId(warehouseId, 'warehouseId');
+      if (defective.some((id) => id.equals(match.warehouseId as ObjectId))) match.onHand = { $ne: 0 };
+    }
+    const isDefective = { $in: ['$warehouseId', defective] };
     const pipeline: Document[] = [
       { $match: match },
+      ...(grouped
+        ? [
+            {
+              $group: {
+                _id: '$productId',
+                onHand: { $sum: '$onHand' },
+                reserved: { $sum: '$reserved' },
+                defectiveOnHand: { $sum: { $cond: [isDefective, '$onHand', 0] } },
+                sellable: { $sum: { $cond: [isDefective, 0, { $subtract: ['$onHand', '$reserved'] }] } },
+                locationCode: { $max: { $cond: [isDefective, null, '$locationCode'] } },
+                updatedAt: { $max: '$updatedAt' },
+              },
+            },
+            { $addFields: { productId: '$_id' } },
+          ]
+        : []),
       {
         $lookup: {
           from: 'products',
@@ -68,13 +96,13 @@ export class InventoryService {
         },
       });
     }
-    // Dưới định mức: còn khả dụng (tồn − giữ) ≤ định mức tối thiểu > 0.
-    // Kho hàng lỗi không cảnh báo dưới định mức.
-    const defective = await defectiveWarehouseIds(this.db);
-    const lowMatch = { warehouseId: { $nin: defective }, $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: [{ $subtract: ['$onHand', '$reserved'] }, '$product.minimumStock'] }] } };
+    // Dưới định mức: còn khả dụng (tồn − giữ, chỉ kho bán được) ≤ định mức tối thiểu > 0.
+    const lowMatch = grouped
+      ? { $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: ['$sellable', '$product.minimumStock'] }] } }
+      : { warehouseId: { $nin: defective }, $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: [{ $subtract: ['$onHand', '$reserved'] }, '$product.minimumStock'] }] } };
     if (lowOnly) pipeline.push({ $match: lowMatch });
-    // Cùng mã ở nhiều kho: sắp thêm theo kho để phân trang ổn định.
-    pipeline.push({ $sort: { 'product.sku': 1, warehouseId: 1 } });
+    // Cùng mã ở nhiều kho (xem một kho thì không có): sắp thêm theo kho để phân trang ổn định.
+    pipeline.push({ $sort: grouped ? { 'product.sku': 1 } : { 'product.sku': 1, warehouseId: 1 } });
     let documents: Document[];
     let counts = { total: 0, low: 0 };
     if (paging) {
@@ -87,42 +115,64 @@ export class InventoryService {
     } else {
       documents = await this.db.collection('inventory_balances').aggregate([...pipeline, { $limit: 500 }]).toArray();
     }
-    // Phát sinh sau cuối ngày xem (chỉ cho các dòng đang hiển thị): nhập cộng, xuất trừ.
+    // Phát sinh sau cuối ngày xem (chỉ cho các dòng đang hiển thị): nhập cộng, xuất trừ. Gộp mã: cộng mọi kho, phần kho lỗi riêng.
     const after = new Map<string, number>();
+    const defectiveAfter = new Map<string, number>();
     if (asOfEnd && documents.length) {
       const moved = await this.db.collection('inventory_movements').aggregate([
-        { $match: { occurredAt: { $gte: asOfEnd }, productId: { $in: documents.map((document) => document.productId as ObjectId) }, warehouseId: { $in: [...new Set(documents.map((document) => String(document.warehouseId)))].map((id) => new ObjectId(id)) } } },
+        {
+          $match: {
+            occurredAt: { $gte: asOfEnd },
+            productId: { $in: documents.map((document) => document.productId as ObjectId) },
+            ...(grouped ? {} : { warehouseId: { $in: [...new Set(documents.map((document) => String(document.warehouseId)))].map((id) => new ObjectId(id)) } }),
+          },
+        },
         { $group: { _id: { warehouseId: '$warehouseId', productId: '$productId' }, net: { $sum: { $cond: [{ $eq: ['$direction', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }] } } } },
       ]).toArray();
-      for (const row of moved) after.set(`${String(row._id.warehouseId)}:${String(row._id.productId)}`, Number(decimalString(row.net)));
+      for (const row of moved) {
+        const net = Number(decimalString(row.net));
+        const key = grouped ? String(row._id.productId) : `${String(row._id.warehouseId)}:${String(row._id.productId)}`;
+        after.set(key, (after.get(key) ?? 0) + net);
+        if (grouped && defective.some((id) => id.equals(row._id.warehouseId as ObjectId))) defectiveAfter.set(key, (defectiveAfter.get(key) ?? 0) + net);
+      }
     }
+    const round4 = (value: number) => Math.round(value * 10_000) / 10_000;
     const rows = documents.map((document) => {
+      const key = grouped ? String(document.productId) : `${String(document.warehouseId)}:${String(document.productId)}`;
       const current = Number(decimalString(document.onHand));
-      const onHand = asOfEnd ? Math.round((current - (after.get(`${String(document.warehouseId)}:${String(document.productId)}`) ?? 0)) * 10_000) / 10_000 : current;
+      const onHand = asOfEnd ? round4(current - (after.get(key) ?? 0)) : current;
       const reserved = asOfEnd ? 0 : Number(decimalString(document.reserved));
       const minimum = Number(decimalString(document.product.minimumStock));
+      const defectiveOnHand = grouped ? round4(Number(decimalString(document.defectiveOnHand)) - (asOfEnd ? defectiveAfter.get(key) ?? 0 : 0)) : 0;
+      const isDefectiveRow = !grouped && defective.some((id) => id.equals(document.warehouseId as ObjectId));
+      // Khả dụng: gộp mã = phần kho bán được (tồn − hàng lỗi − giữ chỗ); một kho = tồn − giữ chỗ.
+      const available = round4(onHand - reserved - defectiveOnHand);
       return {
-        productId: document.productId.toHexString(),
-        warehouseId: document.warehouseId.toHexString(),
+        productId: (document.productId as ObjectId).toHexString(),
+        warehouseId: grouped ? null : (document.warehouseId as ObjectId).toHexString(),
         sku: document.product.sku,
         productName: document.product.name,
         unit: document.product.baseUnit,
         onHand: String(onHand),
         reserved: String(reserved),
-        available: String(onHand - reserved),
+        available: String(available),
+        ...(grouped ? { defectiveOnHand: String(defectiveOnHand) } : {}),
+        ...(isDefectiveRow ? { defective: true } : {}),
         minimumStock: String(minimum),
         locationCode: (document.locationCode as string | null | undefined) ?? null,
-        belowMinimum: minimum > 0 && onHand - reserved <= minimum && !defective.some((id) => id.equals(document.warehouseId as ObjectId)),
+        belowMinimum: minimum > 0 && available <= minimum && !isDefectiveRow,
         updatedAt: (document.updatedAt as Date).toISOString(),
       };
     });
     return paging ? pageOf(rows, counts.total, paging, { lowCount: counts.low }) : rows;
   }
 
-  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null) {
+  async listMovements(productId?: string, warehouseId?: string, paging: PageRequest | null = null, viewer: { root?: boolean | undefined } = {}) {
     const filter: Document = {};
     if (productId) filter.productId = toObjectId(productId, 'productId');
     if (warehouseId) filter.warehouseId = toObjectId(warehouseId, 'warehouseId');
+    // Chứng từ đã hủy (phiếu trả hàng, phiếu BH hủy sau giao): các dòng bù trừ về 0, chỉ quản trị gốc thấy — tồn hiện tại vẫn đúng.
+    Object.assign(filter, await hiddenMovementFilter(this.db, viewer));
     const cursor = this.db.collection('inventory_movements').find(filter).sort({ occurredAt: -1, _id: -1 });
     if (!paging) return (await cursor.limit(500).toArray()).map(serializeDocument);
     const [rows, total] = await Promise.all([cursor.skip(paging.skip).limit(paging.pageSize).toArray(), this.db.collection('inventory_movements').countDocuments(filter)]);
@@ -279,6 +329,10 @@ export class InventoryService {
       actorId: string;
       /** Thông tin thêm ghi trên dòng thẻ kho (VD đối tác của phiếu trả hàng). */
       extra?: Document;
+      /** Ngày phát sinh trên thẻ kho / báo cáo tháng (VD ngày nhận hàng trả, ngày của phiếu được đảo); mặc định lúc ghi. */
+      occurredAt?: Date;
+      /** Dòng đảo / sửa chứng từ cũ: vẫn ghi được cho mã đã ngừng kinh doanh. */
+      anyProductStatus?: boolean;
     },
     session: ClientSession,
   ): Promise<void> {
@@ -289,7 +343,7 @@ export class InventoryService {
     for (const line of input.lines) {
       const productId = toObjectId(line.productId, 'productId');
       const quantity = decimal(line.quantity);
-      const product = await this.db.collection('products').findOne({ _id: productId, status: 'ACTIVE' }, { session });
+      const product = await this.db.collection('products').findOne(input.anyProductStatus ? { _id: productId } : { _id: productId, status: 'ACTIVE' }, { session });
       if (!product) throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: 'Không tìm thấy sản phẩm' });
 
       if (input.direction === 'IN') {
@@ -334,9 +388,11 @@ export class InventoryService {
           referenceType: input.referenceType,
           referenceId: input.referenceId,
           reason: input.reason,
+          ...(line.note ? { lineNote: line.note } : {}),
           ...(input.extra ?? {}),
           actorId: toObjectId(input.actorId, 'actorId'),
-          occurredAt: new Date(),
+          occurredAt: input.occurredAt ?? new Date(),
+          ...(input.occurredAt ? { recordedAt: new Date() } : {}),
         },
         { session },
       );

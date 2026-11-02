@@ -38,8 +38,8 @@ export class AdminController {
     return this.users.update(id, onlyProvided(body, UpdateUserSchema.parse(body)), request);
   }
 
-  /** Quản trị gốc cấp / thu quyền nghiệp vụ của một tài khoản (PERM-01). */
-  @RootOnly()
+  /** Cấp / thu quyền nghiệp vụ của một tài khoản (PERM-01): Admin phân 5 bước phiếu BH, quản trị gốc phân mọi quyền (SAL-STEP-01). */
+  @Roles('ADMIN')
   @Patch('users/:id/permissions')
   updatePermissions(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.users.updatePermissions(id, UpdateUserPermissionsSchema.parse(body), request);

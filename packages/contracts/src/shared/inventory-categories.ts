@@ -69,6 +69,14 @@ export const CUSTOMER_RETURN_CATEGORIES = ['SLOW_RETURN_IN', 'GIFT_RETURN_IN', '
 export type CustomerReturnCategory = (typeof CUSTOMER_RETURN_CATEGORIES)[number];
 export const DEFECT_RETURN_CATEGORIES: readonly CustomerReturnCategory[] = ['IMPORT_DEFECT_IN', 'USAGE_DEFECT_IN'];
 
+/**
+ * Mốc tồn đầu kỳ nhập từ Excel (hết ngày 30/09/2026, giờ Việt Nam): phát sinh ghi lùi ngày (VD ngày nhận hàng trả) không được
+ * từ mốc này trở về trước — hàng đó đã nằm trong số tồn đầu kỳ.
+ */
+export const STOCK_OPENING_CUTOFF = '2026-09-30';
+/** Thời điểm sớm nhất được ghi phát sinh lùi ngày: 00:00 ngày sau mốc tồn đầu kỳ (giờ Việt Nam). */
+export const STOCK_BACKDATE_FROM = new Date('2026-10-01T00:00:00+07:00');
+
 /** Loại suy ra từ nghiệp vụ thẻ kho khi phát sinh chưa ghi `category` (dữ liệu trước 08/10/2026). */
 export const MOVEMENT_TYPE_CATEGORY: Readonly<Record<string, InventoryCategory>> = {
   OPENING: 'OPENING_IN',
@@ -84,6 +92,8 @@ export const MOVEMENT_TYPE_CATEGORY: Readonly<Record<string, InventoryCategory>>
   REVERSAL: 'OPENING_IN',
   WARRANTY_EXCHANGE_OUT: 'WARRANTY_OUT',
   WARRANTY_DEFECT_IN: 'USAGE_DEFECT_IN',
+  // Sửa phiếu nhập kho đơn mua: chênh lệch cộng / trừ vào cột Nhập mua.
+  RECEIPT_CORRECTION: 'PURCHASE_IN',
 };
 
 export function categoryOf(movement: { movementType: string; direction: StockDirection; category?: string | null | undefined }): InventoryCategory {

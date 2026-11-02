@@ -27,6 +27,7 @@ Staging ([infra/staging](../staging/README.md), 24/7, ~26 USD/tháng) dùng đ�
 | S3 (ảnh chứng từ + sao lưu nén) | < 0,5 |
 | ECR (5 bản image) | < 0,2 |
 | CloudWatch: 9 metric + 6 cảnh báo (cả account có 2 môi trường nên vượt hạn mức miễn phí 10 metric / 10 cảnh báo, ~2,6 USD tính chung) | ~1,3 |
+| CloudWatch Logs (D7, 22/10/2026): log ứng dụng ~0,1–0,3 GB/tháng × 0,57 USD/GB nhập + lưu 30 ngày; thêm 1 metric + 1 cảnh báo lỗi | < 0,6 |
 | AWS Budgets, SNS email, SSM Parameter Store, DLM | 0 |
 | **Tổng production** | **~25** |
 
@@ -63,6 +64,10 @@ Chưa gồm thuế (nếu AWS tính); ngân sách tính theo hóa đơn thực, 
   - chạy `tf.ps1 plan / apply -Stack production` để cập nhật bản trên S3 (không thay máy);
   - sau đó chạy `deploy.ps1 -Environment production -ConfirmProduction -SkipBuild` để máy đồng bộ.
 - **Giám sát:** màn *Giám sát hệ thống* (trạng thái MongoDB, Redis, worker, ClamAV, S3, sao lưu, lỗi 5xx, đăng nhập) và email cảnh báo.
+- **Log máy chủ (D7, 22/10/2026):** api / worker / web / caddy ghi lên CloudWatch Logs nhóm `/inoxpran-erp/production/app`, giữ 30 ngày, mỗi container một luồng (`inoxpran-api-1`, …) — không mất khi cập nhật phiên bản.
+  - Xem: AWS Console → CloudWatch → Log groups → `/inoxpran-erp/production/app`, hoặc **Logs Insights**, ví dụ lỗi 24 giờ qua: `fields @timestamp, msg, err.message | filter level >= 50 | sort @timestamp desc`; yêu cầu chậm: `filter msg = "request completed" and responseTime > 1000`.
+  - Từ 5 dòng lỗi máy chủ trong 10 phút → email cảnh báo (`inoxpran-erp-production-app-errors`).
+  - `docker compose logs` trên máy vẫn dùng được (Docker giữ bản sao cục bộ).
 - **Sao lưu ngay:** `deploy.ps1 -Environment production -ConfirmProduction -SkipBuild -BackupNow`.
 - **Diễn tập khôi phục:** `deploy.ps1 -Environment production -ConfirmProduction -SkipBuild -RestoreDrill`. Script tải bản mới nhất, khôi phục vào MongoDB tạm, so số bản ghi từng bảng với dữ liệu đang chạy. Nên chạy hằng tháng và ghi kết quả vào `docs/production-readiness.md`.
 - **RPO / RTO:**

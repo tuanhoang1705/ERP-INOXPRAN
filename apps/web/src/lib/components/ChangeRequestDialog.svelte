@@ -8,6 +8,8 @@
   import { api } from '$lib/api';
   import { dateTime, num, vnd } from '$lib/format';
   import { changeKindLabel, compareLines, type ChangeRequest } from '$lib/change-requests';
+  import LineKindPill from './LineKindPill.svelte';
+  import type { ZeroPriceKind } from '$shared/sales-line-kind';
   import Dialog from './Dialog.svelte';
 
   let { open = $bindable(false), request, action, ondone }: {
@@ -17,7 +19,7 @@
     ondone?: (result: ChangeRequest) => void;
   } = $props();
 
-  type CurrentOrder = { grandTotal: string; lines: Array<{ sku: string; productName: string; unit: string; quantity: string; gift?: boolean; unitPrice: string; lineTotal: string }> };
+  type CurrentOrder = { grandTotal: string; lines: Array<{ sku: string; productName: string; unit: string; quantity: string; gift?: boolean; zeroPriceKind?: ZeroPriceKind | undefined; unitPrice: string; lineTotal: string }> };
   let current = $state<CurrentOrder | null>(null);
   let note = $state('');
   let working = $state(false);
@@ -68,12 +70,12 @@
             <tr><th class="num">SL × {m.don_gia()}</th><th class="num">{m.thanh_tien()}</th><th class="num">SL × {m.don_gia()}</th><th class="num">{m.thanh_tien()}</th></tr>
           </thead>
           <tbody>
-            {#each rows as row (row.sku + row.gift)}
+            {#each rows as row (row.sku + (row.zeroPriceKind ?? 'SALE'))}
               <tr class:changed={row.changed}>
-                <td><b class="code">{row.sku}</b>{#if row.gift} <span class="pill neutral">{m.yc_hang_tang()}</span>{/if}<small>{row.productName}</small></td>
-                <td class="num">{row.before ? `${num(row.before.quantity)} × ${vnd(row.before.unitPrice)}` : '—'}</td>
+                <td><b class="code">{row.sku}</b>{#if row.gift}<LineKindPill kind={row.zeroPriceKind ?? 'GIFT'} />{/if}<small>{row.productName}</small></td>
+                <td class="num">{row.before ? `${num(row.before.quantity)} × ${row.before.unitPrice === '' ? m.yc_nhieu_gia() : vnd(row.before.unitPrice)}` : '—'}</td>
                 <td class="num">{row.before ? vnd(row.before.lineTotal) : '—'}</td>
-                <td class="num"><b>{row.after ? `${num(row.after.quantity)} × ${vnd(row.after.unitPrice)}` : '—'}</b></td>
+                <td class="num"><b>{row.after ? `${num(row.after.quantity)} × ${row.after.unitPrice === '' ? m.yc_nhieu_gia() : vnd(row.after.unitPrice)}` : '—'}</b></td>
                 <td class="num"><b>{row.after ? vnd(row.after.lineTotal) : '—'}</b></td>
               </tr>
             {/each}

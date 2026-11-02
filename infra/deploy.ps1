@@ -68,6 +68,12 @@ $awsConfig = Join-Path $env:USERPROFILE '.aws'
 foreach ($cache in @('sso\cache', 'cli\cache')) { New-Item -ItemType Directory -Force (Join-Path $awsConfig $cache) | Out-Null }
 $work = Join-Path ([IO.Path]::GetTempPath()) "inoxpran-deploy-$([guid]::NewGuid())"
 New-Item -ItemType Directory $work | Out-Null
+# Cấu hình Docker riêng cho lần chạy này (31/10/2026): token ECR khi đăng nhập AWS SSO dài ~2.900 ký tự, vượt giới hạn 2.560 byte
+# mỗi mục của Windows Credential Manager → docker login báo "The stub received bad data". Thư mục riêng có sẵn một mục "auths"
+# thì Docker lưu token (hết hạn sau 12 giờ) vào file trong thư mục này thay cho Credential Manager; xóa khi script kết thúc.
+# Không mount vào container AWS CLI, không đụng tới các đăng nhập Docker khác của máy.
+$dockerConfig = Join-Path ([IO.Path]::GetTempPath()) "inoxpran-docker-$([guid]::NewGuid())"
+$previousDockerConfig = $env:DOCKER_CONFIG
 $awsArgs = @('-e', "AWS_PROFILE=$Profile", '-e', "AWS_REGION=$region",
   '-v', "${awsConfig}:/root/.aws:ro", '-v', "$(Join-Path $awsConfig 'sso\cache'):/root/.aws/sso/cache", '-v', "$(Join-Path $awsConfig 'cli\cache'):/root/.aws/cli/cache",
   '-v', "${work}:/in:ro")
@@ -125,6 +131,11 @@ function Get-Instance {
 # Chạy lệnh trên máy chủ qua SSM Run Command, chờ xong và in kết quả.
 # PowerShell 5.1 thêm CRLF khi pipe chuỗi sang chương trình ngoài → ECR báo 400; đưa token qua file không xuống dòng.
 function Connect-Registry {
+  if (-not (Test-Path $dockerConfig)) {
+    New-Item -ItemType Directory $dockerConfig | Out-Null
+    [IO.File]::WriteAllText((Join-Path $dockerConfig 'config.json'), '{"auths":{"placeholder.invalid":{}}}')
+  }
+  $env:DOCKER_CONFIG = $dockerConfig
   $tokenFile = Join-Path $work 'ecr-token'
   [IO.File]::WriteAllText($tokenFile, (Invoke-Aws @('ecr', 'get-login-password')))
   & cmd /c "docker login --username AWS --password-stdin $registry < `"$tokenFile`""
@@ -262,4 +273,6 @@ try {
   }
 } finally {
   Remove-Item -Recurse -Force $work
+  if (Test-Path $dockerConfig) { Remove-Item -Recurse -Force $dockerConfig }
+  $env:DOCKER_CONFIG = $previousDockerConfig
 }

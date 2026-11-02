@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAssignRoles, canManageUser, passwordProblem, pendingSetup, requiresMfa } from './user-admin';
+import { canAssignRoles, canManageUser, isReadOnlyUser, passwordProblem, pendingSetup, requiresMfa } from './user-admin';
 
 const root = { id: 'r', roles: ['ADMIN', 'DIRECTOR'], root: true };
 const admin = { id: 'a', roles: ['ADMIN'] };
@@ -16,6 +16,17 @@ describe('canManageUser', () => {
     expect(canManageUser(root, admin)).toBe(true);
     expect(canManageUser(root, root)).toBe(false);
     expect(canManageUser(accountant, { id: 's', roles: ['SALES'] })).toBe(false);
+  });
+});
+
+describe('isReadOnlyUser', () => {
+  it('treats a director-only account as view-only, but not when it also holds a working role or is root', () => {
+    expect(isReadOnlyUser({ roles: ['DIRECTOR'] })).toBe(true);
+    expect(isReadOnlyUser({ roles: ['DIRECTOR', 'ACCOUNTANT'] })).toBe(false);
+    expect(isReadOnlyUser(root)).toBe(false);
+    expect(isReadOnlyUser({ roles: [] })).toBe(false);
+    expect(isReadOnlyUser(accountant)).toBe(false);
+    expect(isReadOnlyUser(undefined)).toBe(false);
   });
 });
 

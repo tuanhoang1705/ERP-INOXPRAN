@@ -43,8 +43,9 @@ describe('PromotionInputSchema', () => {
 });
 
 describe('canEditPricing', () => {
-  it('chỉ Giám đốc, kế toán, quản trị', () => {
-    expect(canEditPricing(['DIRECTOR'])).toBe(true);
+  it('chỉ kế toán, quản trị (Giám đốc chỉ xem từ 28/10/2026)', () => {
+    expect(canEditPricing(['DIRECTOR'])).toBe(false);
+    expect(canEditPricing(['ADMIN'])).toBe(true);
     expect(canEditPricing(['ACCOUNTANT'])).toBe(true);
     expect(canEditPricing(['SALES_MANAGER'])).toBe(false);
     expect(canEditPricing(['SALES'])).toBe(false);

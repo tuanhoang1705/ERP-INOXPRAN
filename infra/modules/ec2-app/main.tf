@@ -420,6 +420,45 @@ resource "aws_sns_topic" "alerts" {
   name = "${local.name}-alerts"
 }
 
+# --- Log ứng dụng tập trung (D7, 22/10/2026) ---
+# Docker đẩy log api / worker / web / caddy vào nhóm này (server/compose.yaml, driver awslogs) — không mất log khi cập nhật
+# phiên bản, tra cứu bằng CloudWatch Logs Insights. Quyền ghi log có sẵn trong CloudWatchAgentServerPolicy của máy.
+# Chấp nhận: mã hóa mặc định của CloudWatch Logs (không dùng KMS riêng — thêm phí, log không chứa mật khẩu / token).
+#trivy:ignore:AVD-AWS-0017
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "${local.param_prefix}/app"
+  retention_in_days = var.log_retention_days
+}
+
+# Lỗi máy chủ: dòng log mức error trở lên (pino level ≥ 50) của API / worker.
+resource "aws_cloudwatch_log_metric_filter" "app_errors" {
+  name           = "${local.name}-app-errors"
+  log_group_name = aws_cloudwatch_log_group.app.name
+  pattern        = "{ $.level >= 50 }"
+  metric_transformation {
+    # Staging và production chung một account: tên số liệu tách theo môi trường (bộ lọc log không gắn dimension tĩnh được).
+    name          = "AppErrors-${var.environment}"
+    namespace     = "INOXPRAN"
+    value         = "1"
+    default_value = "0"
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "app_errors" {
+  alarm_name          = "${local.name}-app-errors"
+  alarm_description   = "May chu ghi tu 5 loi tro len trong 10 phut - xem log ${local.param_prefix}/app"
+  namespace           = "INOXPRAN"
+  metric_name         = aws_cloudwatch_log_metric_filter.app_errors.metric_transformation[0].name
+  statistic           = "Sum"
+  period              = 600
+  evaluation_periods  = 1
+  threshold           = 5
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+}
+
 resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "email"

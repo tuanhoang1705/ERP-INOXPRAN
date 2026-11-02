@@ -46,9 +46,9 @@ export async function api<T>(
     credentials: 'include',
   });
   if (response.status === 204) return undefined as T;
-  const payload = (await response.json()) as T | ApiError;
   if (!response.ok) {
-    const error = payload as ApiError;
+    // Lỗi từ proxy (nginx / Caddy: 413, 502, 504) là trang HTML, không có JSON: báo theo mã HTTP.
+    const error = ((await response.json().catch(() => null)) as ApiError | null) ?? httpError(response.status);
     // Tài khoản còn bước bắt buộc (đổi mật khẩu tạm / bật MFA) → màn thiết lập; phiên bị thu hồi (khóa, đặt lại) → đăng nhập lại.
     if (typeof window !== 'undefined') {
       const here = window.location.pathname;
@@ -57,7 +57,13 @@ export async function api<T>(
     }
     throw new ApiRequestError(error);
   }
-  return payload as T;
+  return (await response.json()) as T;
+}
+
+export function httpError(status: number): ApiError {
+  return status === 413
+    ? { statusCode: status, code: 'PAYLOAD_TOO_LARGE', message: m.err_payload_too_large() }
+    : { statusCode: status, code: 'SERVER_UNAVAILABLE', message: m.err_server_unavailable() };
 }
 
 /** Tải tệp nhị phân (ví dụ báo cáo Excel) bằng phiên đăng nhập hiện tại. */
@@ -68,7 +74,9 @@ export async function download(path: string, fallbackName: string): Promise<void
     throw new ApiRequestError(payload);
   }
   const disposition = response.headers.get('content-disposition') ?? '';
-  const name = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? fallbackName;
+  // filename*=UTF-8''… (tên tiếng Trung / Việt, VD 收付明细汇总表_…) ưu tiên hơn filename="…" (ASCII).
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
+  const name = (encoded ? decodeURIComponent(encoded) : /filename="?([^";]+)"?/.exec(disposition)?.[1]) ?? fallbackName;
   const url = URL.createObjectURL(await response.blob());
   const anchor = document.createElement('a');
   anchor.href = url;

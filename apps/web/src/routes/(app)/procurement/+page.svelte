@@ -1,9 +1,10 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { onMount } from 'svelte';
+  import { page as route } from '$app/state';
   import { rememberList } from '$lib/record-nav';
   import { money } from '$lib/purchase';
-  import { CircleAlert, Plus } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Plus } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { date, num } from '$lib/format';
   import { hasRole, purchaseStatus } from '$lib/labels';
@@ -24,6 +25,10 @@
   let pageSize = $state(initialPageSize());
   let loading = $state(true);
   let error = $state('');
+  /** Đơn vừa hủy (chuyển từ hồ sơ đơn mua): đơn đã hủy không còn hiện với người dùng (DOC-HIDE-01). */
+  const cancelledCode = route.url.searchParams.get('cancelled') ?? '';
+  /** Lọc "Đã hủy" chỉ dành cho quản trị gốc. */
+  const statuses = $derived(Object.entries(purchaseStatus).filter(([value]) => value !== 'CANCELLED' || session.user?.root));
 
   async function load() {
     loading = true;
@@ -71,10 +76,11 @@
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.crud_tim_don_mua()} /></div>
   <DateRangeFilter bind:from bind:to label={m.dr_ngay_lap()} id="po-date" onchange={refilter} />
-  <div class="field"><label for="status">{m.trang_thai()}</label><select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each Object.entries(purchaseStatus) as [value, item]}<option {value}>{item.label}</option>{/each}</select></div>
+  <div class="field"><label for="status">{m.trang_thai()}</label><select id="status" bind:value={status} onchange={refilter}><option value="">{m.tat_ca()}</option>{#each statuses as [value, item]}<option {value}>{item.label}</option>{/each}</select></div>
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if cancelledCode}<div class="banner success"><CircleCheck size={17} />{m.doc_da_huy_khong_hien({ code: cancelledCode })}</div>{/if}
 
 <section class="card">
   <div class="table-wrap">

@@ -3,13 +3,14 @@
   import { m } from '$lib/paraglide/messages';
   import type { StockCountView, Warehouse } from '@inoxpran/contracts';
   import { goto } from '$app/navigation';
+  import { page as route } from '$app/state';
   import { onMount } from 'svelte';
-  import { CircleAlert, ClipboardCheck } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, ClipboardCheck } from 'lucide-svelte';
   import { api, ApiRequestError } from '$lib/api';
   import { dateTime } from '$lib/format';
   import { initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
-  import { defaultWarehouseId, session } from '$lib/session.svelte';
+  import { session } from '$lib/session.svelte';
   import { countStatusLabel } from '$lib/stock-count';
   import Dialog from '$lib/components/Dialog.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
@@ -21,10 +22,11 @@
   let warehouses = $state<Warehouse[]>([]);
   let warehouseId = $state('');
   let status = $state('');
+  /** Phiếu vừa hủy (chuyển từ trang phiếu): phiếu đã hủy không còn hiện với người dùng (DOC-HIDE-01). */
+  const cancelledCode = route.url.searchParams.get('cancelled') ?? '';
   let loading = $state(true);
   let error = $state('');
   let startOpen = $state(false);
-  let startWarehouse = $state('');
   let starting = $state(false);
   const editable = $derived(can.editWarehouses());
   const allWarehouses = $derived(Boolean(session.user?.roles.some((role) => role === 'ADMIN' || role === 'DIRECTOR')));
@@ -61,17 +63,15 @@
   });
 
   function openStart() {
-    const preferred = defaultWarehouseId();
-    startWarehouse = startable.find((item) => item.id === preferred)?.id ?? startable[0]?.id ?? '';
     error = '';
     startOpen = true;
   }
+  /** KK-ALL-01 (31/10/2026): phiếu kiểm kê gộp mọi kho (Kho Sơn Đồng + kho hàng lỗi) — không chọn kho. */
   async function start(event: SubmitEvent) {
     event.preventDefault();
-    if (!startWarehouse) return;
     starting = true;
     try {
-      const created = await api<StockCountView>('/inventory/stock-counts', { method: 'POST', idempotentCommand: true, body: JSON.stringify({ warehouseId: startWarehouse }) });
+      const created = await api<StockCountView>('/inventory/stock-counts', { method: 'POST', idempotentCommand: true, body: JSON.stringify({}) });
       await goto(`/inventory/counts/${created.id}`);
     } catch (caught) {
       // Kho đã có phiếu đang mở → vào làm tiếp phiếu đó.
@@ -104,12 +104,13 @@
       <option value="">{m.tat_ca()}</option>
       <option value="OPEN">{m.kk_dang_lam()}</option>
       <option value="CLOSED">{m.kk_status_closed()}</option>
-      <option value="CANCELLED">{m.kk_status_cancelled()}</option>
+      {#if session.user?.root}<option value="CANCELLED">{m.kk_status_cancelled()}</option>{/if}
     </select>
   </div>
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if cancelledCode}<div class="banner success"><CircleCheck size={17} />{m.doc_da_huy_khong_hien({ code: cancelledCode })}</div>{/if}
 
 <section class="card">
   <div class="table-wrap">
@@ -121,7 +122,7 @@
           {#each rows as row (row.id)}
             <tr>
               <td class="code"><a class="link" href={`/inventory/counts/${row.id}`}>{row.code}</a></td>
-              <td>{row.warehouseName}</td>
+              <td>{row.scope === 'ALL' ? m.tat_ca_kho() : row.warehouseName}</td>
               <td>{row.period.split('-').reverse().join('/')}</td>
               <td><span class={`pill ${tone(row.status)}`}>{countStatusLabel(row.status)}</span></td>
               <td class="num">{#if row.variance}{#if row.variance.qtyMismatches}<b class="bad">{row.variance.qtyMismatches}</b>{:else}<span class="good">0</span>{/if}{:else}—{/if}</td>
@@ -140,13 +141,11 @@
 <Dialog bind:open={startOpen} title={m.kk_bat_dau()}>
   <form id="kk-start" class="start" onsubmit={start}>
     <p>{m.kk_bat_dau_mo_ta()}</p>
-    <div class="field"><label for="kk-start-warehouse">{m.kho()} <span class="req">*</span></label>
-      <select id="kk-start-warehouse" bind:value={startWarehouse} required>{#each startable as item}<option value={item.id}>{item.name}</option>{/each}</select>
-    </div>
+    <p class="muted">{m.kk_gop_kho({ warehouses: startable.map((item) => item.name).join(' + ') })}</p>
   </form>
   {#snippet footer()}
     <button type="button" class="btn" onclick={() => (startOpen = false)}>{m.huy()}</button>
-    <button type="submit" class="btn primary" form="kk-start" disabled={starting || !startWarehouse}><ClipboardCheck size={15} />{m.kk_bat_dau()}</button>
+    <button type="submit" class="btn primary" form="kk-start" disabled={starting}><ClipboardCheck size={15} />{m.kk_bat_dau()}</button>
   {/snippet}
 </Dialog>
 

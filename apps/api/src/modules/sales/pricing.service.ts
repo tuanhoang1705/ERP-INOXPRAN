@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { isVatRate, SALE_ONLY_FILTER } from '@inoxpran/contracts';
+import { allocateLineVat, commonVatRate, isVatRate, SALE_ONLY_FILTER, zeroPriceKindOf, type VatRate, type ZeroPriceKind } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
@@ -7,8 +7,11 @@ import { decimalString, salesTierWindow, toObjectId } from '../../common/domain'
 import { MONGO_DATABASE } from '../../common/tokens';
 import { calculatePrice, documentTotals, pickPromotion, resolveSalesTierRate, type PromotionRule, type SalesTierRule } from './pricing.engine';
 
-/** Trạng thái đơn được tính vào doanh số lũy kế của đại lý (đã phát hành phiếu BH và giữ hàng trở đi). */
-export const REVENUE_STATUSES = ['RESERVED', 'PARTIALLY_SHIPPED', 'SHIPPED', 'DELIVERED'];
+/**
+ * Doanh thu ghi khi giao thành công (AR-DLV-01, 28/10/2026 — trước đây tính từ lúc phát hành phiếu BH theo ngày phiếu):
+ * phiếu bán đã giao, theo ngày giao (deliveredAt). Dùng cho báo cáo, tổng quan, doanh số lũy kế xét bậc chiết khấu.
+ */
+export const REVENUE_STATUSES = ['DELIVERED'];
 
 export interface PricingSettings {
   taxRate: string;
@@ -24,10 +27,26 @@ interface PricingLineInput {
   quantity: string;
   unit: string;
   gift?: boolean | undefined;
+  zeroPriceKind?: ZeroPriceKind | undefined;
   /** Đơn giá chưa VAT sửa tay (đã kiểm tra quyền ở SalesService trước khi gọi). */
   overrideUnitPrice?: string | undefined;
   /** Tên hàng sửa tay trên phiếu (SAL-NAME-01); trống = tên trong danh mục. */
   productName?: string | undefined;
+  /** Thuế suất GTGT của dòng — chỉ dùng với mẫu PXK-002 (thuế từng dòng); trống = thuế suất của phiếu / mặc định. */
+  vatRate?: VatRate | undefined;
+}
+
+/** Cách tính thuế theo mẫu chứng từ: DOCUMENT = PXK-001 (một thuế suất cho cả phiếu), LINE = PXK-002 (thuế từng dòng). */
+export type VatMode = 'DOCUMENT' | 'LINE';
+
+/** PXK-002: chia tiền thuế về từng dòng (allocateLineVat) — Σ thuế dòng = tiền thuế, tiền hàng + thuế = tổng, không lệch đồng. */
+function applyLineVat<T extends { netAmount: string; vatRate: string; taxAmount: string; lineTotal: string }>(lines: T[]) {
+  const allocation = allocateLineVat(lines);
+  lines.forEach((line, index) => {
+    line.taxAmount = allocation.taxAmounts[index] as string;
+    line.lineTotal = new Decimal(line.netAmount).add(line.taxAmount).toFixed(2);
+  });
+  return allocation;
 }
 
 /** Tên in trên dòng phiếu: tên sửa tay nếu có, không thì tên sản phẩm trong danh mục. */
@@ -79,7 +98,7 @@ export class PricingService {
       .collection('sales_orders')
       .aggregate(
         [
-          { $match: { customerId: customer._id, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: start } } },
+          { $match: { customerId: customer._id, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: start } } },
           { $group: { _id: null, total: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
         ],
         session ? { session } : {},
@@ -121,9 +140,18 @@ export class PricingService {
     context: CustomerPricingContext,
     productIds?: ObjectId[],
     session?: ClientSession,
+    options_: { ignoreCustomerPrices?: boolean } = {},
   ): Promise<Map<string, PriceBasis>> {
     const options = session ? { session } : {};
     const now = new Date();
+    // Giá riêng của khách (PRI-CUST-01): giá chốt, ưu tiên trước bảng giá cấp, không chiết khấu.
+    const customerPrices = new Map<string, string>();
+    if (customer._id && !options_.ignoreCustomerPrices) {
+      const rows = await this.db.collection('customer_prices')
+        .find({ partnerId: customer._id, ...(productIds ? { productId: { $in: productIds } } : {}) }, { projection: { productId: 1, unitPrice: 1 }, ...options })
+        .toArray();
+      for (const row of rows) customerPrices.set((row.productId as ObjectId).toHexString(), decimalString(row.unitPrice));
+    }
     const [products, priceBooks, promotions] = await Promise.all([
       this.db.collection('products').find({ status: 'ACTIVE', ...(productIds ? { _id: { $in: productIds } } : {}) }, options).toArray(),
       this.db
@@ -165,6 +193,19 @@ export class PricingService {
         new Decimal(settings.discountCapRate),
       ).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
       const fromBook = bookPrice.get(id);
+      const own = customerPrices.get(id);
+      if (own) {
+        result.set(id, {
+          product,
+          baseUnitPrice: own,
+          pricingSource: 'CUSTOMER_PRICE',
+          tierDiscountRate: '0',
+          salesTierDiscountRate: '0',
+          promotionDiscountRate: '0',
+          discountRate: '0',
+        });
+        continue;
+      }
       result.set(id, {
         product,
         baseUnitPrice: fromBook?.price ?? decimalString(product.listPrice),
@@ -179,11 +220,14 @@ export class PricingService {
     return result;
   }
 
-  /** Tính giá các dòng phiếu với thuế suất đã chọn (bỏ trống = thuế suất mặc định). */
-  async priceLines(lines: PricingLineInput[], customer: Document, session?: ClientSession, vatRate?: string) {
+  /**
+   * Tính giá các dòng phiếu. PXK-001 (DOCUMENT): một thuế suất cho cả phiếu, thuế tính một lần trên Σ thành tiền. PXK-002 (LINE,
+   * 27/10/2026): thuế suất từng dòng (dòng không ghi → thuế suất phiếu / mặc định), tiền thuế chia về dòng không lệch đồng.
+   */
+  async priceLines(lines: PricingLineInput[], customer: Document, session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT') {
     const settings = await this.settings(session);
     const context = await this.customerContext(customer, settings, session);
-    const taxRate = vatRate ?? settings.taxRate;
+    const documentRate = vatRate ?? settings.taxRate;
     const ids = [...new Set(lines.map((line) => line.productId))].map((id) => toObjectId(id, 'productId'));
     const basis = await this.basis(customer, settings, context, ids, session);
 
@@ -203,10 +247,13 @@ export class PricingService {
       if (!conversion) {
         throw new NotFoundException({ code: 'UNIT_NOT_CONFIGURED', message: `Đơn vị ${line.unit} chưa được cấu hình cho ${String(product.sku)}` });
       }
-      const gift = Boolean(line.gift);
+      // Loại hàng khác luôn không tính tiền, kể cả client cũ / bên ngoài không gửi cờ gift.
+      const zeroPriceKind = zeroPriceKindOf(line);
+      const gift = zeroPriceKind !== undefined;
       const tierDiscountRate = gift ? '0' : priced.tierDiscountRate;
       const salesTierDiscountRate = gift ? '0' : priced.salesTierDiscountRate;
       const promotionDiscountRate = gift ? '0' : priced.promotionDiscountRate;
+      const taxRate = vatMode === 'LINE' ? line.vatRate ?? documentRate : documentRate;
       const pricingInput = {
         quantity: line.quantity,
         conversionFactor: decimalString(conversion.factorToBase),
@@ -234,6 +281,7 @@ export class PricingService {
         unit: line.unit,
         quantity: line.quantity,
         gift,
+        zeroPriceKind,
         baseQuantity: result.baseQuantity,
         minimumStock: decimalString(product.minimumStock),
         listPrice: result.listPrice,
@@ -244,6 +292,8 @@ export class PricingService {
         salesTierDiscountRate: overridden ? '0' : salesTierDiscountRate,
         promotionDiscountRate: overridden ? '0' : promotionDiscountRate,
         ...(priced.promotionCode && !gift && !overridden ? { promotionCode: priced.promotionCode } : {}),
+        vatRate: taxRate,
+        taxAmount: result.taxAmount,
         lineTotal: result.grossAmount,
         netAmount: result.netAmount,
         pricingSource: overridden ? 'MANUAL_PRICE' : priced.pricingSource,
@@ -252,12 +302,14 @@ export class PricingService {
       });
     }
 
-    // Tổng chứng từ làm tròn tới đồng đúng như phiếu xuất kho bán hàng (cộng tiền hàng, tiền thuế, tổng thanh toán).
-    const totals = documentTotals(netTotal, taxRate);
+    // PXK-001: tổng chứng từ làm tròn tới đồng như phiếu xuất kho bán hàng (thuế một lần trên Σ thành tiền).
+    // PXK-002: tổng mỗi thuế suất như PXK-001, tiền thuế chia về từng dòng.
+    const totals = vatMode === 'LINE' ? applyLineVat(pricedLines) : documentTotals(netTotal, documentRate);
     return {
       settings,
       context,
-      vatRate: taxRate,
+      vatMode,
+      vatRate: vatMode === 'LINE' ? commonVatRate(pricedLines.map((line) => line.vatRate), documentRate) : documentRate,
       lines: pricedLines,
       subtotal: subtotal.toFixed(2),
       discountTotal: discountTotal.toFixed(2),
@@ -271,9 +323,9 @@ export class PricingService {
    * Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không bán nên không có khách, không bảng giá — kiểm mã đang kinh doanh và
    * đơn vị như phiếu bán, mọi dòng đơn giá 0, tổng 0.
    */
-  async zeroLines(lines: PricingLineInput[], session?: ClientSession, vatRate?: string) {
+  async zeroLines(lines: PricingLineInput[], session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT') {
     const settings = await this.settings(session);
-    const taxRate = vatRate ?? settings.taxRate;
+    const documentRate = vatRate ?? settings.taxRate;
     const ids = [...new Set(lines.map((line) => line.productId))].map((id) => toObjectId(id, 'productId'));
     const products = await this.db.collection('products').find({ _id: { $in: ids }, status: 'ACTIVE' }, session ? { session } : {}).toArray();
     const byId = new Map(products.map((product) => [(product._id as ObjectId).toHexString(), product]));
@@ -288,6 +340,7 @@ export class PricingService {
         throw new NotFoundException({ code: 'UNIT_NOT_CONFIGURED', message: `Đơn vị ${line.unit} chưa được cấu hình cho ${String(product.sku)}` });
       }
       // gift = true chỉ để tính: số lượng quy đổi đúng, mọi khoản tiền 0 (dòng phiếu vẫn là dòng thường).
+      const taxRate = vatMode === 'LINE' ? line.vatRate ?? documentRate : documentRate;
       const result = calculatePrice({
         quantity: line.quantity, conversionFactor: decimalString(conversion.factorToBase), baseUnitPrice: '0',
         tierDiscountRate: '0', salesTierDiscountRate: '0', promotionDiscountRate: '0', discountCapRate: settings.discountCapRate,
@@ -301,6 +354,7 @@ export class PricingService {
         unit: line.unit,
         quantity: line.quantity,
         gift: false,
+        zeroPriceKind: undefined,
         baseQuantity: result.baseQuantity,
         minimumStock: decimalString(product.minimumStock),
         listPrice: result.listPrice,
@@ -310,6 +364,8 @@ export class PricingService {
         tierDiscountRate: '0',
         salesTierDiscountRate: '0',
         promotionDiscountRate: '0',
+        vatRate: taxRate,
+        taxAmount: result.taxAmount,
         lineTotal: result.grossAmount,
         netAmount: result.netAmount,
         pricingSource: 'NON_SALE',
@@ -318,6 +374,6 @@ export class PricingService {
         pricingSnapshot: result,
       };
     });
-    return { settings, vatRate: taxRate, lines: pricedLines, subtotal: '0.00', discountTotal: '0.00', netTotal: '0', taxTotal: '0', grandTotal: '0' };
+    return { settings, vatMode, vatRate: vatMode === 'LINE' ? commonVatRate(pricedLines.map((line) => line.vatRate), documentRate) : documentRate, lines: pricedLines, subtotal: '0.00', discountTotal: '0.00', netTotal: '0', taxTotal: '0', grandTotal: '0' };
   }
 }

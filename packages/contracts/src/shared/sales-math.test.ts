@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { documentTotals, isVatRate, priceLine, roundDong, summarizeDocument, sumMoney, toScaled, vatLabel, vatPercent, type LineBasis } from './sales-math.js';
+import { allocateLineVat, commonVatRate, documentTotals, isVatRate, lineTax, linesTotals, priceLine, pricedLineAmounts, roundDong, summarizeDocument, sumMoney, toScaled, vatLabel, vatPercent, type LineBasis } from './sales-math.js';
 
 const included = (vatRate: string) => ({ vatRate, pricesIncludeTax: true });
 const sale = (baseUnitPrice: number, quantity: number, discountRate = 0, conversionFactor = 1): LineBasis => ({ baseUnitPrice, quantity, discountRate, conversionFactor });
@@ -148,5 +148,61 @@ describe('tổng chứng từ & tiện ích', () => {
     expect(vatPercent('KCT')).toBe('0');
     expect(isVatRate('5')).toBe(true);
     expect(isVatRate('7')).toBe(false);
+  });
+});
+
+describe('PXK-002 — thuế suất từng dòng, không lệch đồng nào (allocateLineVat)', () => {
+  const vat = (lines: ReturnType<typeof priceLine>[], rate: string | string[]) => allocateLineVat(lines.map((line, index) => ({ netAmount: line.netAmount, vatRate: Array.isArray(rate) ? (rate[index] as string) : rate })));
+  const sum = (values: string[]) => values.reduce((total, value) => total + Number(value), 0);
+
+  it('hóa đơn MISA 27/10/2026: 3.422.222 → 273.778; 3.611.111 → 288.889; tổng 7.596.000', () => {
+    const lines = [priceLine(sale(308000, 12), included('8')), priceLine(sale(650000, 6), included('8'))];
+    const result = vat(lines, '8');
+    expect(result.taxAmounts).toEqual(['273778.00', '288889.00']);
+    expect(result).toMatchObject({ netTotal: '7033333', taxTotal: '562667', grandTotal: '7596000' });
+  });
+
+  it('phiếu Giang Châu: tổng thanh toán như PXK-001 (80.830.000), tiền hàng + thuế = tổng, Σ thuế dòng = thuế', () => {
+    const lines = giangChau.map((line) => priceLine(line, included('8')));
+    const result = vat(lines, '8');
+    expect(result).toMatchObject({ netTotal: '74842592', taxTotal: '5987408', grandTotal: '80830000' });
+    expect(sum(result.taxAmounts)).toBe(5987408);
+    expect(Number(result.netTotal) + Number(result.taxTotal)).toBe(Number(result.grandTotal));
+    expect(result.grandTotal).toBe(summarizeDocument(lines, '8').grandTotal);
+    expect(result.taxAmounts.slice(9).every((tax) => tax === '0.00')).toBe(true);
+  });
+
+  it('phiếu nhiều thuế suất: tổng mỗi thuế suất như PXK-001, KCT thuế 0', () => {
+    const eight = priceLine(sale(160000, 12), included('8'));
+    const ten = priceLine({ baseUnitPrice: '100000', quantity: 3, conversionFactor: 1, discountRate: 5 }, { vatRate: '10', pricesIncludeTax: false });
+    const kct = priceLine(sale(50000, 2), included('KCT'));
+    const result = vat([eight, ten, kct], ['8', '10', 'KCT']);
+    expect(result.taxAmounts).toEqual(['142222.00', '28500.00', '0.00']);
+    expect(result).toMatchObject({ netTotal: '2162778', taxTotal: '170722', grandTotal: '2333500' });
+  });
+
+  it('5.000 phiếu ngẫu nhiên: Σ thuế dòng = thuế, tiền hàng + thuế = tổng, tổng = PXK-001 với một thuế suất, mỗi dòng sai số < 1 đồng', () => {
+    let seed = 20261027;
+    const random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let index = 0; index < 5000; index += 1) {
+      const rate = (['3', '5', '8', '10', 'KCT'] as const)[Math.floor(random() * 5)] as string;
+      const count = 1 + Math.floor(random() * 25);
+      const lines = Array.from({ length: count }, () => priceLine({ baseUnitPrice: String(Math.round(random() * 3_000_000)), quantity: 1 + Math.floor(random() * 40), conversionFactor: 1, discountRate: Math.floor(random() * 12), gift: random() < 0.1 }, included(rate)));
+      const result = vat(lines, rate);
+      expect(sum(result.taxAmounts)).toBe(Number(result.taxTotal));
+      expect(Number(result.netTotal) + Number(result.taxTotal)).toBe(Number(result.grandTotal));
+      expect(result.grandTotal).toBe(summarizeDocument(lines, rate).grandTotal);
+      lines.forEach((line, position) => expect(Math.abs(Number(result.taxAmounts[position]) - Number(line.netAmount) * Number(vatPercent(rate)) / 100)).toBeLessThan(1.0001));
+    }
+  });
+
+  it('tiện ích thuế dòng: lineTax, linesTotals, commonVatRate, pricedLineAmounts, nhãn "Theo từng dòng"', () => {
+    expect(lineTax('3422222.28', '8')).toBe('273778');
+    expect(linesTotals([{ netAmount: '3422222.28', taxAmount: '273778.00' }, { netAmount: '3611111.10', taxAmount: '288889.00' }])).toEqual({ netTotal: '7033333', taxTotal: '562667', grandTotal: '7596000' });
+    expect(commonVatRate(['8', '8'], '10')).toBe('8');
+    expect(commonVatRate(['8', '10'], '8')).toBe('MIXED');
+    expect(commonVatRate([], '8')).toBe('8');
+    expect(pricedLineAmounts('2', '125000', '8')).toEqual({ netAmount: '250000', taxAmount: '20000', amount: '270000' });
+    expect(vatLabel('MIXED')).toBe('Theo từng dòng');
   });
 });

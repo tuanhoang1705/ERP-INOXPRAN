@@ -25,7 +25,7 @@ export interface CommandUser {
   permissions?: string[] | undefined;
 }
 
-const WAREHOUSE_EDITORS = ['DIRECTOR', 'WAREHOUSE_MANAGER', 'WAREHOUSE'];
+const WAREHOUSE_EDITORS = ['WAREHOUSE_MANAGER', 'WAREHOUSE'];
 
 /** Từ khóa phụ (không dấu) cho các chức năng hay tìm theo tên gọi tắt. */
 const KEYWORDS: Record<string, string> = {
@@ -51,7 +51,7 @@ const KEYWORDS: Record<string, string> = {
   '/catalog/dealers': 'khach hang dai ly npp ho so',
   '/catalog/suppliers': 'nha cung cap ncc',
   '/catalog/warehouses': 'kho vi tri luu',
-  '/catalog/regions': 'khu vuc nhan vien kinh doanh nvkd',
+  '/catalog/regions': 'phan vung nvkd khu vuc tinh thanh nhan vien kinh doanh',
   '/pricing': 'bang gia gia npp dai ly',
   '/pricing/promotions': 'khuyen mai ctkm',
   '/pricing/tiers': 'chiet khau bac doanh so',
@@ -68,9 +68,9 @@ const KEYWORDS: Record<string, string> = {
 /** Thao tác hay dùng nằm ngoài menu (nút trên trang). */
 export function quickActions(): CommandItem[] {
   const path = m.cmd_thao_tac();
-  const action = (label: string, href: string, roles?: string[]): CommandItem => ({ label, href, path, keywords: KEYWORDS[href] ?? '', roleGates: [roles] });
+  const action = (label: string, href: string, roles?: string[], permissions?: string[]): CommandItem => ({ label, href, path, keywords: KEYWORDS[href] ?? '', roleGates: [roles], ...(permissions ? { permissions } : {}) });
   return [
-    action(m.lap_phieu_bh(), '/sales/orders/new', ['ACCOUNTANT', 'SALES', 'SALES_MANAGER']),
+    action(m.lap_phieu_bh(), '/sales/orders/new', undefined, ['sales.step.create']),
     action(m.lap_don_mua(), '/procurement/new', ['PROCUREMENT', 'PROCUREMENT_MANAGER']),
     action(m.crud_dieu_chinh_ton(), '/inventory?adjust=1', WAREHOUSE_EDITORS),
     action(m.dieu_chuyen_kho(), '/inventory/transfers/new', WAREHOUSE_EDITORS),

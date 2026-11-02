@@ -24,6 +24,8 @@
   let notificationsOpen = $state(false);
   let userMenuOpen = $state(false);
   let notifications = $state<AppNotification[]>([]);
+  let clearAsk = $state(false);
+  let clearing = $state(false);
   let warehouseName = $state('');
 
   const user = $derived(session.user);
@@ -95,6 +97,27 @@
     await goto('/login');
   }
 
+  /** Mở chuông: tải lại thông báo chưa đọc (trước đây chỉ tải một lần khi vào trang). */
+  function toggleNotifications() {
+    notificationsOpen = !notificationsOpen;
+    clearAsk = false;
+    if (notificationsOpen) void api<AppNotification[]>('/notifications?unreadOnly=true').then((rows) => (notifications = rows)).catch(() => undefined);
+  }
+
+  /** Xóa tất cả thông báo của mình (NOTI-02): bấm "Xóa tất cả" rồi xác nhận ngay trong khung. */
+  async function clearNotifications() {
+    clearing = true;
+    try {
+      await api('/notifications', { method: 'DELETE' });
+      notifications = [];
+      clearAsk = false;
+    } catch {
+      // Giữ nguyên danh sách khi lỗi mạng; người dùng bấm lại được.
+    } finally {
+      clearing = false;
+    }
+  }
+
   async function openNotification(notification: AppNotification) {
     await api(`/notifications/${notification.id}/read`, { method: 'POST' }).catch(() => undefined);
     notifications = notifications.filter((item) => item.id !== notification.id);
@@ -103,9 +126,11 @@
   }
 
   function closeMenus(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.notify-wrap')) notificationsOpen = false;
-    if (!target.closest('.user-wrap')) userMenuOpen = false;
+    // Xét đường đi lúc bấm (composedPath): nút vừa bấm có thể đã bị thay (VD "Xóa tất cả" → nút xác nhận) nên không còn trong DOM.
+    const path = event.composedPath();
+    const inside = (selector: string) => path.some((node) => node instanceof Element && node.matches(selector));
+    if (!inside('.notify-wrap')) notificationsOpen = false;
+    if (!inside('.user-wrap')) userMenuOpen = false;
   }
 </script>
 
@@ -123,10 +148,11 @@
       {/each}
     </nav>
     <div class="right">
+      <CommandPalette />
       <LocaleSwitcher />
       {#if !online}<span class="offline"><WifiOff size={15} />{m.mat_ket_noi()}</span>{/if}
       <div class="notify-wrap">
-        <button class="bell" onclick={() => (notificationsOpen = !notificationsOpen)} aria-expanded={notificationsOpen} aria-label={m.thong_bao({ p0: notifications.length ? m.chua_doc({ length: notifications.length }) : '' })}>
+        <button class="bell" onclick={toggleNotifications} aria-expanded={notificationsOpen} aria-label={m.thong_bao({ p0: notifications.length ? m.chua_doc({ length: notifications.length }) : '' })}>
           <Bell size={18} />{#if notifications.length}<em>{notifications.length > 9 ? '9+' : notifications.length}</em>{/if}
         </button>
         {#if notificationsOpen}
@@ -142,6 +168,15 @@
                 {/each}
               </div>
             {:else}<p>{m.khong_co_thong_bao_moi()}</p>{/if}
+            <footer>
+              {#if clearAsk}
+                <span>{m.tb_xoa_hoi({ count: notifications.length })}</span>
+                <button class="link" onclick={() => (clearAsk = false)}>{m.huy()}</button>
+                <button class="danger" disabled={clearing} onclick={clearNotifications}>{m.tb_xoa()}</button>
+              {:else}
+                <button class="danger" disabled={!notifications.length} onclick={() => (clearAsk = true)}>{m.tb_xoa_tat_ca()}</button>
+              {/if}
+            </footer>
           </section>
         {/if}
       </div>
@@ -199,7 +234,6 @@
     <main id="main">
       {#if user}<WorkspaceTabs />{@render children()}{:else}<div class="auth-loading">{m.dang_xac_thuc_phien_lam_viec()}</div>{/if}
     </main>
-    <CommandPalette />
   </div>
 </div>
 
@@ -217,8 +251,9 @@
   /* Giám đốc / quản trị thấy đủ 8 phân hệ: thu gọn tab để không bị cắt ở màn hình 1366–1600 px. */
   @media (max-width: 1600px) {
     .topbar { gap: 14px; }
-    .tabs a { padding: 8px 10px; font-size: 14px; }
-    .tabs a.active::after { left: 10px; right: 10px; }
+    .tabs a { padding: 8px 8px; font-size: 14px; }
+    .tabs a.active::after { left: 8px; right: 8px; }
+    .right { gap: 8px; }
   }
   .offline { display: inline-flex; align-items: center; gap: 6px; color: #ffb4a8; font-size: 12.5px; font-weight: 600; }
   .notify-wrap, .user-wrap { position: relative; }
@@ -236,6 +271,13 @@
   .tray-list b { font-size: 13px; }
   .tray-list small { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .tray p { margin: 0; padding: 26px 16px; color: var(--muted); text-align: center; }
+  .tray footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12.5px; }
+  .tray footer span { margin-right: auto; color: var(--text); }
+  .tray footer button { padding: 5px 10px; border-radius: 6px; font-weight: 600; }
+  .tray footer .danger { color: var(--red); }
+  .tray footer .danger:hover:not(:disabled) { background: #fdecec; }
+  .tray footer .link { color: var(--muted); }
+  .tray footer button:disabled { opacity: 0.45; cursor: default; }
   .user { display: flex; align-items: center; gap: 10px; color: #fff; text-align: left; }
   .avatar { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--orange); font-size: 12.5px; font-weight: 700; }
   .who { display: grid; }
@@ -267,8 +309,7 @@
   .period span { color: var(--orange); font-size: 12px; font-weight: 500; }
   .period b { font-size: 15.5px; }
   .period small { color: var(--muted); font-size: 11.5px; }
-  /* Chừa chỗ cho nút tìm chức năng nổi ở góc phải dưới. */
-  main { min-width: 0; padding: 26px 28px 90px; }
+  main { min-width: 0; padding: 26px 28px 48px; }
   .auth-loading { padding: 60px; color: var(--muted); text-align: center; }
   .scrim { display: none; }
 
@@ -287,13 +328,14 @@
     .mobile-sections a { padding: 9px 12px; border-radius: 8px; color: var(--text); font-weight: 500; }
     .mobile-sections a.active { background: var(--navy); color: #fff; }
     .scrim { position: fixed; inset: 0; z-index: 55; display: block; background: rgba(18, 39, 59, 0.45); }
-    main { padding: 20px 16px 84px; }
+    main { padding: 20px 16px 40px; }
   }
-  /* Điện thoại: thu gọn thanh trên để không tràn ngang (logo, ngôn ngữ, chuông, ảnh đại diện vừa 360–390px). */
+  /* Điện thoại: thu gọn thanh trên để không tràn ngang (logo, tìm chức năng, ngôn ngữ, chuông, ảnh đại diện vừa 360–390px). */
   @media (max-width: 560px) {
-    .logo { height: 26px; }
-    .topbar { gap: 8px; padding: 0 12px; }
-    .right { gap: 8px; }
+    .brand { flex: 0 1 auto; min-width: 0; }
+    .logo { max-width: 100%; height: auto; max-height: 24px; object-fit: contain; }
+    .topbar { gap: 6px; padding: 0 10px; }
+    .right { gap: 6px; }
     .user :global(svg) { display: none; }
   }
   @media print { .body { display: block; } main { padding: 0; } }

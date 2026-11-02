@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, isPermissionKey, type LoginEvent, requiresMfa, type UpdateUser, type UpdateUserPermissions } from '@inoxpran/contracts';
+import { type AdminUser, canAssignRoles, canManageUser, type CreateUser, editablePermissionKeys, isPermissionKey, type LoginEvent, requiresMfa, type UpdateUser, type UpdateUserPermissions } from '@inoxpran/contracts';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { type Db, type Document, type Filter, ObjectId } from 'mongodb';
@@ -125,6 +125,10 @@ export class UsersAdminService {
     if (found !== new Set(ids).size) throw new BadRequestException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Có kho không tồn tại trong phạm vi kho' });
   }
 
+  private emailTaken(email: string) {
+    return new ConflictException({ code: 'USER_EMAIL_EXISTS', message: `Email ${email} đã có tài khoản`, details: [{ path: ['email'] }] });
+  }
+
   private async record(request: AuthenticatedRequest, action: string, target: Document, metadata?: Record<string, unknown>, before?: Document | null, after?: Document | null) {
     await this.audit.record({
       actorId: request.user.sub,
@@ -165,7 +169,7 @@ export class UsersAdminService {
     try {
       await this.users().insertOne(document);
     } catch (error) {
-      if ((error as { code?: number }).code === 11000) throw new ConflictException({ code: 'USER_EMAIL_EXISTS', message: `Email ${input.email} đã có tài khoản` });
+      if ((error as { code?: number }).code === 11000) throw this.emailTaken(input.email);
       throw error;
     }
     const { passwordHash: _hash, ...visible } = document;
@@ -182,25 +186,50 @@ export class UsersAdminService {
     for (const key of ['displayName', 'title', 'department', 'phone'] as const) if (input[key] !== undefined) set[key] = input[key];
     if (input.roles) set.roles = [...new Set(input.roles)];
     if (input.warehouseScopes) set.warehouseScopes = [...new Set(input.warehouseScopes)];
-    const after = await this.users().findOneAndUpdate({ _id: before._id }, { $set: set }, { returnDocument: 'after', projection: { passwordHash: 0, mfaSecret: 0, pendingMfaSecret: 0 } });
+    // Đổi email đăng nhập (USR-EMAIL-01): kiểm tra trùng, đăng xuất mọi phiên (token cũ còn mang email cũ), ghi nhật ký riêng.
+    const emailChanged = input.email !== undefined && input.email !== before.email;
+    if (emailChanged) {
+      if (await this.users().countDocuments({ email: input.email, _id: { $ne: before._id } }, { limit: 1 })) throw this.emailTaken(input.email!);
+      set.email = input.email;
+    }
+    let after: Document | null;
+    try {
+      after = await this.users().findOneAndUpdate(
+        { _id: before._id },
+        { $set: set, ...(emailChanged ? { $inc: { tokenVersion: 1 } } : {}) },
+        { returnDocument: 'after', projection: { passwordHash: 0, mfaSecret: 0, pendingMfaSecret: 0 } },
+      );
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) throw this.emailTaken(input.email!);
+      throw error;
+    }
     sessionCache.invalidate(id);
+    if (emailChanged) await this.record(request, 'USER_EMAIL_CHANGED', before, { from: before.email, to: input.email });
     await this.record(request, input.roles ? 'USER_ROLES_CHANGED' : 'USER_UPDATED', before, undefined, before, after);
     return (await this.present([after as Document]))[0];
   }
 
   /**
-   * Quyền nghiệp vụ theo tài khoản (PERM-01): chỉ quản trị gốc tích / bỏ tích; true = cấp, false = thu, null = về mặc định theo vai trò.
-   * Tài khoản gốc luôn có mọi quyền (không chỉnh). Có hiệu lực ngay (xóa bộ nhớ phiên).
+   * Quyền nghiệp vụ theo tài khoản (PERM-01): true = cấp, false = thu, null = về mặc định theo vai trò. Admin tích / bỏ tích 5 bước
+   * phiếu BH cho tài khoản mình quản lý (SAL-STEP-01, 26/10/2026); quyền đặc biệt và tài khoản Admin chỉ quản trị gốc chỉnh.
+   * Chỉ xét quyền thực sự đổi (gửi kèm quyền không đổi vẫn được). Tài khoản gốc luôn có mọi quyền (không chỉnh). Có hiệu lực ngay.
    */
   async updatePermissions(id: string, input: UpdateUserPermissions, request: AuthenticatedRequest) {
-    if (!request.user.root) throw new ForbiddenException({ code: 'ROOT_ONLY', message: 'Chỉ quản trị gốc được cấp / thu quyền nghiệp vụ' });
     const before = await this.load(id);
     if (before.root) throw new ConflictException({ code: 'USER_ROOT_PERMISSIONS', message: 'Tài khoản quản trị gốc luôn có mọi quyền' });
     const unknown = Object.keys(input.overrides).filter((key) => !isPermissionKey(key));
     if (unknown.length) throw new BadRequestException({ code: 'PERMISSION_UNKNOWN', message: `Không có quyền: ${unknown.join(', ')}` });
+    this.assertCanManage(request, before);
     const overrides = overridesOf(before);
-    for (const [key, value] of Object.entries(input.overrides)) {
-      if (value === null) delete overrides[key];
+    const changed = Object.entries(input.overrides).filter(([key, value]) => (value ?? undefined) !== overrides[key]).map(([key]) => key);
+    const editable = editablePermissionKeys(this.actor(request), { id, roles: (before.roles as string[]) ?? [], root: false }) as string[];
+    const locked = changed.filter((key) => !editable.includes(key));
+    if (locked.length) {
+      throw new ForbiddenException({ code: 'PERMISSION_ROOT_ONLY', message: `Chỉ quản trị gốc được cấp / thu quyền: ${locked.join(', ')}`, details: { keys: locked } });
+    }
+    for (const key of changed) {
+      const value = input.overrides[key];
+      if (value === null || value === undefined) delete overrides[key];
       else overrides[key] = value;
     }
     const permissionGrants = Object.keys(overrides).filter((key) => overrides[key] === true).sort();
@@ -211,7 +240,7 @@ export class UsersAdminService {
       { returnDocument: 'after', projection: { passwordHash: 0, mfaSecret: 0, pendingMfaSecret: 0 } },
     );
     sessionCache.invalidate(id);
-    await this.record(request, 'USER_PERMISSIONS_UPDATED', before, undefined, { permissionOverrides: overridesOf(before) }, { permissionOverrides: overrides });
+    await this.record(request, 'USER_PERMISSIONS_UPDATED', before, { changed, byRoot: Boolean(request.user.root) }, { permissionOverrides: overridesOf(before) }, { permissionOverrides: overrides });
     return (await this.present([after as Document]))[0];
   }
 

@@ -17,7 +17,8 @@
     try {
       const loaded = await api<SalesOrder>(`/sales-orders/${page.params.id}`);
       // Sau khi phát hành (trừ phiếu đã hủy): sửa trực tiếp nếu có quyền sales.edit_issued, hoặc soạn đề nghị sửa.
-      if (loaded.status === 'DRAFT' || (loaded.status !== 'CANCELLED' && (can('sales.edit_issued') || requestMode))) order = loaded;
+      // Phiếu nháp: người được phân công bước 1 hoặc 2 (SAL-STEP-01).
+      if ((loaded.status === 'DRAFT' && (can('sales.step.create') || can('sales.step.issue'))) || (loaded.status !== 'CANCELLED' && loaded.status !== 'DRAFT' && (can('sales.edit_issued') || requestMode))) order = loaded;
       else error = m.chi_sua_duoc_phieu_o_trang();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_phieu();

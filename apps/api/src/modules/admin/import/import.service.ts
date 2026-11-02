@@ -21,6 +21,7 @@ import type { AuthenticatedRequest } from '../../../common/request-context';
 import { SequenceService } from '../../../common/sequence.service';
 import { MONGO_DATABASE } from '../../../common/tokens';
 import { InventoryService } from '../../inventory/inventory.service';
+import { addBodyRow, BRAND, brandSheet, tableHeader, titleBlock, type BrandColumn } from '../../../common/excel-brand';
 import { cellText, IMPORT_SHEETS, issueMessage, normalize, parseCell, type ParsedValue, type SheetDef } from './import-sheets';
 
 export const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
@@ -95,24 +96,32 @@ export class ImportService {
   async template(): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'INOXPRAN ERP';
-    const guide = workbook.addWorksheet('HUONG_DAN');
-    guide.columns = [{ width: 22 }, { width: 30 }, { width: 90 }];
-    guide.addRow(['FILE NHẬP DỮ LIỆU BAN ĐẦU — INOXPRAN ERP']).font = { bold: true, size: 14 };
-    guide.addRow(['Cách dùng: điền dữ liệu từ dòng 2 của mỗi sheet (giữ nguyên dòng tiêu đề). Cột có * là bắt buộc. Có thể để trống sheet không dùng.']);
-    guide.addRow(['Mã đã có trong hệ thống sẽ được CẬP NHẬT theo ô có nhập (ô trống giữ nguyên); mã chưa có sẽ được THÊM MỚI.']);
-    guide.addRow(['Trình tự: tải file lên → Kiểm tra (chạy thử, báo lỗi theo dòng / cột) → sửa lỗi → Ghi vào hệ thống → Đối chiếu → Kế toán + Giám đốc xác nhận.']);
-    guide.addRow([]);
-    const head = guide.addRow(['Sheet', 'Nội dung', 'Ghi chú']);
-    head.font = { bold: true };
-    for (const sheet of IMPORT_SHEETS) guide.addRow([sheet.name, sheet.title, sheet.note]);
+    // Sheet hướng dẫn theo bộ chuẩn Excel thương hiệu (XLS-01).
+    const guideColumns: BrandColumn[] = [
+      { key: 'sheet', header: 'Sheet', width: 22, type: 'code' },
+      { key: 'title', header: 'Nội dung', width: 34, wrap: true },
+      { key: 'note', header: 'Ghi chú', width: 90, wrap: true },
+    ];
+    const guide = brandSheet(workbook, 'HUONG_DAN', guideColumns);
+    const guideHeader = titleBlock(guide, guideColumns.length, 'File nhập dữ liệu ban đầu — INOXPRAN ERP', [
+      'Cách dùng: điền dữ liệu từ dòng 2 của mỗi sheet (giữ nguyên dòng tiêu đề). Cột tiêu đề màu cam (có *) là bắt buộc. Có thể để trống sheet không dùng.',
+      'Mã đã có trong hệ thống sẽ được CẬP NHẬT theo ô có nhập (ô trống giữ nguyên); mã chưa có sẽ được THÊM MỚI.',
+      'Trình tự: tải file lên → Kiểm tra (chạy thử, báo lỗi theo dòng / cột) → sửa lỗi → Ghi vào hệ thống → Đối chiếu → Kế toán + Giám đốc xác nhận.',
+    ]);
+    tableHeader(guide, guideHeader, guideColumns);
+    IMPORT_SHEETS.forEach((sheet, index) => addBodyRow(guide, guideColumns, { sheet: sheet.name, title: sheet.title, note: sheet.note }, index));
     for (const sheet of IMPORT_SHEETS) {
       const worksheet = workbook.addWorksheet(sheet.name, { views: [{ state: 'frozen', ySplit: 1 }] });
       worksheet.columns = sheet.columns.map((column) => ({ header: `${column.label}${column.required ? ' *' : ''}`, key: column.key, width: column.width ?? 16 }));
       const header = worksheet.getRow(1);
-      header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } };
-      header.height = 30;
-      header.alignment = { vertical: 'middle', wrapText: true };
+      header.height = 34;
+      sheet.columns.forEach((column, index) => {
+        const cell = header.getCell(index + 1);
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: BRAND.white } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: column.required ? BRAND.orange : BRAND.navy } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.border = { left: { style: 'thin', color: { argb: BRAND.white } }, right: { style: 'thin', color: { argb: BRAND.white } } };
+      });
       sheet.columns.forEach((column, index) => {
         const note = column.hint ?? (column.type === 'date' ? 'dd/mm/yyyy' : column.type === 'money' ? 'Số tiền VND' : '');
         if (note) worksheet.getCell(1, index + 1).note = note;

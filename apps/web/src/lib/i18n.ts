@@ -32,5 +32,5 @@ export function changeLocale(locale: Locale): void {
 
 /** Mô tả mẫu chứng từ theo ngôn ngữ giao diện (danh mục mẫu dùng chung với API chỉ có tiếng Việt). */
 export function templateDescription(template: SalesIssueTemplateInfo): string {
-  return template.code === 'PXK-001' ? m.mo_ta_mau_pxk_001() : template.description;
+  return template.code === 'PXK-001' ? m.mo_ta_mau_pxk_001() : template.code === 'PXK-002' ? m.mo_ta_mau_pxk_002() : template.description;
 }

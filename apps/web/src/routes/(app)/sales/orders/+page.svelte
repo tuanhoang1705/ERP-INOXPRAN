@@ -7,8 +7,8 @@
   import { CircleAlert, CircleCheck, Plus } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { date, num } from '$lib/format';
-  import { hasRole, orderStage, salesStatus, stageFilters } from '$lib/labels';
-  import { session } from '$lib/session.svelte';
+  import { orderStage, salesStatus, stageFilters } from '$lib/labels';
+  import { can, session } from '$lib/session.svelte';
   import { initialPageSize, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
   import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
@@ -34,8 +34,11 @@
   let pageSize = $state(initialPageSize());
   /** Số phiếu nháp vừa xóa (chuyển từ trang chi tiết sang) — hiện thông báo. */
   let deletedCode = $state('');
+  /** Số phiếu vừa hủy: phiếu đã hủy không còn hiện với người dùng (DOC-HIDE-01) nên trang chi tiết chuyển về đây. */
+  let cancelledCode = $state('');
+  /** Lọc "Đã hủy" chỉ dành cho quản trị gốc (DOC-HIDE-01). */
+  const stages = $derived(stageFilters.filter((item) => item.value !== 'cancelled' || session.user?.root));
 
-  const roles = $derived(session.user?.roles ?? []);
   const title = $derived(
     loan === 'OUT' ? m.lp_hang_mau_chua_tra()
       : type === 'B2C' ? m.phieu_xuat_kho_ban_le_b2c()
@@ -55,6 +58,7 @@
     to = params.get('to') ?? '';
     customerId = params.get('customerId') ?? '';
     deletedCode = params.get('deleted') ?? '';
+    cancelledCode = params.get('cancelled') ?? '';
     // load() chạy ngoài theo dõi: đổi trang / gõ tìm kiếm không kích hoạt lại effect (chỉ URL mới kích hoạt).
     untrack(() => {
       pageNo = 1;
@@ -118,9 +122,9 @@
     <h1 class="page-title">{title}</h1>
     <p class="page-sub">{m.ke_toan_lap_phieu_bh_kinh_2()}</p>
   </div>
-  {#if hasRole(roles, ['ACCOUNTANT'])}
+  {#if can('sales.step.create') && can('sales.step.issue')}
     <div class="actions"><a class="btn primary" href="/sales/orders/new"><Plus size={17} />{m.lap_phieu_bh()}</a></div>
-  {:else if hasRole(roles, ['SALES', 'SALES_MANAGER'])}
+  {:else if can('sales.step.create')}
     <div class="actions"><a class="btn primary" href="/sales/orders/new"><Plus size={17} />{m.de_nghi_xuat_ban()}</a></div>
   {/if}
 </section>
@@ -130,7 +134,7 @@
   <div class="field"><label for="stage">{m.buoc_xu_ly()}</label>
     <select id="stage" bind:value={stage} onchange={() => (status = '')}>
       <option value="">{status && salesStatus[status] ? salesStatus[status].label : m.tat_ca_buoc()}</option>
-      {#each stageFilters as item}<option value={item.value}>{item.label}</option>{/each}
+      {#each stages as item}<option value={item.value}>{item.label}</option>{/each}
     </select>
   </div>
   <div class="field"><label for="type">{m.lp_loai_phieu()}</label>
@@ -146,6 +150,7 @@
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if deletedCode}<div class="banner success"><CircleCheck size={17} />{m.bh_da_xoa_phieu({ code: deletedCode })}</div>{/if}
+{#if cancelledCode}<div class="banner success"><CircleCheck size={17} />{m.doc_da_huy_khong_hien({ code: cancelledCode })}</div>{/if}
 {#if customerId}<div class="banner">{m.dang_loc_theo_mot_khach_hang()} <a class="link" href="/sales/orders">{m.bo_loc_2()}</a></div>{/if}
 
 <section class="card">

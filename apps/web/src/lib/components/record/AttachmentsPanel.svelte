@@ -25,6 +25,7 @@
   import { m } from '$lib/paraglide/messages';
   import { api, ApiRequestError, localizedErrorMessage } from '$lib/api';
   import { dateTime } from '$lib/format';
+  import { prepareImage } from '$lib/image';
 
   let { type, id, purposes, primaryId = '', onprimary, onchange }: {
     type: string;
@@ -70,7 +71,9 @@
     busy = purpose.purpose;
     error = '';
     try {
-      for (const file of [...files]) {
+      for (const original of [...files]) {
+        // Ảnh nén trên trình duyệt trước khi tải (lib/image.ts); PDF giữ nguyên.
+        const file = await prepareImage(original, 'photo');
         const response = await fetch(`/api/v1/attachments/${type}/${id}?purpose=${purpose.purpose}`, {
           method: 'POST',
           credentials: 'include',
@@ -78,7 +81,7 @@
           body: file,
         });
         if (!response.ok) {
-          const payload = await response.json().catch(() => ({ code: '', message: m.rw_loi_tai_len() }));
+          const payload = await response.json().catch(() => ({ code: '', message: response.status === 413 ? m.wr_photo_too_large({ name: file.name }) : m.rw_loi_tai_len() }));
           throw new ApiRequestError(payload);
         }
       }
@@ -111,7 +114,8 @@
       {#if canEdit}
         <label class="btn small" class:primary={!purpose.pdf} aria-disabled={busy !== ''}>
           {#if purpose.pdf}<Upload size={14} />{:else}<ImagePlus size={14} />{/if}{busy === purpose.purpose ? m.rw_dang_tai_len() : m.rw_tai_len()}
-          <input type="file" accept={purpose.pdf ? 'image/png,image/jpeg,image/webp,application/pdf' : 'image/png,image/jpeg,image/webp'} multiple disabled={busy !== ''}
+          <!-- image/jpeg đứng đầu: Safari / iPhone đổi ảnh HEIC sang định dạng đầu danh sách. -->
+          <input type="file" accept={purpose.pdf ? 'image/jpeg,image/png,image/webp,application/pdf' : 'image/jpeg,image/png,image/webp'} multiple disabled={busy !== ''}
             onchange={(event) => { void upload(purpose, event.currentTarget.files); event.currentTarget.value = ''; }} />
         </label>
       {/if}

@@ -1,13 +1,15 @@
 <script lang="ts">
   /**
    * Ảnh trên phiếu bảo hành: tình trạng khi nhận, phiếu đã ký khi trả, ảnh khác.
-   * Ảnh đi qua API (quét mã độc, kiểm tra đúng là ảnh, lưu S3); trình duyệt chỉ xem qua API sau khi kiểm tra quyền.
+   * Ảnh được nén trên trình duyệt (lib/image.ts) rồi đi qua API (quét mã độc, kiểm tra đúng là ảnh, lưu S3);
+   * trình duyệt chỉ xem qua API sau khi kiểm tra quyền.
    */
   import type { WarrantyPhoto } from '@inoxpran/contracts';
   import { Camera, CircleAlert, Trash2 } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
-  import { ApiRequestError, localizedErrorMessage } from '$lib/api';
+  import { localizedErrorMessage } from '$lib/api';
   import { dateTime } from '$lib/format';
+  import { prepareImage } from '$lib/image';
   import { session } from '$lib/session.svelte';
   import { MAX_WARRANTY_PHOTOS, WARRANTY_PHOTO_KINDS, type WarrantyPhotoKind } from '$shared/warranty';
 
@@ -21,6 +23,7 @@
   } = $props();
 
   let busy = $state<WarrantyPhotoKind | ''>('');
+  let progress = $state<{ compressed: number; uploaded: number; total: number } | null>(null);
   let error = $state('');
   let preview = $state<WarrantyPhoto | null>(null);
   const kindLabel = (kind: string) => (kind === 'RECEIPT' ? m.wr_photo_receipt() : kind === 'SIGNED_FORM' ? m.wr_photo_signed() : m.wr_photo_other());
@@ -31,28 +34,51 @@
     return decodeURIComponent(document.cookie.split('; ').find((entry) => entry.startsWith('erp_csrf='))?.split('=').slice(1).join('=') ?? '');
   }
 
+  /** Tải một ảnh; trả câu báo lỗi (null = thành công). 413 / lỗi mạng không có JSON nên báo theo mã HTTP. */
+  async function send(kind: WarrantyPhotoKind, file: File): Promise<string | null> {
+    let response: Response;
+    try {
+      response = await fetch(`/api/v1/warranty/tickets/${ticketId}/photos?kind=${kind}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': file.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(file.name), 'x-csrf-token': csrf() },
+        body: file,
+      });
+    } catch {
+      return m.wr_photo_network({ name: file.name });
+    }
+    if (response.ok) return null;
+    if (response.status === 413) return m.wr_photo_too_large({ name: file.name });
+    const payload = await response.json().catch(() => null);
+    return payload ? localizedErrorMessage(payload) : m.wr_photo_error();
+  }
+
+  /** Nén ảnh kế tiếp trong lúc đang tải ảnh hiện tại; tải lần lượt (giới hạn 12 ảnh / phiếu), ảnh lỗi báo riêng. */
   async function upload(kind: WarrantyPhotoKind, files: FileList | null) {
     if (!files?.length) return;
+    const left = Math.max(0, MAX_WARRANTY_PHOTOS - photos.length);
+    const chosen = [...files].slice(0, left);
+    const failures: string[] = files.length > chosen.length ? [m.wr_photo_limit({ left, skipped: files.length - chosen.length })] : [];
     busy = kind;
     error = '';
+    progress = { compressed: 0, uploaded: 0, total: chosen.length };
     try {
-      for (const file of [...files]) {
-        const response = await fetch(`/api/v1/warranty/tickets/${ticketId}/photos?kind=${kind}`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': file.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(file.name), 'x-csrf-token': csrf() },
-          body: file,
-        });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({ code: '', message: m.wr_photo_error() }));
-          throw new ApiRequestError(payload);
-        }
+      let next = chosen[0] ? prepareImage(chosen[0], 'photo') : null;
+      for (let index = 0; index < chosen.length && next; index += 1) {
+        const file = await next;
+        progress.compressed = index + 1;
+        const following = chosen[index + 1];
+        next = following ? prepareImage(following, 'photo') : null;
+        const failure = await send(kind, file);
+        if (failure) failures.push(failure);
+        else progress.uploaded += 1;
       }
-      onchange();
-    } catch (caught) {
-      error = caught instanceof ApiRequestError ? localizedErrorMessage(caught.payload) : m.wr_photo_error();
     } finally {
+      const uploaded = progress?.uploaded ?? 0;
       busy = '';
+      progress = null;
+      error = failures.join(' · ');
+      if (uploaded) onchange();
     }
   }
 
@@ -76,12 +102,14 @@
         {#each WARRANTY_PHOTO_KINDS as kind}
           <label class="btn small" class:primary={kind === 'RECEIPT'} aria-disabled={busy !== ''}>
             <Camera size={14} />{busy === kind ? m.wr_photo_uploading() : kindLabel(kind)}
-            <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" multiple disabled={busy !== ''} onchange={(event) => { void upload(kind, event.currentTarget.files); event.currentTarget.value = ''; }} />
+            <!-- image/jpeg đứng đầu: Safari / iPhone đổi ảnh HEIC sang định dạng đầu danh sách (PNG thì nặng 10–20 MB). -->
+            <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" multiple disabled={busy !== ''} onchange={(event) => { void upload(kind, event.currentTarget.files); event.currentTarget.value = ''; }} />
           </label>
         {/each}
       </div>
     {/if}
   </header>
+  {#if progress}<p class="progress" role="status">{m.wr_photo_progress(progress)}</p>{/if}
   {#if error}<div class="banner error inset"><CircleAlert size={17} /><span>{error}</span></div>{/if}
   {#if photos.length}
     <ul class="grid">
@@ -115,6 +143,7 @@
   .uploads label { position: relative; cursor: pointer; }
   .uploads input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .inset { margin: 0 20px 12px; }
+  .progress { margin: 0 20px 12px; color: var(--subtle); font-size: 12.5px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin: 0; padding: 0 20px 8px; list-style: none; }
   li { position: relative; display: grid; gap: 6px; }
   .thumb { display: block; overflow: hidden; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); }

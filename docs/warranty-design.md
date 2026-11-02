@@ -7,10 +7,10 @@
 | Nội dung | Quyết định | Trong hệ thống |
 | --- | --- | --- |
 | Thời hạn bảo hành | **12 tháng cho mọi sản phẩm** | Cấu hình `settings.warranty.warrantyMonths = 12`; hết hạn vào ngày tương ứng của tháng cuối (Bộ luật Dân sự 2015, Điều 147–148): hóa đơn 03/10/2026 → bảo hành hết ngày 03/10/2027. |
-| Điều kiện bảo hành | **Bắt buộc có hóa đơn**; ngày bắt đầu = ngày hóa đơn | Không nhập hóa đơn → phiếu tự thành "Không thuộc diện bảo hành — không có hóa đơn", chỉ sửa có tính phí (báo giá). |
+| Điều kiện bảo hành | Có hóa đơn: ngày bắt đầu = ngày hóa đơn. **Không có hóa đơn** (28/10/2026, WAR-NOINV-01 — sản phẩm chưa có serial / IMEI): nhân viên tiếp nhận chọn *Vẫn bảo hành* hoặc *Sửa có tính phí* | Tick "Khách không có hóa đơn" → bắt buộc chọn: *Vẫn bảo hành (công ty chịu chi phí)* → "Còn bảo hành · không HĐ"; *Sửa chữa có tính phí* → "Không thuộc diện bảo hành — không có hóa đơn", chỉ báo giá / từ chối. Ngày mua khách khai (không bắt buộc) chỉ để cảnh báo khi đã quá 12 tháng. |
 | Hẹn trả | Mặc định **7 ngày**, chọn lại được bằng lịch | `turnaroundDays = 7`. |
 | Màu | **Vàng khi đã qua 70% thời gian hẹn**, đỏ khi quá hẹn | Thời gian hẹn tính từ lúc tiếp nhận tới 23:59 ngày hẹn trả; `warningRatio = 0.7`. |
-| Người làm | **Nhân viên bảo hành** tiếp nhận và xử lý; **Giám đốc** duyệt từ chối / đổi mới / hoàn tiền | Vai trò mới `WARRANTY`; tài khoản demo `baohanh@`, `baohanh2@inoxpran.vn`. |
+| Người làm | **Nhân viên bảo hành** tiếp nhận và xử lý; **Quản lý kho** có mọi quyền bảo hành và duyệt từ chối / đổi mới / hoàn tiền (WAR-ROLE-01, 28/10/2026 — trước đây Giám đốc duyệt); Giám đốc chỉ xem | Vai trò `WARRANTY`; tài khoản demo `baohanh@`, `baohanh2@inoxpran.vn`; Quản lý kho `kho@inoxpran.vn`. |
 | Số serial | Sản phẩm **chưa in serial** trên thân | Ô serial không bắt buộc; nhận diện sản phẩm bằng **mã hàng + số hóa đơn** (dùng để đếm số lần bảo hành và cộng thời gian bảo hành trước). |
 
 > **Ghi chú cho Ban Giám đốc về số serial.** Khi chưa có serial, hai chiếc cùng mã hàng trên cùng một hóa đơn không phân biệt được, nên việc đếm "lần bảo hành thứ 3" và cộng thời gian bảo hành chỉ chính xác ở mức hóa đơn. Khách cũng có thể mang hóa đơn của chiếc khác để bảo hành. Đề xuất: in tem serial / mã QR dán trên thân và hộp (theo lô sản xuất), ghi serial khi xuất kho (phiếu SWK). Khi có serial, hệ thống chỉ cần chuyển khóa nhận diện từ "mã hàng + hóa đơn" sang "serial", không phải đổi luồng.
@@ -23,7 +23,7 @@
 | Danh mục mã lỗi | Bảo hành › **Danh mục mã lỗi**: mã theo nhóm hàng (không chọn nhóm = dùng chung), 18 mã mẫu. Ô "Mã lỗi" khi chẩn đoán chỉ hiện mã của nhóm hàng sản phẩm + mã dùng chung; máy chủ chặn mã ngoài danh mục. Mã đã dùng chỉ ngừng, không xóa (giữ báo cáo). |
 | Đổi mới / hoàn tiền liên kết kho | Khi **trả khách** phiếu đổi mới: xuất 1 sản phẩm mới từ kho bán hàng (kiểm tra tồn khả dụng, thiếu thì chặn và báo) và nhập sản phẩm lỗi vào **kho hàng lỗi** (`KHO-SD-HL`, đánh dấu "Kho hàng lỗi" ở Danh mục › Kho). Hoàn tiền: nhập sản phẩm lỗi, bắt nhập số tiền hoàn (ghi làm chi phí bảo hành). Thẻ kho: `Xuất đổi bảo hành`, `Nhập hàng lỗi bảo hành`, tham chiếu số phiếu SC; quản lý kho / thủ kho nhận thông báo. Kho hàng lỗi không bán ra, không tính giá trị tồn và cảnh báo dưới định mức. |
 | Phí dịch vụ → công nợ | Sửa ngoài bảo hành (khách đồng ý báo giá): khi trả máy tự sinh khoản phải thu `AR…` ghi số phiếu SC. Đại lý: hạn theo số ngày nợ của đại lý; khách vãng lai: ghi vào hồ sơ khách lẻ **KH000**, kèm tên / SĐT người trả, đến hạn ngay. Kế toán nhận thông báo; trang Công nợ có liên kết ngược về phiếu bảo hành. |
-| Báo cáo | Bảo hành › **Báo cáo bảo hành** (Giám đốc, nhân viên bảo hành): tiếp nhận, đã trả, tỉ lệ đúng hẹn, thời gian xử lý trung bình, tỉ lệ từ chối, chi phí công ty chịu, doanh thu dịch vụ; biểu đồ theo tháng; lỗi theo mã lỗi / mã hàng; kết quả xử lý; sản phẩm bảo hành từ lần thứ 3. |
+| Báo cáo | Bảo hành › **Báo cáo bảo hành** (Giám đốc, Quản lý kho, nhân viên bảo hành): tiếp nhận, đã trả, tỉ lệ đúng hẹn, thời gian xử lý trung bình, tỉ lệ từ chối, chi phí công ty chịu, doanh thu dịch vụ; biểu đồ theo tháng; lỗi theo mã lỗi / mã hàng; kết quả xử lý; sản phẩm bảo hành từ lần thứ 3. |
 
 Còn để giai đoạn 3: ghi serial khi xuất kho (SWK); xuất linh kiện sửa chữa từ kho; đòi bảo hành nhà cung cấp cho hàng nằm trong kho hàng lỗi; phiếu chi hoàn tiền (hiện chỉ ghi số tiền hoàn làm chi phí); khách tự tra cứu bằng QR.
 
@@ -177,7 +177,7 @@ Nội dung luật cần bộ phận pháp chế / kế toán xác nhận lại t
 ## 12. Cần INOXPRAN chốt
 
 1. Thời hạn bảo hành từng nhóm hàng (bảng mục 7) và có mã hàng nào khác nhóm không.
-2. Ngày bắt đầu bảo hành tính từ đâu khi khách không có hóa đơn (mục 4.1).
+2. ~~Ngày bắt đầu bảo hành tính từ đâu khi khách không có hóa đơn (mục 4.1).~~ Đã chốt 28/10/2026: nhân viên tiếp nhận chọn vẫn bảo hành / sửa có phí, ngày mua khách khai chỉ để tham khảo (WAR-NOINV-01).
 3. Số ngày hẹn trả mặc định và ngưỡng vàng N.
 4. Ai được tiếp nhận; ai duyệt từ chối / đổi mới / hoàn tiền.
 5. Sản phẩm hiện có số serial in trên thân / hộp chưa; nếu chưa, tra cứu theo mã hàng + ngày mua.

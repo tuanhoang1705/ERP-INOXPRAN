@@ -10,13 +10,17 @@
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { session } from '$lib/session.svelte';
   import { canManageUser, USER_ROLES } from '$shared/user-admin';
+  import { editablePermissionKeys } from '$shared/permissions';
+  import { page as currentPage } from '$app/state';
   import Dialog from '$lib/components/Dialog.svelte';
   import Pagination from '$lib/components/Pagination.svelte';
   import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import PermissionsDialog from '$lib/components/PermissionsDialog.svelte';
+  import SalesStepMatrix from '$lib/components/SalesStepMatrix.svelte';
 
-  type Tab = 'users' | 'logins';
-  let tab = $state<Tab>('users');
+  type Tab = 'users' | 'steps' | 'logins';
+  // ?tab=steps: mở thẳng tab phân công 5 bước phiếu BH (SAL-STEP-01) — liên kết từ dòng thời gian phiếu.
+  let tab = $state<Tab>(currentPage.url.searchParams.get('tab') === 'steps' ? 'steps' : 'users');
   let users = $state<AdminUser[]>([]);
   let total = $state(0);
   let page = $state(1);
@@ -123,8 +127,11 @@
     const body = { displayName: form.displayName.trim(), title: optional(form.title), department: optional(form.department), phone: optional(form.phone), roles: form.roles, warehouseScopes: form.warehouseScopes };
     try {
       if (editing) {
-        await api(`/admin/users/${editing.id}`, { method: 'PATCH', body: JSON.stringify(body) });
-        success = m.crud_da_luu({ name: form.displayName });
+        // Admin đổi email đăng nhập (USR-EMAIL-01): gửi kèm email chỉ khi thực sự đổi — người dùng bị đăng xuất, đăng nhập lại bằng email mới.
+        const email = form.email.trim().toLowerCase();
+        const emailChanged = email !== editing.email;
+        await api(`/admin/users/${editing.id}`, { method: 'PATCH', body: JSON.stringify(emailChanged ? { ...body, email } : body) });
+        success = emailChanged ? m.adm_email_changed({ name: form.displayName, email }) : m.crud_da_luu({ name: form.displayName });
       } else {
         const result = await api<{ user: AdminUser; temporaryPassword: string }>('/admin/users', { method: 'POST', body: JSON.stringify({ ...body, email: form.email.trim() }) });
         secret = { email: result.user.email, password: result.temporaryPassword };
@@ -187,17 +194,20 @@
 
   /** Ma trận quyền đang được API thực thi (RolesGuard); dùng để giải thích cho người duyệt. */
   const matrix: Array<{ action: string; roles: string[] }> = [
-    { action: m.lap_gui_don_ban(), roles: ['SALES', 'SALES_MANAGER'] },
+    // 5 bước phiếu BH phân công theo từng người ở tab "Phân công bước phiếu BH" (SAL-STEP-01).
+    // Giám đốc chỉ xem, giữ 3 việc duyệt (ROLE-DIR-01); bảo hành do Quản lý kho xử lý và duyệt (WAR-ROLE-01) — 28/10/2026.
+    { action: m.adm_matrix_view_only(), roles: ['DIRECTOR'] },
     { action: m.duyet_don_ban_ngoai_le(), roles: ['SALES_MANAGER', 'DIRECTOR'] },
-    { action: m.xuat_kho_xac_nhan_giao(), roles: ['WAREHOUSE', 'WAREHOUSE_MANAGER'] },
+    { action: m.adm_matrix_price_approve(), roles: ['DIRECTOR'] },
     { action: m.lap_don_mua(), roles: ['PROCUREMENT', 'PROCUREMENT_MANAGER'] },
     { action: m.duyet_don_mua(), roles: ['PROCUREMENT_MANAGER', 'DIRECTOR'] },
-    { action: m.nhap_kho_theo_don_mua(), roles: ['WAREHOUSE', 'WAREHOUSE_MANAGER', 'DIRECTOR'] },
+    { action: m.nhap_kho_theo_don_mua(), roles: ['WAREHOUSE', 'WAREHOUSE_MANAGER'] },
     { action: m.ghi_nhan_thu_tien(), roles: ['ACCOUNTANT'] },
-    { action: m.ra_soat_cong_no_qua_han(), roles: ['ACCOUNTANT', 'DIRECTOR'] },
+    { action: m.ra_soat_cong_no_qua_han(), roles: ['ACCOUNTANT'] },
     { action: m.xem_bao_cao_doanh_so(), roles: ['DIRECTOR', 'SALES_MANAGER', 'ACCOUNTANT', 'AUDITOR'] },
-    { action: m.adm_matrix_catalog(), roles: ['DIRECTOR', 'WAREHOUSE_MANAGER', 'WAREHOUSE'] },
-    { action: m.adm_matrix_warranty(), roles: ['WARRANTY', 'DIRECTOR'] },
+    { action: m.adm_matrix_catalog(), roles: ['WAREHOUSE_MANAGER', 'WAREHOUSE'] },
+    { action: m.adm_matrix_warranty(), roles: ['WARRANTY', 'WAREHOUSE_MANAGER'] },
+    { action: m.adm_matrix_warranty_approve(), roles: ['WAREHOUSE_MANAGER'] },
   ];
   const columns = ['DIRECTOR', 'SALES_MANAGER', 'SALES', 'WAREHOUSE_MANAGER', 'WAREHOUSE', 'ACCOUNTANT', 'PROCUREMENT_MANAGER', 'WARRANTY'];
 </script>
@@ -215,6 +225,7 @@
 
 <nav class="tabs" aria-label={m.nguoi_dung_phan_quyen()}>
   <button class:active={tab === 'users'} onclick={() => switchTab('users')}>{m.adm_tab_users()} <b>{total}</b></button>
+  <button class:active={tab === 'steps'} onclick={() => switchTab('steps')}>{m.sst_tab()}</button>
   <button class:active={tab === 'logins'} onclick={() => switchTab('logins')}>{m.adm_tab_logins()}</button>
 </nav>
 
@@ -290,6 +301,8 @@
       </table>
     </div>
   </details>
+{:else if tab === 'steps'}
+  <SalesStepMatrix />
 {:else}
   <section class="card filters">
     <div class="field"><label for="login-search">{m.tim_kiem()}</label><input id="login-search" bind:value={loginSearch} oninput={loginSearchChanged} placeholder="Email" /></div>
@@ -317,12 +330,12 @@
   </section>
 {/if}
 
-<PermissionsDialog bind:open={permissionsOpen} user={permissionsUser} editable={Boolean(me?.root)} onsaved={(updated) => { success = m.perm_da_luu({ name: updated.displayName }); users = users.map((row) => (row.id === updated.id ? updated : row)); }} />
+<PermissionsDialog bind:open={permissionsOpen} user={permissionsUser} editableKeys={permissionsUser ? editablePermissionKeys(actor, permissionsUser) : []} onsaved={(updated) => { success = m.perm_da_luu({ name: updated.displayName }); users = users.map((row) => (row.id === updated.id ? updated : row)); }} />
 
 <Dialog bind:open={formOpen} title={editing ? m.adm_edit_user({ name: editing.displayName }) : m.adm_add_user()} wide>
   <form id="user-form" class="grid" onsubmit={save} novalidate>
     {#if formError}<div class="banner error span"><CircleAlert size={17} /><span>{formError}</span></div>{/if}
-    <div class="field"><label for="u-email">Email <span class="req">*</span></label><input id="u-email" type="email" bind:value={form.email} readonly={Boolean(editing)} autocomplete="off" /></div>
+    <div class="field"><label for="u-email">Email <span class="req">*</span></label><input id="u-email" type="email" bind:value={form.email} autocomplete="off" />{#if editing && form.email.trim().toLowerCase() !== editing.email}<small class="email-hint">{m.adm_email_change_hint({ email: editing.email })}</small>{/if}</div>
     <div class="field"><label for="u-name">{m.ho_ten()} <span class="req">*</span></label><input id="u-name" bind:value={form.displayName} maxlength="120" /></div>
     <div class="field"><label for="u-title">{m.chuc_danh()}</label><input id="u-title" bind:value={form.title} maxlength="120" /></div>
     <div class="field"><label for="u-dept">{m.adm_department()}</label><input id="u-dept" bind:value={form.department} maxlength="120" /></div>
@@ -341,7 +354,7 @@
   </form>
   {#snippet footer()}
     <button type="button" class="btn" onclick={() => (formOpen = false)}>{m.huy()}</button>
-    <button type="submit" class="btn primary" form="user-form" disabled={saving || form.displayName.trim().length < 2 || (!editing && !form.email.includes('@'))}>{saving ? m.kh_dang_luu() : m.crud_luu()}</button>
+    <button type="submit" class="btn primary" form="user-form" disabled={saving || form.displayName.trim().length < 2 || !form.email.includes('@')}>{saving ? m.kh_dang_luu() : m.crud_luu()}</button>
   {/snippet}
 </Dialog>
 
@@ -373,6 +386,7 @@
   .roles { display: flex; flex-wrap: wrap; gap: 5px; }
   tr.disabled td { color: var(--subtle); }
   small.warn { display: block; color: var(--amber); font-size: 11.5px; }
+  .email-hint { display: block; margin-top: 4px; color: var(--amber); font-size: 12px; line-height: 1.4; }
   .actions-col { width: 190px; }
   .ua { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .matrix-card summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; cursor: pointer; list-style: none; }

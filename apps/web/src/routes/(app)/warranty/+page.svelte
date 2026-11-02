@@ -4,12 +4,12 @@
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { CircleAlert, Plus, Search } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Plus, Search } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { date } from '$lib/format';
   import { hasRole } from '$lib/labels';
   import { session } from '$lib/session.svelte';
-  import { coverageText, coverageTone, slaText, statusText, statusTone, toneText, WARRANTY_STAFF, type SlaView } from '$lib/warranty';
+  import { coverageTone, slaText, statusText, statusTone, ticketCoverageText, toneText, WARRANTY_STAFF, type SlaView } from '$lib/warranty';
   import { WARRANTY_STATUSES, type SlaTone } from '$shared/warranty';
   import { initialPageSize, rememberPageSize } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
@@ -24,6 +24,9 @@
   let search = $state(page.url.searchParams.get('search') ?? '');
   const tone = $derived(page.url.searchParams.get('tone') ?? '');
   const status = $derived(page.url.searchParams.get('status') ?? '');
+  /** Phiếu vừa hủy (chuyển từ trang phiếu); phiếu đã hủy và lọc "Đã hủy" chỉ dành cho quản trị gốc (DOC-HIDE-01). */
+  const cancelledCode = $derived(page.url.searchParams.get('cancelled') ?? '');
+  const statuses = $derived(WARRANTY_STATUSES.filter((item) => item !== 'CANCELLED' || session.user?.root));
   /** Lọc theo ngày nhận phiếu (LIST-DATE-01), giữ trên URL như các bộ lọc khác. */
   let from = $state(page.url.searchParams.get('from') ?? '');
   let to = $state(page.url.searchParams.get('to') ?? '');
@@ -99,13 +102,14 @@
     <label for="status">{m.trang_thai()}</label>
     <select id="status" value={status} onchange={(event) => filter({ status: event.currentTarget.value })}>
       <option value="">{m.wr_all_status()}</option>
-      {#each WARRANTY_STATUSES as item}<option value={item}>{statusText(item)}</option>{/each}
+      {#each statuses as item}<option value={item}>{statusText(item)}</option>{/each}
     </select>
   </div>
   <div class="actions"><button class="btn navy" type="submit"><Search size={16} />{m.loc_du_lieu()}</button><a class="btn" href="/warranty">{m.dat_lai()}</a></div>
 </form>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
+{#if cancelledCode}<div class="banner success"><CircleCheck size={17} />{m.doc_da_huy_khong_hien({ code: cancelledCode })}</div>{/if}
 
 <section class="card">
   <header class="card-head"><h2>{loading ? m.dang_tai() : m.wr_count_tickets({ count: result?.total ?? 0 })}</h2></header>
@@ -113,30 +117,27 @@
     <table class="table">
       <thead>
         <tr>
-          <th>{m.so_phieu()}</th><th>{m.khach_hang()}</th><th>{m.wr_info_product()}</th><th>{m.wr_col_coverage()}</th>
-          <th>{m.wr_col_received()}</th><th>{m.wr_col_promised()}</th><th>{m.wr_col_time()}</th><th>{m.trang_thai()}</th><th>{m.wr_col_tech()}</th>
+          <th>{m.so_phieu()}</th><th>{m.khach_hang()}</th><th>{m.wr_info_product()} · {m.wr_col_coverage()}</th>
+          <th>{m.wr_col_received()} · {m.wr_col_promised()}</th><th>{m.wr_col_time()}</th><th>{m.trang_thai()} · {m.wr_col_tech()}</th>
         </tr>
       </thead>
       <tbody>
-        {#if loading && !result}<tr class="empty-row"><td colspan="9">{m.dang_tai()}</td></tr>
+        {#if loading && !result}<tr class="empty-row"><td colspan="6">{m.dang_tai()}</td></tr>
         {:else if result?.rows.length}
           {#each result.rows as row (row.id)}
             <tr class={`tone-${row.sla.tone}`}>
               <td><a class="code" href={`/warranty/${row.id}`}>{row.code}</a></td>
               <td class="customer">{row.customer.name}<small>{row.customer.phone ?? row.customer.code ?? ''}</small></td>
-              <td class="product"><span class="code">{row.product.sku}</span><small title={row.product.name}>{row.product.name}</small></td>
-              <td><span class={`pill ${coverageTone[row.coverage]}`}>{coverageText(row.coverage)}</span></td>
-              <td class="muted">{date(row.receivedAt)}</td>
-              <td>{date(row.promisedDate)}{#if row.reschedules.length}<small>{m.wr_rescheduled()}</small>{/if}</td>
+              <td class="product"><span class="code">{row.product.sku}</span><small title={row.product.name}>{row.product.name}</small><span class={`pill ${coverageTone[row.coverage]}`}>{ticketCoverageText(row)}</span></td>
+              <td class="dates"><span class="muted">{date(row.receivedAt)}</span><b>→ {date(row.promisedDate)}</b>{#if row.reschedules.length}<small>{m.wr_rescheduled()}</small>{/if}</td>
               <td class="time">
                 {#if row.sla.tone !== 'closed'}<span class="bar" aria-hidden="true"><i style={`width:${Math.min(100, Math.max(4, row.sla.elapsedRatio * 100))}%`}></i></span>{/if}
                 <b>{slaText(row.sla)}</b>
               </td>
-              <td><span class={`pill ${statusTone[row.status]}`}>{statusText(row.status)}</span></td>
-              <td class="muted">{row.technicianName ?? '—'}</td>
+              <td class="status"><span class={`pill ${statusTone[row.status]}`}>{statusText(row.status)}</span><small>{row.technicianName ?? '—'}</small></td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="9">{m.wr_empty()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="6">{m.wr_empty()}</td></tr>{/if}
       </tbody>
     </table>
   </div>
@@ -158,15 +159,19 @@
   .tone.active { box-shadow: 0 0 0 2px var(--navy-2) inset; }
   .filters { grid-template-columns: 2fr 1.4fr 1fr auto; margin-bottom: 16px; }
   td small { display: block; color: var(--subtle); font-size: 12px; }
-  .customer { min-width: 170px; }
-  .product small { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  td:last-child { white-space: nowrap; }
+  /* 22/10/2026: 9 cột → 6 cột cho vừa màn 1366 px (sản phẩm + diện BH, nhận → hẹn trả, trạng thái + kỹ thuật). */
+  .customer { min-width: 150px; overflow-wrap: anywhere; }
+  .product small { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .product .pill { margin-top: 4px; }
+  .dates > * { display: block; white-space: nowrap; }
+  .dates b { font-weight: 600; }
+  .status small { margin-top: 4px; }
   tr.tone-warning td { background: #fff8e1; }
   tr.tone-warning td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
   tr.tone-overdue td { background: #fdecea; }
   tr.tone-overdue td:first-child { box-shadow: inset 4px 0 0 var(--red); }
   tr.tone-closed td { color: var(--muted); }
-  .time { min-width: 130px; }
+  .time { min-width: 120px; }
   .time b { font-size: 12.5px; }
   .bar { display: block; width: 110px; height: 6px; margin-bottom: 5px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--green); }

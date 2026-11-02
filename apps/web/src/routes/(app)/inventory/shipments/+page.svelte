@@ -5,10 +5,12 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, Printer } from 'lucide-svelte';
   import WarehouseIssueDialog from '$lib/components/WarehouseIssueDialog.svelte';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import { deliveryConfirmation } from '$lib/delivery';
   import { api } from '$lib/api';
   import { dateTime, num } from '$lib/format';
-  import { hasRole } from '$lib/labels';
-  import { session } from '$lib/session.svelte';
+  import { session, stepActor } from '$lib/session.svelte';
+  import { canDeliverOrder, canShipOrder, isKeeperOnly } from '$shared/sales-steps';
   import { initialPageSize, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
 
@@ -25,12 +27,22 @@
   let error = $state('');
   let success = $state('');
   let issueTarget = $state<Order | null>(null);
-  const canShip = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
+  /** Phiếu đang hỏi "Hoàn thành giao hàng?" — xác nhận mới ghi doanh thu và công nợ (AR-DLV-01). */
+  let deliverTarget = $state<Order | null>(null);
+  let deliverAsk = $state(false);
+  const deliverText = $derived(deliverTarget ? deliveryConfirmation(deliverTarget) : null);
+  function askDeliver(order: Order) {
+    deliverTarget = order;
+    deliverAsk = true;
+  }
+  async function confirmDeliver() {
+    if (deliverTarget) await deliver(deliverTarget);
+  }
   /** Nhân viên thủ kho: danh sách đã được máy chủ lọc theo phiếu giao cho mình. Quản lý kho xem toàn bộ. */
-  const canDeliver = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
-  const keeperOnly = $derived(Boolean(session.user?.roles.includes('WAREHOUSE') && !hasRole(session.user.roles, ['DIRECTOR', 'ACCOUNTANT', 'SALES', 'SALES_MANAGER', 'AUDITOR', 'WAREHOUSE_MANAGER'])));
-  /** Lập SWK / xác nhận giao chỉ cho thủ kho được giao phiếu (ADMIN luôn được). */
-  const mine = (order: Order) => Boolean(session.user && (session.user.roles.includes('ADMIN') || order.warehouseKeeperId === session.user.sub));
+  const keeperOnly = $derived(Boolean(session.user) && isKeeperOnly(stepActor()));
+  /** Bước 4 (lập SWK): người được phân công và là thủ kho của phiếu; bước 5 (xác nhận giao): theo SAL-STEP-01 (ADMIN luôn được). */
+  const shipsThis = (order: Order) => canShipOrder(stepActor(), order.warehouseKeeperId);
+  const deliversThis = (order: Order) => canDeliverOrder(stepActor(), order.warehouseKeeperId);
 
   async function load() {
     loading = true;
@@ -111,7 +123,7 @@
               <td class="muted">{order.confirmedAt ? dateTime(order.confirmedAt) : '—'}{#if order.confirmedByName}<small>{order.confirmedByName}</small>{/if}</td>
               <td class="actions-cell"><div class="row-actions">
                 <button class="btn small" onclick={() => print(order, 'BH')} title={m.in_phieu_bh_de_soan_hang()}><Printer size={14} /></button>
-                {#if canShip && mine(order)}<button class="btn primary small" onclick={() => (issueTarget = order)}>{m.lap_swk_xuat()}</button>{:else if order.warehouseKeeperName}<span class="assigned">{m.thu_kho_2()} {order.warehouseKeeperName}</span>{/if}
+                {#if shipsThis(order)}<button class="btn primary small" onclick={() => (issueTarget = order)}>{m.lap_swk_xuat()}</button>{:else if order.warehouseKeeperName}<span class="assigned">{m.thu_kho_2()} {order.warehouseKeeperName}</span>{/if}
               </div></td>
             </tr>
           {/each}
@@ -139,7 +151,7 @@
               <td class="muted">{dateTime(order.shippedAt ?? order.updatedAt)}</td>
               <td class="actions-cell"><div class="row-actions">
                 {#if order.warehouseSlipNo}<button class="btn small" onclick={() => print(order, 'SWK')} title={m.in_phieu_swk()}><Printer size={14} /></button>{/if}
-                {#if canDeliver && mine(order)}<button class="btn navy small" disabled={working === order.id} onclick={() => deliver(order)}>{m.da_giao()}</button>{:else if order.warehouseKeeperName}<span class="assigned">{m.thu_kho_2()} {order.warehouseKeeperName}</span>{/if}
+                {#if deliversThis(order)}<button class="btn navy small" disabled={working === order.id} onclick={() => askDeliver(order)}>{m.da_giao()}</button>{:else if order.warehouseKeeperName}<span class="assigned">{m.thu_kho_2()} {order.warehouseKeeperName}</span>{/if}
               </div></td>
             </tr>
           {/each}
@@ -173,6 +185,7 @@
 {/if}
 
 <WarehouseIssueDialog bind:order={issueTarget} ondone={(result) => { success = m.da_lap_phieu_tru_ton_va({ shipmentCode: result.shipmentCode }); load(); }} />
+{#if deliverText && deliverTarget}<ConfirmDialog bind:open={deliverAsk} title={deliverText.title} message={deliverText.message} confirmLabel={deliverText.confirmLabel} tone="navy" onconfirm={confirmDeliver} />{/if}
 
 <style>
   .block { margin-bottom: 18px; }

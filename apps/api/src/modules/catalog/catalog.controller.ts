@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Patch, Post, Put, Query, Req, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { ApiTags } from '@nestjs/swagger';
 import {
@@ -10,6 +10,7 @@ import {
   LocationInputSchema,
   ProductCategoryInputSchema,
   RegionInputSchema,
+  SetEmployeeTerritoriesSchema,
   UpdatePartnerSchema,
   UpdateProductSchema,
   UpdateWarehouseSchema,
@@ -21,6 +22,7 @@ import { Roles, RootOnly } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { CatalogService } from './catalog.service';
 import { MasterDataService } from './master-data.service';
+import { TerritoriesService } from './territories.service';
 import { PARTNER_CREATE_ROLES, PARTNER_MANAGER_ROLES, PRODUCT_CREATE_ROLES, PRODUCT_EDITOR_ROLES, SALES_STRUCTURE_ROLES, SUPPLIER_MANAGER_ROLES, WAREHOUSE_EDITOR_ROLES } from './partner-access';
 
 const UpdateCategorySchema = ProductCategoryInputSchema.partial().extend({ status: z.enum(['ACTIVE', 'INACTIVE']).optional() });
@@ -35,6 +37,7 @@ export class CatalogController {
   constructor(
     private readonly catalog: CatalogService,
     private readonly master: MasterDataService,
+    private readonly territories: TerritoriesService,
   ) {}
 
   // ---------- sản phẩm & nhóm hàng ----------
@@ -260,6 +263,34 @@ export class CatalogController {
   @Patch('employees/:id')
   updateEmployee(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.master.updateEmployee(id, onlyProvided(body, UpdateEmployeeSchema.parse(body)), request);
+  }
+
+  // ---------- phân vùng NVKD theo tỉnh cũ (PV-01, 30/10/2026) ----------
+
+  /** Bảng phân vùng: dùng ở form khách (tự điền NVKD) và trang Phân vùng NVKD. */
+  @Get('territories')
+  listTerritories() {
+    return this.territories.list();
+  }
+
+  @Roles(...SALES_STRUCTURE_ROLES)
+  @Put('employees/:id/territories')
+  setTerritories(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.territories.setForEmployee(id, SetEmployeeTerritoriesSchema.parse(body), request);
+  }
+
+  @Roles(...SALES_STRUCTURE_ROLES)
+  @Get('territories/mismatches')
+  territoryMismatches() {
+    return this.territories.mismatches();
+  }
+
+  /** Chuyển khách lệch vùng về NVKD phụ trách vùng; bỏ trống danh sách = mọi khách lệch không có ngoại lệ. */
+  @Roles(...SALES_STRUCTURE_ROLES)
+  @Post('territories/mismatches/fix')
+  fixTerritoryMismatches(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = z.object({ partnerIds: z.array(z.string()).max(1000).optional() }).parse(body ?? {});
+    return this.territories.fixMismatches(parsed.partnerIds, request);
   }
 
   @Roles(...SALES_STRUCTURE_ROLES)

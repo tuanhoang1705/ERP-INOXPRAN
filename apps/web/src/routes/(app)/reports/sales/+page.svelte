@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { NEW_PROVINCES } from '$shared/provinces';
   import { m } from '$lib/paraglide/messages';
   import type { SalesReport } from '@inoxpran/contracts';
   import { onMount } from 'svelte';
@@ -38,7 +39,8 @@
   let region = $state('');
   let tier = $state('');
   let categoryId = $state('');
-  let regions = $state<Array<{ code: string; name: string }>>([]);
+  let salesRepId = $state('');
+  let reps = $state<Array<{ id: string; code: string; name: string }>>([]);
   let categories = $state<Array<{ id: string; name: string }>>([]);
   let report = $state<SalesReport | null>(null);
   let loading = $state(true);
@@ -48,7 +50,7 @@
   const period = $derived(periods.find((item) => item.value === periodKey) ?? (periods[0] as Option));
   const query = $derived(new URLSearchParams({
     from: period.from, to: period.to,
-    ...(region ? { region } : {}), ...(tier ? { tier } : {}), ...(categoryId ? { categoryId } : {}),
+    ...(region ? { region } : {}), ...(salesRepId ? { salesRepId } : {}), ...(tier ? { tier } : {}), ...(categoryId ? { categoryId } : {}),
   }).toString());
   const topMax = $derived(Math.max(...(report?.topDealers.map((row) => Number(row.revenue)) ?? [0]), 1));
   const regionColors = ['#123B5E', '#1B5480', '#E2703A', '#7FA6C4', '#C7D0DA', '#8A99A8'];
@@ -65,8 +67,8 @@
     }
   }
   onMount(async () => {
-    [regions, categories] = await Promise.all([
-      api<Array<{ code: string; name: string }>>('/regions').catch(() => []),
+    [reps, categories] = await Promise.all([
+      api<Array<{ id: string; code: string; name: string }>>('/employees').catch(() => []),
       api<Array<{ id: string; name: string }>>('/product-categories').catch(() => []),
     ]);
     await load();
@@ -75,6 +77,7 @@
   function reset() {
     periodKey = defaultPeriod;
     region = '';
+    salesRepId = '';
     tier = '';
     categoryId = '';
     load();
@@ -108,7 +111,8 @@
 
 <section class="card filters no-print">
   <div class="field"><label for="period">{m.ky_bao_cao_2()}</label><select id="period" bind:value={periodKey}>{#each periods as item}<option value={item.value}>{item.label}</option>{/each}</select></div>
-  <div class="field"><label for="region">{m.khu_vuc()}</label><select id="region" bind:value={region}><option value="">{m.toan_quoc()}</option>{#each regions as item}<option value={item.code}>{item.name}</option>{/each}<option value="B2C">{m.kenh_ban_le_b2c()}</option></select></div>
+  <div class="field"><label for="region">{m.khu_vuc()}</label><select id="region" bind:value={region}><option value="">{m.toan_quoc()}</option>{#each NEW_PROVINCES as item}<option value={item.code}>{item.name}</option>{/each}<option value="B2C">{m.kenh_ban_le_b2c()}</option></select></div>
+  <div class="field"><label for="rep">{m.nv_phu_trach()}</label><select id="rep" bind:value={salesRepId}><option value="">{m.pv_tat_ca_nv()}</option>{#each reps as item}<option value={item.id}>{item.name} ({item.code})</option>{/each}</select></div>
   <div class="field"><label for="tier">{m.cap_dai_ly()}</label><select id="tier" bind:value={tier}><option value="">{m.tat_ca_cac_cap()}</option><option value="TIER_1">{m.cap_1_nha_phan_phoi()}</option><option value="TIER_2">{m.cap_2_dai_ly()}</option><option value="RETAIL">{m.khach_le()}</option></select></div>
   <div class="field"><label for="category">{m.nhom_san_pham()}</label><select id="category" bind:value={categoryId}><option value="">{m.tat_ca_nhom()}</option>{#each categories as item}<option value={item.id}>{item.name}</option>{/each}</select></div>
   <div class="actions"><button class="btn navy" onclick={load} disabled={loading}>{m.loc_du_lieu()}</button><button class="btn" onclick={reset}>{m.dat_lai()}</button></div>
@@ -184,10 +188,10 @@
   <header class="card-head detail-head"><h2>{m.chi_tiet_doanh_so_theo_dai()}</h2><span class="muted">{m.don_vi_tien_vnd()}</span></header>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.stt()}</th><th>{m.ma_dl()}</th><th>{m.ten_dai_ly_khach_hang()}</th><th>{m.khu_vuc()}</th><th>{m.cap()}</th><th class="num">{m.so_don()}</th><th class="num">{m.doanh_so()}</th><th class="num">{m.chiet_khau()}</th><th class="num">{m.cong_no_cuoi_ky()}</th><th class="num">{m.ty_trong()}</th></tr></thead>
+      <thead><tr><th>{m.stt()}</th><th>{m.ma_dl()}</th><th>{m.ten_dai_ly_khach_hang()}</th><th>{m.khu_vuc()}</th><th>{m.nv_phu_trach()}</th><th>{m.cap()}</th><th class="num">{m.so_don()}</th><th class="num">{m.doanh_so()}</th><th class="num">{m.chiet_khau()}</th><th class="num">{m.cong_no_cuoi_ky()}</th><th class="num">{m.ty_trong()}</th></tr></thead>
       <tbody>
-        {#if !report}<tr class="empty-row"><td colspan="10">{loading ? m.dang_tong_hop_bao_cao() : m.chua_co_du_lieu()}</td></tr>
-        {:else if !report.rows.length}<tr class="empty-row"><td colspan="10">{m.khong_co_doanh_so_phu_hop()}</td></tr>
+        {#if !report}<tr class="empty-row"><td colspan="11">{loading ? m.dang_tong_hop_bao_cao() : m.chua_co_du_lieu()}</td></tr>
+        {:else if !report.rows.length}<tr class="empty-row"><td colspan="11">{m.khong_co_doanh_so_phu_hop()}</td></tr>
         {:else}
           {#each report.rows as row, index}
             <tr>
@@ -195,6 +199,7 @@
               <td><a class="code" href={`/sales/orders?customerId=${row.customerId}`}>{row.code}</a></td>
               <td>{row.name}</td>
               <td class="muted nowrap">{row.regionName}</td>
+              <td class="nowrap" class:missing={!row.salesRepName}>{row.salesRepName ?? '—'}</td>
               <td class="muted nowrap">{row.tier}</td>
               <td class="num">{row.orders}</td>
               <td class="num"><b>{num(row.revenue)}</b></td>
@@ -214,6 +219,7 @@
 </section>
 
 <style>
+  td.missing { color: var(--red); }
   .filters { grid-template-columns: repeat(4, minmax(0, 1fr)) auto; }
   .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
   .rank { display: grid; gap: 16px; margin: 6px 0 4px; padding: 0; list-style: none; }

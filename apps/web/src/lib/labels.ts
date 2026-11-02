@@ -1,5 +1,20 @@
 import { m } from '$lib/paraglide/messages';
-export type Tone = '' | 'success' | 'warning' | 'danger' | 'neutral' | 'orange';
+import type { ZeroPriceKind } from '$shared/sales-line-kind';
+
+export function zeroPriceKindLabel(kind: ZeroPriceKind): string {
+  return { GIFT: m.hang_tang(), EXCHANGE: m.bh_hang_doi(), COMPENSATION: m.bh_hang_bu() }[kind];
+}
+export type Tone = '' | 'success' | 'warning' | 'danger' | 'neutral' | 'orange' | 'violet';
+
+/** Màu hàng tặng / đổi / bù (SAL-KIND-01): tặng cam, đổi xanh navy (pill mặc định), bù tím. */
+export function zeroPriceKindTone(kind: ZeroPriceKind): Tone {
+  return { GIFT: 'orange', EXCHANGE: '', COMPENSATION: 'violet' }[kind] as Tone;
+}
+
+/** Lớp tô màu cả dòng hàng tặng / đổi / bù (app.css `tr.kind-*`); dòng bán thường không tô. */
+export function zeroPriceRowClass(kind: ZeroPriceKind | undefined): string {
+  return kind ? { GIFT: 'kind-gift', EXCHANGE: 'kind-exchange', COMPENSATION: 'kind-comp' }[kind] : '';
+}
 
 export const salesStatus: Record<string, { label: string; tone: Tone }> = {
   DRAFT: { label: m.nhap(), tone: 'neutral' },
@@ -8,7 +23,7 @@ export const salesStatus: Record<string, { label: string; tone: Tone }> = {
   RESERVED: { label: m.da_duyet_giu_hang(), tone: 'success' },
   PARTIALLY_SHIPPED: { label: m.xuat_mot_phan(), tone: '' },
   SHIPPED: { label: m.dang_giao(), tone: '' },
-  DELIVERED: { label: m.da_giao(), tone: 'success' },
+  DELIVERED: { label: m.da_xuat_kho(), tone: 'success' },
   CANCELLED: { label: m.da_huy(), tone: 'danger' },
 };
 
@@ -88,6 +103,8 @@ export const movementLabel: Record<string, string> = {
   REVERSAL: m.dao_but_toan(),
   WARRANTY_EXCHANGE_OUT: m.wr_mv_exchange_out(),
   WARRANTY_DEFECT_IN: m.wr_mv_defect_in(),
+  RETURN_CORRECTION: m.mv_return_correction(),
+  RECEIPT_CORRECTION: m.mv_receipt_correction(),
 };
 
 export function hasRole(roles: string[] | undefined, allowed: string[]): boolean {
@@ -125,6 +142,6 @@ export const stageFilters: Array<{ value: string; label: string; query: Record<s
   { value: 'check', label: m.cho_kd_doi_chieu_voi_khach(), query: { status: 'RESERVED', confirmation: 'PENDING' } },
   { value: 'warehouse', label: m.cho_kho_lap_phieu_swk(), query: { status: 'RESERVED', confirmation: 'CONFIRMED' } },
   { value: 'shipping', label: m.da_xuat_kho_dang_giao(), query: { status: 'SHIPPED' } },
-  { value: 'delivered', label: m.da_giao(), query: { status: 'DELIVERED' } },
+  { value: 'delivered', label: m.da_xuat_kho(), query: { status: 'DELIVERED' } },
   { value: 'cancelled', label: m.da_huy(), query: { status: 'CANCELLED' } },
 ];

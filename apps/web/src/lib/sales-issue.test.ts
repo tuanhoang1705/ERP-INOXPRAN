@@ -54,6 +54,18 @@ describe('computeIssue', () => {
     expect(result.lines[3]).toMatchObject({ baseQuantity: '4', unitPrice: '2802592.59', discountRate: '6' });
   });
 
+  it('tặng / đổi / bù cùng mã: tiền đều 0, không nhận giá sửa tay, tổng kho gồm đủ cả ba loại', () => {
+    const result = computeIssue([
+      { productId: 'p1', unit: 'Cái', quantity: '2', gift: false },
+      { productId: 'p1', unit: 'Cái', quantity: '1', gift: true, zeroPriceKind: 'GIFT' },
+      { productId: 'p1', unit: 'Cái', quantity: '2', gift: false, zeroPriceKind: 'EXCHANGE', overrideUnitPrice: '999' },
+      { productId: 'p1', unit: 'Cái', quantity: '3', gift: false, zeroPriceKind: 'COMPENSATION', overrideUnitPrice: '999' },
+    ], products, sheet(), '8');
+    expect(result.summary.grandTotal).toBe('1172000');
+    expect(result.demandByProduct.get('p1')).toBe(8);
+    for (const line of result.lines.slice(1)) expect(line).toMatchObject({ unitPrice: '0.00', netAmount: '0.00', discountRate: '0', overridden: false });
+  });
+
   it('báo vượt hạn mức / ngưỡng duyệt theo tổng thanh toán', () => {
     expect(computeIssue(lines, products, sheet({ creditLimit: '10000000' }), '8').needsApproval).toEqual({ overThreshold: false, overCredit: true });
     expect(computeIssue(lines, products, sheet({ tier: 'RETAIL', creditLimit: '0' }), '8').creditRemainingAfter).toBeNull();

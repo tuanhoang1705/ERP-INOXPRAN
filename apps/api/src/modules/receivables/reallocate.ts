@@ -92,6 +92,8 @@ export function reallocateCustomer(receivables: readonly EngineReceivable[], pay
   const pool = new Map<string, Decimal>();
   for (const payment of ordered) {
     const documentMode = DOCUMENT_MODES.has(payment.mode ?? '');
+    // Phiếu giảm nợ trả hàng theo chứng từ (D1): phần hàng thuộc nhóm vào đúng phần nhóm của chứng từ trước.
+    const shares = new Map((payment.returnSegments ?? []).map((part) => [part.code, new Decimal(part.amount)]));
     for (const allocation of payment.allocations) {
       const amount = new Decimal(allocation.amount);
       const receivable = byId.get(allocation.receivableId);
@@ -111,6 +113,16 @@ export function reallocateCustomer(receivables: readonly EngineReceivable[], pay
       }
       let remaining = amount;
       const parts = [...(partsOf.get(receivable.id) ?? [])].sort((a, b) => partRank(a.segment, payment.segment ?? null) - partRank(b.segment, payment.segment ?? null));
+      for (const part of parts) {
+        const share = part.segment ? shares.get(part.segment) : undefined;
+        if (!share?.gt(0) || remaining.lte(0)) continue;
+        const piece = Decimal.min(capacity.get(key(receivable.id, part.segment)) ?? new Decimal(0), remaining, share);
+        if (piece.gt(0)) {
+          take(payment.id, receivable.id, part.segment, piece);
+          remaining = remaining.minus(piece);
+          shares.set(part.segment as string, share.minus(piece));
+        }
+      }
       for (const part of parts) {
         if (remaining.lte(0)) break;
         const room = capacity.get(key(receivable.id, part.segment)) ?? new Decimal(0);

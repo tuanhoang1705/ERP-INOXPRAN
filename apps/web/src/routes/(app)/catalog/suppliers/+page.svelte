@@ -121,7 +121,7 @@
   </div>
   <div class="actions">
     {#if editable}<button class="btn" onclick={() => open(null)}><Plus size={16} />{m.crud_them_ncc()}</button>{/if}
-    <a class="btn primary" href="/procurement/new">{m.lap_don_mua()}</a>
+    {#if can.createPurchaseOrders()}<a class="btn primary" href="/procurement/new">{m.lap_don_mua()}</a>{/if}
   </div>
 </section>
 

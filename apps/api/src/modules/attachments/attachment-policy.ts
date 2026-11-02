@@ -29,7 +29,7 @@ export interface AttachmentPolicy {
 
 const has = (roles: string[], allowed: readonly string[]) => roles.some((role) => allowed.includes(role));
 /** Chứng từ mua hàng (hợp đồng, invoice, B/L, tờ khai, C/O…): phòng mua hàng, kế toán, Giám đốc, kho. */
-const PURCHASE_DOC_EDITORS = ['ADMIN', 'DIRECTOR', 'PROCUREMENT', 'PROCUREMENT_MANAGER', 'ACCOUNTANT', 'WAREHOUSE', 'WAREHOUSE_MANAGER'];
+const PURCHASE_DOC_EDITORS = ['ADMIN', 'PROCUREMENT', 'PROCUREMENT_MANAGER', 'ACCOUNTANT', 'WAREHOUSE', 'WAREHOUSE_MANAGER'];
 
 export const ATTACHMENT_POLICIES: Record<string, AttachmentPolicy> = {
   products: {

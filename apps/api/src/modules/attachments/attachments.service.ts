@@ -3,6 +3,7 @@ import type { AttachmentMeta } from '@inoxpran/contracts';
 import type { Db, Document, ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
 import { toObjectId } from '../../common/domain';
+import { seesCancelled } from '../../common/hidden-documents';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
@@ -26,16 +27,19 @@ export class AttachmentsService {
   }
 
   private async entity(policy: AttachmentPolicy, id: string): Promise<Document> {
-    const entity = await this.db.collection(policy.collection).findOne({ _id: toObjectId(id) }, { projection: { [policy.codeField]: 1, kind: 1, primaryImageId: 1 } });
+    const entity = await this.db.collection(policy.collection).findOne({ _id: toObjectId(id) }, { projection: { [policy.codeField]: 1, kind: 1, primaryImageId: 1, status: 1 } });
     if (!entity) throw new NotFoundException({ code: 'ENTITY_NOT_FOUND', message: 'Không tìm thấy hồ sơ' });
     return entity;
   }
 
   private assertView(policy: AttachmentPolicy, entity: Document, request: AuthenticatedRequest) {
+    // Đơn mua / lô nhập đã hủy chỉ quản trị gốc mở được (DOC-HIDE-01).
+    if (entity.status === 'CANCELLED' && !seesCancelled(request.user)) throw new NotFoundException({ code: 'ENTITY_NOT_FOUND', message: 'Không tìm thấy hồ sơ' });
     if (!policy.canView(request.user.roles, entity)) throw new ForbiddenException({ code: 'ROLE_FORBIDDEN', message: 'Bạn không có quyền xem file của hồ sơ này' });
   }
 
   private assertEdit(policy: AttachmentPolicy, entity: Document, request: AuthenticatedRequest) {
+    if (entity.status === 'CANCELLED' && !seesCancelled(request.user)) throw new NotFoundException({ code: 'ENTITY_NOT_FOUND', message: 'Không tìm thấy hồ sơ' });
     if (!policy.canEdit(request.user.roles, entity)) throw new ForbiddenException({ code: 'ROLE_FORBIDDEN', message: 'Bạn không có quyền đính kèm / xóa file của hồ sơ này' });
   }
 

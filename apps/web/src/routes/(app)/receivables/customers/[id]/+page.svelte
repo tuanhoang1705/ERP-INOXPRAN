@@ -9,7 +9,7 @@
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, Download, HandCoins, Shuffle, Tags } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Download, HandCoins, Shuffle, Tags, Truck } from 'lucide-svelte';
   import { api, download } from '$lib/api';
   import { date, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
@@ -34,6 +34,8 @@
     }>;
     segments: SegmentInfo[];
     current: { balance: string; segment: string; normal: string };
+    /** Đã xuất kho, chờ giao — chưa vào công nợ (AR-DLV-01). */
+    pendingDelivery?: { count: number; amount: string; orders: Array<{ id: string; code: string; amount: string; shippedAt: string | null }> };
   };
 
   const id = $derived(page.params.id ?? '');
@@ -212,6 +214,16 @@
     <div class="card kpi"><p class="label">{m.cn_tra_hang_giam()}</p><p class="value">{vnd(data.totals.returns)}</p></div>
     <div class="card kpi main"><p class="label">{m.cn_con_lai()}</p><p class="value">{vnd(data.closing)}</p>{#if Number(data.prepayment) > 0}<p class="note">{m.cn_tra_truoc_ngan({ amount: num(data.prepayment) })}</p>{/if}</div>
   </section>
+  {#if data.pendingDelivery?.count}
+    <!-- AR-DLV-01: phiếu đã lập SWK nhưng chưa xác nhận giao — chưa tính vào công nợ, vẫn tính vào hạn mức khi duyệt phiếu mới. -->
+    <div class="banner warning pending-delivery">
+      <Truck size={17} />
+      <span>
+        {m.cn_cho_giao({ count: data.pendingDelivery.count, amount: vnd(data.pendingDelivery.amount) })}
+        {#each data.pendingDelivery.orders as order, index (order.id)}{index ? ', ' : ' '}<a href={`/sales/orders/${order.id}`}>{order.code}</a>{/each}
+      </span>
+    </div>
+  {/if}
   {#if openSegments.length}
     <!-- Giống sheet đối chiếu của kế toán: "Công nợ quạt" + "Còn lại công nợ (trừ quạt)" — số hiện tại, không theo kỳ. -->
     <section class="kpis segments">
@@ -331,6 +343,8 @@
   .items-link { margin-top: 6px; padding: 0; border: 0; background: none; color: var(--blue); font-size: 12.5px; cursor: pointer; text-align: left; }
   .items-link:hover { text-decoration: underline; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .pending-delivery { margin-bottom: 16px; }
+  .pending-delivery a { color: inherit; font-weight: 700; text-decoration: underline; }
   .kpi .value { font-size: 18px; }
   /* Màn hẹp: số tiền tỷ đồng phải hiện đủ, không cắt "…". */
   @media (max-width: 480px) {

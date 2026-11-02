@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, LoanClose, LoanPurpose, LoanReturn, NotificationTemplate, SalesPriceSheet, SalesQuote, SalesQuoteRequest, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
-import { CANCELLABLE_SALES_STATUSES, cancelledCode, expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from '@inoxpran/contracts';
+import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, LoanClose, LoanPurpose, LoanReturn, NotificationTemplate, PermissionKey, SalesPriceSheet, SalesQuote, SalesQuoteRequest, SalesStepOwners, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
+import { CANCELLABLE_SALES_STATUSES, cancelledCode, hasKeeperRole, expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from '@inoxpran/contracts';
+import { isZeroPriceLine } from '@inoxpran/contracts';
 import { defaultReturnDate, isLoanPurpose, isNonSale, isNonSalePurpose, loanInCategory, nonSaleOutCategory, orderParty, PURPOSE_LABEL_VI, purposeOf, SALES_SLIP_TYPES, slipTypeFilter, vnDate, type SalesSlipType } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
@@ -12,6 +13,10 @@ import { decimal, decimalString, serializeDocument, toObjectId, vnDayStart, vnPa
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { PriceOverridesService } from './price-overrides.service';
 import { releaseHoldIfCleared } from '../receivables/overdue-review';
+import { voidReturnCreditsOf } from '../receivables/return-credit';
+import { PAY_NOW_ACTOR, postPayNowReceipt, voidPayNowReceipts } from '../receivables/pay-now';
+import { nextReturnInCode } from '../inventory/return-codes';
+import { pendingDeliveryOf } from '../receivables/pending-delivery';
 import { loadSegmentRules, orderLinesForSegments, reallocatePartner } from '../receivables/segment-store';
 import { orderSegments, rulesFor } from '../receivables/segments';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -20,9 +25,11 @@ import type { AuthenticatedRequest, RequestUser } from '../../common/request-con
 import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
+import { territoryOwner } from '../../common/territories';
 import { InventoryService } from '../inventory/inventory.service';
 import { evaluateApproval } from './approval.engine';
-import { isAssignedKeeper, KEEPER_ROLES, salesOrderScope } from './keeper-scope';
+import { can, holdsStep, permissionsOf, stepHolders } from '../../common/permissions';
+import { canDeliverSalesOrder, isAssignedKeeper, salesOrderScope } from './keeper-scope';
 
 const EVIDENCE_PURPOSE = 'CONFIRMATION_EVIDENCE';
 /** Ảnh tải lên nhưng chưa gắn vào lần xác nhận nào: worker xóa cả file S3 và bản ghi sau 24 giờ. */
@@ -30,16 +37,17 @@ const PENDING_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_PENDING_EVIDENCE = 20;
 import { PricingService } from './pricing.service';
 
-/** Vai trò được tự nhập / đổi số phiếu BH. */
-const NUMBERING_ROLES = ['ACCOUNTANT', 'ADMIN'];
 /** Trường chỉ phiếu bán có (khách, kênh, điều khoản, quyền sửa giá) — gỡ khi phiếu chuyển thành hàng mẫu / kiểm định. */
 const SALE_ONLY_FIELDS = [
-  'customerId', 'customerCode', 'customerName', 'customerTier', 'province', 'regionCode', 'buyer', 'channel', 'paymentTermDays',
+  'customerId', 'customerCode', 'customerName', 'customerTier', 'province', 'regionCode', 'buyer', 'channel', 'paymentTermDays', 'payNowMethod',
   'priceOverrideRequestId', 'priceOverrideApprovedByName', 'priceOverrideReason',
 ];
 
 /** Thao tác thực hiện khi duyệt đề nghị sửa / hủy (SAL-CHG-01) — ghi kèm vào nhật ký. */
 export interface SalesChangeVia { code: string; requestedBy: string; requestedByName: string }
+
+/** Admin / quản trị gốc được đặt NVKD của phiếu khác NVKD phụ trách vùng của khách (PV-01). */
+const canOverrideRep = (user: Pick<RequestUser, 'roles' | 'root'>) => Boolean(user.root) || user.roles.includes('ADMIN');
 
 @Injectable()
 export class SalesService {
@@ -57,7 +65,7 @@ export class SalesService {
 
   /** Có dòng (không phải hàng tặng) mang đơn giá sửa tay → cần quyền sửa giá đã duyệt cho phiếu này. */
   private hasPriceOverride(input: CreateSalesOrder): boolean {
-    return input.lines.some((line) => Boolean(line.overrideUnitPrice) && !line.gift);
+    return input.lines.some((line) => Boolean(line.overrideUnitPrice) && !isZeroPriceLine(line));
   }
 
   private priceOverrideFields(grant: Document | null) {
@@ -72,7 +80,8 @@ export class SalesService {
   ) {
     const filter: Document = {};
     if (status) filter.status = status.includes(',') ? { $in: status.split(',').map((value) => value.trim()).filter(Boolean) } : status;
-    // Danh sách mặc định không hiện phiếu đã hủy; lọc "Đã hủy" hoặc tìm theo số / khách vẫn thấy.
+    // Danh sách mặc định không hiện phiếu đã hủy; quản trị gốc lọc "Đã hủy" hoặc tìm theo số / khách vẫn thấy.
+    // Người khác không bao giờ thấy phiếu đã hủy (salesOrderScope — DOC-HIDE-01).
     else if (!search) filter.status = { $ne: 'CANCELLED' };
     if (confirmation) filter.confirmationStatus = confirmation.includes(',') ? { $in: confirmation.split(',').map((value) => value.trim()).filter(Boolean) } : confirmation;
     // Loại phiếu (SAL-TYPE-01); `channel` cũ = loại B2B / B2C.
@@ -116,9 +125,18 @@ export class SalesService {
   async get(id: string, user: RequestUser) {
     const row = await this.db.collection('sales_orders').findOne({ _id: toObjectId(id), ...salesOrderScope(user) });
     if (!row) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy đơn bán' });
-    if (!isLoanPurpose(row.purpose) || !row.shippedAt) return serializeDocument(row);
+    if (!isLoanPurpose(row.purpose) || !row.shippedAt) {
+      // Đơn thanh toán ngay đã giao: phiếu thu tự động còn hiệu lực (AR-PAYNOW-01) — kế toán bỏ ghi thu được nếu khách chưa trả.
+      const payNow = row.paymentTermDays === 0 && row.status === 'DELIVERED'
+        ? await this.db.collection('payments').findOne({ salesOrderId: row._id, autoPayNow: true, status: 'POSTED' })
+        : null;
+      return {
+        ...serializeDocument(row),
+        ...(payNow ? { payNowReceipt: { id: (payNow._id as ObjectId).toHexString(), code: String(payNow.code), amount: decimalString(payNow.amount), method: String(payNow.method), receivedAt: (payNow.receivedAt as Date).toISOString() } } : {}),
+      };
+    }
     // Phiếu hàng mẫu / kiểm định đã xuất: số đã xuất / đã về / còn ở ngoài theo mã (đơn vị cơ bản) và các lần nhập lại.
-    const returns = await this.db.collection('stock_returns').find({ kind: 'SAMPLE', salesOrderCode: row.code }).sort({ createdAt: 1 }).toArray();
+    const returns = await this.db.collection('stock_returns').find({ kind: 'SAMPLE', salesOrderCode: row.code, status: { $ne: 'VOIDED' } }).sort({ createdAt: 1 }).toArray();
     const shipped = this.quantitiesOf(row.lines as Array<{ productId: unknown; baseQuantity: unknown }>);
     const returned = this.quantitiesOf(returns.flatMap((item) => (item.lines as Array<{ productId: unknown; quantity: unknown }>).map((line) => ({ productId: line.productId, baseQuantity: line.quantity }))));
     const products = await this.db.collection('products').find({ _id: { $in: [...shipped.keys()].map((key) => new ObjectId(key)) } }, { projection: { baseUnit: 1 } }).toArray();
@@ -172,7 +190,7 @@ export class SalesService {
     const customer = await this.loadCustomer(toObjectId(input.customerId, 'customerId'));
     const warehouseId = toObjectId(input.warehouseId, 'warehouseId');
     const lines = input.lines.filter((line) => Number(line.quantity) > 0);
-    const priced = await this.pricing.priceLines(lines, customer, undefined, input.taxRate);
+    const priced = await this.pricing.priceLines(lines, customer, undefined, input.taxRate, salesIssueTemplate(input.templateCode).vatMode);
     const settings = priced.settings;
     const balances = await this.db.collection('inventory_balances').find({
       warehouseId,
@@ -200,6 +218,7 @@ export class SalesService {
           quantity: line.quantity,
           baseQuantity: line.baseQuantity,
           gift: line.gift,
+          ...(line.zeroPriceKind ? { zeroPriceKind: line.zeroPriceKind } : {}),
           listUnitPrice: line.listUnitPrice,
           unitPrice: line.unitPrice,
           discountRate: line.discountRate,
@@ -208,6 +227,7 @@ export class SalesService {
           promotionDiscountRate: line.promotionDiscountRate,
           ...(line.promotionCode ? { promotionCode: line.promotionCode } : {}),
           netAmount: line.netAmount,
+          ...(priced.vatMode === 'LINE' ? { vatRate: line.vatRate, taxAmount: line.taxAmount } : {}),
           available: available.toString(),
           minimumStock: line.minimumStock,
           stockState,
@@ -283,6 +303,7 @@ export class SalesService {
         discountRate: item.discountRate,
         available: availableByProduct.get(productId) ?? '0',
         minimumStock: decimalString(item.product.minimumStock),
+        ...(item.pricingSource === 'CUSTOMER_PRICE' ? { pricingSource: item.pricingSource } : {}),
       })),
     };
   }
@@ -316,15 +337,18 @@ export class SalesService {
     };
   }
 
-  /** Tài khoản thủ kho đang hoạt động có phạm vi kho xuất — danh sách cho ô "Thủ kho xuất hàng" trên phiếu BH. */
+  /**
+   * Thủ kho chọn được trên phiếu BH (ô "Thủ kho xuất hàng"): tài khoản đang hoạt động, có phạm vi kho xuất và được phân công
+   * bước 4 — lập SWK & xuất kho (SAL-STEP-01; quản trị gốc / Admin không kiêm vai trò kho không hiện).
+   */
   async warehouseKeepers(warehouseId: string): Promise<WarehouseKeeper[]> {
-    const rows = await this.db.collection('users')
+    const rows = (await this.db.collection('users')
       .find(
-        { status: 'ACTIVE', roles: { $in: KEEPER_ROLES }, warehouseScopes: toObjectId(warehouseId, 'warehouseId').toHexString() },
-        { projection: { displayName: 1, title: 1, email: 1 } },
+        { status: 'ACTIVE', root: { $ne: true }, warehouseScopes: toObjectId(warehouseId, 'warehouseId').toHexString() },
+        { projection: { displayName: 1, title: 1, email: 1, roles: 1, root: 1, permissionGrants: 1, permissionRevokes: 1 } },
       )
       .sort({ displayName: 1 })
-      .toArray();
+      .toArray()).filter((row) => holdsStep(row, 'sales.step.ship'));
     return rows.map((row) => ({
       id: (row._id as ObjectId).toHexString(),
       displayName: String(row.displayName),
@@ -333,20 +357,27 @@ export class SalesService {
     }));
   }
 
-  private async loadKeeper(keeperId: string, warehouseId: ObjectId, session: ClientSession) {
+  /**
+   * Thủ kho trên phiếu: tài khoản đang hoạt động, phụ trách kho xuất. `assignable` (lập / sửa nháp, phát hành): còn được phân công
+   * bước 4 (SAL-STEP-01) — sửa phiếu đã xuất (root, đề nghị sửa) giữ thủ kho lịch sử dù người đó đã bị thu bước 4.
+   */
+  private async loadKeeper(keeperId: string, warehouseId: ObjectId, session: ClientSession, assignable = false) {
     const keeper = await this.db.collection('users').findOne(
-      { _id: toObjectId(keeperId, 'warehouseKeeperId'), status: 'ACTIVE', roles: { $in: KEEPER_ROLES } },
-      { session, projection: { displayName: 1, warehouseScopes: 1 } },
+      { _id: toObjectId(keeperId, 'warehouseKeeperId'), status: 'ACTIVE', root: { $ne: true } },
+      { session, projection: { displayName: 1, warehouseScopes: 1, roles: 1, root: 1, permissionGrants: 1, permissionRevokes: 1 } },
     );
     if (!keeper) throw new BadRequestException({ code: 'KEEPER_NOT_FOUND', message: 'Không tìm thấy tài khoản thủ kho đang hoạt động' });
     if (!((keeper.warehouseScopes as string[] | undefined) ?? []).includes(warehouseId.toHexString())) {
       throw new BadRequestException({ code: 'KEEPER_WAREHOUSE_MISMATCH', message: `${String(keeper.displayName)} không phụ trách kho xuất đã chọn` });
     }
+    if (assignable && !holdsStep(keeper, 'sales.step.ship')) {
+      throw new BadRequestException({ code: 'KEEPER_NOT_ASSIGNABLE', message: `${String(keeper.displayName)} không còn được phân công bước 4 (lập SWK & xuất kho) — chọn thủ kho khác`, details: [{ path: ['warehouseKeeperId'] }] });
+    }
     return keeper;
   }
 
   /** Dựng nội dung phiếu xuất kho bán hàng từ dữ liệu nhập: thông tin người mua, nhân viên, giá và tổng tiền. */
-  private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean } = {}) {
+  private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean; assignableKeeper?: boolean; allowRepOverride?: boolean } = {}) {
     // Phiếu xuất hàng mẫu / kiểm định / xuất tặng (SAL-TYPE-01): không khách hàng, người nhận = nhân viên phụ trách, đơn giá 0.
     const nonSale = isNonSalePurpose(input.purpose);
     const loan = isLoanPurpose(input.purpose);
@@ -365,17 +396,20 @@ export class SalesService {
     if (input.requestedDeliveryDate && new Date(`${input.requestedDeliveryDate}T00:00:00+07:00`) < vnDayStart(orderDate)) {
       throw new BadRequestException({ code: 'DELIVERY_BEFORE_ORDER', message: 'Ngày giao dự kiến phải lớn hơn hoặc bằng ngày chứng từ' });
     }
+    // PXK-001: một thuế suất cho cả phiếu (phiếu cũ, gọi API không ghi mẫu); PXK-002: thuế suất từng dòng (27/10/2026).
     const template = salesIssueTemplate(input.templateCode);
-    if (template.vatMode !== 'DOCUMENT') {
-      throw new BadRequestException({ code: 'TEMPLATE_NOT_SUPPORTED', message: `Mẫu ${template.code} chưa được hỗ trợ tính thuế` });
-    }
-    if (!nonSale && !input.lines.some((line) => !line.gift)) {
-      throw new BadRequestException({ code: 'ONLY_GIFT_LINES', message: 'Phiếu cần ít nhất một dòng hàng bán (không phải hàng tặng)' });
+    if (!nonSale && !input.lines.some((line) => !isZeroPriceLine(line))) {
+      throw new BadRequestException({ code: 'ONLY_GIFT_LINES', message: 'Phiếu cần ít nhất một dòng hàng bán (ngoài hàng tặng / đổi / bù)' });
     }
     const salesRepId = input.salesRepId ? toObjectId(input.salesRepId, 'salesRepId') : (customer?.salesRepId as ObjectId | undefined);
     const salesRep = salesRepId ? await this.db.collection('employees').findOne({ _id: salesRepId }, { session }) : null;
     if (input.salesRepId && !salesRep) {
       throw new NotFoundException({ code: 'SALES_REP_NOT_FOUND', message: 'Không tìm thấy nhân viên kinh doanh' });
+    }
+    // Phân vùng NVKD (PV-01): khách ở vùng đã giao thì NVKD của phiếu là NVKD của khách — Admin / quản trị gốc được đổi.
+    if (customer && salesRep && customer.salesRepId && !(customer.salesRepId as ObjectId).equals(salesRep._id) && !options.allowRepOverride
+      && await territoryOwner(this.db, customer.provinceOldCode as string | undefined, customer.territoryChannel as string | undefined, session)) {
+      throw new BadRequestException({ code: 'TERRITORY_MISMATCH', message: `Khách ${String(customer.code)} do ${String(customer.salesRepName)} phụ trách theo phân vùng — NVKD của phiếu phải là ${String(customer.salesRepName)}`, details: [{ path: ['salesRepId'] }] });
     }
     if (nonSale && !salesRep) {
       throw new BadRequestException({ code: 'SALES_REP_REQUIRED', message: input.purpose === 'GIFT' ? 'Chọn nhân viên phụ trách' : 'Chọn nhân viên mượn hàng', details: [{ path: ['salesRepId'] }] });
@@ -388,8 +422,8 @@ export class SalesService {
     if (expectedReturnDate && new Date(`${expectedReturnDate}T00:00:00+07:00`) < vnDayStart(orderDate)) {
       throw new BadRequestException({ code: 'RETURN_BEFORE_ORDER', message: 'Ngày hẹn trả phải lớn hơn hoặc bằng ngày chứng từ', details: [{ path: ['expectedReturnDate'] }] });
     }
-    const keeper = input.warehouseKeeperId ? await this.loadKeeper(input.warehouseKeeperId, warehouseId, session) : null;
-    const priced = customer ? await this.pricing.priceLines(input.lines, customer, session, input.taxRate) : await this.pricing.zeroLines(input.lines, session, input.taxRate);
+    const keeper = input.warehouseKeeperId ? await this.loadKeeper(input.warehouseKeeperId, warehouseId, session, options.assignableKeeper) : null;
+    const priced = customer ? await this.pricing.priceLines(input.lines, customer, session, input.taxRate, template.vatMode) : await this.pricing.zeroLines(input.lines, session, input.taxRate, template.vatMode);
     const purpose = nonSale ? input.purpose : 'SALE';
     // Phần riêng của từng loại; khi đổi loại phiếu, các trường của loại kia bị gỡ ($unset).
     const partyFields = customer
@@ -409,7 +443,10 @@ export class SalesService {
           ...(expectedReturnDate ? { expectedReturnDate } : {}),
         };
     const loanKeys = ['destination', 'expectedReturnDate'];
-    const unsetKeys = customer ? loanKeys : [...SALE_ONLY_FIELDS, ...loanKeys.filter((key) => !(key in partyFields))];
+    // Thanh toán ngay (AR-PAYNOW-01): hạn 0 ngày + người lập chọn hình thức thu → giao xong tự ghi phiếu thu. Không chọn (mặc định)
+    // = chưa thu, ghi công nợ hạn = ngày giao — hạn 0 ngày là mặc định trên hồ sơ phần lớn khách, không có nghĩa là khách đã trả.
+    const payNowFields = customer && input.payNowMethod && (input.paymentTermDays ?? Number(customer.paymentTermDays ?? 0)) === 0 ? { payNowMethod: input.payNowMethod } : {};
+    const unsetKeys = customer ? [...loanKeys, ...('payNowMethod' in payNowFields ? [] : ['payNowMethod'])] : [...SALE_ONLY_FIELDS, ...loanKeys.filter((key) => !(key in partyFields))];
     const unset: Record<string, ''> = Object.fromEntries(unsetKeys.map((key) => [key, '']));
     const defaultDescription = customer
       ? `Bán hàng ${String(customer.name)}`
@@ -422,6 +459,7 @@ export class SalesService {
       fields: {
         purpose,
         ...partyFields,
+        ...payNowFields,
         contactName: input.contactName,
         description: input.description || defaultDescription,
         deliveryLocation: input.deliveryLocation,
@@ -442,6 +480,7 @@ export class SalesService {
           categoryId: line.categoryId,
           unit: line.unit,
           gift: line.gift,
+          ...(line.zeroPriceKind ? { zeroPriceKind: line.zeroPriceKind } : {}),
           pricingSource: line.pricingSource,
           ...(line.promotionCode ? { promotionCode: line.promotionCode } : {}),
           ...(line.originalUnitPrice ? { originalUnitPrice: decimal(line.originalUnitPrice) } : {}),
@@ -454,6 +493,8 @@ export class SalesService {
           salesTierDiscountRate: decimal(line.salesTierDiscountRate),
           promotionDiscountRate: decimal(line.promotionDiscountRate),
           netAmount: decimal(line.netAmount),
+          // PXK-002: thuế suất + tiền thuế của dòng; PXK-001 không lưu (thuế tính cho cả phiếu).
+          ...(priced.vatMode === 'LINE' ? { vatRate: line.vatRate, taxAmount: decimal(line.taxAmount) } : {}),
           lineTotal: decimal(line.lineTotal),
           pricingSnapshot: Object.fromEntries(Object.entries(line.pricingSnapshot).map(([key, value]) => [key, decimal(value)])),
         })),
@@ -471,13 +512,15 @@ export class SalesService {
     aggregateId: string,
     payload: { targetRoles?: string[]; targetUserIds?: string[]; level: string; title: string; message: string; href: string; template: NotificationTemplate; params: TextParams },
   ) {
+    // Người nhận theo người được phân công bước (SAL-STEP-01) có thể rỗng — worker không gửi được thì bỏ qua.
+    if (!payload.targetRoles?.length && !payload.targetUserIds?.length) return;
     await this.outbox.enqueue({ eventType: 'NOTIFICATION_REQUESTED', aggregateType: 'SalesOrder', aggregateId, payload: { category: 'SALES_ISSUE', ...payload } }, session);
   }
 
   /** Xem trước nội dung đề nghị sửa (SAL-CHG-01): tính lại phiếu theo nội dung mới, không ghi gì. */
   async previewEdit(changes: UpdateSalesOrder, session: ClientSession) {
     const { version: _version, codeMode: _codeMode, ...payload } = changes;
-    const { fields } = await this.composeOrder(payload, session, { allowBlockedCustomer: true });
+    const { fields } = await this.composeOrder(payload, session, { allowBlockedCustomer: true, allowRepOverride: true });
     return {
       customerName: orderParty(fields),
       grandTotal: decimalString(fields.grandTotal),
@@ -487,16 +530,17 @@ export class SalesService {
         unit: String(line.unit),
         quantity: decimalString(line.quantity),
         gift: Boolean(line.gift),
+        ...(line.zeroPriceKind ? { zeroPriceKind: line.zeroPriceKind } : {}),
         unitPrice: decimalString(line.unitPrice),
         lineTotal: decimalString(line.lineTotal),
       })),
     };
   }
 
-  /** Chỉ kế toán (và Admin) đặt / đổi số phiếu BH; nhân viên kinh doanh gửi đề nghị luôn nhận số tự sinh. */
+  /** Chỉ người được phân công bước 2 (phát hành) đặt / đổi số phiếu BH; người gửi đề nghị luôn nhận số tự sinh. */
   private assertCanNumber(request: AuthenticatedRequest) {
-    if (!request.user.roles.some((role) => NUMBERING_ROLES.includes(role))) {
-      throw new ForbiddenException({ code: 'SALES_ORDER_CODE_FORBIDDEN', message: 'Chỉ kế toán được tự nhập số phiếu BH' });
+    if (!can(request.user, 'sales.step.issue')) {
+      throw new ForbiddenException({ code: 'SALES_ORDER_CODE_FORBIDDEN', message: 'Chỉ người được phân công bước phát hành phiếu BH được tự nhập số phiếu' });
     }
   }
 
@@ -638,9 +682,10 @@ export class SalesService {
       input,
       async (session) => {
         const grant = this.hasPriceOverride(input) ? await this.priceOverrides.assertUsable(input.priceOverrideRequestId, input.formSessionId, null, request, session) : null;
-        const { fields, orderDate } = await this.composeOrder(input, session);
+        const { fields, orderDate } = await this.composeOrder(input, session, { assignableKeeper: true, allowRepOverride: canOverrideRep(request.user) });
         const now = new Date();
-        const requestedBySales = !request.user.roles.some((role) => ['ACCOUNTANT', 'ADMIN'].includes(role));
+        // Người lập không được phân công bước 2 (phát hành) → phiếu là đề nghị xuất bán chờ người phát hành (SAL-STEP-01).
+        const requestedBySales = !can(request.user, 'sales.step.issue');
         const manualCode = input.code ? this.manualCode(input.code, orderDate) : undefined;
         if (manualCode) {
           this.assertCanNumber(request);
@@ -667,7 +712,7 @@ export class SalesService {
         if (grant) await this.priceOverrides.bind(grant, { _id: document._id, code }, session);
         if (requestedBySales) {
           await this.notify(session, document._id.toHexString(), {
-            targetRoles: ['ACCOUNTANT'],
+            targetUserIds: await this.stepAudience('sales.step.issue', session, { exclude: [request.user.sub] }),
             level: 'INFO',
             title: `Đề nghị lập phiếu xuất kho ${document.code}`,
             message: `${request.user.displayName} đề nghị xuất ${isNonSale(fields) ? '' : 'bán '}cho ${orderParty(fields)}.`,
@@ -707,7 +752,7 @@ export class SalesService {
         const grant = this.hasPriceOverride(input)
           ? await this.priceOverrides.assertUsable(input.priceOverrideRequestId ?? (before.priceOverrideRequestId as string | undefined), input.formSessionId, orderId, request, session)
           : null;
-        const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session);
+        const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { assignableKeeper: true, allowRepOverride: canOverrideRep(request.user) });
         // Số phiếu khi sửa: bỏ trống = giữ số cũ; nhập số khác = đổi sang số tự nhập (kiểm tra trùng);
         // chọn lại "Tự sinh" trên phiếu đang mang số tự nhập = cấp số tự sinh mới.
         let codeChange: { code?: string; codeMode?: 'AUTO' | 'MANUAL' } = {};
@@ -752,6 +797,81 @@ export class SalesService {
         return serializeDocument(updated);
       },
     );
+  }
+
+  /**
+   * Người đối chiếu phiếu với khách (22/10/2026 — rà soát liên phòng ban): NVKD gửi đề nghị + NVKD phụ trách (tài khoản liên kết,
+   * còn hoạt động) nếu được phân công bước 3 (SAL-STEP-01). Không có ai thì người được phân bước 3 phía kinh doanh (không kiêm
+   * phát hành — như "cả phòng KD" trước đây), rồi mọi người được phân bước 3.
+   */
+  private async confirmationAudience(order: Document, session: ClientSession, exclude: readonly string[] = []): Promise<{ targetUserIds: string[] }> {
+    return { targetUserIds: (await this.confirmers(order, session, exclude)).map((user) => user.id) };
+  }
+
+  private async confirmers(order: Document, session: ClientSession | undefined, exclude: readonly string[] = []): Promise<Array<{ id: string; name: string }>> {
+    const options = session ? { session } : {};
+    const salesRep = order.salesRepId ? await this.db.collection('employees').findOne({ _id: order.salesRepId as ObjectId }, { ...options, projection: { userId: 1 } }) : null;
+    const candidates = [order.requestedBy, salesRep?.userId].filter((value): value is ObjectId => value instanceof ObjectId);
+    const active = candidates.length
+      ? await this.db.collection('users').find({ _id: { $in: candidates }, status: 'ACTIVE' }, { ...options, projection: { displayName: 1, roles: 1, root: 1, permissionGrants: 1, permissionRevokes: 1 } }).toArray()
+      : [];
+    const named = active
+      .filter((row) => permissionsOf(row).includes('sales.step.confirm') && !exclude.includes(String(row._id)))
+      .map((row) => ({ id: String(row._id), name: String(row.displayName ?? '') }));
+    if (named.length) return [...new Map(named.map((user) => [user.id, user])).values()];
+    const holders = await stepHolders(this.db, 'sales.step.confirm', { session, exclude });
+    const salesSide = holders.filter((user) => !holdsStep(user.doc, 'sales.step.issue'));
+    return (salesSide.length ? salesSide : holders).map(({ id, name }) => ({ id, name }));
+  }
+
+  /** Chờ lập SWK: thủ kho trên phiếu; phiếu chưa có thủ kho thì người được phân bước 4 phụ trách kho xuất. */
+  private async swkAudience(order: Document, session: ClientSession): Promise<string[]> {
+    if (order.warehouseKeeperId) return [(order.warehouseKeeperId as ObjectId).toHexString()];
+    return this.stepAudience('sales.step.ship', session, { warehouseId: (order.warehouseId as ObjectId).toHexString() });
+  }
+
+  /** Bước đang chờ của phiếu và người được phân công (SAL-STEP-01) — dòng thời gian trên phiếu. */
+  async stepOwners(id: string, user: RequestUser): Promise<SalesStepOwners> {
+    const order = await this.db.collection('sales_orders').findOne(
+      { _id: toObjectId(id), ...salesOrderScope(user) },
+      { projection: { status: 1, confirmationStatus: 1, purpose: 1, requestedBy: 1, salesRepId: 1, warehouseKeeperId: 1, warehouseId: 1 } },
+    );
+    if (!order) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+    const pack = (users: ReadonlyArray<{ name: string }>) => ({ names: users.slice(0, 5).map((item) => item.name), more: Math.max(0, users.length - 5) });
+    const status = String(order.status);
+    const sale = !isNonSalePurpose(order.purpose);
+    const confirmPending = order.confirmationStatus === 'PENDING' || order.confirmationStatus === 'REVISION_REQUESTED' || !order.confirmationStatus;
+    // Người được phân công các bước chưa làm (để dòng thời gian hiện "Chờ: …" ở từng bước).
+    const steps: SalesStepOwners['steps'] = {};
+    if (status === 'DRAFT') steps.ISSUE = pack(await stepHolders(this.db, 'sales.step.issue'));
+    if (sale && ['DRAFT', 'PENDING_APPROVAL', 'RESERVED'].includes(status) && confirmPending) steps.CONFIRM = pack(await this.confirmers(order, undefined));
+    if (['DRAFT', 'PENDING_APPROVAL', 'RESERVED'].includes(status)) {
+      const keeper = order.warehouseKeeperId
+        ? await this.db.collection('users').findOne({ _id: order.warehouseKeeperId as ObjectId, status: 'ACTIVE' }, { projection: { displayName: 1, roles: 1, root: 1, permissionGrants: 1, permissionRevokes: 1 } })
+        : null;
+      steps.SHIP = { names: keeper && holdsStep(keeper, 'sales.step.ship') ? [String(keeper.displayName)] : [], more: 0 };
+    }
+    if (sale && ['DRAFT', 'PENDING_APPROVAL', 'RESERVED', 'SHIPPED'].includes(status)) steps.DELIVER = pack(await this.deliverers(order, undefined));
+    const current = status === 'DRAFT' ? 'ISSUE'
+      : status === 'PENDING_APPROVAL' ? 'APPROVAL'
+      : status === 'RESERVED' ? (order.confirmationStatus === 'PENDING' ? 'CONFIRM' : 'SHIP')
+      : status === 'SHIPPED' && sale ? 'DELIVER'
+      : null;
+    const owners = current && current !== 'APPROVAL' ? steps[current] ?? { names: [], more: 0 } : { names: [], more: 0 };
+    return { step: current, ...owners, steps };
+  }
+
+  /** Id người được phân công bước `key` (SAL-STEP-01) — người nhận thông báo. */
+  private async stepAudience(key: PermissionKey, session: ClientSession, options: { exclude?: readonly string[]; warehouseId?: string } = {}): Promise<string[]> {
+    return (await stepHolders(this.db, key, { session, ...options })).map((user) => user.id);
+  }
+
+  /** Người xác nhận giao được phiếu này (bước 5): người có vai trò kho chỉ khi là thủ kho của phiếu. */
+  private async deliverers(order: Document, session: ClientSession | undefined, exclude: readonly string[] = []): Promise<Array<{ id: string; name: string }>> {
+    const keeperId = (order.warehouseKeeperId as ObjectId | undefined)?.toHexString();
+    return (await stepHolders(this.db, 'sales.step.deliver', { session, exclude }))
+      .filter((user) => !hasKeeperRole((user.doc.roles as string[] | undefined) ?? []) || user.id === keeperId)
+      .map(({ id, name }) => ({ id, name }));
   }
 
   /** Người cần biết khi phiếu bị bỏ: NVKD đề nghị, NVKD phụ trách (tài khoản liên kết), thủ kho được giao — trừ chính người thao tác. */
@@ -816,7 +936,8 @@ export class SalesService {
         level: 'WARNING',
         title: `Phiếu ${String(before.code)} đã bị hủy`,
         message: `${request.user.displayName} hủy phiếu xuất kho ${String(before.code)} (${orderParty(before)}): ${input.reason}`,
-        href: `/sales/orders/${id}`,
+        // Phiếu đã hủy chỉ quản trị gốc mở được (DOC-HIDE-01) — người nhận về danh sách.
+        href: '/sales/orders',
         template: 'SALES_ORDER_CANCELLED',
         params: { code: String(before.code), customer: orderParty(before), actor: request.user.displayName, reason: input.reason },
       });
@@ -911,9 +1032,9 @@ export class SalesService {
     return result;
   }
 
-  /** Số lượng khách đã trả lại theo phiếu BH này (phiếu nhập trả hàng TH…). */
+  /** Số lượng khách đã trả lại theo phiếu BH này (phiếu nhập trả hàng TH… chưa hủy — phiếu hủy đã đảo thẻ kho). */
   private async returnedQuantities(orderCode: string, session: ClientSession): Promise<Map<string, Decimal>> {
-    const returns = await this.db.collection('stock_returns').find({ kind: { $in: ['CUSTOMER', 'SAMPLE'] }, salesOrderCode: orderCode }, { session }).toArray();
+    const returns = await this.db.collection('stock_returns').find({ kind: { $in: ['CUSTOMER', 'SAMPLE'] }, salesOrderCode: orderCode, status: { $ne: 'VOIDED' } }, { session }).toArray();
     return this.quantitiesOf(returns.flatMap((row) => (row.lines as Array<{ productId: unknown; quantity: unknown }>).map((line) => ({ productId: line.productId, baseQuantity: line.quantity }))));
   }
 
@@ -957,7 +1078,20 @@ export class SalesService {
     }
     const now = new Date();
     if (shipment) await this.db.collection('shipments').updateOne({ _id: shipment._id }, { $set: { status: 'CANCELLED', cancelledAt: now, cancelReason: input.reason, updatedAt: now } }, { session });
-    const receivables = await this.db.collection('receivables').find({ salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } }, { session }).toArray();
+    const receivableFilter = { salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } };
+    // Phiếu giảm nợ trả hàng đang trừ vào phiếu này (D1) tự hủy trước: tiền hàng trả không thành "khách trả trước".
+    const returnSlips = await voidReturnCreditsOf(
+      this.db,
+      (await this.db.collection('receivables').find(receivableFilter, { session, projection: { _id: 1 } }).toArray()).map((row) => row._id as ObjectId),
+      code,
+      { id: toObjectId(request.user.sub), name: request.user.displayName },
+      session,
+      new Date(),
+      orderId,
+    );
+    // Đơn thanh toán ngay (AR-PAYNOW-01): phiếu thu tự động hủy theo phiếu — không thành khoản khách trả trước.
+    await voidPayNowReceipts(this.db, orderId, `Hủy phiếu ${code}: ${input.reason}`, { id: toObjectId(request.user.sub), name: request.user.displayName }, session, now);
+    const receivables = await this.db.collection('receivables').find(receivableFilter, { session }).toArray();
     let credited = new Decimal(0);
     for (const receivable of receivables) {
       const paid = new Decimal(decimalString(receivable.paidAmount));
@@ -1009,7 +1143,7 @@ export class SalesService {
       level: 'WARNING',
       title: `Phiếu ${code} đã bị hủy`,
       message: `${request.user.displayName} hủy phiếu ${code} (${orderParty(before)}) sau khi giao: ${input.reason}`,
-      href: `/sales/orders/${id}`,
+      href: '/sales/orders',
       template: 'SALES_ORDER_CANCELLED',
       params: { code, customer: orderParty(before), actor: request.user.displayName, reason: input.reason },
     });
@@ -1017,7 +1151,7 @@ export class SalesService {
       actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
       action: 'SALES_ORDER_VOIDED', entityType: 'SalesOrder', entityId: id,
       before: serializeDocument(before), after: serializeDocument(updated),
-      metadata: { reason: input.reason, restocked: back.map((line) => ({ productId: line.productId, quantity: line.quantity.toString() })), credited: credited.toString(), ...(via ? { changeRequest: via } : {}) },
+      metadata: { reason: input.reason, restocked: back.map((line) => ({ productId: line.productId, quantity: line.quantity.toString() })), credited: credited.toString(), ...(returnSlips.length ? { returnCreditsVoided: returnSlips } : {}), ...(via ? { changeRequest: via } : {}) },
     }, session);
     return serializeDocument(await this.releaseNumber(updated, request, session));
   }
@@ -1039,7 +1173,7 @@ export class SalesService {
     if (before.status === 'CANCELLED') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã hủy không sửa được' });
     const shipped = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status));
     const { version: _version, codeMode: _codeMode, ...payload } = input;
-    const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { allowBlockedCustomer: true });
+    const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { allowBlockedCustomer: true, allowRepOverride: true });
     const warehouseChanged = String(fields.warehouseId) !== String(before.warehouseId);
     const customerChanged = String(fields.customerId ?? '') !== String(before.customerId ?? '');
     if (shipped && warehouseChanged) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã xuất kho: không đổi kho xuất (hủy phiếu rồi lập lại)' });
@@ -1059,13 +1193,13 @@ export class SalesService {
       });
     }
     if (shipped && purposeChanged && isLoanPurpose(beforePurpose) && !isLoanPurpose(afterPurpose)) {
-      const loanReturns = await this.db.collection('stock_returns').countDocuments({ kind: 'SAMPLE', salesOrderCode: String(before.code) }, { session });
+      const loanReturns = await this.db.collection('stock_returns').countDocuments({ kind: 'SAMPLE', salesOrderCode: String(before.code), status: { $ne: 'VOIDED' } }, { session });
       if (loanReturns) {
         throw new ConflictException({ code: 'PURPOSE_CHANGE_NOT_ALLOWED', message: 'Phiếu đã có hàng mang về nhập lại — không đổi sang xuất tặng được; dùng "Chốt phần chưa trả → Hỏng / tiêu hao / tặng"' });
       }
     }
     if (shipped && purposeChanged && !isNonSalePurpose(beforePurpose)) {
-      const customerReturns = await this.db.collection('stock_returns').countDocuments({ kind: 'CUSTOMER', salesOrderCode: String(before.code) }, { session });
+      const customerReturns = await this.db.collection('stock_returns').countDocuments({ kind: 'CUSTOMER', salesOrderCode: String(before.code), status: { $ne: 'VOIDED' } }, { session });
       if (customerReturns) throw new ConflictException({ code: 'PURPOSE_CHANGE_NOT_ALLOWED', message: 'Phiếu đã có hàng khách trả — không đổi sang phiếu hàng mẫu / kiểm định / xuất tặng được' });
     }
     let codeChange: { code?: string; codeMode?: 'AUTO' | 'MANUAL' } = {};
@@ -1132,6 +1266,8 @@ export class SalesService {
         );
       }
       Object.assign(fields, loanFields);
+      // Đơn thanh toán ngay (AR-PAYNOW-01): hủy phiếu thu tự động trước, ghi lại theo số mới sau khi cập nhật chứng từ.
+      const payNowVoided = await voidPayNowReceipts(this.db, orderId, `Sửa phiếu ${code} — ghi lại phiếu thu theo số mới`, { id: toObjectId(request.user.sub), name: request.user.displayName }, session, now);
       const receivable = await this.db.collection('receivables').findOne({ salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } }, { session });
       if (receivable && isNonSalePurpose(afterPurpose)) {
         // Chuyển thành phiếu hàng mẫu / kiểm định / xuất tặng: không còn gì phải thu.
@@ -1154,6 +1290,10 @@ export class SalesService {
           { $set: { amount: decimal(amount.toString()), status, partnerId: fields.customerId, salesOrderCode: code, updatedAt: now }, $inc: { version: 1 } },
           { session },
         );
+        if (payNowVoided.length && Number(fields.paymentTermDays ?? -1) === 0 && 'payNowMethod' in fields && !before.payNowUndone) {
+          const current = await this.db.collection('receivables').findOne({ _id: receivable._id }, { session });
+          if (current) await postPayNowReceipt(this.db, this.sequences, { receivable: current, order: { ...before, ...fields, code }, receivedAt: payNowVoided[0]!.receivedAt as Date, actor: PAY_NOW_ACTOR }, session, now);
+        }
       }
     }
     const overridden = this.hasPriceOverride(input) && !before.priceOverrideRequestId
@@ -1240,7 +1380,7 @@ export class SalesService {
   ) {
     const { order, purpose, code } = loan;
     const category = loanInCategory(purpose);
-    const returnCode = await this.sequences.next('TH', session, 4, new Date(), 'compact');
+    const returnCode = await nextReturnInCode(this.db, this.sequences, session);
     await this.inventory.applyPhysicalMovement({
       warehouseId: (order.warehouseId as ObjectId).toHexString(),
       referenceType: 'StockReturn',
@@ -1324,6 +1464,33 @@ export class SalesService {
    * Chốt phần hàng mẫu / kiểm định chưa về (SAL-TYPE-01): CONSUMED = hỏng / tiêu hao khi kiểm định / tặng — không nhập lại;
    * SOLD = đại lý giữ mua luôn — ghi nhập lại phần còn ở ngoài rồi lập phiếu BH bán bình thường (form điền sẵn), tồn kho đúng.
    */
+  /**
+   * Kế toán "Bỏ ghi thu tự động" (AR-PAYNOW-01): đơn thanh toán ngay nhưng khách thực tế chưa trả — hủy phiếu thu tự động, chứng từ
+   * mở lại với hạn = ngày giao (thành quá hạn như công nợ thường). Sửa phiếu sau đó không tự ghi thu lại.
+   */
+  async undoPayNow(id: string, reason: string, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`sales-order-paynow-undo:${id}`, idempotencyKey, { id, reason }, async (session) => {
+      const orderId = toObjectId(id);
+      const order = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
+      if (!order) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+      const now = new Date();
+      const actor = { id: toObjectId(request.user.sub), name: request.user.displayName };
+      const voided = await voidPayNowReceipts(this.db, orderId, `Bỏ ghi thu tự động: ${reason}`, actor, session, now);
+      if (!voided.length) throw new ConflictException({ code: 'PAY_NOW_RECEIPT_NOT_FOUND', message: `Phiếu ${String(order.code)} không có phiếu thu tự động còn hiệu lực` });
+      await this.db.collection('sales_orders').updateOne(
+        { _id: orderId },
+        { $set: { payNowUndone: { at: now, byName: actor.name, reason }, updatedAt: now }, $inc: { version: 1 } },
+        { session },
+      );
+      const codes = voided.map((payment) => String(payment.code));
+      await this.audit.record(
+        { actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: 'SALES_PAY_NOW_UNDONE', entityType: 'SalesOrder', entityId: id, metadata: { payments: codes, reason } },
+        session,
+      );
+      return { id, voided: codes };
+    });
+  }
+
   async loanClose(id: string, input: LoanClose, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(`sales-loan-close:${id}`, idempotencyKey, input, async (session) => {
       const loan = await this.openLoan(id, input.version, request, session);
@@ -1366,15 +1533,22 @@ export class SalesService {
     });
   }
 
+  /**
+   * Dư nợ xét hạn mức: khoản phải thu chưa thu + phiếu bán đã xuất kho chưa giao (chưa ghi công nợ — AR-DLV-01),
+   * để hạn mức không bị nới khi công nợ chuyển sang ghi lúc giao thành công.
+   */
   private async exposure(customerId: ObjectId, session?: ClientSession): Promise<string> {
-    const rows = await this.db.collection('receivables').aggregate(
-      [
-        { $match: { partnerId: customerId, status: { $in: ['OPEN', 'PARTIALLY_PAID', 'OVERDUE'] } } },
-        { $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
-      ],
-      session ? { session } : {},
-    ).toArray();
-    return decimalString(rows[0]?.total ?? Decimal128.fromString('0'));
+    const [rows, pending] = await Promise.all([
+      this.db.collection('receivables').aggregate(
+        [
+          { $match: { partnerId: customerId, status: { $in: ['OPEN', 'PARTIALLY_PAID', 'OVERDUE'] } } },
+          { $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
+        ],
+        session ? { session } : {},
+      ).toArray(),
+      pendingDeliveryOf(this.db, customerId, session),
+    ]);
+    return new Decimal(decimalString(rows[0]?.total ?? Decimal128.fromString('0'))).add(pending.amount).toString();
   }
 
   async submit(id: string, version: number, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
@@ -1392,6 +1566,8 @@ export class SalesService {
           if (!order.warehouseKeeperId) {
             throw new BadRequestException({ code: 'KEEPER_REQUIRED', message: 'Chọn thủ kho xuất hàng trước khi phát hành phiếu BH' });
           }
+          // Thủ kho đã chọn phải còn được phân công bước 4 lúc phát hành (SAL-STEP-01).
+          await this.loadKeeper((order.warehouseKeeperId as ObjectId).toHexString(), order.warehouseId as ObjectId, session, true);
           if (isNonSale(order)) return this.submitLoan(order, request, session);
           const customer = await this.loadCustomer(order.customerId as ObjectId, session);
           this.assertCustomerCanOrder(customer);
@@ -1424,7 +1600,7 @@ export class SalesService {
             );
             await this.db.collection('sales_orders').updateOne(
               { _id: orderId, version },
-              { $set: { status: 'PENDING_APPROVAL', approvalStatus: 'PENDING', issuedAt: new Date(), issuedByName: request.user.displayName, updatedAt: new Date() }, $unset: { confirmationNote: '' }, $inc: { version: 1 } },
+              { $set: { status: 'PENDING_APPROVAL', approvalStatus: 'PENDING', issuedAt: new Date(), issuedBy: toObjectId(request.user.sub), issuedByName: request.user.displayName, updatedAt: new Date() }, $unset: { confirmationNote: '' }, $inc: { version: 1 } },
               { session },
             );
             await this.outbox.enqueue(
@@ -1456,14 +1632,14 @@ export class SalesService {
             await this.db.collection('sales_orders').updateOne(
               { _id: orderId, version },
               {
-                $set: { status: 'RESERVED', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'PENDING', issuedAt: new Date(), issuedByName: request.user.displayName, updatedAt: new Date() },
+                $set: { status: 'RESERVED', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'PENDING', issuedAt: new Date(), issuedBy: toObjectId(request.user.sub), issuedByName: request.user.displayName, updatedAt: new Date() },
                 $unset: { confirmationNote: '' },
                 $inc: { version: 1 },
               },
               { session },
             );
             await this.notify(session, id, {
-              targetRoles: ['SALES', 'SALES_MANAGER'],
+              ...(await this.confirmationAudience(order, session)),
               level: 'INFO',
               title: `Phiếu ${String(order.code)} chờ đối chiếu với khách`,
               message: `Kiểm tra mã hàng, số lượng với ${orderParty(order)} trước khi chuyển kho xuất hàng.`,
@@ -1501,14 +1677,14 @@ export class SalesService {
     await this.db.collection('sales_orders').updateOne(
       { _id: orderId, version: order.version },
       {
-        $set: { status: 'RESERVED', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'NOT_REQUIRED', issuedAt: now, issuedByName: request.user.displayName, updatedAt: now },
+        $set: { status: 'RESERVED', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'NOT_REQUIRED', issuedAt: now, issuedBy: toObjectId(request.user.sub), issuedByName: request.user.displayName, updatedAt: now },
         $unset: { confirmationNote: '' },
         $inc: { version: 1 },
       },
       { session },
     );
     await this.notify(session, id, {
-      ...(order.warehouseKeeperId ? { targetUserIds: [(order.warehouseKeeperId as ObjectId).toHexString()] } : { targetRoles: ['WAREHOUSE', 'WAREHOUSE_MANAGER'] }),
+      targetUserIds: await this.swkAudience(order, session),
       level: 'INFO',
       title: `Phiếu ${String(order.code)} chờ bạn lập SWK`,
       message: `Lập phiếu SWK và xuất hàng cho ${orderParty(order)}.`,
@@ -1567,7 +1743,7 @@ export class SalesService {
             session,
           );
           await this.notify(session, id, {
-            targetRoles: ['SALES', 'SALES_MANAGER'],
+            ...(await this.confirmationAudience(order, session)),
             level: 'INFO',
             title: `Phiếu ${String(order.code)} đã duyệt, chờ đối chiếu với khách`,
             message: `Kiểm tra mã hàng, số lượng với ${orderParty(order)} trước khi chuyển kho xuất hàng.`,
@@ -1580,7 +1756,10 @@ export class SalesService {
     );
   }
 
-  /** Bước 3: kho lập phiếu xuất kho bán hàng số SWK, trừ tồn và phát sinh công nợ. */
+  /**
+   * Bước 3: kho lập phiếu xuất kho bán hàng số SWK, trừ tồn. Công nợ và doanh thu ghi khi xác nhận giao thành công
+   * (AR-DLV-01, 28/10/2026 — thủ kho có thể lập SWK để chuẩn bị hàng, vài ngày / vài tuần sau mới giao).
+   */
   async ship(id: string, input: WarehouseIssue, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     const { version } = input;
     return this.idempotency.execute(
@@ -1616,14 +1795,7 @@ export class SalesService {
             nonSalePurpose ? nonSaleOutCategory(nonSalePurpose) : undefined,
           );
           const now = new Date();
-          const dueDate = new Date(now);
-          dueDate.setUTCDate(dueDate.getUTCDate() + Number(order.paymentTermDays ?? customer?.paymentTermDays ?? 0));
           const shipmentId = new ObjectId();
-          const receivableId = nonSalePurpose ? null : new ObjectId();
-          // Phần nợ của nhóm công nợ tách riêng (CN-SEG-01 — VD quạt & vợt muỗi): theo dõi riêng, không tính quá hạn.
-          const segments = receivableId
-            ? orderSegments(orderLinesForSegments(order), String(order.taxRate ?? '8'), decimalString(order.grandTotal), rulesFor(order.customerId ? String(order.customerId) : undefined, await loadSegmentRules(this.db, session)))
-            : [];
           await Promise.all([
             this.db.collection('shipments').insertOne(
               {
@@ -1644,26 +1816,6 @@ export class SalesService {
                 version: 1,
                 createdAt: now,
                 updatedAt: now,
-              },
-              { session },
-            ),
-            receivableId && this.db.collection('receivables').insertOne(
-              {
-                _id: receivableId,
-                code: await this.sequences.next('AR', session),
-                partnerId: order.customerId,
-                salesOrderCode: order.code,
-                salesOrderId: orderId,
-                shipmentId,
-                amount: decimal(decimalString(order.grandTotal)),
-                paidAmount: decimal('0'),
-                dueDate,
-                // Phiếu 0 đ (xuất kiểm định / mẫu): không có gì phải thu.
-                status: new Decimal(decimalString(order.grandTotal)).isZero() ? 'PAID' : 'OPEN',
-                ...(segments.length ? { segments: segments.map((part) => ({ code: part.code, amount: decimal(part.amount), paid: decimal('0') })) } : {}),
-                createdAt: now,
-                updatedAt: now,
-                version: 1,
               },
               { session },
             ),
@@ -1690,11 +1842,22 @@ export class SalesService {
               action: 'SALES_ORDER_SHIPPED',
               entityType: 'SalesOrder',
               entityId: id,
-              metadata: { shipmentCode, ...(receivableId ? { receivableId: receivableId.toHexString() } : { purpose: nonSalePurpose }) },
+              metadata: { shipmentCode, ...(nonSalePurpose ? { purpose: nonSalePurpose } : {}) },
             },
             session,
           );
-          return { id, status: 'SHIPPED', shipmentCode, ...(receivableId ? { receivableId: receivableId.toHexString() } : {}) };
+          if (!nonSalePurpose) {
+            await this.notify(session, id, {
+              targetUserIds: (await this.deliverers(order, session, [request.user.sub])).map((user) => user.id),
+              level: 'INFO',
+              title: `Phiếu ${String(order.code)} đã xuất kho (${shipmentCode}) — chờ xác nhận giao hàng`,
+              message: `Xác nhận khi ${orderParty(order)} đã nhận hàng.`,
+              href: `/sales/orders/${id}`,
+              template: 'SALES_DELIVERY_PENDING',
+              params: { code: String(order.code), slip: shipmentCode, customer: orderParty(order) },
+            });
+          }
+          return { id, status: 'SHIPPED', shipmentCode };
       },
     );
   }
@@ -1724,16 +1887,14 @@ export class SalesService {
           await this.db.collection('sales_orders').updateOne(
             { _id: orderId, version: input.version },
             {
-              $set: { confirmationStatus: 'CONFIRMED', confirmedAt: now, confirmedByName: request.user.displayName, updatedAt: now, ...(input.note ? { confirmationNote: input.note } : {}) },
+              $set: { confirmationStatus: 'CONFIRMED', confirmedAt: now, confirmedBy: toObjectId(request.user.sub), confirmedByName: request.user.displayName, updatedAt: now, ...(input.note ? { confirmationNote: input.note } : {}) },
               $push: { confirmationEvidence: { $each: evidence } },
               $inc: { version: 1 },
             } as Document,
             { session },
           );
           await this.notify(session, id, {
-            ...(order.warehouseKeeperId
-              ? { targetUserIds: [(order.warehouseKeeperId as ObjectId).toHexString()] }
-              : { targetRoles: ['WAREHOUSE', 'WAREHOUSE_MANAGER'] }),
+            targetUserIds: await this.swkAudience(order, session),
             level: 'INFO',
             title: `Phiếu ${String(order.code)} đã đối chiếu xong — chờ bạn lập SWK`,
             message: `Lập phiếu SWK và xuất hàng cho ${orderParty(order)}.`,
@@ -1748,7 +1909,7 @@ export class SalesService {
             {
               $set: {
                 status: 'DRAFT', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'REVISION_REQUESTED', confirmationNote: input.note,
-                revisionRequestedAt: now, revisionRequestedByName: request.user.displayName, updatedAt: now,
+                revisionRequestedAt: now, revisionRequestedBy: toObjectId(request.user.sub), revisionRequestedByName: request.user.displayName, updatedAt: now,
               },
               ...(evidence.length ? { $push: { confirmationEvidence: { $each: evidence } } } : {}),
               $inc: { version: 1 },
@@ -1756,7 +1917,7 @@ export class SalesService {
             { session },
           );
           await this.notify(session, id, {
-            targetRoles: ['ACCOUNTANT'],
+            targetUserIds: await this.stepAudience('sales.step.issue', session, { exclude: [request.user.sub] }),
             level: 'WARNING',
             title: `Phiếu ${String(order.code)} cần sửa`,
             message: `${request.user.displayName}: ${input.note ?? ''}`,
@@ -1782,7 +1943,11 @@ export class SalesService {
     );
   }
 
-  /** Nhiệm vụ 3.4: xác nhận đơn vị vận chuyển đã giao thành công. */
+  /**
+   * Bước 5 — xác nhận giao hàng thành công (SAL-STEP-01): người được phân công bước 5; người có vai trò kho chỉ phiếu mình là thủ kho,
+   * người khác được phân bước 5 xác nhận mọi phiếu đã xuất. Lưu người xác nhận.
+   * Phiếu bán: ghi doanh thu và công nợ tại đây (AR-DLV-01, 28/10/2026), hạn thanh toán = ngày giao + số ngày nợ; báo kế toán.
+   */
   async deliver(id: string, version: number, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(
       `sales-order-deliver:${id}`,
@@ -1791,23 +1956,27 @@ export class SalesService {
       async (session) => {
         const orderId = toObjectId(id);
         const now = new Date();
-        const order = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session, projection: { code: 1, warehouseKeeperId: 1, warehouseKeeperName: 1 } });
-        if (order && !isAssignedKeeper(request.user, order)) {
+        const order = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
+        if (order && !canDeliverSalesOrder(request.user, order)) {
           throw new ForbiddenException({ code: 'NOT_ASSIGNED_KEEPER', message: `Phiếu ${String(order.code)} được giao cho thủ kho ${String(order.warehouseKeeperName ?? 'khác')}` });
         }
+        const deliveredBy = { deliveredBy: toObjectId(request.user.sub), deliveredByName: request.user.displayName };
         const updated = await this.db.collection('sales_orders').updateOne(
           { _id: orderId, version, status: 'SHIPPED' },
-          { $set: { status: 'DELIVERED', deliveredAt: now, updatedAt: now }, $inc: { version: 1 } },
+          { $set: { status: 'DELIVERED', deliveredAt: now, ...deliveredBy, updatedAt: now }, $inc: { version: 1 } },
           { session },
         );
-        if (updated.modifiedCount !== 1) {
+        if (!order || updated.modifiedCount !== 1) {
           throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Chỉ xác nhận giao cho đơn đã xuất kho' });
         }
-        await this.db.collection('shipments').updateOne(
+        const shipment = await this.db.collection('shipments').findOneAndUpdate(
           { salesOrderId: orderId, status: 'SHIPPED' },
-          { $set: { status: 'DELIVERED', deliveredAt: now, updatedAt: now } },
-          { session },
+          { $set: { status: 'DELIVERED', deliveredAt: now, ...deliveredBy, updatedAt: now } },
+          { session, returnDocument: 'after' },
         );
+        const receivable = await this.postOrderReceivable(order, (shipment?._id as ObjectId | undefined) ?? null, now, session);
+        // Đơn thanh toán ngay (AR-PAYNOW-01): ghi luôn phiếu thu — tiền thu khi giao hàng.
+        const payNow = receivable?.payNow ? await postPayNowReceipt(this.db, this.sequences, { receivable: receivable.document, order, receivedAt: now, actor: PAY_NOW_ACTOR }, session, now) : null;
         await this.audit.record(
           {
             actorId: request.user.sub,
@@ -1816,12 +1985,73 @@ export class SalesService {
             action: 'SALES_ORDER_DELIVERED',
             entityType: 'SalesOrder',
             entityId: id,
+            metadata: {
+              byAssignedKeeper: (order.warehouseKeeperId as ObjectId | undefined)?.toHexString() === request.user.sub,
+              ...(receivable ? { receivableId: receivable.id.toHexString(), dueDate: receivable.dueDate.toISOString() } : {}),
+              ...(payNow ? { payNowReceipt: String(payNow.code) } : {}),
+            },
           },
           session,
         );
-        return { id, status: 'DELIVERED' };
+        if (receivable) {
+          await this.notify(session, id, {
+            targetRoles: ['ACCOUNTANT'],
+            level: 'INFO',
+            title: payNow
+              ? `Phiếu ${String(order.code)} đã giao thành công — thanh toán ngay, đã tự ghi thu ${decimalString(payNow.amount)} đ (${String(payNow.code)})`
+              : `Phiếu ${String(order.code)} đã giao thành công — ghi công nợ ${decimalString(order.grandTotal)} đ`,
+            message: payNow
+              ? `${orderParty(order)} · ${payNow.method === 'CASH' ? 'tiền mặt' : 'chuyển khoản'} — chưa nhận được tiền thì "Bỏ ghi thu tự động" trên phiếu`
+              : `${orderParty(order)} · hạn thanh toán ${vnDate(receivable.dueDate)}`,
+            href: `/sales/orders/${id}`,
+            template: 'SALES_DELIVERED_RECEIVABLE',
+            params: { code: String(order.code), customer: orderParty(order), amount: decimalString(order.grandTotal), due: vnDate(receivable.dueDate) },
+          });
+        }
+        return { id, status: 'DELIVERED', ...(receivable ? { receivableId: receivable.id.toHexString() } : {}) };
       },
     );
+  }
+
+  /**
+   * Ghi khoản phải thu của phiếu bán khi giao thành công (AR-DLV-01). Bỏ qua phiếu không phải bán (mẫu / kiểm định / tặng)
+   * và phiếu đã có khoản phải thu (SWK lập trước 28/10/2026 — khi đó công nợ ghi lúc xuất kho).
+   */
+  private async postOrderReceivable(order: Document, shipmentId: ObjectId | null, at: Date, session: ClientSession): Promise<{ id: ObjectId; dueDate: Date; payNow: boolean; document: Document } | null> {
+    if (isNonSalePurpose(order.purpose) || !order.customerId) return null;
+    const orderId = order._id as ObjectId;
+    const existing = await this.db.collection('receivables').findOne(
+      { salesOrderId: orderId, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } },
+      { session, projection: { _id: 1 } },
+    );
+    if (existing) return null;
+    const customer = await this.db.collection('partners').findOne({ _id: order.customerId as ObjectId }, { session, projection: { paymentTermDays: 1 } });
+    const dueDate = new Date(at);
+    const termDays = Number(order.paymentTermDays ?? customer?.paymentTermDays ?? 0);
+    dueDate.setUTCDate(dueDate.getUTCDate() + termDays);
+    const grandTotal = decimalString(order.grandTotal);
+    // Phần nợ của nhóm công nợ tách riêng (CN-SEG-01 — VD quạt & vợt muỗi): theo dõi riêng, không tính quá hạn.
+    const segments = orderSegments(orderLinesForSegments(order), String(order.taxRate ?? '8'), grandTotal, rulesFor(String(order.customerId), await loadSegmentRules(this.db, session)));
+    const id = new ObjectId();
+    const document: Document = {
+      _id: id,
+      code: await this.sequences.next('AR', session),
+      partnerId: order.customerId,
+      salesOrderCode: order.code,
+      salesOrderId: orderId,
+      ...(shipmentId ? { shipmentId } : {}),
+      amount: decimal(grandTotal),
+      paidAmount: decimal('0'),
+      dueDate,
+      // Phiếu 0 đ: không có gì phải thu.
+      status: new Decimal(grandTotal).isZero() ? 'PAID' : 'OPEN',
+      ...(segments.length ? { segments: segments.map((part) => ({ code: part.code, amount: decimal(part.amount), paid: decimal('0') })) } : {}),
+      createdAt: at,
+      updatedAt: at,
+      version: 1,
+    };
+    await this.db.collection('receivables').insertOne(document, { session });
+    return { id, dueDate, payNow: termDays === 0 && Boolean(order.payNowMethod) && new Decimal(grandTotal).gt(0), document };
   }
 
   // ------------------------------------------------------------------------------------------------

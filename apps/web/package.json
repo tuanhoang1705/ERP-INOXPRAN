@@ -19,6 +19,7 @@
     "@inoxpran/contracts": "*",
     "cookie": "0.7.2",
     "lucide-svelte": "^0.545.0",
+    "pdfmake": "0.3.13",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "@types/node": "^24.10.0",
+    "@types/pdfmake": "0.3.3",
     "@types/qrcode": "^1.5.6",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.3",

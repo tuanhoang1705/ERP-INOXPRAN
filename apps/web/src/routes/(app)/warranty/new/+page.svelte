@@ -11,7 +11,10 @@
 
   type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; status: string };
   type Technician = { id: string; displayName: string };
-  type Coverage = { coverage: string; exclusion?: string; startsOn?: string; expiresOn?: string; months: number; priorServiceCount: number; extensionDays: number };
+  type Coverage = {
+    coverage: string; exclusion?: string; startsOn?: string; expiresOn?: string; months: number; priorServiceCount: number; extensionDays: number;
+    invoiceless?: boolean; declaredExpired?: boolean;
+  };
 
   let dealers = $state<Dealer[]>([]);
   let products = $state<Product[]>([]);
@@ -28,8 +31,12 @@
   let productId = $state('');
   let serial = $state('');
   let noInvoice = $state(false);
+  /** Không hóa đơn: nhân viên chọn vẫn bảo hành hay sửa có tính phí (WAR-NOINV-01) — không chọn sẵn. */
+  let noInvoiceDecision = $state<'' | 'WARRANTY' | 'PAID'>('');
+  let declaredPurchaseDate = $state('');
   let invoiceNumber = $state('');
   let invoiceDate = $state('');
+  const invoiceComplete = $derived(Boolean(invoiceNumber.trim() && invoiceDate));
   let receivedDate = $state(todayIso());
   let promisedDate = $state(addDays(todayIso(), WARRANTY_DEFAULTS.turnaroundDays));
   let promisedTouched = $state(false);
@@ -81,14 +88,18 @@
 
   // Xem trước còn / hết bảo hành (cùng cách tính với lúc lưu, kể cả số lần bảo hành trước).
   let previewTimer: ReturnType<typeof setTimeout> | undefined;
+  // Chưa nhập đủ hóa đơn / chưa chọn hướng xử lý khi không có hóa đơn: chưa kết luận (không báo đỏ sớm).
   $effect(() => {
     const query = new URLSearchParams({ productId, receivedDate });
-    if (!noInvoice && invoiceNumber.trim() && invoiceDate) {
+    if (noInvoice) {
+      query.set('noInvoiceWarranty', String(noInvoiceDecision === 'WARRANTY'));
+      if (declaredPurchaseDate) query.set('declaredPurchaseDate', declaredPurchaseDate);
+    } else if (invoiceComplete) {
       query.set('invoiceNumber', invoiceNumber.trim());
       query.set('invoiceDate', invoiceDate);
     }
     clearTimeout(previewTimer);
-    if (!productId || !receivedDate) {
+    if (!productId || !receivedDate || (noInvoice ? !noInvoiceDecision : !invoiceComplete)) {
       coverage = null;
       return;
     }
@@ -116,6 +127,8 @@
           serial: optional(serial),
           invoiceNumber: noInvoice ? undefined : optional(invoiceNumber),
           invoiceDate: noInvoice || !invoiceDate ? undefined : invoiceDate,
+          noInvoiceWarranty: noInvoice ? noInvoiceDecision === 'WARRANTY' : undefined,
+          declaredPurchaseDate: noInvoice && declaredPurchaseDate ? declaredPurchaseDate : undefined,
           receivedDate,
           promisedDate,
           technicianId: technicianId || undefined,
@@ -183,12 +196,38 @@
         </select>
       </div>
       <div class="field"><label for="serial">{m.wr_serial()}</label><input id="serial" bind:value={serial} maxlength="80" placeholder={m.khong_bat_buoc()} /><small class="hint">{m.wr_serial_hint()}</small></div>
-      <div class="field"><label for="invoice-no">{m.wr_invoice_no()}</label><input id="invoice-no" bind:value={invoiceNumber} maxlength="40" disabled={noInvoice} required={!noInvoice} /></div>
-      <div class="field"><label for="invoice-date">{m.wr_invoice_date()}</label><input id="invoice-date" type="date" bind:value={invoiceDate} max={receivedDate} disabled={noInvoice} required={!noInvoice} /></div>
+      {#if !noInvoice}
+        <div class="field"><label for="invoice-no">{m.wr_invoice_no()} <span class="req">*</span></label><input id="invoice-no" bind:value={invoiceNumber} maxlength="40" required /></div>
+        <div class="field"><label for="invoice-date">{m.wr_invoice_date()} <span class="req">*</span></label><input id="invoice-date" type="date" bind:value={invoiceDate} max={receivedDate} required /></div>
+      {/if}
       <label class="check"><input type="checkbox" bind:checked={noInvoice} />{m.wr_no_invoice()}</label>
+      {#if noInvoice}
+        <fieldset class="decision wide">
+          <legend>{m.wr_noinv_decision()} <span class="req">*</span></legend>
+          <label><input type="radio" name="no-invoice-decision" value="WARRANTY" bind:group={noInvoiceDecision} required />{m.wr_noinv_warranty()}</label>
+          <label><input type="radio" name="no-invoice-decision" value="PAID" bind:group={noInvoiceDecision} />{m.wr_noinv_paid()}</label>
+        </fieldset>
+        <div class="field">
+          <label for="declared-date">{m.wr_noinv_declared_date()}</label>
+          <input id="declared-date" type="date" bind:value={declaredPurchaseDate} max={receivedDate} />
+          <small class="hint">{m.wr_noinv_declared_hint()}</small>
+        </div>
+      {/if}
     </div>
+    {#if productId && !noInvoice && !invoiceComplete}
+      <p class="coverage info"><Info size={17} />{m.wr_cov_enter_invoice()}</p>
+    {:else if productId && noInvoice && !noInvoiceDecision}
+      <p class="coverage info"><Info size={17} />{m.wr_noinv_choose()}</p>
+    {/if}
     {#if coverage}
-      {#if coverage.coverage === 'IN_WARRANTY' && coverage.expiresOn}
+      {#if coverage.invoiceless}
+        <p class="coverage ok"><CircleCheck size={17} />{m.wr_cov_invoiceless()}</p>
+        {#if coverage.expiresOn && coverage.declaredExpired}
+          <p class="coverage warn"><TriangleAlert size={17} />{m.wr_cov_declared_expired({ date: date(coverage.expiresOn) })}</p>
+        {:else if coverage.expiresOn}
+          <p class="coverage info"><Info size={17} />{m.wr_cov_declared_until({ date: date(coverage.expiresOn) })}</p>
+        {/if}
+      {:else if coverage.coverage === 'IN_WARRANTY' && coverage.expiresOn}
         <p class="coverage ok"><CircleCheck size={17} />{m.wr_cov_in_until({ date: date(coverage.expiresOn), days: daysBetween(receivedDate, coverage.expiresOn) })}</p>
       {:else if coverage.coverage === 'OUT_OF_WARRANTY' && coverage.expiresOn}
         <p class="coverage warn"><TriangleAlert size={17} />{m.wr_cov_out_since({ date: date(coverage.expiresOn) })}</p>
@@ -237,6 +276,9 @@
   .wide { grid-column: span 2; }
   .hint { color: var(--subtle); font-size: 11.5px; }
   .check { display: flex; align-items: center; gap: 8px; align-self: center; font-size: 13.5px; font-weight: 500; }
+  .decision { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .decision legend { padding: 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .decision label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
   .coverage { display: flex; align-items: flex-start; gap: 8px; margin: 14px 22px 0; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13.5px; }
   .coverage.ok { background: var(--green-soft); color: var(--green); }
   .coverage.warn { background: var(--amber-soft); color: var(--amber); }

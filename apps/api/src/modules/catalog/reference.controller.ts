@@ -10,7 +10,7 @@ import { Public } from '../../common/public.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
-import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
+import { customerProvince, oldProvincesOf, provinceReportName, SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 
 function escapeRegex(value: string): string {
@@ -163,7 +163,7 @@ export class ReferenceController {
       .slice()
       .sort((a, b) => Number(a.minimumRevenue) - Number(b.minimumRevenue));
     const progress = await this.db.collection('sales_orders').aggregate([
-      { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: quarter.start } } },
+      { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: quarter.start } } },
       { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
       { $lookup: { from: 'partners', localField: '_id', foreignField: '_id', as: 'partner' } },
       { $unwind: '$partner' },
@@ -221,7 +221,12 @@ export class ReferenceController {
     // Khoảng ngày (LIST-DATE-01) = kỳ tính cột doanh số; bỏ trống = kỳ bậc doanh số đang cấu hình (quý).
     const revenueWindow = dateBounds(from, to);
     const filter: Document = { kind: { $in: ['CUSTOMER', 'BOTH'] } };
-    if (region) filter.regionCode = region;
+    // Khu vực = tỉnh mới (PV-01): khách đã gán tỉnh, hoặc dữ liệu cũ có mã khu vực là tỉnh cũ thuộc tỉnh mới đó.
+    if (region) {
+      const newCode = customerProvince({ regionCode: region }).newCode ?? region;
+      const oldCodes = oldProvincesOf(newCode).map((item) => item.code);
+      filter.$and = [{ $or: [{ provinceNewCode: newCode }, { provinceNewCode: { $exists: false }, regionCode: { $in: [...oldCodes, ...(newCode === 'HA-NOI' ? ['HN-LE', 'HN-NPP'] : [])] } }] }];
+    }
     if (tier) filter.customerTier = tier;
     if (stage === 'PROSPECT') filter.stage = 'PROSPECT';
     else if (stage === 'CUSTOMER') filter.stage = { $ne: 'PROSPECT' };
@@ -238,7 +243,7 @@ export class ReferenceController {
       paging ? this.db.collection('partners').countDocuments(filter) : Promise.resolve(0),
     ]);
     const ids = partners.map((partner) => partner._id as ObjectId);
-    const [exposures, revenues, regions, followUps] = await Promise.all([
+    const [exposures, revenues, followUps] = await Promise.all([
       this.db.collection('receivables').aggregate([
         { $match: { status: { $in: OPEN_RECEIVABLE_STATUSES }, partnerId: { $in: ids } } },
         {
@@ -250,10 +255,9 @@ export class ReferenceController {
         },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: revenueWindow ?? { $gte: quarter.start }, customerId: { $in: ids } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: revenueWindow ?? { $gte: quarter.start }, customerId: { $in: ids } } },
         { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
       ]).toArray(),
-      this.db.collection('regions').find({}).toArray(),
       this.db.collection('partner_activities').aggregate([
         { $match: { partnerId: { $in: ids }, done: false, followUpOn: { $exists: true } } },
         { $sort: { followUpOn: 1 } },
@@ -263,7 +267,6 @@ export class ReferenceController {
     const followUpById = new Map(followUps.map((row) => [(row._id as ObjectId).toHexString(), { on: String(row.followUpOn), note: row.followUpNote as string | undefined }]));
     const exposureById = new Map(exposures.map((row) => [(row._id as ObjectId).toHexString(), row]));
     const revenueById = new Map(revenues.map((row) => [(row._id as ObjectId).toHexString(), decimalString(row.revenue)]));
-    const regionName = new Map(regions.map((row) => [String(row.code), String(row.name)]));
     const rows = partners.map((partner) => {
         const id = (partner._id as ObjectId).toHexString();
         const exposure = exposureById.get(id);
@@ -271,7 +274,7 @@ export class ReferenceController {
           ...serializeDocument(partner),
           stage: partner.stage ?? 'CUSTOMER',
           nextFollowUp: followUpById.get(id) ?? null,
-          regionName: partner.regionCode ? regionName.get(String(partner.regionCode)) : undefined,
+          regionName: provinceReportName(customerProvince(partner)) || undefined,
           outstanding: new Decimal(decimalString(exposure?.outstanding ?? '0')).toFixed(2),
           overdue: new Decimal(decimalString(exposure?.overdue ?? '0')).toFixed(2),
           periodRevenue: new Decimal(revenueById.get(id) ?? '0').toFixed(2),

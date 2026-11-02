@@ -5,7 +5,7 @@
    */
   import { m } from '$lib/paraglide/messages';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, HandCoins, ShieldOff } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, FileSpreadsheet, HandCoins, ShieldOff } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { num, vnd } from '$lib/format';
   import { hasRole, overdueLevel } from '$lib/labels';
@@ -13,6 +13,7 @@
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
   import CustomerPaymentDrawer, { type PostedPayment } from '$lib/components/CustomerPaymentDrawer.svelte';
+  import ReceivablesExportDialog from '$lib/components/ReceivablesExportDialog.svelte';
 
   type Row = {
     partnerId: string; code: string; name: string; province?: string; salesRepName?: string; status: string; holdReason?: string; autoHoldExempt: boolean;
@@ -35,6 +36,7 @@
   let pageNo = $state(1);
   let pageSize = $state(initialPageSize());
   let drawerOpen = $state(false);
+  let exportOpen = $state(false);
   let drawerKind = $state<'RECEIPT' | 'FREIGHT'>('RECEIPT');
   const canCollect = $derived(hasRole(session.user?.roles, ['ACCOUNTANT']));
 
@@ -81,6 +83,7 @@
     <p class="page-sub">{m.cn_theo_khach_sub()}</p>
   </div>
   <div class="actions">
+    <button class="btn" onclick={() => (exportOpen = true)}><FileSpreadsheet size={16} />{m.xuat_excel()}</button>
     <a class="btn" href="/receivables">{m.so_chi_tiet_cong_no()}</a>
     {#if canCollect}
       <button class="btn" onclick={() => { drawerKind = 'FREIGHT'; drawerOpen = true; }}>{m.cn_ghi_phi_vc()}</button>
@@ -100,13 +103,13 @@
 
 <section class="card">
   <div class="table-wrap">
-    <table class="table">
+    <table class="table compact">
       <thead><tr>
-        <th>{m.khach_hang()}</th><th class="num">{m.cn_phat_sinh()}</th><th class="num">{m.cn_da_thu()}</th><th class="num">{m.cn_phi_vc()}</th>
-        <th class="num">{m.cn_tra_hang_giam()}</th><th class="num">{m.cn_con_no()}</th><th class="num">{m.seg_no_nhom_tach_rieng()}</th><th>{m.cn_qua_han()}</th>
+        <th>{m.khach_hang()}</th><th class="num">{m.cn_phat_sinh()}</th><th class="num">{m.cn_da_thu()}</th><th class="num">{m.cn_phi_vc()} · {m.cn_tra_hang_giam()}</th>
+        <th class="num">{m.cn_con_no()}</th><th class="num">{m.seg_no_nhom_tach_rieng()}</th><th>{m.cn_qua_han()}</th>
       </tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="8">{m.dang_doc_so_cong_no()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan="7">{m.dang_doc_so_cong_no()}</td></tr>
         {:else if rows.length}
           {#each rows as row (row.partnerId)}
             {@const level = row.overdueLevel ? overdueLevel[row.overdueLevel] : null}
@@ -119,17 +122,16 @@
               </td>
               <td class="num">{num(row.debit)}</td>
               <td class="num muted">{num(row.receipt)}</td>
-              <td class="num muted">{num(row.freight)}</td>
-              <td class="num muted">{num(row.returns)}</td>
+              <td class="num muted">{num(row.freight)}<small>{m.cn_tra_hang_giam()}: {num(row.returns)}</small></td>
               <td class="num"><b class:credit={Number(row.balance) < 0}>{num(row.balance)}</b>{#if Number(row.prepayment) > 0}<small>{m.cn_tra_truoc_ngan({ amount: num(row.prepayment) })}</small>{/if}</td>
-              <td class="num">{#if Number(row.segmentOutstanding) > 0}<span class="segment">{num(row.segmentOutstanding)}</span>{#each row.segments as part (part.code)}<small>{segmentName(part.code)}</small>{/each}<small>{m.seg_con_lai_tru_nhom()}: {num(row.normalBalance)}</small>{:else}<span class="muted">—</span>{/if}</td>
+              <td class="num seg-cell">{#if Number(row.segmentOutstanding) > 0}<span class="segment">{num(row.segmentOutstanding)}</span>{#each row.segments as part (part.code)}<small>{segmentName(part.code)}</small>{/each}<small>{m.seg_con_lai_tru_nhom()}: {num(row.normalBalance)}</small>{:else}<span class="muted">—</span>{/if}</td>
               <td>{#if level}<span class={`pill ${level.tone}`}>{m.qua_han()} {row.maxDaysOverdue} {m.ngay()}</span>{:else if row.openDocuments}<span class="muted">{m.cn_trong_han()}</span>{:else}—{/if}</td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="8">{m.cn_khong_co_khach()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="7">{m.cn_khong_co_khach()}</td></tr>{/if}
       </tbody>
       {#if totals && rows.length}
-        <tfoot><tr><td>{m.cong()}</td><td class="num">{num(totals.debit)}</td><td class="num">{num(totals.receipt)}</td><td class="num">{num(totals.freight)}</td><td class="num">{num(totals.returns)}</td><td class="num"><b>{num(totals.balance)}</b></td><td class="num">{num(totals.segmentOutstanding)}</td><td></td></tr></tfoot>
+        <tfoot><tr><td>{m.cong()}</td><td class="num">{num(totals.debit)}</td><td class="num">{num(totals.receipt)}</td><td class="num">{num(totals.freight)}<small>{m.cn_tra_hang_giam()}: {num(totals.returns)}</small></td><td class="num"><b>{num(totals.balance)}</b></td><td class="num">{num(totals.segmentOutstanding)}</td><td></td></tr></tfoot>
       {/if}
     </table>
   </div>
@@ -137,6 +139,7 @@
 </section>
 
 <CustomerPaymentDrawer bind:open={drawerOpen} bind:kind={drawerKind} onposted={posted} />
+<ReceivablesExportDialog bind:open={exportOpen} />
 
 <style>
   .filters { grid-template-columns: 1.6fr 1fr 1fr; }
@@ -149,6 +152,9 @@
   .credit { color: var(--green); }
   .segment { color: var(--navy-2); font-weight: 600; }
   td small { display: block; color: var(--subtle); font-size: 11.5px; }
+  /* Dòng phụ dài ("Còn lại trừ nhóm tách riêng: …", "Trả hàng / giảm: …") được xuống dòng để bảng vừa 1366 px. */
+  td.num small { white-space: normal; }
+  .seg-cell { max-width: 170px; }
   tfoot td { font-weight: 600; }
   @media (max-width: 800px) { .filters { grid-template-columns: 1fr; } .total { text-align: left; } }
 </style>

@@ -18,39 +18,19 @@ import {
   type StockDirection,
   vnDate,
 } from '@inoxpran/contracts';
-import ExcelJS from 'exceljs';
 import type { Db, Document, ObjectId } from 'mongodb';
 import { dateBounds, vnDayBegin } from '../../common/date-range';
 import { decimalString, toObjectId, vnMonthStart, vnParts } from '../../common/domain';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { MONGO_DATABASE } from '../../common/tokens';
+import { hiddenMovementFilter } from './hidden-movements';
+import { monthlyTemplateWorkbook } from './monthly-template-workbook';
+import { addBodyRow, brandSheet, brandWorkbook, exportedAt, finalize, FORMATS, kpiStrip, tableHeader, titleBlock, toBuffer, totalRow, type BrandColumn } from '../../common/excel-brand';
 
 const TRANSFERS = ['TRANSFER_IN', 'TRANSFER_OUT'];
 const EXPORT_LIMIT = 20_000;
 const round = (value: number) => Math.round(value * 10_000) / 10_000;
-const pad = (value: number) => String(value).padStart(2, '0');
-const day = (date: Date) => {
-  const parts = vnParts(date);
-  return `${pad(parts.day)}/${pad(parts.month)}/${parts.year}`;
-};
 const naturalSku = (a: { sku: string }, b: { sku: string }) => a.sku.localeCompare(b.sku, 'en', { numeric: true });
-
-const COLOR = {
-  navy: 'FF1F4E79',
-  inFill: 'FFE2EFDA',
-  outFill: 'FFFFF2CC',
-  net: 'FF4472C4',
-  total: 'FFFFC000',
-  grey: 'FFBFBFBF',
-};
-/** Màu ô % tồn còn lại như file Excel của công ty (đỏ → cam → vàng → xanh). */
-function percentFill(value: number): string {
-  if (value < 40) return 'FFFF0000';
-  if (value < 60) return 'FFFF9900';
-  if (value < 75) return 'FFFFC000';
-  if (value < 90) return 'FFFFFF00';
-  return 'FF92D050';
-}
 
 /**
  * Báo cáo kho theo mẫu công ty: tồn kho tháng (`月库存明细单`) và nhật ký xuất nhập (`出库汇总`), có xuất Excel.
@@ -59,6 +39,8 @@ function percentFill(value: number): string {
  */
 /** Kỳ nhật ký xuất nhập: một tháng (YYYY-MM) hoặc khoảng ngày (YYYY-MM-DD). */
 export interface JournalPeriod { month?: string | undefined; from?: string | undefined; to?: string | undefined }
+/** Bộ lọc nhật ký xuất nhập; `viewer` không phải quản trị gốc thì ẩn dòng của phiếu trả hàng đã hủy. */
+export interface JournalOptions { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined; viewer?: { root?: boolean | undefined } }
 
 @Injectable()
 export class InventoryReportsService {
@@ -116,7 +98,7 @@ export class InventoryReportsService {
   /** Phiếu kiểm kê trong kỳ đã chốt mà còn lệch (STK-01) — hiện cảnh báo trên báo cáo và file Excel. */
   private async countWarnings(month: string, warehouse: Document | null) {
     return this.db.collection('stock_counts')
-      .find({ status: 'CLOSED', period: month, 'variance.total': { $gt: 0 }, ...(warehouse ? { warehouseId: warehouse._id } : {}) })
+      .find({ status: 'CLOSED', period: month, 'variance.total': { $gt: 0 }, ...(warehouse ? { $or: [{ warehouseId: warehouse._id }, { warehouseIds: warehouse._id }] } : {}) })
       .sort({ closedAt: 1 })
       .toArray();
   }
@@ -170,7 +152,9 @@ export class InventoryReportsService {
       const entry = acc(id.productId);
       const category = categoryOf(id);
       if (category === 'PURCHASE_IN') entry.purchased += categoryAmount(category, id.direction, quantity);
-      if (!id.inMonth) entry.opening += id.direction === 'IN' ? quantity : -quantity;
+      // Tồn đầu kỳ nhập hệ thống (OPENING_IN — lô IMP lúc lên ERP, kể cả hoàn tác lô) là tồn trước khi dùng ERP: tính vào
+      // "tồn cuối tháng trước" của tháng nhập, không phải nhập trong tháng — để "xuất kho tổng hợp" = xuất − nhập thật (31/10/2026).
+      if (!id.inMonth || category === 'OPENING_IN') entry.opening += id.direction === 'IN' ? quantity : -quantity;
       else entry.amounts[category] = round((entry.amounts[category] ?? 0) + categoryAmount(category, id.direction, quantity));
     }
     // Số nhập ban đầu (初始入库): khai ở tồn đầu kỳ (Excel) + hàng mua đã nhập; tồn đầu kỳ không khai số này thì không tính %.
@@ -240,109 +224,43 @@ export class InventoryReportsService {
     };
   }
 
-  async monthlyWorkbook(month: string, warehouseId: string | undefined, preparedBy: string): Promise<Buffer> {
+  /**
+   * File tồn kho tháng giống mẫu TỒN KHO.xlsx của kho (30/10/2026) — xem monthly-template-workbook.ts. Cột 现货库存 lấy số đếm
+   * của phiếu kiểm kê đã chốt mới nhất trong tháng ở mỗi kho (xem cả công ty thì cộng các kho).
+   */
+  async monthlyWorkbook(month: string, warehouseId: string | undefined): Promise<Buffer> {
     const report = await this.monthly(month, warehouseId);
     const range = this.range(month);
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'INOXPRAN ERP';
-    workbook.created = new Date();
-    const sheet = workbook.addWorksheet(`${range.monthNo}月库存`, { views: [{ state: 'frozen', xSplit: 3, ySplit: 5 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
-    const head = [
-      { key: 'stt', zh: '序号', vi: 'STT', width: 6 },
-      { key: 'sku', zh: '型号', vi: 'Model', width: 14 },
-      { key: 'name', zh: '产品名称', vi: 'Tên sản phẩm', width: 30 },
-      { key: 'initial', zh: '初始入库', vi: 'Số lượng nhập ban đầu', width: 12 },
-      { key: 'percent', zh: '剩余库存百分比', vi: '% tồn kho còn lại', width: 11 },
-      { key: 'opening', zh: '上月库存', vi: 'Tồn kho cuối tháng trước', width: 12 },
-      ...report.columns.map((code) => {
-        const info = categoryInfo(code);
-        return { key: code, zh: info?.zh ?? code, vi: info?.vi ?? code, width: 12, direction: info?.direction };
-      }),
-      { key: 'netOut', zh: '综合出库', vi: 'Xuất kho tổng hợp', width: 12 },
-      { key: 'closing', zh: '库存结余', vi: 'Tồn kho cuối kỳ', width: 12 },
-      ...(report.current ? [{ key: 'available', zh: '现货库存', vi: 'Tồn kho hàng có sẵn', width: 12 }, { key: 'check', zh: '数据查验', vi: 'Đối chiếu sổ', width: 10 }] : []),
-      { key: 'note', zh: '备注', vi: 'Ghi chú', width: 26 },
-    ] as Array<{ key: string; zh: string; vi: string; width: number; direction?: StockDirection }>;
-    sheet.columns = head.map((column) => ({ key: column.key, width: column.width }));
-    const last = sheet.getColumn(head.length).letter;
-    sheet.mergeCells(`A1:${last}1`);
-    sheet.getCell('A1').value = `___${range.monthNo}___月库存明细单`;
-    sheet.getCell('A1').font = { bold: true, size: 18 };
-    sheet.getCell('A1').alignment = { horizontal: 'center' };
-    sheet.mergeCells(`A2:${last}2`);
-    sheet.getCell('A2').value = `BÁO CÁO TỒN KHO THÁNG ${range.monthNo}/${range.year} — ${report.warehouseName.toUpperCase()}`;
-    sheet.getCell('A2').font = { bold: true, size: 13, color: { argb: COLOR.navy } };
-    sheet.getCell('A2').alignment = { horizontal: 'center' };
-    sheet.mergeCells(`A3:${last}3`);
-    sheet.getCell('A3').value = `CÔNG TY TNHH ĐẦU TƯ THẮNG VƯỢNG — INOXPRAN · Đơn vị: theo đơn vị tính cơ bản · Người lập: ${preparedBy} · Ngày kết xuất: ${day(new Date())}${report.warehouseId ? '' : ' · Cộng mọi kho (kể cả kho hàng lỗi), không tính chuyển kho nội bộ'}`;
-    sheet.getCell('A3').font = { italic: true, color: { argb: 'FF5A6B7C' } };
-    // Cảnh báo kiểm kê chốt còn lệch (STK-01): dòng 4 chữ đỏ + ghi chú từng mã lệch.
-    const counts = await this.countWarnings(month, report.warehouseId ? await this.db.collection('warehouses').findOne({ _id: toObjectId(report.warehouseId) }) : null);
-    const countNotes = new Map<string, string[]>();
-    if (counts.length) {
-      sheet.mergeCells(`A4:${last}4`);
-      sheet.getCell('A4').value = `⚠ CẢNH BÁO KIỂM KÊ 盘点差异: ${counts.map((row) => `${String(row.code)} (${String(row.warehouseName)}, ${day(row.closedAt as Date)}, ${String(row.closedByName ?? '')}) chốt còn lệch ${Number((row.variance as Document).total)} mã — ${String(row.closeNote ?? '')}`).join(' · ')}`;
-      sheet.getCell('A4').font = { bold: true, color: { argb: 'FFC00000' } };
-      sheet.getCell('A4').alignment = { wrapText: true, vertical: 'middle' };
-      sheet.getRow(4).height = 30;
-      for (const row of counts) {
-        for (const item of ((row.variance as Document).rows as StockCountRow[] | undefined) ?? []) {
-          const text = `Kiểm kê ${String(row.code)}: ERP ${item.erpOnHand} / đếm ${item.counted ?? '—'}`;
-          countNotes.set(item.productId, [...(countNotes.get(item.productId) ?? []), text]);
+    const productIds = report.rows.map((row) => toObjectId(row.productId));
+    const [products, counts] = await Promise.all([
+      this.db.collection('products').find({ _id: { $in: productIds } }, { projection: { nameZh: 1 } }).toArray(),
+      this.db.collection('stock_counts')
+        // Xem một kho: chỉ phiếu của đúng kho đó (phiếu gộp cộng nhiều kho nên không so được với tồn một kho).
+        .find({ status: 'CLOSED', period: month, ...(report.warehouseId ? { warehouseId: toObjectId(report.warehouseId), scope: { $ne: 'ALL' } } : {}) }, { projection: { code: 1, scope: 1, warehouseId: 1, closedAt: 1, 'qtyStep.lastCheck.rows': 1 } })
+        .sort({ closedAt: -1 })
+        .toArray(),
+    ]);
+    const chineseNames = new Map(products.filter((row) => row.nameZh).map((row) => [(row._id as ObjectId).toHexString(), String(row.nameZh)]));
+    const counted = new Map<string, { counted: number | null; difference: number; codes: string[]; notCounted?: boolean }>();
+    const seenWarehouses = new Set<string>();
+    // Phiếu gộp mọi kho (KK-ALL-01) mới nhất trong tháng thay cho các phiếu từng kho.
+    const latestAll = counts.find((count) => count.scope === 'ALL');
+    for (const count of latestAll ? [latestAll] : counts) {
+      const warehouseKey = String(count.warehouseId);
+      if (seenWarehouses.has(warehouseKey)) continue;
+      seenWarehouses.add(warehouseKey);
+      for (const item of ((count.qtyStep as Document | undefined)?.lastCheck?.rows as StockCountRow[] | undefined) ?? []) {
+        const entry = counted.get(item.productId) ?? { counted: null, difference: 0, codes: [] };
+        const codes = [...entry.codes, String(count.code)];
+        // ERP còn tồn mà không đếm (NOT_COUNTED) cũng là lệch: ghi chú "chưa đếm", không có số thực tế.
+        if (item.counted === null || item.counted === undefined) {
+          if (item.state === 'NOT_COUNTED') counted.set(item.productId, { ...entry, codes, notCounted: true });
+          continue;
         }
+        counted.set(item.productId, { ...entry, counted: round((entry.counted ?? 0) + item.counted), difference: round(entry.difference + (item.difference ?? 0)), codes });
       }
     }
-
-    const header = sheet.getRow(5);
-    header.values = head.map((column) => `${column.zh}\n${column.vi}`);
-    header.height = 58;
-    header.eachCell((cell, index) => {
-      const column = head[index - 1];
-      const fill = column?.key === 'netOut' ? COLOR.net : column?.direction === 'IN' ? COLOR.inFill : column?.direction === 'OUT' ? COLOR.outFill : column?.key === 'check' ? COLOR.grey : 'FFDCE8F5';
-      cell.font = { bold: true, size: 9, color: { argb: column?.key === 'netOut' ? 'FFFFFFFF' : 'FF111111' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-    });
-    report.rows.forEach((row, index) => {
-      const values: Record<string, unknown> = {
-        stt: index + 1,
-        sku: row.sku,
-        name: row.productName,
-        initial: row.initialQuantity ?? '',
-        percent: row.remainingPercent === null ? '' : row.remainingPercent / 100,
-        opening: row.opening,
-        netOut: row.netOut,
-        closing: row.closing,
-        available: row.available ?? '',
-        check: row.ledgerMatches === null ? '' : row.ledgerMatches ? '✓' : '✗',
-        note: (countNotes.get(row.productId) ?? []).join('; '),
-      };
-      for (const code of report.columns) values[code] = row.amounts[code] ?? 0;
-      const excelRow = sheet.addRow(values);
-      excelRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.border = { top: { style: 'hair' }, bottom: { style: 'hair' }, left: { style: 'thin' }, right: { style: 'thin' } };
-      });
-      excelRow.getCell('sku').font = { bold: true };
-      excelRow.getCell('closing').font = { bold: true, italic: true };
-      excelRow.getCell('netOut').font = { italic: true };
-      if (row.remainingPercent !== null) {
-        excelRow.getCell('percent').numFmt = '0.00%';
-        excelRow.getCell('percent').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: percentFill(row.remainingPercent) } };
-      }
-      if (row.ledgerMatches === false) excelRow.getCell('check').font = { bold: true, color: { argb: 'FFFF0000' } };
-      if (countNotes.has(row.productId)) excelRow.getCell('note').font = { bold: true, color: { argb: 'FFC00000' } };
-    });
-    const totalValues: Record<string, unknown> = { name: `TỔNG CỘNG 合计 (${report.rows.length} mã)`, opening: report.totals.opening, netOut: report.totals.netOut, closing: report.totals.closing };
-    for (const code of report.columns) totalValues[code] = report.totals.amounts[code] ?? 0;
-    const totalRow = sheet.addRow(totalValues);
-    totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.total } };
-    });
-    for (const column of head) if (!['stt', 'sku', 'name', 'percent', 'check', 'note'].includes(column.key)) sheet.getColumn(column.key).numFmt = '#,##0.####;-#,##0.####;0';
-    const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
+    return monthlyTemplateWorkbook({ report, monthNo: range.monthNo, chineseNames, counted });
   }
 
   /** Bộ lọc loại phát sinh, kể cả dữ liệu cũ chưa ghi `category` (suy ra từ nghiệp vụ). */
@@ -351,10 +269,12 @@ export class InventoryReportsService {
     return { $or: [{ category }, ...(legacyTypes.length ? [{ category: { $exists: false }, movementType: { $in: legacyTypes } }] : [])] };
   }
 
-  async journal(period: JournalPeriod, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, paging: PageRequest | null) {
+  async journal(period: JournalPeriod, options: JournalOptions, paging: PageRequest | null) {
     const range = this.journalPeriod(period);
     const filter: Document = { occurredAt: { $gte: range.start, $lt: range.end } };
     const and: Document[] = [];
+    const hidden = await hiddenMovementFilter(this.db, options.viewer);
+    if (hidden) and.push(hidden);
     if (options.warehouseId) filter.warehouseId = toObjectId(options.warehouseId, 'warehouseId');
     if (options.category) and.push(this.categoryFilter(options.category));
     if (options.search) {
@@ -443,60 +363,53 @@ export class InventoryReportsService {
     });
   }
 
-  async journalWorkbook(period: JournalPeriod, options: { warehouseId?: string | undefined; category?: InventoryCategory | undefined; search?: string | undefined }, preparedBy: string): Promise<Buffer> {
+  /** Nhật ký xuất nhập kho (出入库汇总) theo bộ chuẩn Excel thương hiệu (XLS-01): tiêu đề Trung + Việt, cột nhập tô xanh, cột xuất tô cam. */
+  async journalWorkbook(period: JournalPeriod, options: JournalOptions, preparedBy: string): Promise<Buffer> {
     const range = this.journalPeriod(period);
     const rows = (await this.journal(period, options, null)) as InventoryJournalRow[];
     const used = INVENTORY_CATEGORIES.filter((item) => !('optional' in item) || rows.some((row) => row.category === item.code));
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'INOXPRAN ERP';
-    workbook.created = new Date();
-    const sheet = workbook.addWorksheet(range.sheetName, { views: [{ state: 'frozen', ySplit: 4 }], pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 } });
-    const head = [
-      { key: 'stt', zh: '序号', vi: 'STT', width: 6 },
-      { key: 'partner', zh: '客户', vi: 'Khách hàng / NCC', width: 30 },
-      { key: 'partnerCode', zh: '客户编号', vi: 'Mã khách hàng', width: 11 },
-      { key: 'orderDate', zh: '销售单日期', vi: 'Ngày của phiếu bán hàng', width: 12 },
-      { key: 'order', zh: '销售单号（BH）', vi: 'Số phiếu bán hàng (BH)', width: 16 },
-      { key: 'outDate', zh: '出仓日期', vi: 'Ngày xuất kho', width: 12 },
-      { key: 'outDoc', zh: '出仓单号', vi: 'Số phiếu xuất kho', width: 16 },
-      { key: 'inDate', zh: '入库日期', vi: 'Ngày nhập kho', width: 12 },
-      { key: 'inDoc', zh: '入仓单号', vi: 'Số phiếu nhập kho', width: 16 },
-      { key: 'sku', zh: '产品型号', vi: 'Model', width: 13 },
-      ...used.map((item) => ({ key: item.code, zh: item.zh, vi: item.vi, width: 11, direction: item.direction })),
-      { key: 'note', zh: '备注', vi: 'Ghi chú', width: 30 },
-      { key: 'keeper', zh: '仓管员', vi: 'Nhân viên kho', width: 18 },
-      { key: 'rep', zh: '业务员', vi: 'Nhân viên kinh doanh', width: 18 },
-      { key: 'warehouse', zh: '仓库', vi: 'Kho', width: 11 },
-    ] as Array<{ key: string; zh: string; vi: string; width: number; direction?: StockDirection }>;
-    sheet.columns = head.map((column) => ({ key: column.key, width: column.width }));
-    const last = sheet.getColumn(head.length).letter;
-    sheet.mergeCells(`A1:${last}1`);
-    sheet.getCell('A1').value = range.title;
-    sheet.getCell('A1').font = { bold: true, size: 14, color: { argb: COLOR.navy } };
-    sheet.mergeCells(`A2:${last}2`);
-    sheet.getCell('A2').value = `INOXPRAN · Người lập: ${preparedBy} · Ngày kết xuất: ${day(new Date())} · ${rows.length} dòng${rows.length >= EXPORT_LIMIT ? ` (giới hạn ${EXPORT_LIMIT})` : ''}`;
-    sheet.getCell('A2').font = { italic: true, color: { argb: 'FF5A6B7C' } };
-    const header = sheet.getRow(4);
-    header.values = head.map((column) => `${column.zh}\n${column.vi}`);
-    header.height = 58;
-    header.eachCell((cell, index) => {
-      const column = head[index - 1];
-      cell.font = { bold: true, size: 9 };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: column?.direction === 'IN' ? COLOR.inFill : column?.direction === 'OUT' ? COLOR.outFill : 'FFDCE8F5' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-    });
+    const vnDay = (value: string) => new Date(new Date(value).getTime() + 7 * 3_600_000);
+    const columns: BrandColumn[] = [
+      { key: 'stt', header: 'STT\n序号', width: 6, type: 'int' },
+      { key: 'partner', header: 'Khách hàng / NCC\n客户', width: 30, wrap: true },
+      { key: 'partnerCode', header: 'Mã KH\n客户编号', width: 11, type: 'code' },
+      { key: 'orderDate', header: 'Ngày phiếu BH\n销售单日期', width: 12, type: 'date' },
+      { key: 'order', header: 'Số phiếu BH\n销售单号', width: 16, type: 'code' },
+      { key: 'outDate', header: 'Ngày xuất kho\n出仓日期', width: 12, type: 'date' },
+      { key: 'outDoc', header: 'Số phiếu xuất\n出仓单号', width: 16 },
+      { key: 'inDate', header: 'Ngày nhập kho\n入库日期', width: 12, type: 'date' },
+      { key: 'inDoc', header: 'Số phiếu nhập\n入仓单号', width: 16 },
+      { key: 'sku', header: 'Model\n产品型号', width: 13, type: 'code' },
+      ...used.map((item): BrandColumn => ({ key: item.code, header: `${item.vi}\n${item.zh}`, width: 12, type: 'qty', tint: item.direction === 'IN' ? 'in' : 'out' })),
+      { key: 'note', header: 'Ghi chú\n备注', width: 30, wrap: true },
+      { key: 'keeper', header: 'Nhân viên kho\n仓管员', width: 18 },
+      { key: 'rep', header: 'NV kinh doanh\n业务员', width: 18 },
+      { key: 'warehouse', header: 'Kho\n仓库', width: 10 },
+    ];
+    const workbook = brandWorkbook();
+    const sheet = brandSheet(workbook, range.sheetName, columns);
+    let rowNo = titleBlock(sheet, columns.length, range.title, [
+      `Người lập: ${preparedBy} · Xuất lúc ${exportedAt()} · ${rows.length} dòng${rows.length >= EXPORT_LIMIT ? ` (giới hạn ${EXPORT_LIMIT})` : ''}`,
+    ]);
+    const sum = (direction: StockDirection) => round(rows.filter((row) => row.direction === direction).reduce((total, row) => total + row.quantity, 0));
+    rowNo = kpiStrip(sheet, rowNo, columns.length, [
+      { label: 'SỐ DÒNG PHÁT SINH', value: rows.length, format: FORMATS.int },
+      { label: 'TỔNG NHẬP 入库', value: sum('IN'), format: FORMATS.qty, tone: 'good' },
+      { label: 'TỔNG XUẤT 出库', value: sum('OUT'), format: FORMATS.qty },
+    ]);
+    const header = rowNo;
+    tableHeader(sheet, header, columns);
+    sheet.getRow(header).height = 44;
     rows.forEach((row, index) => {
-      const date = day(new Date(row.occurredAt));
-      const values: Record<string, unknown> = {
+      addBodyRow(sheet, columns, {
         stt: index + 1,
         partner: row.partnerName ?? '',
         partnerCode: row.partnerCode ?? '',
-        orderDate: row.salesOrderDate ? day(new Date(row.salesOrderDate)) : '',
+        orderDate: row.salesOrderDate ? vnDay(row.salesOrderDate) : null,
         order: row.salesOrderCode ?? '',
-        outDate: row.direction === 'OUT' ? date : '',
+        outDate: row.direction === 'OUT' ? vnDay(row.occurredAt) : null,
         outDoc: row.direction === 'OUT' ? row.documentNo : '',
-        inDate: row.direction === 'IN' ? date : '',
+        inDate: row.direction === 'IN' ? vnDay(row.occurredAt) : null,
         inDoc: row.direction === 'IN' ? row.documentNo : '',
         sku: row.sku,
         [row.category]: row.quantity,
@@ -504,22 +417,12 @@ export class InventoryReportsService {
         keeper: row.keeperName ?? '',
         rep: row.salesRepName ?? '',
         warehouse: row.warehouseCode,
-      };
-      const excelRow = sheet.addRow(values);
-      excelRow.getCell('sku').font = { bold: true };
-      excelRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.border = { top: { style: 'hair' }, bottom: { style: 'hair' }, left: { style: 'thin' }, right: { style: 'thin' } };
-      });
+      }, index);
     });
     const totals: Record<string, unknown> = { partner: 'TỔNG CỘNG 合计' };
-    for (const item of used) totals[item.code] = round(rows.filter((row) => row.category === item.code).reduce((sum, row) => sum + row.quantity, 0));
-    const totalRow = sheet.addRow(totals);
-    totalRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.font = { bold: true };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.total } };
-    });
-    for (const item of used) sheet.getColumn(item.code).numFmt = '#,##0.####;-#,##0.####;""';
-    const buffer = await workbook.xlsx.writeBuffer();
-    return Buffer.from(buffer);
+    for (const item of used) totals[item.code] = round(rows.filter((row) => row.category === item.code).reduce((total, row) => total + row.quantity, 0));
+    totalRow(sheet, columns, totals);
+    finalize(sheet, header, header + rows.length, columns.length, { freezeColumns: 2 });
+    return toBuffer(workbook);
   }
 }

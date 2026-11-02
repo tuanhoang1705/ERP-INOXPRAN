@@ -9,6 +9,7 @@
   import { vatLabel } from '$shared/sales-math';
   import { salesIssueTemplate } from '$shared/sales-templates';
   import { isNonSalePurpose, PURPOSE_TITLE_VI } from '$shared/sales-purpose';
+  import { zeroPriceKindOf, ZERO_PRICE_LABEL_VI } from '$shared/sales-line-kind';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { company } from '$lib/company';
@@ -21,6 +22,9 @@
   /** Tài khoản đang mở bản in — trang in nằm ngoài AppShell nên tự tải (PRINT-PREP-01). */
   let viewer = $state<PrintViewer | null>(null);
   let error = $state('');
+  let sheet = $state<HTMLElement>();
+  let exportingPdf = $state(false);
+  let pdfError = $state('');
   const type = $derived(page.url.searchParams.get('type') === 'SWK' ? 'SWK' : 'BH');
   const slipNo = $derived(order ? (type === 'SWK' ? order.warehouseSlipNo : order.code) : '');
   const slipDate = $derived(order ? new Date(type === 'SWK' ? order.shippedAt ?? order.updatedAt : order.orderDate ?? order.createdAt) : new Date());
@@ -37,6 +41,22 @@
   function dayParts(value: Date) {
     const [year, month, day] = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(value).split('-');
     return `Ngày ${day} tháng ${month} năm ${year}`;
+  }
+
+  async function exportPdf() {
+    if (!sheet || !order || error || exportingPdf || !slipNo) return;
+    const snapshot = sheet.cloneNode(true) as HTMLElement;
+    const filename = slipNo;
+    exportingPdf = true;
+    pdfError = '';
+    try {
+      const { downloadSalesIssuePdf } = await import('$lib/sales-issue-pdf');
+      await downloadSalesIssuePdf(snapshot, filename);
+    } catch {
+      pdfError = m.khong_xuat_duoc_pdf_vui_long_thu_lai();
+    } finally {
+      exportingPdf = false;
+    }
   }
 
   onMount(async () => {
@@ -58,13 +78,16 @@
     <a class:active={type === 'SWK'} href={`?type=SWK`}>Phiếu SWK</a>
   {/if}
   <button class="primary" onclick={() => window.print()} disabled={!order || Boolean(error)}>{m.in_phieu()}</button>
+  <button onclick={exportPdf} disabled={!order || Boolean(error) || exportingPdf} aria-busy={exportingPdf}>{exportingPdf ? m.dang_tao_pdf() : m.xuat_pdf()}</button>
   <button onclick={() => window.close()}>{m.dong()}</button>
 </div>
+
+{#if pdfError}<p class="pdf-error" role="alert">{pdfError}</p>{/if}
 
 {#if error}
   <p class="error">{error} <a href="/login">{m.dang_nhap_lai()}</a> {m.hoac_2()} <a href={`/sales/orders/${page.params.id}`}>{m.quay_lai_phieu_2()}</a>.</p>
 {:else if order}
-  <article class="sheet">
+  <article class="sheet" bind:this={sheet}>
     {#if draft}<div class="watermark">BẢN NHÁP — CHƯA PHÁT HÀNH</div>{/if}
     <header class="company">
       <div>
@@ -116,7 +139,7 @@
         <tr class="sum"><td colspan="4"><b>Cộng</b></td><td class="center"><b>{quantity.format(totalQuantity)}</b></td><td></td></tr>
       </tfoot>
     </table>
-    <p class="attached">Số chứng từ gốc kèm theo: {type === 'SWK' ? `Phiếu ${order.code}` : '…'}</p>
+    <p class="attached">Ghi chú: {order.note ?? ''}</p>
     {:else}
     <table class="buyer">
       <tbody>
@@ -140,7 +163,7 @@
           <tr>
             <td class="center">{index + 1}</td>
             <td>{line.sku}</td>
-            <td class="center">{line.productName}</td>
+            <td class="center">{line.productName}{#if line.gift}<small class="line-kind">{ZERO_PRICE_LABEL_VI[zeroPriceKindOf(line) ?? 'GIFT']}</small>{/if}</td>
             <td>{line.unit}</td>
             <td class="center">{quantity.format(Number(line.quantity))}</td>
             <td class="center">{price.format(Number(line.unitPrice))}</td>
@@ -157,7 +180,7 @@
     </table>
 
     <p class="words">Số tiền bằng chữ: <b>{vndInWords(order.grandTotal)}</b></p>
-    <p class="attached">Số chứng từ gốc kèm theo: {type === 'SWK' ? `Phiếu xuất kho bán hàng số ${order.code}` : '…'}</p>
+    <p class="attached">Ghi chú: {order.note ?? ''}</p>
     {/if}
     <div class="closing">
     <p class="sign-date">{dayParts(slipDate)}</p>
@@ -189,6 +212,7 @@
   .toolbar button:disabled { opacity: 0.5; cursor: default; }
   .error, .loading { max-width: 210mm; margin: 40px auto; padding: 16px 20px; border-radius: 8px; background: #fff; font: 14px Inter, system-ui, sans-serif; }
   .error { color: #b42318; }
+  .pdf-error { max-width: 210mm; margin: 16px auto; padding: 12px 16px; border-radius: 8px; background: #fff1f0; color: #b42318; font: 14px/1.5 Inter, system-ui, sans-serif; }
 
   .sheet { position: relative; box-sizing: border-box; width: 210mm; min-height: 297mm; margin: 24px auto; padding: 14mm 16mm 18mm 20mm; background: #fff; box-shadow: 0 6px 24px rgba(18, 39, 58, 0.18); color: #000; font: 13px/1.45 'Times New Roman', Times, serif; }
   .watermark { position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); color: rgba(180, 35, 24, 0.13); font-size: 44px; font-weight: 700; white-space: nowrap; pointer-events: none; }
@@ -221,7 +245,8 @@
   .lines .sum td { padding-top: 2px; }
 
   .words { margin: 4px 0 8px; }
-  .attached { margin: 0 0 10px; }
+  .attached { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .line-kind { display: block; font-style: italic; }
   .sign-date { margin: 0 4mm 4px 0; text-align: right; }
   .signatures { display: grid; grid-template-columns: 1fr 1fr 1.25fr 0.9fr 1.2fr; text-align: center; }
   .closing { break-inside: avoid; }
@@ -233,7 +258,7 @@
   @page { size: A4 portrait; margin: 10mm 14mm 10mm 18mm; }
   @media print {
     :global(html), :global(body) { background: #fff !important; }
-    .toolbar { display: none; }
+    .toolbar, .pdf-error { display: none; }
     .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
     .lines tr { break-inside: avoid; }
   }

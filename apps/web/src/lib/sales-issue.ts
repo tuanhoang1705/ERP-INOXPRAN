@@ -6,7 +6,8 @@ import { intlLocale } from '$lib/i18n';
  * bằng đúng hàm priceLine()/summarizeDocument() máy chủ dùng khi lưu chứng từ — không chờ mạng, không lệch số.
  */
 import type { SalesPriceSheet, SalesPriceSheetItem } from '@inoxpran/contracts';
-import { priceLine, summarizeDocument, toScaled, type DocumentSummary, type LineAmounts } from '$shared/sales-math';
+import { allocateLineVat, priceLine, sumMoney, summarizeDocument, toScaled, type DocumentSummary, type LineAmounts } from '$shared/sales-math';
+import { isZeroPriceLine, type ZeroPriceKind } from '$shared/sales-line-kind';
 
 export interface IssueProduct {
   id: string;
@@ -20,12 +21,17 @@ export interface IssueLineInput {
   unit: string;
   quantity: string | number | null | undefined;
   gift: boolean;
+  zeroPriceKind?: ZeroPriceKind | undefined;
   /** Đơn giá chưa thuế sửa tay (đã được cấp quyền) cho 1 đơn vị bán; bỏ trống = giá theo bảng giá. */
   overrideUnitPrice?: string | undefined;
+  /** Thuế suất GTGT của dòng — chỉ mẫu PXK-002 (thuế từng dòng, 27/10/2026); trống = thuế suất của phiếu. */
+  vatRate?: string | undefined;
 }
 
 export interface ComputedLine extends LineAmounts {
   index: number;
+  /** Thuế suất GTGT dùng để tính dòng. */
+  vatRate: string;
   productId: string;
   quantity: string;
   conversionFactor: string;
@@ -82,7 +88,10 @@ export function computeIssue(
   inputs: readonly IssueLineInput[],
   products: ReadonlyMap<string, IssueProduct>,
   sheet: SalesPriceSheet | null,
+  /** Thuế suất của phiếu (PXK-001) / mặc định cho dòng chưa chọn thuế suất (PXK-002). */
   vatRate: string,
+  /** DOCUMENT = PXK-001 (một thuế suất cho cả phiếu); LINE = PXK-002 (thuế từng dòng, chia không lệch đồng). */
+  vatMode: 'DOCUMENT' | 'LINE' = 'DOCUMENT',
 ): IssueComputation {
   const basisById = new Map((sheet?.items ?? []).map((item) => [item.productId, item]));
   const lines: Array<ComputedLine | null> = [];
@@ -100,18 +109,36 @@ export function computeIssue(
       lines.push(null);
       return;
     }
-    const overridden = !input.gift && Boolean(input.overrideUnitPrice) && Number(input.overrideUnitPrice) >= 0;
-    const discountRate = input.gift || overridden ? '0' : basis.discountRate;
-    const options = { vatRate, pricesIncludeTax: sheet.pricesIncludeTax };
-    const original = priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: input.gift ? '0' : basis.discountRate, gift: input.gift }, options);
+    const gift = isZeroPriceLine(input);
+    const overridden = !gift && Boolean(input.overrideUnitPrice) && Number(input.overrideUnitPrice) >= 0;
+    const discountRate = gift || overridden ? '0' : basis.discountRate;
+    const lineRate = vatMode === 'LINE' ? input.vatRate || vatRate : vatRate;
+    const options = { vatRate: lineRate, pricesIncludeTax: sheet.pricesIncludeTax };
+    const original = priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: gift ? '0' : basis.discountRate, gift }, options);
     const amounts = overridden
       ? priceLine({ quantity, conversionFactor: factor, baseUnitPrice: basis.baseUnitPrice, discountRate: '0', unitPriceOverride: input.overrideUnitPrice }, options)
       : original;
-    lines.push({ ...amounts, index, productId: input.productId, quantity, conversionFactor: factor, basis, discountRate, overridden, originalUnitPrice: original.unitPrice });
+    lines.push({ ...amounts, index, vatRate: lineRate, productId: input.productId, quantity, conversionFactor: factor, basis, discountRate, overridden, originalUnitPrice: original.unitPrice });
   });
 
   const computed = lines.filter((line): line is ComputedLine => line !== null);
-  const summary = summarizeDocument(computed, vatRate);
+  // Cùng cách máy chủ tính (pricing.service): PXK-001 thuế một lần cho cả phiếu; PXK-002 chia thuế về dòng (allocateLineVat).
+  let summary: DocumentSummary;
+  if (vatMode === 'LINE') {
+    const allocation = allocateLineVat(computed.map((line) => ({ netAmount: line.netAmount, vatRate: line.vatRate })));
+    computed.forEach((line, position) => {
+      line.taxAmount = allocation.taxAmounts[position] as string;
+      line.grossAmount = sumMoney([line.netAmount, line.taxAmount]);
+    });
+    summary = {
+      subtotal: sumMoney(computed.map((line) => line.subtotal)),
+      discountTotal: sumMoney(computed.map((line) => line.discountAmount)),
+      netAmountSum: sumMoney(computed.map((line) => line.netAmount)),
+      netTotal: allocation.netTotal,
+      taxTotal: allocation.taxTotal,
+      grandTotal: allocation.grandTotal,
+    };
+  } else summary = summarizeDocument(computed, vatRate);
 
   const demandByProduct = new Map<string, number>();
   for (const line of computed) demandByProduct.set(line.productId, (demandByProduct.get(line.productId) ?? 0) + Number(line.baseQuantity));

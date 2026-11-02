@@ -34,7 +34,7 @@ export async function openWarrantyTickets(db: Db): Promise<Document[]> {
 
 /**
  * Nhắc hẹn trả: phiếu vừa sang vàng (đã qua 70% thời gian hẹn) báo nhân viên bảo hành; phiếu vừa sang đỏ (quá hẹn)
- * báo thêm Giám đốc. Mỗi mức chỉ báo một lần; dời hẹn thì đặt lại để báo theo hẹn mới.
+ * báo thêm Quản lý kho (WAR-ROLE-01, 28/10/2026 — trước đây Giám đốc). Mỗi mức chỉ báo một lần; dời hẹn thì đặt lại để báo theo hẹn mới.
  */
 export async function runWarrantySlaReview(db: Db, now = new Date()): Promise<{ warning: number; overdue: number }> {
   const settings = await warrantySettings(db);
@@ -57,7 +57,7 @@ export async function runWarrantySlaReview(db: Db, now = new Date()): Promise<{ 
       aggregateId: `${id}:${level}:${String(ticket.promisedDate)}`,
       payload: {
         category: 'WARRANTY',
-        targetRoles: level === 'overdue' ? ['WARRANTY', 'DIRECTOR'] : ['WARRANTY'],
+        targetRoles: level === 'overdue' ? ['WARRANTY', 'WAREHOUSE_MANAGER'] : ['WARRANTY'],
         level: level === 'overdue' ? 'CRITICAL' : 'WARNING',
         title: level === 'overdue' ? `Phiếu bảo hành ${String(ticket.code)} đã quá hẹn trả` : `Phiếu bảo hành ${String(ticket.code)} sắp đến hẹn trả`,
         message: level === 'overdue'

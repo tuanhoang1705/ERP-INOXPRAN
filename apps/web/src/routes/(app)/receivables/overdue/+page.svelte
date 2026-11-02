@@ -22,7 +22,7 @@
   let running = $state(false);
   let error = $state('');
   let success = $state('');
-  const canRun = $derived(hasRole(session.user?.roles, ['ACCOUNTANT', 'DIRECTOR']));
+  const canRun = $derived(hasRole(session.user?.roles, ['ACCOUNTANT']));
 
   async function load() {
     loading = true;
@@ -83,15 +83,15 @@
 <section class="card">
   <header class="card-head head"><h2>{m.tuoi_no_theo_dai_ly()}</h2><span class="muted">{m.tong_du_no_2()} <b>{vnd(aging?.totals.total ?? 0)}</b></span></header>
   <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>{m.dai_ly()}</th><th class="num">{m.trong_han()}</th><th class="num">{m.t_1_30_ngay()}</th><th class="num">{m.t_31_60_ngay()}</th><th class="num">{m.t_60_ngay()}</th><th class="num">{m.tong_du_no_3()}</th><th class="num" title={m.seg_khong_tinh_qua_han()}>{m.seg_no_nhom_tach_rieng()}</th><th class="num">{m.dung_han_muc()}</th><th>{m.muc_canh_bao()}</th><th>{m.dat_hang()}</th></tr></thead>
+    <table class="table compact">
+      <thead><tr><th>{m.dai_ly()}</th><th class="num">{m.trong_han()}</th><th class="num">{m.t_1_30_ngay()}</th><th class="num">{m.t_31_60_ngay()}</th><th class="num">{m.t_60_ngay()}</th><th class="num">{m.tong_du_no_3()}</th><th class="num" title={m.seg_khong_tinh_qua_han()}>{m.seg_no_nhom_tach_rieng()}</th><th class="num">{m.dung_han_muc()}</th><th>{m.muc_canh_bao()} · {m.dat_hang()}</th></tr></thead>
       <tbody>
-        {#if loading}<tr class="empty-row"><td colspan="10">{m.dang_tinh_tuoi_no()}</td></tr>
+        {#if loading}<tr class="empty-row"><td colspan="9">{m.dang_tinh_tuoi_no()}</td></tr>
         {:else if aging?.partners.length}
           {#each aging.partners as row}
             {@const level = row.level ? overdueLevel[row.level] : null}
             <tr>
-              <td class="dealer"><a class="code" href={`/receivables?partnerId=${row.partnerId}`}>{row.code} — {row.name}</a><small>{row.province ?? ''}{row.salesRepName ? ` · NV: ${row.salesRepName}` : ''}</small></td>
+              <td class="dealer"><a class="dealer-link" href={`/receivables?partnerId=${row.partnerId}`}><b class="code">{row.code}</b> {row.name}</a><small>{row.province ?? ''}{row.salesRepName ? ` · NV: ${row.salesRepName}` : ''}</small></td>
               <td class="num">{num(row.current)}</td>
               <td class="num">{num(row.d1to30)}</td>
               <td class="num" class:amber={Number(row.d31to60) > 0}>{num(row.d31to60)}</td>
@@ -99,11 +99,11 @@
               <td class="num"><b>{num(row.total)}</b></td>
               <td class="num muted">{Number(row.segment ?? 0) ? num(row.segment ?? '0') : '—'}</td>
               <td class="num" class:red={(row.creditUsage ?? 0) > 100}>{row.creditUsage === null ? '—' : percent(row.creditUsage)}</td>
-              <td>{#if level}<span class={`pill ${level.tone}`}>{level.label} · {row.maxDays} {m.ngay()}</span>{:else}<span class="pill success">{m.trong_han()}</span>{/if}</td>
-              <td>{#if row.status === 'ON_HOLD'}<span class="pill danger">{m.tam_khoa_2()}</span>{:else}<span class="pill neutral">{m.binh_thuong()}</span>{/if}</td>
+              <td class="flags">{#if level}<span class={`pill ${level.tone}`}>{level.label} · {row.maxDays} {m.ngay()}</span>{:else}<span class="pill success">{m.trong_han()}</span>{/if}
+                {#if row.status === 'ON_HOLD'}<span class="pill danger">{m.tam_khoa_2()}</span>{:else}<span class="pill neutral">{m.binh_thuong()}</span>{/if}</td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="10">{m.khong_co_cong_no_dang_mo()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="9">{m.khong_co_cong_no_dang_mo()}</td></tr>{/if}
       </tbody>
     </table>
   </div>
@@ -115,8 +115,12 @@
   .bucket.amber { border-top-color: var(--amber); }
   .bucket.red { border-top-color: var(--red); }
   .head { padding-bottom: 14px; }
-  .dealer { min-width: 250px; white-space: nowrap; }
+  .dealer { min-width: 200px; }
   td :global(.pill) { white-space: nowrap; }
   .amber { color: var(--amber); font-weight: 600; }
   .red { color: var(--red); font-weight: 700; }
+  .dealer-link { color: var(--navy); font-weight: 500; text-decoration: none; }
+  .dealer-link:hover { text-decoration: underline; }
+  .flags .pill { display: flex; width: fit-content; }
+  .flags .pill + .pill { margin-top: 4px; }
 </style>

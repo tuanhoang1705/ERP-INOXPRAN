@@ -39,6 +39,10 @@ export const coverageText = (coverage: WarrantyCoverage, o: Options = {}): strin
 
 export const coverageTone: Record<WarrantyCoverage, Tone> = { IN_WARRANTY: 'success', OUT_OF_WARRANTY: 'warning', NOT_COVERED: 'danger' };
 
+/** Nhãn diện bảo hành của phiếu: bảo hành không hóa đơn (WAR-NOINV-01) ghi rõ "không HĐ". */
+export const ticketCoverageText = (ticket: { coverage: WarrantyCoverage; invoicelessWarranty?: boolean | undefined }, o: Options = {}): string =>
+  ticket.invoicelessWarranty && ticket.coverage === 'IN_WARRANTY' ? m.wr_cov_in_noinv({}, o) : coverageText(ticket.coverage, o);
+
 export const exclusionText = (exclusion: WarrantyExclusion, o: Options = {}): string =>
   ({
     NO_INVOICE: m.wr_ex_no_invoice({}, o),
@@ -72,6 +76,7 @@ export const toneText = (tone: SlaTone): string =>
 export const actionText = (action: string): string =>
   ({
     RECEIVE: m.wr_act_receive(),
+    EDIT: m.wr_act_edit(),
     DIAGNOSE: m.wr_act_diagnose(),
     QUOTE_DECISION: m.wr_act_quote_decision(),
     APPROVE: m.wr_act_approve(),
@@ -101,6 +106,6 @@ export function slaText(sla: SlaView): string {
 }
 
 /** Vai trò được tiếp nhận / cập nhật phiếu (khớp WARRANTY_STAFF_ROLES của API; ADMIN luôn được). */
-export const WARRANTY_STAFF = ['WARRANTY'];
-/** Vai trò được duyệt từ chối / đổi mới / hoàn tiền. */
-export const WARRANTY_APPROVERS = ['DIRECTOR'];
+export const WARRANTY_STAFF = ['WARRANTY', 'WAREHOUSE_MANAGER'];
+/** Vai trò được duyệt từ chối / đổi mới / hoàn tiền (WAR-ROLE-01, 28/10/2026: Quản lý kho; Giám đốc chỉ xem). */
+export const WARRANTY_APPROVERS = ['WAREHOUSE_MANAGER'];

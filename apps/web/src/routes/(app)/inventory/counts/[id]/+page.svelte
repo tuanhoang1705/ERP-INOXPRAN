@@ -5,7 +5,7 @@
    * Số tồn ERP ẩn đến khi bấm "Kiểm tra" (đếm mù). Danh sách tự lưu nháp.
    */
   import { m } from '$lib/paraglide/messages';
-  import type { StockCountRow, StockCountRowState, StockCountView } from '@inoxpran/contracts';
+  import type { StockCountRow, StockCountRowState, StockCountView, Warehouse } from '@inoxpran/contracts';
   import { page as appPage } from '$app/state';
   import { goto } from '$app/navigation';
   import { onDestroy, onMount, tick } from 'svelte';
@@ -13,6 +13,7 @@
   import { api, ApiRequestError } from '$lib/api';
   import { dateTime, num } from '$lib/format';
   import { can } from '$lib/permissions';
+  import { session } from '$lib/session.svelte';
   import { buildCodeIndex, countStatusLabel, lookupCode, pushNewest, rowStateLabel, type CountProduct } from '$lib/stock-count';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
@@ -61,6 +62,12 @@
   let fixOpen = $state(false);
   let fixRow = $state<DisplayRow | null>(null);
   let fixTarget = $state('');
+  /** Phiếu gộp (KK-ALL-01): kho ghi phần chênh lệch khi sửa ERP — mặc định kho chính (không phải kho hàng lỗi). */
+  let fixWarehouse = $state('');
+  let warehouses = $state<Warehouse[]>([]);
+  const combined = $derived(count?.scope === 'ALL');
+  /** Tồn từng kho của mã theo lần kiểm tra gần nhất (phiếu gộp). */
+  const stockOf = (productId: string) => shownCheck?.byWarehouse?.[productId] ?? lastCheck?.byWarehouse?.[productId] ?? [];
   let fixReason = $state('');
   let fixError = $state('');
   // Chốt
@@ -112,7 +119,10 @@
     await tick();
     codeEl?.focus();
   }
-  onMount(load);
+  onMount(() => {
+    void load();
+    void api<Warehouse[]>('/warehouses').then((rows) => (warehouses = rows)).catch(() => undefined);
+  });
   onDestroy(() => {
     if (localChanged) void saveNow();
   });
@@ -307,6 +317,8 @@
     ask({ title: m.kk_huy_phieu(), message: m.kk_hoi_huy(), label: m.kk_huy_phieu(), tone: 'danger', action: () => act(async () => {
       if (!count) return;
       count = await api<StockCountView>(`/inventory/stock-counts/${id}/cancel`, { method: 'POST', body: JSON.stringify({ version: count.version }) });
+      // Phiếu đã hủy chỉ quản trị gốc còn mở được (DOC-HIDE-01): người khác về danh sách kèm thông báo.
+      if (!session.user?.root) await goto(`/inventory/counts?cancelled=${encodeURIComponent(count.code)}`);
     }) });
   }
 
@@ -317,6 +329,8 @@
     fixError = '';
     const counted = qtyById.get(row.productId)?.quantity;
     fixTarget = step === 'SKU' ? (row.state === 'ONLY_ERP' ? '0' : '') : counted ?? (row.state === 'ONLY_ERP' ? '0' : '');
+    const stocks = stockOf(row.productId);
+    fixWarehouse = stocks.find((item) => !item.defective)?.warehouseId ?? count?.warehouseIds.find((warehouseId) => warehouses.find((item) => item.id === warehouseId)?.purpose !== 'DEFECTIVE') ?? count?.warehouseIds[0] ?? '';
     fixOpen = true;
   }
   async function submitFix(event: SubmitEvent) {
@@ -337,7 +351,7 @@
       await saveNow();
       count = await api<StockCountView>(`/inventory/stock-counts/${id}/erp-fix`, {
         method: 'POST', idempotentCommand: true,
-        body: JSON.stringify({ version: count.version, step, productId: row.productId, targetOnHand: fixTarget, reason: fixReason.trim() }),
+        body: JSON.stringify({ version: count.version, step, productId: row.productId, targetOnHand: fixTarget, reason: fixReason.trim(), ...(combined && fixWarehouse ? { warehouseId: fixWarehouse } : {}) }),
       });
       fixOpen = false;
       await runCheck();
@@ -398,7 +412,7 @@
 <section class="page-head">
   <div>
     <nav class="crumbs" aria-label={m.duong_dan()}><a href="/inventory">{m.kho_giao_hang()}</a><span><a href="/inventory/counts">{m.kk_title()}</a></span><span>{count?.code ?? '…'}</span></nav>
-    <h1 class="page-title">{count ? m.kk_tieu_de({ code: count.code, warehouse: count.warehouseName }) : m.kk_title()}</h1>
+    <h1 class="page-title">{count ? m.kk_tieu_de({ code: count.code, warehouse: count.scope === 'ALL' ? m.tat_ca_kho() : count.warehouseName }) : m.kk_title()}</h1>
     {#if count}<p class="page-sub">{m.kk_mo_ta_phieu({ by: count.startedByName, at: dateTime(count.startedAt), period: count.period.split('-').reverse().join('/') })} · <span class={`pill ${count.status === 'CLOSED' ? 'success' : count.status === 'CANCELLED' ? 'neutral' : 'warning'}`}>{countStatusLabel(count.status)}</span></p>{/if}
   </div>
   {#if editable}<div class="actions"><button class="btn" onclick={askCancel} disabled={busy}><XCircle size={16} />{m.kk_huy_phieu()}</button></div>{/if}
@@ -492,7 +506,7 @@
                 </td>
               {/if}
               {#if shownCheck}
-                <td class="num">{row.erpOnHand === null ? '—' : num(row.erpOnHand)}</td>
+                <td class="num">{row.erpOnHand === null ? '—' : num(row.erpOnHand)}{#if combined && stockOf(row.productId).length > 1}<small class="by-wh">{stockOf(row.productId).map((item) => `${item.defective ? m.kk_kho_loi_ngan() : m.kk_kho_chinh_ngan()} ${num(item.onHand)}`).join(' · ')}</small>{/if}</td>
                 {#if step === 'QTY'}<td class="num diff">{signed(row.difference)}</td>{/if}
                 <td>
                   <span class={`pill ${row.state === 'MATCH' ? 'success' : 'danger'}`}>{row.state ? rowStateLabel(row.state) : ''}</span>
@@ -566,7 +580,16 @@
   <form id="kk-fix" class="fix-form" onsubmit={submitFix}>
     {#if fixError}<div class="banner error"><CircleAlert size={17} /><span>{fixError}</span></div>{/if}
     {#if fixRow}<p>{m.kk_sua_erp_mo_ta({ sku: fixRow.sku, name: fixRow.name, erp: fixRow.erpOnHand === null ? '—' : num(fixRow.erpOnHand) })}</p>{/if}
-    <div class="field"><label for="kk-fix-target">{m.kk_ton_erp_moi()} <span class="req">*</span></label><NumberInput id="kk-fix-target" bind:value={fixTarget} decimals={4} /></div>
+    <div class="field"><label for="kk-fix-target">{combined ? m.kk_tong_dung() : m.kk_ton_erp_moi()} <span class="req">*</span></label><NumberInput id="kk-fix-target" bind:value={fixTarget} decimals={4} /></div>
+    {#if combined && fixRow}
+      <fieldset class="fix-wh">
+        <legend>{m.kk_kho_ghi_chenh()}</legend>
+        {#each count?.warehouseIds ?? [] as warehouseId (warehouseId)}
+          {@const stock = stockOf(fixRow.productId).find((item) => item.warehouseId === warehouseId)}
+          <label><input type="radio" name="kk-fix-wh" value={warehouseId} bind:group={fixWarehouse} /><b>{warehouses.find((item) => item.id === warehouseId)?.name ?? stock?.warehouseName ?? warehouseId}</b><small>{m.kk_ton_kho_giu({ onHand: num(stock?.onHand ?? 0), reserved: num(stock?.reserved ?? 0) })}</small></label>
+        {/each}
+      </fieldset>
+    {/if}
     <div class="field"><label for="kk-fix-reason">{m.kk_ly_do()} <span class="req">*</span></label><textarea id="kk-fix-reason" bind:value={fixReason} rows="3" maxlength="300" placeholder={m.kk_ly_do_goi_y()}></textarea><small class="hint">{m.kk_ly_do_luu_vet()}</small></div>
   </form>
   {#snippet footer()}
@@ -630,6 +653,11 @@
   .bar { position: sticky; bottom: 0; z-index: 2; display: flex; justify-content: space-between; gap: 10px; padding: 14px 92px 14px 20px; border-top: 1px solid var(--line-soft); background: var(--surface); }
   .bar-right { display: flex; gap: 10px; }
   .fix-form { display: grid; gap: 12px; }
+  .by-wh { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .fix-wh { display: grid; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+  .fix-wh legend { padding: 0 4px; font-size: 13px; font-weight: 600; }
+  .fix-wh label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+  .fix-wh small { color: var(--muted); }
   .fix-form p, .dup { margin: 0; line-height: 1.5; }
   .fix-form textarea { width: 100%; }
   .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }

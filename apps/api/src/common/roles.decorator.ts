@@ -11,6 +11,13 @@ export const ROOT_ONLY_KEY = 'rootOnly';
  */
 export const RootOnly = (): MethodDecorator & ClassDecorator => SetMetadata(ROOT_ONLY_KEY, true);
 
+export const READ_ONLY_ALLOWED_KEY = 'readOnlyAllowed';
+/**
+ * Thao tác tài khoản chỉ xem (Giám đốc — ROLE-DIR-01, 28/10/2026) vẫn làm được: tài khoản của mình, đọc thông báo và các nút
+ * duyệt Giám đốc giữ lại. Mọi request ghi khác của tài khoản chỉ xem bị RolesGuard chặn.
+ */
+export const AllowReadOnly = (): MethodDecorator & ClassDecorator => SetMetadata(READ_ONLY_ALLOWED_KEY, true);
+
 export const PERMISSION_KEY = 'permission';
 /** Cần một trong các quyền nghiệp vụ (PERM-01, gắn theo tài khoản — `shared/permissions.ts`); quản trị gốc luôn qua. */
 export const RequirePermission = (...keys: PermissionKey[]): MethodDecorator & ClassDecorator => SetMetadata(PERMISSION_KEY, keys);

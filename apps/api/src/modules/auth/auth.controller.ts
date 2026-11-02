@@ -6,10 +6,13 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ConfigService } from '@nestjs/config';
 import { AllowPending } from '../../common/allow-pending.decorator';
 import { Public } from '../../common/public.decorator';
+import { AllowReadOnly } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { AuthService } from './auth.service';
 
 @ApiTags('Identity')
+// Tài khoản của chính mình (đổi mật khẩu, 2 lớp, đăng xuất): tài khoản chỉ xem vẫn làm được.
+@AllowReadOnly()
 @Controller('auth')
 export class AuthController {
   constructor(

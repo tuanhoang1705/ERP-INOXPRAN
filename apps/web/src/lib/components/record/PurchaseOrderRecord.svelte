@@ -8,7 +8,7 @@
    */
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
-  import { CircleAlert, CircleCheck, FileText, PackageCheck, Plus, RefreshCw, Send, ShieldCheck, Ship, Trash2, XCircle } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, FileText, PackageCheck, Plus, RefreshCw, Send, ShieldCheck, Ship, Trash2, TriangleAlert, XCircle } from 'lucide-svelte';
   import { CURRENCIES } from '$shared/currency';
   import { PRODUCT_CREATE_ROLES } from '$shared/catalog-access';
   import { m } from '$lib/paraglide/messages';
@@ -23,6 +23,7 @@
   } from '$lib/purchase';
   import Dialog from '$lib/components/Dialog.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import GoodsReceiptsPanel from '$lib/components/GoodsReceiptsPanel.svelte';
   import ProductDialog from '$lib/components/ProductDialog.svelte';
   import RecordWindow from './RecordWindow.svelte';
   import RecordSection from './RecordSection.svelte';
@@ -60,6 +61,17 @@
   let paymentOpen = $state(false);
   let payment = $state({ kind: 'DEPOSIT', amount: '', paidOn: todayIso(), reference: '', note: '' });
   let paymentError = $state('');
+  // PO-FLOW-02 (31/10/2026): tiến trình đơn mua → lô hàng → nhập kho → thanh toán; tạo lô ngay trong đơn.
+  type ShipmentRow = { id: string; code: string; status: string; containerNo?: string; containerType?: string; billOfLading?: string; eta?: string };
+  type ShipDraftLine = { purchaseOrderId: string; productId: string; sku: string; productName: string; baseUnit: string; remaining: string; quantity: string };
+  let shipments = $state<ShipmentRow[]>([]);
+  let unshippedLines = $state(0);
+  let shipReload = $state(0);
+  let shipOpen = $state(false);
+  let shipLines = $state<ShipDraftLine[]>([]);
+  let shipForm = $state({ containerNo: '', billOfLading: '', etd: '', eta: '' });
+  let shipError = $state('');
+  let shipping = $state(false);
 
   const isNew = $derived(!id);
   const roles = $derived(session.user?.roles ?? []);
@@ -105,6 +117,7 @@
       if (id) {
         order = await api<PurchaseOrderDetail>(`/purchase-orders/${id}`);
         fill(order);
+        void loadFlow(order);
       } else {
         header.currency = 'VND';
         header.expectedDate = '';
@@ -116,6 +129,75 @@
       loading = false;
     }
   }
+  /** Lô hàng của đơn và số dòng còn chưa đưa vào lô nào — cho thanh tiến trình và nút bước tiếp theo. */
+  async function loadFlow(current: PurchaseOrderDetail) {
+    if (current.status === 'DRAFT' || current.status === 'CANCELLED') {
+      shipments = [];
+      unshippedLines = 0;
+      return;
+    }
+    try {
+      const [list, draftLines] = await Promise.all([
+        api<{ rows: ShipmentRow[] }>(`/import-shipments?purchaseOrderId=${current.id}&page=1&pageSize=50`),
+        ['APPROVED', 'PARTIALLY_RECEIVED'].includes(current.status)
+          ? api<{ lines: unknown[] }>(`/import-shipments/draft?purchaseOrderId=${current.id}`).then((result) => result.lines.length).catch(() => 0)
+          : Promise.resolve(0),
+      ]);
+      shipments = list.rows;
+      unshippedLines = draftLines;
+    } catch {
+      shipments = [];
+    }
+  }
+
+  async function openShip() {
+    if (!order) return;
+    shipError = '';
+    shipForm = { containerNo: '', billOfLading: '', etd: order.etd ?? '', eta: order.eta ?? '' };
+    try {
+      const result = await api<{ lines: Array<Omit<ShipDraftLine, 'quantity'>> }>(`/import-shipments/draft?purchaseOrderId=${order.id}`);
+      shipLines = result.lines.map((line) => ({ ...line, quantity: line.remaining }));
+      shipOpen = true;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_hoan_tat_duoc_thao_tac();
+    }
+  }
+
+  async function createShipment(event: SubmitEvent) {
+    event.preventDefault();
+    const chosen = shipLines.filter((line) => Number(line.quantity) > 0);
+    if (!chosen.length) {
+      shipError = m.nhap_it_nhat_mot_so_luong();
+      return;
+    }
+    if (chosen.some((line) => Number(line.quantity) > Number(line.remaining))) {
+      shipError = m.pf_vuot_con_lai();
+      return;
+    }
+    shipping = true;
+    shipError = '';
+    try {
+      const optional = (value: string) => value.trim() || undefined;
+      const created = await api<{ id: string; code: string }>('/import-shipments', {
+        method: 'POST',
+        idempotentCommand: true,
+        body: JSON.stringify({
+          containerNo: optional(shipForm.containerNo), billOfLading: optional(shipForm.billOfLading), etd: optional(shipForm.etd), eta: optional(shipForm.eta),
+          lines: chosen.map((line) => ({ purchaseOrderId: line.purchaseOrderId, productId: line.productId, quantity: line.quantity })),
+        }),
+      });
+      shipOpen = false;
+      success = m.pf_da_tao_lo({ code: created.code });
+      shipReload += 1;
+      historyReload += 1;
+      if (order) await loadFlow(order);
+    } catch (caught) {
+      shipError = caught instanceof Error ? caught.message : m.crud_loi_luu();
+    } finally {
+      shipping = false;
+    }
+  }
+
   // untrack: load() đọc / ghi dữ liệu form — effect chỉ chạy lại khi đổi bản ghi (id).
   $effect(() => {
     void id;
@@ -250,6 +332,11 @@
     success = '';
     try {
       await api(`/purchase-orders/${order.id}/${action}`, { method: 'POST', body: JSON.stringify({ version: order.version }), idempotentCommand: true });
+      // Đơn đã hủy chỉ quản trị gốc còn mở được (DOC-HIDE-01): người khác về danh sách kèm thông báo.
+      if (action === 'cancel' && !session.user?.root) {
+        await goto(`/procurement?cancelled=${encodeURIComponent(order.code)}`);
+        return;
+      }
       success = action === 'submit' ? m.da_gui_don_mua_vao_luong() : action === 'approve' ? m.don_mua_da_duoc_duyet_cho() : m.po_da_huy({ code: order.code });
       historyReload += 1;
       await load();
@@ -313,17 +400,54 @@
   }
 
   const status = $derived(order ? (purchaseStatus[order.status] ?? { label: order.status, tone: '' }) : null);
-  const canReceive = $derived(Boolean(order) && ['APPROVED', 'PARTIALLY_RECEIVED'].includes(order?.status ?? '') && hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER', 'DIRECTOR']));
-  const canPay = $derived(Boolean(order) && order?.status !== 'DRAFT' && order?.status !== 'CANCELLED' && hasRole(roles, ['ACCOUNTANT', 'DIRECTOR', 'PROCUREMENT_MANAGER']));
-  const canShip = $derived(Boolean(order) && ['APPROVED', 'PARTIALLY_RECEIVED'].includes(order?.status ?? '') && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER', 'DIRECTOR']));
+  const canReceive = $derived(Boolean(order) && ['APPROVED', 'PARTIALLY_RECEIVED'].includes(order?.status ?? '') && hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
+  const canPay = $derived(Boolean(order) && order?.status !== 'DRAFT' && order?.status !== 'CANCELLED' && hasRole(roles, ['ACCOUNTANT', 'PROCUREMENT_MANAGER']));
+  // Kế toán ghi thanh toán thì cũng tạo được lô (khớp quyền API — SHIPMENT_EDITORS).
+  const canShip = $derived(Boolean(order) && ['APPROVED', 'PARTIALLY_RECEIVED'].includes(order?.status ?? '') && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER', 'ACCOUNTANT']));
+  const importOrder = $derived((order?.currency ?? 'VND') !== 'VND');
+  const shipmentStatusLabel = (value: string) => ({ PLANNED: m.ls_ke_hoach(), IN_TRANSIT: m.ls_dang_van_chuyen(), ARRIVED: m.ls_da_cap_cang(), RECEIVED: m.ls_da_nhap_kho(), CANCELLED: m.ls_da_huy() })[value] ?? value;
+  const openOrder = $derived(['APPROVED', 'PARTIALLY_RECEIVED'].includes(order?.status ?? ''));
+  const approvedOrder = $derived(['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(order?.status ?? ''));
+  const openShipments = $derived(shipments.filter((row) => ['PLANNED', 'IN_TRANSIT', 'ARRIVED'].includes(row.status)));
+  const paidTotal = $derived(Number(order?.paidTotal ?? 0));
+  const orderTotal = $derived(Number(order?.total ?? 0));
+  const receivedLines = $derived(order ? order.lines.filter((line) => remaining(line) === 0).length : 0);
+  type StepState = 'done' | 'current' | 'todo';
+  const steps = $derived.by(() => {
+    if (!order) return [];
+    const status = order.status;
+    const list: Array<{ key: string; label: string; state: StepState; note: string }> = [
+      { key: 'create', label: m.pf_buoc_lap(), state: status === 'DRAFT' ? 'current' : 'done', note: status === 'DRAFT' ? m.pf_nhap_va_gui_duyet() : order.code },
+      { key: 'approve', label: m.pf_buoc_duyet(), state: approvedOrder ? 'done' : status === 'PENDING_APPROVAL' ? 'current' : 'todo', note: status === 'PENDING_APPROVAL' ? m.pf_dang_cho_duyet() : approvedOrder ? m.pf_da_duyet() : '—' },
+    ];
+    if (importOrder) {
+      list.push({
+        key: 'ship', label: m.pf_buoc_lo(),
+        state: !approvedOrder ? 'todo' : openOrder && unshippedLines > 0 ? 'current' : 'done',
+        note: shipments.length ? m.pf_so_lo({ count: shipments.length }) + (openOrder && unshippedLines ? ` · ${m.pf_con_dong_chua_lo({ count: unshippedLines })}` : '') : m.pf_chua_co_lo(),
+      });
+    }
+    list.push({
+      key: 'receive', label: m.pf_buoc_nhap(),
+      state: status === 'RECEIVED' ? 'done' : openOrder && (!importOrder || openShipments.length > 0) ? 'current' : 'todo',
+      note: m.pf_dong_da_nhan({ done: receivedLines, total: order.lines.length }),
+    });
+    list.push({
+      key: 'pay', label: m.pf_buoc_tt(),
+      state: orderTotal > 0 && paidTotal >= orderTotal ? 'done' : paidTotal > 0 ? 'current' : 'todo',
+      note: `${money(String(paidTotal), order.currency ?? 'VND')} / ${money(order.total, order.currency ?? 'VND')}`,
+    });
+    return list;
+  });
+  /** Đã trả NCC nhưng chưa có lô hàng (đơn nhập khẩu đã duyệt) — lý do hay bỏ sót lô. */
+  const missingShipment = $derived(importOrder && openOrder && paidTotal > 0 && shipments.length === 0);
   const remaining = (line: { baseQuantity: string; receivedBaseQuantity: string }) => Math.max(0, Number(line.baseQuantity) - Number(line.receivedBaseQuantity));
   const title = $derived(isNew ? m.lap_don_mua_hang() : order ? `${order.code} — ${order.supplierName}` : m.dang_tai());
   const tabs = $derived([
     { id: 'main', label: m.po_dieu_khoan() },
     { id: 'lines', label: m.po_hang_hoa(), badge: lines.length },
-    { id: 'receive', label: m.tien_do_nhan_hang(), hidden: isNew || draft },
+    { id: 'receive', label: m.pf_tab_lo_nhap(), badge: shipments.length || undefined, hidden: isNew || draft },
     { id: 'payments', label: m.po_thanh_toan_ncc(), badge: order?.payments?.length, hidden: isNew || draft },
-    { id: 'shipments', label: m.po_lo_hang(), hidden: isNew || draft || (order?.currency ?? 'VND') === 'VND' },
     { id: 'attachments', label: m.rw_dinh_kem(), badge: attachmentCount, hidden: isNew },
     { id: 'history', label: m.rw_lich_su(), hidden: isNew },
   ]);
@@ -390,12 +514,32 @@
         <a class="tool-link" href={`/print/packing-list/${order.id}`} target="_blank" rel="noopener"><FileText size={15} />Packing list</a>
         {#if order.status === 'DRAFT' && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER'])}<button class="btn small primary" disabled={working || dirty} onclick={() => transition('submit')}><Send size={14} />{m.gui_duyet()}</button>{/if}
         {#if order.status === 'PENDING_APPROVAL' && hasRole(roles, ['PROCUREMENT_MANAGER', 'DIRECTOR'])}<button class="btn small primary" disabled={working} onclick={() => transition('approve')}><ShieldCheck size={14} />{m.duyet_don_mua()}</button>{/if}
-        {#if ['DRAFT', 'PENDING_APPROVAL', 'APPROVED'].includes(order.status) && hasRole(roles, ['PROCUREMENT_MANAGER', 'DIRECTOR'])}<button class="btn small" disabled={working} onclick={() => transition('cancel')}><XCircle size={14} />{m.po_huy_don()}</button>{/if}
+        {#if ['DRAFT', 'PENDING_APPROVAL', 'APPROVED'].includes(order.status) && hasRole(roles, ['PROCUREMENT_MANAGER'])}<button class="btn small" disabled={working} onclick={() => transition('cancel')}><XCircle size={14} />{m.po_huy_don()}</button>{/if}
       {/if}
     {/snippet}
     {#snippet children(active)}
       {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span>{#if conflict}<button class="btn small" onclick={load}><RefreshCw size={14} />{m.rw_tai_lai()}</button>{/if}</div>{/if}
       {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
+      {#if order && steps.length}
+        <section class="card flow" aria-label={m.pf_tien_trinh()}>
+          <ol class="steps">
+            {#each steps as step, index (step.key)}
+              <li class={step.state}><span class="dot">{step.state === 'done' ? '✓' : index + 1}</span><div><b>{step.label}</b><small>{step.note}</small></div></li>
+            {/each}
+          </ol>
+          <div class="next">
+            {#if order.status === 'DRAFT'}<span class="muted">{m.pf_tiep_gui_duyet()}</span>
+            {:else if order.status === 'PENDING_APPROVAL'}<span class="muted">{m.pf_tiep_cho_duyet()}</span>
+            {:else if importOrder && openOrder && unshippedLines > 0 && canShip}<button class="btn primary" disabled={working} onclick={openShip}><Ship size={16} />{m.po_tao_lo_hang()}</button>
+            {:else if importOrder && openShipments.length}<a class="btn primary" href={`/procurement/shipments/${openShipments[0]!.id}`}><PackageCheck size={16} />{canReceive ? m.pf_nhap_kho_lo({ code: openShipments[0]!.code }) : m.pf_xem_lo({ code: openShipments[0]!.code })}</a>
+            {:else if !importOrder && openOrder && canReceive}<button class="btn primary" onclick={() => (tab = 'receive')}><PackageCheck size={16} />{m.lap_phieu_nhap_kho()}</button>
+            {:else if order.status === 'RECEIVED'}<span class="done">{m.pf_da_nhan_du()}</span>{/if}
+          </div>
+        </section>
+      {/if}
+      {#if missingShipment}
+        <div class="banner warning"><TriangleAlert size={17} /><span>{m.pf_canh_bao_chua_lo({ paid: money(String(paidTotal), order?.currency ?? 'VND') })}</span></div>
+      {/if}
 
       <div class="kpis">
         <div class="card kpi"><p class="label">{m.po_gia_tri_don()} ({currency})</p><p class="value">{money(totals.total, currency)}</p><p class="note">{currency === 'VND' ? m.po_don_trong_nuoc() : totals.vnd ? `≈ ${vnd(totals.vnd)}` : m.po_can_ty_gia()}</p></div>
@@ -444,10 +588,22 @@
             onadd={editable ? addCode : undefined} oncreate={editable && canCreateProduct ? createProduct : undefined} onremove={editable ? (index) => lines.splice(index, 1) : undefined} />
         </section>
       {:else if active === 'receive' && order}
+        {#if importOrder || shipments.length}
+          <section class="card ship-card">
+            <header class="card-head head"><h2>{m.po_lo_hang()}</h2>{#if canShip && unshippedLines > 0}<button class="btn small primary" onclick={openShip}><Ship size={14} />{m.po_tao_lo_hang()}</button>{/if}</header>
+            <RelatedTable endpoint={`/import-shipments?purchaseOrderId=${order.id}&r=${shipReload}`} empty={m.po_chua_co_lo()} columns={[
+              { label: m.po_so_lo(), value: (row: { id: string; code?: string }) => text(row.code), href: (row: { id: string }) => `/procurement/shipments/${row.id}` },
+              { label: 'Container', value: (row: { id: string; containerNo?: string; containerType?: string }) => `${text(row.containerNo) || '—'} ${text(row.containerType)}` },
+              { label: 'B/L', value: (row: { id: string; billOfLading?: string }) => text(row.billOfLading) || '—' },
+              { label: 'ETA', value: (row: { id: string; eta?: string }) => (row.eta ? date(row.eta) : '—') },
+              { label: m.trang_thai(), value: (row: { id: string; status?: string }) => shipmentStatusLabel(text(row.status)) },
+            ]} />
+          </section>
+        {/if}
         <section class="card">
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th class="num">{m.so_luong_dat()}</th><th class="num">{m.da_nhan_dv_co_so()}</th>{#if canReceive}<th class="num">{m.thuc_nhan_lan_nay()}</th>{/if}</tr></thead>
+              <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th class="num">{m.so_luong_dat()}</th><th class="num">{m.da_nhan_dv_co_so()}</th>{#if canReceive && !importOrder}<th class="num">{m.thuc_nhan_lan_nay()}</th>{/if}</tr></thead>
               <tbody>
                 {#each order.lines as line}
                   <tr>
@@ -455,20 +611,22 @@
                     <td>{line.productName}</td>
                     <td class="num">{num(line.quantity)} {line.unit}</td>
                     <td class="num"><span class:done={remaining(line) === 0}>{num(line.receivedBaseQuantity)} / {num(line.baseQuantity)}</span></td>
-                    {#if canReceive}<td class="num"><NumberInput class="input qty" decimals={3} bind:value={receipt[line.productId]} aria-label={m.thuc_nhan({ sku: line.sku })} /></td>{/if}
+                    {#if canReceive && !importOrder}<td class="num"><NumberInput class="input qty" decimals={3} bind:value={receipt[line.productId]} aria-label={m.thuc_nhan({ sku: line.sku })} /></td>{/if}
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
-          {#if canReceive}
+          {#if canReceive && !importOrder}
             <footer class="receive">
               <div class="field"><label for="reference">{m.so_phieu_giao_hang_cua_ncc()}</label><input id="reference" bind:value={reference} placeholder={m.tuy_chon()} /></div>
               <button class="btn primary" disabled={working} onclick={receive}><PackageCheck size={16} />{working ? m.dang_ghi_so() : m.lap_phieu_nhap_kho()}</button>
             </footer>
           {/if}
         </section>
-        {#if (order.currency ?? 'VND') !== 'VND'}<p class="hint">{m.po_nhan_theo_lo_ghi_chu()}</p>{/if}
+        {#if importOrder}<p class="hint">{m.pf_nhan_theo_lo()}</p>{/if}
+        <GoodsReceiptsPanel purchaseOrderId={order.id} reload={historyReload} canEdit={hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER'])}
+          onchanged={(code) => { success = m.gr_da_sua({ code }); historyReload += 1; void load(); }} />
       {:else if active === 'payments' && order}
         <section class="card">
           <header class="card-head head"><h2>{m.po_thanh_toan_ncc()}</h2>{#if canPay}<button class="btn small primary" onclick={() => { paymentError = ''; payment = { kind: order?.payments?.length ? 'BALANCE' : 'DEPOSIT', amount: '', paidOn: todayIso(), reference: '', note: '' }; paymentOpen = true; }}><Plus size={14} />{m.po_ghi_thanh_toan()}</button>{/if}</header>
@@ -485,15 +643,6 @@
           </div>
         </section>
         <p class="hint">{m.po_thanh_toan_ghi_chu()}</p>
-      {:else if active === 'shipments' && order}
-        {#if canShip}<div class="ship-actions"><a class="btn small primary" href={`/procurement/shipments/new?po=${order.id}`}><Ship size={15} />{m.po_tao_lo_hang()}</a></div>{/if}
-        <RelatedTable endpoint={`/import-shipments?purchaseOrderId=${order.id}`} empty={m.po_chua_co_lo()} columns={[
-          { label: m.po_so_lo(), value: (row: { id: string; code?: string }) => text(row.code), href: (row: { id: string }) => `/procurement/shipments/${row.id}` },
-          { label: 'Container', value: (row: { id: string; containerNo?: string; containerType?: string }) => `${text(row.containerNo) || '—'} ${text(row.containerType)}` },
-          { label: 'B/L', value: (row: { id: string; billOfLading?: string }) => text(row.billOfLading) || '—' },
-          { label: 'ETA', value: (row: { id: string; eta?: string }) => (row.eta ? date(row.eta) : '—') },
-          { label: m.trang_thai(), value: (row: { id: string; status?: string }) => text(row.status) },
-        ]} />
       {:else if active === 'attachments' && order}
         <AttachmentsPanel type="purchase-orders" id={order.id} onchange={(count) => (attachmentCount = count)} purposes={[{ purpose: 'PURCHASE_DOCUMENT', label: m.po_chung_tu_dinh_kem(), pdf: true }]} />
       {:else if active === 'history' && order}
@@ -522,6 +671,33 @@
 
 <ProductDialog bind:open={newProductOpen} product={null} initial={newProductInitial} categories={productCategories} onsaved={productCreated} />
 
+<Dialog bind:open={shipOpen} title={m.pf_tao_lo_tieu_de({ code: order?.code ?? '' })} wide>
+  <form id="ship-form" class="ship-form" onsubmit={createShipment} novalidate>
+    {#if shipError}<div class="banner error"><CircleAlert size={17} /><span>{shipError}</span></div>{/if}
+    <p class="hint">{m.pf_tao_lo_giai_thich()}</p>
+    <div class="row4">
+      <div class="field"><label for="ship-container">Container</label><input id="ship-container" bind:value={shipForm.containerNo} maxlength="40" placeholder={m.tuy_chon()} /></div>
+      <div class="field"><label for="ship-bl">B/L</label><input id="ship-bl" bind:value={shipForm.billOfLading} maxlength="60" placeholder={m.tuy_chon()} /></div>
+      <div class="field"><label for="ship-etd">ETD</label><input id="ship-etd" type="date" bind:value={shipForm.etd} /></div>
+      <div class="field"><label for="ship-eta">ETA</label><input id="ship-eta" type="date" bind:value={shipForm.eta} /></div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th class="num">{m.pf_con_lai()}</th><th class="num">{m.pf_dua_vao_lo()}</th></tr></thead>
+        <tbody>
+          {#each shipLines as line (line.productId)}
+            <tr><td class="code">{line.sku}</td><td>{line.productName}</td><td class="num">{num(line.remaining)} {line.baseUnit}</td><td class="num"><NumberInput class="input qty" decimals={3} bind:value={line.quantity} aria-label={m.pf_dua_vao_lo_sku({ sku: line.sku })} /></td></tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {#snippet footer()}
+    <button class="btn" onclick={() => (shipOpen = false)}>{m.dong()}</button>
+    <button class="btn primary" type="submit" form="ship-form" disabled={shipping}><Ship size={16} />{shipping ? m.kh_dang_luu() : m.po_tao_lo_hang()}</button>
+  {/snippet}
+</Dialog>
+
 <style>
   .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; align-items: start; }
   .span { grid-column: span 2; }
@@ -534,7 +710,23 @@
   td :global(.qty) { width: 110px; text-align: center; }
   .receive { display: flex; align-items: flex-end; justify-content: flex-end; gap: 14px; padding: 16px 20px; border-top: 1px solid var(--line-soft); }
   .receive .field { width: 280px; }
-  .ship-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; margin-bottom: 16px; padding: 14px 18px; }
+  .steps { display: flex; flex: 1 1 560px; flex-wrap: wrap; gap: 8px 6px; margin: 0; padding: 0; list-style: none; }
+  .steps li { display: flex; flex: 1 1 140px; align-items: flex-start; gap: 9px; min-width: 0; padding: 8px 10px; border-radius: 9px; color: var(--muted); }
+  .steps li.current { background: var(--orange-soft); color: var(--text); }
+  .steps li.done { color: var(--text); }
+  .steps .dot { display: grid; flex: none; place-items: center; width: 24px; height: 24px; margin: 0; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
+  .steps li.current .dot { border-color: var(--orange); background: var(--orange); color: #fff; }
+  .steps li.done .dot { border-color: var(--green); background: var(--green); color: #fff; }
+  .steps div { display: grid; gap: 2px; min-width: 0; }
+  .steps b { font-size: 13px; font-weight: 600; }
+  .steps small { overflow: hidden; color: var(--muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+  .next { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+  .ship-card { margin-bottom: 16px; }
+  .ship-form { display: grid; gap: 14px; }
+  .ship-form .row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .ship-form td :global(.qty) { width: 120px; }
+  @media (max-width: 760px) { .ship-form .row4 { grid-template-columns: 1fr 1fr; } }
   .pay { display: grid; gap: 14px; }
   .tool-link { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border-radius: 7px; font-size: 13px; font-weight: 600; }
   .tool-link:hover { background: var(--surface-2); color: var(--navy); }

@@ -103,27 +103,25 @@
 
 <section class="card">
   <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>{m.thoi_diem()}</th><th>{m.inv_doi_tac()}</th><th>{m.inv_phieu_bh()}</th><th>{m.chung_tu()}</th><th>{m.ma_sp()}</th><th>{m.inv_loai_phat_sinh()}</th><th class="num">{m.nhap_2()}</th><th class="num">{m.xuat()}</th><th>{m.ghi_chu()}</th><th>{m.inv_thu_kho()}</th><th>{m.inv_nvkd()}</th></tr></thead>
+    <table class="table compact">
+      <thead><tr><th>{m.thoi_diem()}</th><th>{m.inv_doi_tac()}</th><th>{m.chung_tu()} · {m.inv_phieu_bh()}</th><th>{m.ma_sp()}</th><th>{m.inv_loai_phat_sinh()}</th><th class="num">{m.nhap_2()}</th><th class="num">{m.xuat()}</th><th>{m.ghi_chu()}</th><th>{m.inv_thu_kho()} · {m.inv_nvkd()}</th></tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="11">{m.dang_tai()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan="9">{m.dang_tai()}</td></tr>
         {:else if rows.length}
           {#each rows as row (row.id)}
             <tr>
               <td class="muted nowrap">{dateTime(row.occurredAt)}<small>{row.warehouseCode}</small></td>
               <td>{#if row.partnerCode}<span class="code">{row.partnerCode}</span>{/if}<small>{row.partnerName ?? ''}</small></td>
-              <td>{#if row.salesOrderCode}<span class="code">{row.salesOrderCode}</span><small>{row.salesOrderDate ? date(row.salesOrderDate) : ''}</small>{:else}—{/if}</td>
-              <td class="code">{row.documentNo}</td>
+              <td><span class="code">{row.documentNo}</span>{#if row.salesOrderCode}<small>{row.salesOrderCode}{row.salesOrderDate ? ` · ${date(row.salesOrderDate)}` : ''}</small>{/if}</td>
               <td><span class="code">{row.sku}</span><small>{row.productName}</small></td>
               <td><span class={`pill ${row.direction === 'IN' ? 'success' : 'orange'}`}>{categoryLabel(row.category)}</span></td>
               <td class="num">{row.direction === 'IN' ? num(Math.abs(row.quantity)) : ''}</td>
               <td class="num">{row.direction === 'OUT' ? num(Math.abs(row.quantity)) : ''}</td>
               <td class="muted note">{row.note ?? ''}</td>
-              <td class="muted">{row.keeperName ?? ''}</td>
-              <td class="muted">{row.salesRepName ?? ''}</td>
+              <td class="muted">{row.keeperName ?? ''}{#if row.salesRepName}<small>{m.inv_nvkd()}: {row.salesRepName}</small>{/if}</td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="11">{m.inv_khong_co_phat_sinh()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="9">{m.inv_khong_co_phat_sinh()}</td></tr>{/if}
       </tbody>
     </table>
   </div>

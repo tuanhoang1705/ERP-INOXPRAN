@@ -7,6 +7,7 @@ import {
   toVnd,
   weightedAverageCost,
   type AllocationMethod,
+  type CorrectGoodsReceipt,
   type CreateImportShipment,
   type ReceiveImportShipment,
   type UpdateImportShipment,
@@ -16,12 +17,13 @@ import { ObjectId, type ClientSession, type Db, type Document } from 'mongodb';
 import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
+import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { pageOf, type PageRequest } from '../../common/paging';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
-import { OPEN_SHIPMENT_STATUSES, packingInputOf, ProcurementService } from './procurement.service';
+import { OPEN_SHIPMENT_STATUSES, packingInputOf, ProcurementService, type ReceiptDelta } from './procurement.service';
 
 type LineInput = { purchaseOrderId: string; productId: string; quantity: string };
 const SHIPPABLE_ORDER_STATUSES = ['APPROVED', 'PARTIALLY_RECEIVED'];
@@ -205,15 +207,17 @@ export class ImportShipmentsService {
     }
   }
 
-  async list(filter: { status?: string | undefined; search?: string | undefined; purchaseOrderId?: string | undefined; from?: string | undefined; to?: string | undefined }, paging: PageRequest) {
+  async list(filter: { status?: string | undefined; search?: string | undefined; purchaseOrderId?: string | undefined; from?: string | undefined; to?: string | undefined }, paging: PageRequest, viewer?: Viewer) {
     // Lọc theo ngày lập lô (LIST-DATE-01).
-    const query: Document = dateRangeFilter('createdAt', filter.from, filter.to);
-    if (filter.status) query.status = filter.status;
-    if (filter.purchaseOrderId) query.purchaseOrderIds = toObjectId(filter.purchaseOrderId, 'purchaseOrderId');
+    const own: Document = dateRangeFilter('createdAt', filter.from, filter.to);
+    if (filter.status) own.status = filter.status;
+    if (filter.purchaseOrderId) own.purchaseOrderIds = toObjectId(filter.purchaseOrderId, 'purchaseOrderId');
     if (filter.search) {
       const pattern = new RegExp(filter.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-      query.$or = [{ code: pattern }, { containerNo: pattern }, { billOfLading: pattern }, { 'lines.purchaseOrderCode': pattern }, { 'lines.sku': pattern }];
+      own.$or = [{ code: pattern }, { containerNo: pattern }, { billOfLading: pattern }, { 'lines.purchaseOrderCode': pattern }, { 'lines.sku': pattern }];
     }
+    // Lô đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01).
+    const query = hideStatus(own, viewer);
     const [rows, total] = await Promise.all([
       this.db.collection('import_shipments').find(query).sort({ createdAt: -1, _id: -1 }).skip(paging.skip).limit(paging.pageSize).toArray(),
       this.db.collection('import_shipments').countDocuments(query),
@@ -227,9 +231,9 @@ export class ImportShipmentsService {
   }
 
   /** Chi tiết lô + giá trị VND, đóng gói và giá vốn dự kiến (phân bổ chi phí theo phương pháp đang chọn). */
-  async get(id: string) {
+  async get(id: string, viewer?: Viewer) {
     const shipment = await this.db.collection('import_shipments').findOne({ _id: toObjectId(id) });
-    if (!shipment) throw new NotFoundException({ code: 'SHIPMENT_NOT_FOUND', message: 'Không tìm thấy lô hàng' });
+    if (!shipment || (shipment.status === 'CANCELLED' && !seesCancelled(viewer))) throw new NotFoundException({ code: 'SHIPMENT_NOT_FOUND', message: 'Không tìm thấy lô hàng' });
     return this.present(shipment);
   }
 
@@ -295,6 +299,116 @@ export class ImportShipmentsService {
     };
   }
 
+  /** Phân bổ chi phí nhập trên số thực nhận: giá trị và CBM mỗi dòng tỷ lệ theo số nhận / số trong lô. */
+  private receivedLanded(shipment: Document, presented: Awaited<ReturnType<ImportShipmentsService['present']>>, actualOf: (line: { purchaseOrderId: string; productId: string; receivedQuantity?: string }) => number) {
+    const receivedLines = presented.lines.map((line) => {
+      const actual = actualOf(line);
+      const ratio = Number(line.quantity) > 0 ? actual / Number(line.quantity) : 0;
+      return { line, actual, valueVnd: String(Math.round(Number(line.valueVnd) * ratio)), cbm: line.cbm * ratio };
+    }).filter((row) => row.actual > 0);
+    const landed = landedCost(
+      receivedLines.map((row) => ({ key: key(row.line.purchaseOrderId, row.line.productId), quantity: String(row.actual), valueVnd: row.valueVnd, cbm: row.cbm })),
+      presented.costs.map((cost) => ({ type: String(cost.type), amountVnd: String(cost.amount) })),
+      shipment.allocationMethod as AllocationMethod,
+    );
+    return { receivedLines, landed };
+  }
+
+  /**
+   * Sửa phiếu nhập kho đã ghi — đơn mua thường hoặc phiếu thuộc lô hàng nhập (20/10/2026, "nhiều mục cần sửa được"):
+   * thẻ kho ghi chênh lệch vào ngày phiếu gốc, đơn mua tính lại số đã nhận; phiếu của lô thì số nhận của lô, phân bổ chi phí
+   * và giá vốn bình quân (mã đã cập nhật giá vốn khi nhận lô) điều chỉnh theo phần chênh lệch.
+   */
+  async correctReceipt(id: string, input: CorrectGoodsReceipt, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`goods-receipt-correct:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
+      const receipt = await this.db.collection('goods_receipts').findOne({ _id: toObjectId(id) }, { session });
+      if (!receipt) throw new NotFoundException({ code: 'GOODS_RECEIPT_NOT_FOUND', message: 'Không tìm thấy phiếu nhập kho' });
+      if (Number(receipt.version ?? 0) !== input.version) throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu nhập ${String(receipt.code)} vừa được người khác sửa, vui lòng tải lại` });
+      const shipment = receipt.importShipmentId ? await this.db.collection('import_shipments').findOne({ _id: receipt.importShipmentId as ObjectId }, { session }) : null;
+      const caps = shipment
+        ? new Map((shipment.lines as Document[])
+          .filter((line) => (line.purchaseOrderId as ObjectId).equals(receipt.purchaseOrderId as ObjectId))
+          .map((line) => [(line.productId as ObjectId).toHexString(), new Decimal(decimalString(line.quantity))]))
+        : undefined;
+      // Tồn trước khi sửa (mọi kho) để điều chỉnh giá vốn bình quân.
+      const productIds = input.lines.map((line) => toObjectId(line.productId, 'productId'));
+      const stockBefore = new Map((await this.db.collection('inventory_balances').aggregate([
+        { $match: { productId: { $in: productIds } } },
+        { $group: { _id: '$productId', onHand: { $sum: '$onHand' } } },
+      ], { session }).toArray()).map((row) => [(row._id as ObjectId).toHexString(), decimalString(row.onHand)]));
+      const result = await this.procurement.applyReceiptCorrection({ receipt, input, ...(caps ? { caps } : {}) }, request, session);
+      const costChanges = shipment && result.deltas.length ? await this.applyShipmentCorrection(shipment, receipt, result.deltas, stockBefore, input.reason, request, session) : [];
+      return this.procurement.saveReceiptCorrection(receipt, result, input.reason, costChanges, request, session);
+    });
+  }
+
+  private async applyShipmentCorrection(
+    shipment: Document,
+    receipt: Document,
+    deltas: ReceiptDelta[],
+    stockBefore: Map<string, string>,
+    reason: string,
+    request: AuthenticatedRequest,
+    session: ClientSession,
+  ) {
+    const orderId = receipt.purchaseOrderId as ObjectId;
+    const deltaOf = (line: Document) => ((line.purchaseOrderId as ObjectId).equals(orderId) ? deltas.find((row) => row.productId === (line.productId as ObjectId).toHexString())?.delta : undefined);
+    const lines = (shipment.lines as Document[]).map((line) => {
+      const delta = deltaOf(line);
+      return delta ? { ...line, receivedQuantity: decimal(new Decimal(decimalString(line.receivedQuantity ?? '0')).add(delta).toString()) } : line;
+    });
+    const presented = await this.present({ ...shipment, lines }, session);
+    const { landed } = this.receivedLanded(shipment, presented, (line) => Number(line.receivedQuantity ?? 0));
+    /**
+     * Giá vốn (chỉ mã đã cập nhật giá vốn khi nhận lô): bỏ giá trị nhập cũ của mã trong lô, cộng giá trị nhập mới (chi phí lô
+     * phân bổ lại theo số nhận mới) trên tồn hiện tại — giá trị tồn = tồn × giá vốn − giá trị nhập cũ + giá trị nhập mới.
+     * VD lô nhận 10 cái (phí vận chuyển chia 10), sửa còn 8: 8 cái còn lại gánh đủ phí vận chuyển.
+     */
+    const landedOf = (source: Document[], shares: ReadonlyArray<{ key: string; landedVnd: string }>, productId: string) =>
+      source
+        .filter((line) => (line.productId as ObjectId).toHexString() === productId)
+        .reduce<Decimal>((sum, line) => sum.add(shares.find((share) => share.key === key(line.purchaseOrderId, line.productId))?.landedVnd ?? 0), new Decimal(0));
+    const oldShares = ((shipment.landed as Document | undefined)?.lines as Array<{ key: string; landedVnd: string }> | undefined) ?? [];
+    const costed = new Set(((shipment.costUpdates as Document[] | undefined) ?? []).map((row) => String(row.productId)));
+    const costChanges: Array<{ sku: string; before?: string; after: string }> = [];
+    for (const row of deltas) {
+      if (!costed.has(row.productId)) continue;
+      const product = await this.db.collection('products').findOne({ _id: new ObjectId(row.productId) }, { session });
+      if (!product || product.standardCost === undefined) continue;
+      const oldValue = landedOf(shipment.lines as Document[], oldShares, row.productId);
+      const newValue = landedOf(lines, landed.lines, row.productId);
+      const before = new Decimal(decimalString(product.standardCost));
+      const onHand = new Decimal(stockBefore.get(row.productId) ?? '0');
+      const remaining = onHand.add(row.delta);
+      if (onHand.lt(0) || remaining.lte(0)) continue;
+      const after = onHand.mul(before).sub(oldValue).add(newValue).div(remaining).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      if (after.lte(0) || after.eq(before)) continue;
+      await this.db.collection('products').updateOne({ _id: product._id }, { $set: { standardCost: decimal(after.toFixed(2)), updatedAt: new Date() }, $inc: { version: 1 } }, { session });
+      await this.audit.record({
+        ...this.actor(request),
+        action: 'PRODUCT_COST_UPDATED',
+        entityType: 'Product',
+        entityId: row.productId,
+        before: { standardCost: before.toFixed(2) },
+        after: { standardCost: after.toFixed(2) },
+        metadata: { importShipment: shipment.code, goodsReceipt: receipt.code, correction: row.delta.toString(), landedValueBefore: oldValue.toFixed(0), landedValueAfter: newValue.toFixed(0), onHandBefore: onHand.toString() },
+      }, session);
+      costChanges.push({ sku: row.sku, before: before.toFixed(2), after: after.toFixed(2) });
+    }
+    const now = new Date();
+    const updated = await this.db.collection('import_shipments').updateOne(
+      { _id: shipment._id, version: shipment.version },
+      {
+        $set: { lines, landed, updatedAt: now },
+        $inc: { version: 1 },
+        $push: { corrections: { at: now, byName: request.user.displayName, receiptCode: receipt.code, reason, changes: deltas.map((row) => ({ sku: row.sku, delta: row.delta.toString() })), costChanges } },
+      } as Document,
+      { session },
+    );
+    if (updated.modifiedCount !== 1) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Lô hàng vừa được cập nhật, hãy tải lại rồi sửa' });
+    return costChanges;
+  }
+
   /**
    * Nhận hàng cả lô: mỗi đơn mua một phiếu nhập kho (GR) gắn lô; phân bổ chi phí nhập theo số thực nhận;
    * cập nhật giá vốn bình quân gia quyền của từng mã (ghi nhật ký PRODUCT_COST_UPDATED trên hồ sơ sản phẩm).
@@ -304,7 +418,8 @@ export class ImportShipmentsService {
       const shipmentId = toObjectId(id);
       const shipment = await this.db.collection('import_shipments').findOne({ _id: shipmentId, version: input.version }, { session });
       if (!shipment) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Lô hàng đã được cập nhật, hãy tải lại rồi nhận hàng' });
-      if (!['IN_TRANSIT', 'ARRIVED'].includes(String(shipment.status))) throw new ConflictException({ code: 'SHIPMENT_STATE_CONFLICT', message: 'Chỉ nhận hàng khi lô đang vận chuyển hoặc đã cập cảng' });
+      // PO-FLOW-02 (31/10/2026): kho nhận được cả lô chưa bấm "Khởi hành" / "Đã cập cảng" — mốc thời gian còn thiếu ghi lúc nhận.
+      if (!OPEN_SHIPMENT_STATUSES.includes(String(shipment.status))) throw new ConflictException({ code: 'SHIPMENT_STATE_CONFLICT', message: 'Lô hàng đã nhận hoặc đã hủy' });
       const shipmentLines = shipment.lines as Document[];
       const received = new Map(input.lines.map((line) => [key(line.purchaseOrderId, line.productId), line]));
       for (const line of shipmentLines) {
@@ -339,16 +454,7 @@ export class ImportShipmentsService {
 
       // Giá vốn trên số thực nhận (giá trị và CBM tỷ lệ theo số nhận / số trong lô).
       const presented = await this.present(shipment, session);
-      const receivedLines = presented.lines.map((line) => {
-        const actual = Number(received.get(key(line.purchaseOrderId, line.productId))?.quantity ?? 0);
-        const ratio = Number(line.quantity) > 0 ? actual / Number(line.quantity) : 0;
-        return { line, actual, valueVnd: String(Math.round(Number(line.valueVnd) * ratio)), cbm: line.cbm * ratio };
-      }).filter((row) => row.actual > 0);
-      const landed = landedCost(
-        receivedLines.map((row) => ({ key: key(row.line.purchaseOrderId, row.line.productId), quantity: String(row.actual), valueVnd: row.valueVnd, cbm: row.cbm })),
-        presented.costs.map((cost) => ({ type: String(cost.type), amountVnd: String(cost.amount) })),
-        shipment.allocationMethod as AllocationMethod,
-      );
+      const { receivedLines, landed } = this.receivedLanded(shipment, presented, (line) => Number(received.get(key(line.purchaseOrderId, line.productId))?.quantity ?? 0));
       const costUpdates: Array<{ productId: ObjectId; sku: string; before?: string; after: string }> = [];
       if (input.updateStandardCost) {
         const perProduct = new Map<string, { sku: string; quantity: Decimal; landed: Decimal }>();
@@ -382,6 +488,8 @@ export class ImportShipmentsService {
         {
           $set: {
             status: 'RECEIVED',
+            ...(shipment.departedAt ? {} : { departedAt: now }),
+            ...(shipment.arrivedAt ? {} : { arrivedAt: now }),
             receivedAt: now,
             receivedBy: toObjectId(request.user.sub),
             receiptCodes,

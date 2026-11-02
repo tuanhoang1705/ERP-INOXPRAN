@@ -23,7 +23,7 @@
   let saving = $state(false);
   let deleteOpen = $state(false);
   let deleting = $state<WarrantyFaultCode | null>(null);
-  const editable = $derived(hasRole(session.user?.roles, ['DIRECTOR', 'WARRANTY']));
+  const editable = $derived(hasRole(session.user?.roles, ['WARRANTY', 'WAREHOUSE_MANAGER']));
   const shown = $derived(categoryId ? codes.filter((row) => !row.categoryIds.length || row.categoryIds.includes(categoryId)) : codes);
 
   async function load() {

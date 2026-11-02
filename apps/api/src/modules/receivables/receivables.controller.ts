@@ -13,6 +13,7 @@ export class ReceivablesController {
 
   @Get('receivables')
   list(
+    @Req() request: AuthenticatedRequest,
     @Query('partnerId') partnerId?: string,
     @Query('overdueOnly') overdueOnly?: string,
     @Query('includePaid') includePaid?: string,
@@ -22,7 +23,7 @@ export class ReceivablesController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.receivables.list(partnerId, overdueOnly === 'true', includePaid === 'true', search, pageRequest(page, pageSize), from, to);
+    return this.receivables.list(partnerId, overdueOnly === 'true', includePaid === 'true', search, pageRequest(page, pageSize), from, to, request.user);
   }
 
   /** Công nợ theo khách hàng (CN-KH-01). */
@@ -31,14 +32,26 @@ export class ReceivablesController {
     return this.receivables.customers(search, onlyOpen === 'true', pageRequest(page, pageSize));
   }
 
+  /** Bảng tổng hợp công nợ theo tháng giống mẫu 收付明细汇总表 (AR-XLS-02): chọn tháng và khách (bỏ trống = tất cả). */
+  @Get('receivables/customers/export')
+  async summaryExport(@Query('fromMonth') fromMonth = '', @Query('toMonth') toMonth = '', @Query('customerIds') customerIds = '') {
+    const ids = customerIds.split(',').map((id) => id.trim()).filter(Boolean);
+    const { buffer, fileName, displayName } = await this.receivables.summaryWorkbook(fromMonth, toMonth, ids);
+    return new StreamableFile(buffer, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      disposition: `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(displayName)}`,
+      length: buffer.length,
+    });
+  }
+
   @Get('receivables/customers/:id/statement')
-  statement(@Param('id') id: string, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.receivables.statement(id, from || undefined, to || undefined);
+  statement(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.receivables.statement(id, from || undefined, to || undefined, request.user);
   }
 
   @Get('receivables/customers/:id/statement/export')
   async statementExport(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('from') from?: string, @Query('to') to?: string) {
-    const { buffer, fileName } = await this.receivables.statementWorkbook(id, from || undefined, to || undefined, request.user.displayName || request.user.email);
+    const { buffer, fileName } = await this.receivables.statementWorkbook(id, from || undefined, to || undefined, request.user.displayName || request.user.email, request.user);
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       disposition: `attachment; filename="${fileName}"`,
@@ -77,7 +90,7 @@ export class ReceivablesController {
     return this.receivables.aging();
   }
 
-  @Roles('ADMIN', 'ACCOUNTANT', 'DIRECTOR')
+  @Roles('ADMIN', 'ACCOUNTANT')
   @Post('receivables/overdue-review')
   review(@Req() request: AuthenticatedRequest) {
     return this.receivables.runReview(request);

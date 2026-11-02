@@ -40,7 +40,7 @@ Mục đích:
 | 样品: hàng mẫu xuất / nhập lại | Điều chỉnh giảm / tăng, lý do ghi tay | **Thiếu loại chuẩn**; không theo dõi được mẫu chưa trả |
 | 套餐搭配退回: hàng tặng / combo trả lại | Không có | **Thiếu phiếu trả hàng bán** |
 | 滞销退货: hàng bán chậm khách trả | Không có | **Thiếu phiếu trả hàng bán** |
-| 进口不良 / 使用不良: hàng lỗi nhập khẩu / do sử dụng | Phiếu bảo hành nhập **kho hàng lỗi** khi đổi mới / hoàn tiền | Có một phần; **chưa phân biệt nguyên nhân**. ERP để hàng lỗi ở kho riêng (không bán nhầm), còn Excel cộng vào tồn chung → báo cáo phải cộng 2 kho khi so |
+| 进口不良 / 使用不良: hàng lỗi nhập khẩu / do sử dụng | Phiếu khách trả (TH) loại *Hàng lỗi nhập khẩu* / *Hàng lỗi do sử dụng* nhập **kho hàng lỗi**, có cột nguyên nhân / ghi chú từng dòng (20/10/2026). Phiếu bảo hành không nhập hàng lỗi nữa (trước 20/10 có) | Có; nguyên nhân ghi ở từng dòng phiếu trả. ERP để hàng lỗi ở kho riêng (không bán nhầm), còn Excel cộng vào tồn chung → báo cáo phải cộng 2 kho khi so |
 | 库存退货返厂: trả nhà máy | Không có | **Thiếu phiếu trả nhà cung cấp** |
 | 综合出库, % tồn còn lại, 初始入库 | Không có | **Thiếu báo cáo** |
 | Nhật ký có BH / SWK / NK, thủ kho, NVKD | Thẻ kho có số chứng từ | **Thiếu cột khách / NVKD / thủ kho và xuất Excel** |
@@ -55,14 +55,14 @@ Mục đích:
 
 | Phần | Màn hình | Cách dùng |
 | --- | --- | --- |
-| 1. Loại phát sinh chuẩn | *Kho & Giao hàng › Tồn kho › Điều chỉnh tồn* | Chọn loại khi ghi phiếu: tăng = kiểm kê thừa / hàng mẫu nhập lại; giảm = kiểm kê thiếu / hao hụt / hàng mẫu xuất. Xuất bán tự tách **hàng tặng / combo** theo dòng 🎁 của phiếu BH. Bảo hành đổi mới ghi "xuất đổi bảo hành", hàng lỗi khách trả qua bảo hành ghi "hàng lỗi do sử dụng" |
+| 1. Loại phát sinh chuẩn | *Kho & Giao hàng › Tồn kho › Điều chỉnh tồn* | Chọn loại khi ghi phiếu: tăng = kiểm kê thừa / hàng mẫu nhập lại; giảm = kiểm kê thiếu / hao hụt / hàng mẫu xuất. Xuất bán tự tách **hàng tặng / combo** theo dòng 🎁 của phiếu BH. Bảo hành đổi mới ghi "xuất đổi bảo hành", hàng lỗi khách trả ghi bằng phiếu khách trả loại "hàng lỗi do sử dụng" (từ 20/10/2026 phiếu bảo hành không tự nhập hàng lỗi) |
 | 2. Phiếu trả hàng | *Kho & Giao hàng › Phiếu trả hàng* | **Khách trả hàng** (số TH…): chọn khách, loại (bán chậm / hàng tặng–combo trả lại / lỗi nhập khẩu / lỗi do sử dụng), kho nhận (hàng lỗi tự chọn kho hàng lỗi), số phiếu BH gốc nếu có (không trả quá số đã xuất). **Trả nhà máy** (số XT…): chọn NCC, đơn mua gốc nếu có, không xuất quá tồn khả dụng. Phiếu chỉ ghi kho; khách trả (trừ hàng tặng) tự tính giá trị theo giá phiếu BH gốc và **báo kế toán** — kế toán giảm công nợ / xuất hóa đơn điều chỉnh rồi bấm "Đã điều chỉnh công nợ" (ghi số chứng từ) |
-| 3. Tồn kho tháng | *Kho & Giao hàng › Tồn kho tháng* | Chọn tháng, kho (hoặc "Tất cả kho (gộp)" như file Excel). Cột song ngữ đúng thứ tự `月库存明细单`; % tồn còn lại tô màu như file; tháng hiện tại có "Tồn có sẵn" và "Đối chiếu sổ" (✓ khi thẻ kho khớp tồn đang ghi). **Xuất Excel** ra đúng bố cục, tiêu đề `___N___月库存明细单` |
+| 3. Tồn kho tháng | *Kho & Giao hàng › Tồn kho tháng* | Chọn tháng, kho (hoặc "Tất cả kho (gộp)" như file Excel). Cột song ngữ đúng thứ tự `月库存明细单`; % tồn còn lại tô màu như file; tháng hiện tại có "Tồn có sẵn" và "Đối chiếu sổ" (✓ khi thẻ kho khớp tồn đang ghi). **Xuất Excel** giống hệt file `TỒN KHO.xlsx` của kho (30/10/2026): cùng bố cục 2 dòng tiêu đề, màu đầu cột, font 等线 14 đậm, công thức E / R / S và dòng 合计; bỏ 移动数据 / 数据查验 và cột ghi chú (31/10/2026 — chiếm nhiều diện tích); 现货库存 = số đếm kiểm kê đã chốt trong tháng, lệch thì tô vàng ô tồn cuối kỳ; mã ERP còn tồn mà không đếm cũng tô vàng. **Cột R 综合出库 = xuất ròng trong tháng = tổng xuất (bán, tặng, mẫu, hao hụt, trả NCC…) − tổng nhập (hàng mua, khách trả, mẫu mang về…)**: dương = tồn giảm, âm = nhập nhiều hơn xuất; tồn cuối kỳ S = tồn tháng trước F − R (VD INP1003: 1.728 − 374 = 1.354). **Tồn đầu kỳ nhập hệ thống lúc lên ERP (lô IMP 13/10/2026) tính vào F "tồn tháng trước"**, không tính là nhập trong tháng (31/10/2026) |
 | 4. Nhật ký xuất nhập | *Kho & Giao hàng › Nhật ký xuất nhập* | Mỗi phát sinh một dòng: khách / NCC, mã KH, phiếu BH và ngày, số phiếu xuất (SWK, XT, ADJ…) / nhập (GR, TH…), mã hàng, loại, ghi chú, thủ kho, NVKD. Lọc theo kho, loại, mã hàng / số phiếu. **Xuất Excel** theo bố cục `出库汇总` (số lượng nằm đúng cột loại) |
 
 Ghi chú:
 - Xem "Tất cả kho (gộp)": cộng cả kho hàng lỗi (như Excel đang cộng hàng lỗi vào tồn), bỏ chuyển kho nội bộ. Xem từng kho: có thêm cột chuyển kho đến / đi.
-- Cột riêng của ERP (xuất đổi bảo hành, kiểm kê thừa / thiếu, tồn đầu kỳ nhập hệ thống, chuyển kho) chỉ hiện khi tháng có phát sinh.
+- Cột riêng của ERP (xuất đổi bảo hành, kiểm kê thừa / thiếu, tồn đầu kỳ nhập hệ thống, chuyển kho) chỉ hiện trên màn hình khi tháng có phát sinh. File Excel theo mẫu gộp chúng vào cột gần nghĩa để công thức tồn cuối của mẫu vẫn đúng: G += chuyển kho đến; H = xuất bán − nhập lại do hủy / sửa phiếu + xuất bổ sung; I = hao hụt + kiểm kê thiếu + xuất đổi bảo hành − kiểm kê thừa; J += xuất kiểm định; P += nhập lại sau kiểm định; Q += chuyển kho đi. Tồn đầu kỳ nhập hệ thống cộng vào F (tồn tháng trước) của tháng nhập.
 - Dữ liệu trước 08/10/2026 chưa ghi loại được xếp theo nghiệp vụ (VD điều chỉnh cũ → kiểm kê thừa / thiếu).
 
 ## 4. Chuẩn bị nhập dữ liệu production

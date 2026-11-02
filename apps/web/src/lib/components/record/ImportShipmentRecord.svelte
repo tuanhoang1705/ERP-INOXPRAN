@@ -68,6 +68,7 @@
   import HistoryPanel from './HistoryPanel.svelte';
   import AttachmentsPanel from './AttachmentsPanel.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import GoodsReceiptsPanel from '$lib/components/GoodsReceiptsPanel.svelte';
 
   let { id = '' }: { id?: string } = $props();
 
@@ -99,9 +100,10 @@
   const isNew = $derived(!id);
   const roles = $derived(session.user?.roles ?? []);
   const open = $derived(isNew || ['PLANNED', 'IN_TRANSIT', 'ARRIVED'].includes(shipment?.status ?? ''));
-  const editable = $derived(open && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER', 'DIRECTOR', 'ACCOUNTANT']));
+  const editable = $derived(open && hasRole(roles, ['PROCUREMENT', 'PROCUREMENT_MANAGER', 'ACCOUNTANT']));
   const linesEditable = $derived(editable && (isNew || shipment?.status === 'PLANNED'));
-  const canReceive = $derived(!isNew && ['IN_TRANSIT', 'ARRIVED'].includes(shipment?.status ?? '') && hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER', 'DIRECTOR']));
+  // PO-FLOW-02 (31/10/2026): nhận được cả lô chưa bấm "Khởi hành" / "Đã cập cảng" — mốc còn thiếu ghi lúc nhận.
+  const canReceive = $derived(!isNew && ['PLANNED', 'IN_TRANSIT', 'ARRIVED'].includes(shipment?.status ?? '') && hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
   const snapshot = () => JSON.stringify({ form, costs, method, lines: draftLines.map((line) => line.quantity) });
   const dirty = $derived(editable && JSON.stringify({ form, costs, method, lines: draftLines.map((line) => line.quantity) }) !== baseline);
   const keyOf = (line: { purchaseOrderId: string; productId: string }) => `${line.purchaseOrderId}:${line.productId}`;
@@ -209,6 +211,11 @@
     error = '';
     try {
       await api(`/import-shipments/${shipment.id}`, { method: 'PATCH', body: JSON.stringify({ version: shipment.version, status }) });
+      // Lô đã hủy chỉ quản trị gốc còn mở được (DOC-HIDE-01): người khác về danh sách kèm thông báo.
+      if (status === 'CANCELLED' && !session.user?.root) {
+        await goto(`/procurement/shipments?cancelled=${encodeURIComponent(shipment.code)}`);
+        return;
+      }
       historyReload += 1;
       await load();
     } catch (caught) {
@@ -392,6 +399,8 @@
                 <tbody>{#each shipment.costUpdates as row}<tr><td class="code">{row.sku}</td><td class="num">{row.before ? vnd(row.before) : '—'}</td><td class="num"><b>{vnd(row.after)}</b></td></tr>{/each}</tbody></table>
             {/if}
           </section>
+          <GoodsReceiptsPanel importShipmentId={shipment.id} reload={historyReload} canEdit={hasRole(roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER'])}
+            onchanged={(code) => { success = m.gr_da_sua({ code }); historyReload += 1; void load(); }} />
         {:else}
           <section class="card">
             <div class="table-wrap">

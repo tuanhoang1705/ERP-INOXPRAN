@@ -14,6 +14,12 @@ export class NotificationsService {
     return rows.map(serializeDocument);
   }
 
+  /** Xóa mọi thông báo (đã đọc và chưa đọc) của người dùng; worker không tạo lại vì sự kiện gốc đã gửi xong. */
+  async clear(userIdValue: string) {
+    const result = await this.db.collection('notifications').deleteMany({ userId: toObjectId(userIdValue, 'userId') });
+    return { deleted: result.deletedCount };
+  }
+
   async markRead(id: string, userIdValue: string) {
     const notification = await this.db.collection('notifications').findOneAndUpdate(
       { _id: toObjectId(id), userId: toObjectId(userIdValue, 'userId') },

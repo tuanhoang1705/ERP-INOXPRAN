@@ -5,12 +5,14 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { DOCUMENT_CONTENT_TYPES, MAX_EVIDENCE_BYTES } from '@inoxpran/contracts';
 import { randomUUID } from 'node:crypto';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/http-exception.filter';
+import { rateLimitKey, rateLimitMax } from './common/rate-limit-key';
 
 async function bootstrap(): Promise<void> {
   const adapter = new FastifyAdapter({
@@ -34,8 +36,15 @@ async function bootstrap(): Promise<void> {
   fastify.addContentTypeParser([...DOCUMENT_CONTENT_TYPES], { parseAs: 'buffer', bodyLimit: MAX_EVIDENCE_BYTES }, (_request, body, done) => done(null, body));
   // File Excel nhập dữ liệu ban đầu (/admin/import), tối đa 10 MB.
   fastify.addContentTypeParser('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', { parseAs: 'buffer', bodyLimit: 10 * 1024 * 1024 }, (_request, body, done) => done(null, body));
-  // Health check (ALB, ECS) không bao giờ bị giới hạn tần suất.
-  await fastify.register(rateLimit, { max: 300, timeWindow: '1 minute', allowList: (request) => request.url.startsWith('/api/v1/health') });
+  // Health check (ALB, ECS) không bao giờ bị giới hạn tần suất. Đã đăng nhập: hạn mức theo tài khoản (cả văn phòng chung
+  // một IP công cộng); chưa đăng nhập / cookie không hợp lệ: theo IP — common/rate-limit-key.ts.
+  const jwt = app.get(JwtService, { strict: false });
+  await fastify.register(rateLimit, {
+    max: (_request, key) => rateLimitMax(key),
+    timeWindow: '1 minute',
+    keyGenerator: (request) => rateLimitKey(request, (token) => jwt.verify<{ sub?: unknown }>(token)),
+    allowList: (request) => request.url.startsWith('/api/v1/health'),
+  });
   fastify.addHook('onRequest', async (request, reply) => {
     const incoming = request.headers['x-correlation-id'];
     const correlationId = typeof incoming === 'string' && incoming.length <= 100 ? incoming : randomUUID();

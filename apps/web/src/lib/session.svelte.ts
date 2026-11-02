@@ -23,6 +23,12 @@ export function can(key: string): boolean {
   return Boolean(session.user?.root) || Boolean(session.user?.permissions?.includes(key));
 }
 
+/** Người đang đăng nhập theo dạng luật 5 bước phiếu BH dùng chung với API (`$shared/sales-steps`, SAL-STEP-01). */
+export function stepActor(): { sub: string; roles: string[]; root?: boolean; permissions?: string[] } {
+  const user = session.user;
+  return { sub: user?.sub ?? '', roles: user?.roles ?? [], ...(user?.root ? { root: true } : {}), ...(user?.permissions ? { permissions: user.permissions } : {}) };
+}
+
 const WORKSPACE_KEY = 'erp.workspace';
 
 /** Nơi làm việc chọn ở màn hình đăng nhập (văn phòng hoặc kho). */

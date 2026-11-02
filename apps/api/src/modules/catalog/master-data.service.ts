@@ -9,6 +9,7 @@ import { decimal, decimalString, serializeDocument, toObjectId } from '../../com
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { canChangeCreditTerms, canConvertProspect, canManagePartnerKind } from './partner-access';
+import { enforceTerritory, normalizeProvinces } from '../../common/territories';
 
 type Status = 'ACTIVE' | 'INACTIVE';
 type Patch<T> = { [Key in keyof T]?: T[Key] | undefined };
@@ -154,6 +155,8 @@ export class MasterDataService {
       { collection: 'warranty_tickets', filter: { 'product.productId': productId }, label: 'phiếu bảo hành' },
     ], purgeable ? 'Mã chỉ có tồn đầu kỳ nhập từ Excel — quản trị gốc có thể "Gỡ hẳn cả tồn đầu kỳ".' : undefined, purgeable ? { purgeable: true } : undefined);
     await this.evidence.removeAllFor('Product', productId);
+    // Giá riêng của khách cho mã này (PRI-CUST-01) là cấu hình, xóa theo mã.
+    await this.db.collection('customer_prices').deleteMany({ productId });
     await this.db.collection('products').deleteOne({ _id: productId });
     await this.record(request, 'PRODUCT_DELETED', 'Product', id, before);
   }
@@ -255,6 +258,7 @@ export class MasterDataService {
         }, { session }).toArray();
         await this.db.collection('inventory_movements').deleteMany({ productId: { $in: ids } }, { session });
         await this.db.collection('inventory_balances').deleteMany({ productId: { $in: ids } }, { session });
+        await this.db.collection('customer_prices').deleteMany({ productId: { $in: ids } }, { session });
         await this.db.collection('products').deleteMany({ _id: { $in: ids } }, { session });
         const categoryEmpty = category ? (await this.db.collection('products').countDocuments({ categoryId: category._id }, { session })) === 0 : false;
         for (const batch of batches) {
@@ -391,10 +395,31 @@ export class MasterDataService {
     const update: Document = { ...normalizePartnerLists(input), updatedAt: new Date() };
     delete update.version;
     delete update.clear;
+    delete update.territoryExceptionReason;
     if (input.creditLimit !== undefined) update.creditLimit = decimal(input.creditLimit);
     if (input.salesRepId !== undefined) Object.assign(update, await this.salesRep(input.salesRepId));
     await this.assertRegion(input.regionCode);
-    const unset: Document = { ...unsetOf(input.clear, update), ...(input.status && input.status !== 'ON_HOLD' ? { holdReason: '' } : {}) };
+    const cleared = new Set<string>(input.clear ?? []);
+    let unsetException = false;
+    // Phân vùng NVKD (PV-01): chỉ kiểm khi sửa tỉnh / kênh / NVKD (sửa trường khác không đụng khách cũ đang lệch).
+    const territoryTouched = ['provinceOldCode', 'provinceNewCode', 'territoryChannel', 'salesRepId'].some((key) => key in input || cleared.has(key)) || Boolean(input.territoryExceptionReason);
+    if (before.kind !== 'SUPPLIER' && territoryTouched) {
+      if ('provinceOldCode' in input || 'provinceNewCode' in input) {
+        const provinces = normalizeProvinces({
+          provinceOldCode: 'provinceOldCode' in input ? input.provinceOldCode : cleared.has('provinceOldCode') ? null : (before.provinceOldCode as string | undefined),
+          provinceNewCode: input.provinceNewCode ?? (cleared.has('provinceNewCode') ? null : 'provinceOldCode' in input ? undefined : (before.provinceNewCode as string | undefined)),
+        });
+        Object.assign(update, provinces);
+      }
+      const territory = await enforceTerritory(this.db, {
+        provinceOldCode: cleared.has('provinceOldCode') ? null : ((update.provinceOldCode ?? before.provinceOldCode) as string | undefined),
+        territoryChannel: cleared.has('territoryChannel') ? null : ((update.territoryChannel ?? before.territoryChannel) as never),
+        salesRepId: (update.salesRepId ?? before.salesRepId) as ObjectId | undefined,
+      }, request.user, input.territoryExceptionReason);
+      Object.assign(update, territory.set);
+      unsetException = territory.unsetException;
+    }
+    const unset: Document = { ...unsetOf(input.clear, update), ...(input.status && input.status !== 'ON_HOLD' ? { holdReason: '' } : {}), ...(unsetException && before.territoryException ? { territoryException: '' } : {}) };
     if (input.status && input.status !== 'ON_HOLD') delete update.holdReason;
     const result = await this.db.collection('partners').findOneAndUpdate(
       { _id: before._id, version: input.version },
@@ -438,7 +463,13 @@ export class MasterDataService {
     }
     // Khách chính thức phải có NVKD phụ trách (doanh số, nhật ký xuất nhập, báo cáo theo NVKD).
     const rep = input.salesRepId ? await this.salesRep(input.salesRepId) : null;
-    if (!rep && !before.salesRepId) {
+    // Phân vùng NVKD (PV-01): khách ở vùng đã giao thì NVKD là người phụ trách vùng (tự điền khi bỏ trống).
+    const territory = await enforceTerritory(this.db, {
+      provinceOldCode: before.provinceOldCode as string | undefined,
+      territoryChannel: before.territoryChannel as never,
+      salesRepId: (rep?.salesRepId ?? before.salesRepId) as ObjectId | undefined,
+    }, request.user, input.territoryExceptionReason);
+    if (!rep && !before.salesRepId && !territory.set.salesRepId) {
       throw new BadRequestException({ code: 'SALES_REP_REQUIRED', message: 'Chọn NVKD phụ trách trước khi chuyển thành khách chính thức', details: [{ path: ['salesRepId'] }] });
     }
     const now = new Date();
@@ -449,6 +480,7 @@ export class MasterDataService {
           stage: 'CUSTOMER',
           customerTier: input.customerTier,
           ...(rep ?? {}),
+          ...territory.set,
           ...(input.creditLimit !== undefined ? { creditLimit: decimal(input.creditLimit) } : {}),
           ...(input.paymentTermDays !== undefined ? { paymentTermDays: input.paymentTermDays } : {}),
           convertedAt: now,

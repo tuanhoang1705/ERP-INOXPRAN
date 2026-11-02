@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
-   * Tìm chức năng (NAV-02): thanh tìm kiếm luôn hiện ở góc phải dưới (thay nút tròn, 15/10/2026) — bấm vào hoặc Ctrl/Cmd+K,
-   * gõ tên chức năng (có dấu hay không) → danh sách mở lên phía trên → Enter để mở. Chỉ hiện chức năng người dùng được dùng
+   * Tìm chức năng (NAV-02): ô tìm trên thanh điều hướng (30/10/2026 — trước ở góc phải dưới, che nút chân trang phiếu kiểm kê);
+   * màn dưới 1700 px chỉ còn biểu tượng. Bấm vào hoặc Ctrl/Cmd+K, gõ tên chức năng (có dấu hay không) → danh sách mở xuống
+   * → Enter để mở. Chỉ hiện chức năng người dùng được dùng
    * (cùng quy tắc menu). Mục mở gần đây lưu trên trình duyệt.
    */
   import { m } from '$lib/paraglide/messages';
@@ -122,7 +123,7 @@
         <footer>{m.cmd_huong_dan()}</footer>
       </div>
     {/if}
-    <div class="bar">
+    <label class="bar" title={m.cmd_thanh_tim()}>
       <Search size={18} />
       <input
         bind:this={input}
@@ -145,20 +146,20 @@
       {:else}
         <kbd>Ctrl K</kbd>
       {/if}
-    </div>
+    </label>
   </div>
 {/if}
 
 <style>
-  .cmd-bar { position: fixed; right: 22px; bottom: 22px; z-index: 50; width: min(320px, calc(100vw - 28px)); transition: width 0.15s ease; }
-  .cmd-bar.open { width: min(460px, calc(100vw - 28px)); }
+  .cmd-bar { position: relative; flex: none; width: 240px; height: 38px; }
   .bar {
-    display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 12px 0 16px;
-    border: 1px solid transparent; border-radius: 999px; background: var(--navy); color: #cfe0ef;
-    box-shadow: 0 10px 24px rgba(18, 59, 94, 0.35);
+    position: absolute; top: 0; right: 0; z-index: 60; display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; padding: 0 10px 0 13px;
+    border: 1px solid transparent; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #cfe0ef; cursor: text;
+    transition: width 0.15s ease;
   }
-  .cmd-bar.open .bar, .bar:focus-within { border-color: var(--navy); background: var(--surface); color: var(--muted); }
-  .bar input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: 14.5px; }
+  .bar:hover { background: rgba(255, 255, 255, 0.18); }
+  .cmd-bar.open .bar, .bar:focus-within { width: min(460px, calc(100vw - 28px)); border-color: var(--line); background: var(--surface); color: var(--muted); box-shadow: 0 10px 24px rgba(18, 59, 94, 0.25); }
+  .bar input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: 14px; }
   .bar input::placeholder { color: #cfe0ef; }
   .cmd-bar.open .bar input, .bar:focus-within input { color: var(--text); }
   .cmd-bar.open .bar input::placeholder, .bar:focus-within input::placeholder { color: var(--subtle); }
@@ -166,8 +167,8 @@
   .cmd-bar.open kbd, .bar:focus-within kbd { border-color: var(--line); color: var(--muted); }
   .clear { display: grid; width: 26px; height: 26px; place-items: center; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); cursor: pointer; }
   .panel {
-    position: absolute; right: 0; bottom: calc(100% + 8px); display: flex; flex-direction: column; width: 100%;
-    max-height: min(460px, calc(100vh - 140px)); overflow: hidden; border-radius: 14px; background: var(--surface); color: var(--text);
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; display: flex; flex-direction: column; width: min(460px, calc(100vw - 28px));
+    max-height: min(460px, calc(100vh - var(--topbar) - 40px)); overflow: hidden; border-radius: 14px; background: var(--surface); color: var(--text);
     box-shadow: 0 24px 60px rgba(18, 59, 94, 0.3);
   }
   .heading { margin: 12px 16px 4px; color: var(--subtle); font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -178,10 +179,20 @@
   li button.active { background: var(--blue-soft, #e8f0fa); color: var(--navy); }
   .empty { margin: 8px 16px 16px; color: var(--muted); }
   footer { padding: 9px 16px; border-top: 1px solid var(--line-soft); color: var(--subtle); font-size: 12px; }
+  /* Màn dưới 1700 px (thanh trên đủ 8 phân hệ): thu về biểu tượng kính lúp, bấm vào thì mở rộng đè lên các tab. */
+  @media (max-width: 1700px) {
+    .cmd-bar { width: 38px; }
+    .cmd-bar:not(.open) .bar:not(:focus-within) { justify-content: center; gap: 0; padding: 0; cursor: pointer; }
+    .cmd-bar:not(.open) .bar:not(:focus-within) input { flex: 0; width: 0; }
+    .cmd-bar:not(.open) .bar:not(:focus-within) kbd { display: none; }
+  }
   @media (max-width: 720px) {
-    .cmd-bar { right: 14px; bottom: 14px; width: min(230px, calc(100vw - 28px)); }
-    .cmd-bar.open { width: calc(100vw - 28px); }
+    .cmd-bar { width: 36px; height: 36px; }
+    .bar { height: 36px; }
     kbd { display: none; }
+    /* Điện thoại: mở ra phủ ngang màn hình, không tràn mép trái. */
+    .cmd-bar.open .bar, .bar:focus-within { position: fixed; top: calc((var(--topbar) - 36px) / 2); left: 14px; right: 14px; width: auto; }
+    .panel { position: fixed; top: calc(var(--topbar) + 8px); left: 14px; right: 14px; width: auto; }
   }
   @media print { .cmd-bar { display: none; } }
 </style>

@@ -1,7 +1,9 @@
 /**
  * Quy tắc bảo hành INOXPRAN, dùng chung cho API và giao diện (thuần TypeScript, không phụ thuộc thư viện).
- * Chốt ngày 03/10/2026: bảo hành 12 tháng cho mọi sản phẩm; bắt buộc có hóa đơn (ngày bắt đầu = ngày hóa đơn);
+ * Chốt ngày 03/10/2026: bảo hành 12 tháng cho mọi sản phẩm (ngày bắt đầu = ngày hóa đơn);
  * hẹn trả mặc định 7 ngày; chuyển vàng khi đã qua 70% thời gian hẹn, chuyển đỏ khi quá ngày hẹn.
+ * 28/10/2026 (WAR-NOINV-01): sản phẩm chưa có serial / IMEI nên khách không có hóa đơn thì nhân viên tiếp nhận
+ * chọn "Vẫn bảo hành" (công ty chịu chi phí) hoặc "Sửa có tính phí"; ngày mua khách khai chỉ để tham khảo.
  */
 
 export const WARRANTY_DEFAULTS = { warrantyMonths: 12, turnaroundDays: 7, warningRatio: 0.7 } as const;
@@ -112,6 +114,10 @@ export interface CoverageInput {
   receivedDate: string;
   months?: number;
   extensionDays?: number;
+  /** Không có hóa đơn nhưng nhân viên xác nhận vẫn bảo hành (WAR-NOINV-01). */
+  noInvoiceWarranty?: boolean;
+  /** Ngày mua khách khai (không có hóa đơn) — chỉ để tham khảo, cảnh báo khi đã quá thời hạn. */
+  declaredPurchaseDate?: string | null;
 }
 
 export interface CoverageResult {
@@ -119,12 +125,25 @@ export interface CoverageResult {
   exclusion?: WarrantyExclusion;
   startsOn?: string;
   expiresOn?: string;
+  /** Bảo hành không hóa đơn do nhân viên xác nhận. */
+  invoiceless?: boolean;
+  /** Theo ngày mua khách khai thì đã quá thời hạn bảo hành (chỉ cảnh báo). */
+  declaredExpired?: boolean;
 }
 
-/** Bắt buộc có hóa đơn mới được bảo hành; có hóa đơn thì so ngày tiếp nhận với ngày hết bảo hành. */
+/**
+ * Có hóa đơn: so ngày tiếp nhận với ngày hết bảo hành. Không có hóa đơn: nhân viên xác nhận vẫn bảo hành → trong bảo hành
+ * (kèm thời hạn theo ngày mua khách khai nếu có, để cảnh báo); không thì không thuộc diện bảo hành, sửa có tính phí.
+ */
 export function coverageFor(input: CoverageInput): CoverageResult {
-  if (!input.invoiceDate) return { coverage: 'NOT_COVERED', exclusion: 'NO_INVOICE' };
-  const expiresOn = warrantyExpiry(input.invoiceDate, input.months ?? WARRANTY_DEFAULTS.warrantyMonths, input.extensionDays ?? 0);
+  const months = input.months ?? WARRANTY_DEFAULTS.warrantyMonths;
+  if (!input.invoiceDate) {
+    if (!input.noInvoiceWarranty) return { coverage: 'NOT_COVERED', exclusion: 'NO_INVOICE' };
+    if (!input.declaredPurchaseDate) return { coverage: 'IN_WARRANTY', invoiceless: true };
+    const expiresOn = warrantyExpiry(input.declaredPurchaseDate, months, input.extensionDays ?? 0);
+    return { coverage: 'IN_WARRANTY', invoiceless: true, startsOn: input.declaredPurchaseDate, expiresOn, declaredExpired: input.receivedDate > expiresOn };
+  }
+  const expiresOn = warrantyExpiry(input.invoiceDate, months, input.extensionDays ?? 0);
   return { coverage: input.receivedDate <= expiresOn ? 'IN_WARRANTY' : 'OUT_OF_WARRANTY', startsOn: input.invoiceDate, expiresOn };
 }
 

@@ -42,12 +42,38 @@ describe('reallocateCustomer', () => {
     expect(result.payments.get('p1')).toEqual([{ receivableId: 'd1', amount: '60.00', segment: 'QUAT' }, { receivableId: 'd1', amount: '40.00' }]);
   });
 
+  it('phiếu giảm nợ trả hàng ERP (AR-RET-01, 27/10/2026): trừ vào nợ thường, không tự vào nhóm', () => {
+    const result = reallocateCustomer(
+      [receivable('d1', '100', '30', '2026-06-01', [{ code: 'QUAT', amount: '60' }]), receivable('d2', '50', '0', '2026-07-01')],
+      [payment('r1', '2026-07-01', [{ receivableId: 'd1', amount: '30' }], { kind: 'RETURN' })],
+    );
+    expect(result.payments.get('r1')).toEqual([{ receivableId: 'd1', amount: '30.00' }]);
+  });
+
+  it('phiếu giảm nợ trả hàng ERP chọn nhóm: phần nhóm trước', () => {
+    const result = reallocateCustomer(
+      [receivable('d1', '100', '30', '2026-06-01', [{ code: 'QUAT', amount: '60' }])],
+      [payment('r1', '2026-07-01', [{ receivableId: 'd1', amount: '30' }], { kind: 'RETURN', segment: 'QUAT' })],
+    );
+    expect(result.payments.get('r1')).toEqual([{ receivableId: 'd1', amount: '30.00', segment: 'QUAT' }]);
+  });
+
   it('phiếu trả hàng có dòng quạt: phần quạt vào phần nhóm', () => {
     const result = reallocateCustomer(
       [receivable('d1', '100', '30', '2026-06-01', [{ code: 'QUAT', amount: '60' }])],
       [payment('r1', '2026-07-01', [{ receivableId: 'd1', amount: '30' }], { kind: 'RETURN', mode: 'HISTORY', returnSegments: [{ code: 'QUAT', amount: '20' }] })],
     );
     expect(result.payments.get('r1')).toEqual([{ receivableId: 'd1', amount: '20.00', segment: 'QUAT' }, { receivableId: 'd1', amount: '10.00' }]);
+  });
+
+  it('phiếu giảm nợ trả hàng theo chứng từ (D1): phần quạt vào phần nhóm của chính chứng từ, không chuyển sang chứng từ khác', () => {
+    const docs = [receivable('d1', '100', '50', '2026-06-01', [{ code: 'QUAT', amount: '60' }]), receivable('d0', '40', '0', '2026-05-01')];
+    const result = reallocateCustomer(docs, [
+      payment('r1', '2026-07-01', [{ receivableId: 'd1', amount: '50', segment: 'QUAT' }], { kind: 'RETURN', mode: 'DOCUMENT', returnSegments: [{ code: 'QUAT', amount: '30' }] }),
+    ]);
+    expect(result.payments.get('r1')).toEqual([{ receivableId: 'd1', amount: '30.00', segment: 'QUAT' }, { receivableId: 'd1', amount: '20.00' }]);
+    expect(result.receivables.get('d0')?.paidAmount).toBe('0.00');
+    expect(result.receivables.get('d1')).toEqual({ paidAmount: '50.00', status: 'PARTIALLY_PAID', segments: [{ code: 'QUAT', amount: '60.00', paid: '30.00' }] });
   });
 
   it('phiếu thu theo chứng từ chỉ chia lại trong chính chứng từ (nợ thường trước); bản ghi cũ không có mode cũng vậy', () => {

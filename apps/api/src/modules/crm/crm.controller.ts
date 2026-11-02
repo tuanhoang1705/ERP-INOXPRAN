@@ -7,8 +7,8 @@ import type { AuthenticatedRequest } from '../../common/request-context';
 import { Roles } from '../../common/roles.decorator';
 import { CrmService } from './crm.service';
 
-/** Xem nhật ký chăm sóc: đội kinh doanh, quản lý hồ sơ khách, kế toán, kiểm soát nội bộ. */
-const CRM_VIEWER_ROLES = [...new Set([...CRM_ROLES, ...PARTNER_MANAGER_ROLES, 'ACCOUNTANT', 'AUDITOR'])];
+/** Xem nhật ký chăm sóc: đội kinh doanh, quản lý hồ sơ khách, kế toán, kiểm soát nội bộ, Giám đốc. */
+const CRM_VIEWER_ROLES = [...new Set([...CRM_ROLES, ...PARTNER_MANAGER_ROLES, 'ACCOUNTANT', 'AUDITOR', 'DIRECTOR'])];
 
 @ApiTags('CRM')
 @Controller()

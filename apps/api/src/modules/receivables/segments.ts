@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { documentTotals } from '@inoxpran/contracts';
+import { documentTotals, linesTotals } from '@inoxpran/contracts';
 
 /**
  * Nhóm công nợ tách riêng (CN-SEG-01) — VD "Quạt & vợt muỗi": phần nợ của hàng thuộc nhóm được theo dõi riêng trên từng
@@ -65,21 +65,26 @@ function capped(amounts: Map<string, Decimal>, total: Decimal.Value, rules: read
 }
 
 /**
- * Phiếu BH trên ERP: phần nhóm = tiền hàng chưa thuế của các dòng thuộc nhóm, cộng thuế và làm tròn như tổng phiếu
- * (documentTotals), tối đa bằng tổng phiếu.
+ * Phiếu BH trên ERP: phần nhóm = tiền hàng chưa thuế của các dòng thuộc nhóm + thuế, làm tròn như tổng phiếu, tối đa bằng tổng
+ * phiếu. Phiếu có thuế dòng (27/10/2026): cộng thuế từng dòng (linesTotals); phiếu cũ: thuế một lần theo thuế suất phiếu.
  */
 export function orderSegments(
-  lines: ReadonlyArray<{ sku?: string | undefined; categoryId?: string | undefined; gift?: boolean | undefined; netAmount?: string | undefined }>,
+  lines: ReadonlyArray<{ sku?: string | undefined; categoryId?: string | undefined; gift?: boolean | undefined; netAmount?: string | undefined; taxAmount?: string | undefined }>,
   taxRate: string,
   grandTotal: Decimal.Value,
   rules: readonly SegmentRule[],
 ): SegmentAmount[] {
-  const net = new Map<string, Decimal>();
+  const parts = new Map<string, Array<{ netAmount: string; taxAmount?: string | undefined }>>();
   for (const line of lines) {
     const code = lineSegment(line, rules);
-    if (code) net.set(code, (net.get(code) ?? new Decimal(0)).add(line.netAmount ?? 0));
+    if (code) parts.set(code, [...(parts.get(code) ?? []), { netAmount: line.netAmount ?? '0', taxAmount: line.taxAmount }]);
   }
-  const gross = new Map([...net].map(([code, value]) => [code, new Decimal(documentTotals(value.toFixed(2), taxRate).grandTotal)]));
+  const gross = new Map([...parts].map(([code, list]) => {
+    const perLine = list.every((line) => line.taxAmount !== undefined);
+    const net = list.reduce((sum, line) => sum.add(line.netAmount), new Decimal(0)).toFixed(2);
+    const total = perLine ? linesTotals(list as Array<{ netAmount: string; taxAmount: string }>).grandTotal : documentTotals(net, taxRate).grandTotal;
+    return [code, new Decimal(total)] as const;
+  }));
   return capped(gross, grandTotal, rules);
 }
 

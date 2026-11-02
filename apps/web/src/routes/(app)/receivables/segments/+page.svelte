@@ -231,7 +231,7 @@
               <td class="code">{segment.code}</td>
               <td><b>{segment.name}</b>{#if segment.manualOnly}<small>{m.seg_chi_gan_tay()}</small>{/if}</td>
               <td>{segment.categoryNames.join(', ') || '—'}</td>
-              <td class="code">{segment.skus.join(', ') || '—'}</td>
+              <td class="code skus">{segment.skus.join(', ') || '—'}</td>
               <td class="holders">
                 {#each segment.holders.slice(0, 3) as holder (holder.partnerId)}
                   <div><b>{holder.partner?.code}</b> · {m.seg_hang_tom_tat({ skus: holder.skuCount, quantity: qty(holder.quantity), amount: num(holder.outstanding) })}<small class="code">{holder.items.slice(0, 4).map((item) => `${item.sku} ×${qty(item.quantity)}`).join(', ')}{holder.items.length > 4 ? ` +${holder.items.length - 4}` : ''}</small></div>
@@ -382,6 +382,9 @@
 <style>
   tr.inactive td { color: var(--muted); }
   .holders { min-width: 220px; }
+  /* Danh sách mã dài: cho xuống dòng (trước đây kéo bảng rộng thêm ~800 px). */
+  td.skus, .holders small.code { white-space: normal; overflow-wrap: anywhere; }
+  td.skus { min-width: 140px; max-width: 260px; }
   .holders > div + div { margin-top: 6px; }
   .holders .btn { margin-top: 6px; }
   .delete-segment { margin-right: auto; }

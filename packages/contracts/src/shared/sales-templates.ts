@@ -1,16 +1,17 @@
 /**
  * Danh mục mẫu chứng từ "Phiếu xuất kho bán hàng". Mỗi phiếu lưu mã mẫu đã dùng để form, máy chủ và bản in
- * chọn đúng cách tính thuế và bố cục. Thêm mẫu mới (ví dụ PXK-002 — thuế suất theo từng dòng hàng) bằng cách
- * khai báo ở đây rồi bổ sung cách tính / bố cục in tương ứng.
+ * chọn đúng cách tính thuế và bố cục. Thêm mẫu mới bằng cách khai báo ở đây rồi bổ sung cách tính / bố cục in tương ứng.
+ * PXK-001: một thuế suất cho cả phiếu (mọi phiếu trước 27/10/2026, sửa lại vẫn giữ). PXK-002 (27/10/2026): thuế suất từng dòng
+ * (cột % thuế GTGT / Tiền thuế GTGT), tiền thuế chia về dòng không lệch đồng nào (sales-math.allocateLineVat).
  */
 
-export const SALES_ISSUE_TEMPLATES = ['PXK-001'] as const;
+export const SALES_ISSUE_TEMPLATES = ['PXK-001', 'PXK-002'] as const;
 export type SalesIssueTemplate = (typeof SALES_ISSUE_TEMPLATES)[number];
 
 export interface SalesIssueTemplateInfo {
   code: SalesIssueTemplate;
   name: string;
-  /** DOCUMENT: một thuế suất GTGT cho cả phiếu. LINE: thuế suất theo từng dòng hàng (dành cho mẫu sau). */
+  /** DOCUMENT: một thuế suất GTGT cho cả phiếu. LINE: thuế suất theo từng dòng hàng. */
   vatMode: 'DOCUMENT' | 'LINE';
   description: string;
 }
@@ -22,7 +23,16 @@ export const SALES_ISSUE_TEMPLATE_INFO: Record<SalesIssueTemplate, SalesIssueTem
     vatMode: 'DOCUMENT',
     description: 'Một thuế suất GTGT cho cả phiếu (3% · 5% · 8% · 10% · KCT)',
   },
+  'PXK-002': {
+    code: 'PXK-002',
+    name: 'Phiếu xuất kho bán hàng',
+    vatMode: 'LINE',
+    description: 'Thuế suất GTGT theo từng dòng hàng (3% · 5% · 8% · 10% · KCT)',
+  },
 };
+
+/** Mẫu cho phiếu lập mới trên form (27/10/2026): thuế từng dòng. Phiếu cũ / gọi API không ghi mẫu vẫn là PXK-001. */
+export const NEW_SALES_ISSUE_TEMPLATE: SalesIssueTemplate = 'PXK-002';
 
 export const DEFAULT_SALES_ISSUE_TEMPLATE: SalesIssueTemplate = 'PXK-001';
 
@@ -41,7 +51,7 @@ export const SALES_ORDER_CODE_PATTERN = /^(?:\d{1,4}|[A-Z0-9][A-Z0-9._/-]{1,39})
  * Tiền tố số tự sinh của các chứng từ khác (SWK xuất kho, AR công nợ, PO đơn mua, TH/XT trả hàng, KK kiểm kê…).
  * Số phiếu BH tự nhập không được bắt đầu như vậy để thẻ kho / nhật ký / công nợ không lẫn chứng từ.
  */
-export const RESERVED_DOCUMENT_PREFIXES = ['SWK', 'AR', 'PO', 'GR', 'IS', 'IMP', 'KK', 'PAY', 'SC', 'TRF', 'TH', 'XT', 'ADJ', 'SG', 'YC'] as const;
+export const RESERVED_DOCUMENT_PREFIXES = ['SWK', 'AR', 'PO', 'GR', 'IS', 'IMP', 'KK', 'PAY', 'SC', 'TRF', 'TH', 'NK', 'XT', 'ADJ', 'SG', 'YC'] as const;
 const RESERVED_DOCUMENT_CODE = new RegExp(`^(${RESERVED_DOCUMENT_PREFIXES.join('|')})-?\\d`);
 
 /** Chuẩn hóa số phiếu tự nhập như máy chủ sẽ lưu: bỏ khoảng trắng hai đầu, viết hoa. */

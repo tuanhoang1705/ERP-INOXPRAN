@@ -84,6 +84,8 @@ export function orderLinesForSegments(order: Document) {
     categoryId: line.categoryId ? String(line.categoryId) : undefined,
     gift: line.gift === true,
     netAmount: decimalString(line.netAmount ?? line.pricingSnapshot?.netAmount ?? '0'),
+    // Phiếu có thuế dòng (27/10/2026); phiếu cũ không có → thuế tính một lần theo thuế suất phiếu.
+    ...(line.taxAmount !== undefined && line.taxAmount !== null ? { taxAmount: decimalString(line.taxAmount) } : {}),
   }));
 }
 
@@ -100,9 +102,12 @@ export function targetSegments(doc: Document, order: Document | undefined, ctx: 
   return [];
 }
 
-/** Phiếu trả hàng lịch sử có dòng hàng: phần hàng thuộc từng nhóm. */
+/**
+ * Phiếu trả hàng lịch sử có dòng hàng: phần hàng thuộc từng nhóm. Phiếu giảm nợ trả hàng lập trên ERP (có `stockReturnId`)
+ * không tự chia theo dòng hàng — trừ vào tổng nợ, hoặc nhóm kế toán chọn qua `segment` (AR-RET-01, 27/10/2026).
+ */
 export function returnSegments(payment: Document, ctx: SegmentContext): SegmentAmount[] {
-  if ((payment.kind ?? 'RECEIPT') !== 'RETURN' || !Array.isArray(payment.historyLines)) return [];
+  if ((payment.kind ?? 'RECEIPT') !== 'RETURN' || !Array.isArray(payment.historyLines) || payment.stockReturnId) return [];
   return historySegments(resolveLines(payment.historyLines, ctx.catalog), decimalString(payment.amount), rulesFor(payment.partnerId ? String(payment.partnerId) : undefined, ctx.rules));
 }
 
@@ -146,8 +151,11 @@ export interface PartnerPlan {
 const canonicalSegments = (list: ReadonlyArray<{ code: string; amount: unknown; paid: unknown }> | undefined) =>
   (list ?? []).map((part) => `${part.code}:${new Decimal(decimalString(part.amount)).toFixed(2)}:${new Decimal(decimalString(part.paid)).toFixed(2)}`).join(';');
 
+/** Ghi đè cách trừ của một phiếu khi xem trước (VD đổi nơi trừ phiếu giảm nợ trả hàng) — không ghi. */
+export type PaymentOverrides = ReadonlyMap<string, { segment: string | null; mode: string }>;
+
 /** Tính phần nhóm mục tiêu + phân bổ lại cho một khách (không ghi). */
-export async function planPartner(db: Db, partnerId: ObjectId, ctx: SegmentContext, session?: ClientSession, now = new Date()): Promise<PartnerPlan> {
+export async function planPartner(db: Db, partnerId: ObjectId, ctx: SegmentContext, session?: ClientSession, now = new Date(), overrides?: PaymentOverrides): Promise<PartnerPlan> {
   const [receivables, payments] = await Promise.all([
     db.collection('receivables').find({ partnerId }, opts(session)).toArray(),
     db.collection('payments').find({ partnerId, status: 'POSTED' }, opts(session)).toArray(),
@@ -171,8 +179,8 @@ export async function planPartner(db: Db, partnerId: ObjectId, ctx: SegmentConte
     receivedAt: row.receivedAt as Date,
     createdAt: (row.createdAt as Date | undefined) ?? (row.receivedAt as Date),
     kind: String(row.kind ?? 'RECEIPT'),
-    mode: row.mode === undefined ? undefined : String(row.mode),
-    segment: (row.segment as string | undefined) ?? null,
+    mode: overrides?.get((row._id as ObjectId).toHexString())?.mode ?? (row.mode === undefined ? undefined : String(row.mode)),
+    segment: overrides?.has((row._id as ObjectId).toHexString()) ? (overrides.get((row._id as ObjectId).toHexString())?.segment ?? null) : ((row.segment as string | undefined) ?? null),
     returnSegments: returnSegments(row, ctx),
     allocations: ((row.allocations as Document[] | undefined) ?? []).map((allocation) => ({
       receivableId: String(allocation.receivableId),

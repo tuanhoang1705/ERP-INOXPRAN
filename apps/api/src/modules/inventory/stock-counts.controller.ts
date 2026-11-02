@@ -2,7 +2,6 @@ import { Body, Controller, Get, Headers, HttpCode, Param, Post, Put, Query, Req 
 import { ApiTags } from '@nestjs/swagger';
 import { CreateStockCountSchema, SaveStockCountEntriesSchema, StockCountCheckSchema, StockCountConfirmSchema, StockCountErpFixSchema } from '@inoxpran/contracts';
 import { z } from 'zod';
-import { assertWarehouseAccess } from '../../common/access';
 import { pageRequest } from '../../common/paging';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { Roles } from '../../common/roles.decorator';
@@ -10,8 +9,8 @@ import { WAREHOUSE_EDITOR_ROLES } from '../catalog/partner-access';
 import { StockCountsService } from './stock-counts.service';
 
 const VersionSchema = z.object({ version: z.number().int().min(0) });
-/** Thủ kho, quản lý kho (và Admin, Giám đốc) kiểm kê / sửa tồn ERP; kế toán, kiểm soát nội bộ chỉ xem. */
-const VIEWERS = [...WAREHOUSE_EDITOR_ROLES, 'ACCOUNTANT', 'AUDITOR'];
+/** Thủ kho, quản lý kho (và Admin) kiểm kê / sửa tồn ERP; kế toán, kiểm soát nội bộ, Giám đốc chỉ xem. */
+const VIEWERS = [...WAREHOUSE_EDITOR_ROLES, 'ACCOUNTANT', 'AUDITOR', 'DIRECTOR'];
 
 /** Kiểm kê kho 2 bước (STK-01): kiểm tồn sản phẩm → kiểm tồn số lượng → chốt. */
 @ApiTags('Inventory')
@@ -34,9 +33,9 @@ export class StockCountsController {
   @Roles(...WAREHOUSE_EDITOR_ROLES)
   @Post()
   create(@Body() body: unknown, @Headers('idempotency-key') idempotencyKey: string | undefined, @Req() request: AuthenticatedRequest) {
-    const input = CreateStockCountSchema.parse(body);
-    assertWarehouseAccess(request, input.warehouseId);
-    return this.counts.create(input.warehouseId, request, idempotencyKey);
+    // KK-ALL-01: phiếu gộp mọi kho; quyền kho kiểm tra trong service (ít nhất một kho).
+    CreateStockCountSchema.parse(body ?? {});
+    return this.counts.create(request, idempotencyKey);
   }
 
   @Roles(...WAREHOUSE_EDITOR_ROLES)

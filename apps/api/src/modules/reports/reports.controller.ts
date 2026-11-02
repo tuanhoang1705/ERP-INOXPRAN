@@ -1,5 +1,6 @@
 import { Controller, Get, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { customerProvince } from '@inoxpran/contracts';
 import { z } from 'zod';
 import { Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -8,10 +9,18 @@ import { ReportsService } from './reports.service';
 const SalesReportQuerySchema = z.object({
   from: z.string().date(),
   to: z.string().date(),
+  /** Tỉnh mới (34) hoặc B2C; mã khu vực cũ (tỉnh cũ) vẫn nhận, quy về tỉnh mới. */
   region: z.string().trim().max(20).optional(),
+  salesRepId: z.string().trim().max(64).optional(),
   tier: z.enum(['TIER_1', 'TIER_2', 'RETAIL']).optional(),
   categoryId: z.string().trim().max(64).optional(),
 });
+
+/** Bộ lọc khu vực: tỉnh mới; mã khu vực cũ (= tỉnh cũ, HN-LE / HN-NPP = Hà Nội) quy về tỉnh mới để đường dẫn đã lưu vẫn chạy. */
+function regionFilter(value: string | undefined): string | undefined {
+  if (!value || value === 'B2C') return value || undefined;
+  return customerProvince({ regionCode: value }).newCode ?? value;
+}
 
 @ApiTags('Reporting')
 @Roles('ADMIN', 'DIRECTOR', 'SALES_MANAGER', 'ACCOUNTANT', 'AUDITOR')
@@ -24,7 +33,8 @@ export class ReportsController {
     return {
       from: parsed.from,
       to: parsed.to,
-      regionCode: parsed.region || undefined,
+      regionCode: regionFilter(parsed.region),
+      salesRepId: parsed.salesRepId || undefined,
       tier: parsed.tier,
       categoryId: parsed.categoryId || undefined,
     };

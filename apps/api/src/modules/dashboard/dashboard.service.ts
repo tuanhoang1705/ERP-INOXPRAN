@@ -25,10 +25,8 @@ export class DashboardService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
   async summary(page = 1, pageSize = 5, user?: RequestUser): Promise<DashboardSummary> {
-    const scope = user ? salesOrderScope(user) : {};
-    // "Đơn hàng mới nhất": phiếu đã hủy chỉ tài khoản Admin (kể cả quản trị gốc) thấy.
-    const canSeeCancelled = Boolean(user?.root || user?.roles.includes('ADMIN'));
-    const recentScope: Document = canSeeCancelled ? scope : { $and: [scope, { status: { $ne: 'CANCELLED' } }] };
+    // "Đơn hàng mới nhất": phiếu đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01 — nằm trong salesOrderScope; Admin thường cũng không thấy).
+    const recentScope: Document = user ? salesOrderScope(user) : { status: { $ne: 'CANCELLED' } };
     const now = new Date();
     const { year, month } = vnParts(now);
     const monthStarts = Array.from({ length: 7 }, (_, index) => vnMonthStart(year, month - 5 + index));
@@ -58,13 +56,15 @@ export class DashboardService {
       recentOrdersTotal,
       expiringPromotions,
       previousToDateRows,
+      collectedRows,
     ] = await Promise.all([
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
         {
           $group: {
-            _id: { $dateToString: { date: '$orderDate', format: '%Y-%m', timezone: 'Asia/Ho_Chi_Minh' } },
+            _id: { $dateToString: { date: '$deliveredAt', format: '%Y-%m', timezone: 'Asia/Ho_Chi_Minh' } },
             revenue: { $sum: NET_AMOUNT },
+            revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } },
           },
         },
       ]).toArray(),
@@ -112,12 +112,20 @@ export class DashboardService {
         validTo: { $gte: now, $lte: new Date(now.getTime() + 7 * DAY_MS) },
       }).sort({ validTo: 1 }).toArray(),
       this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: previousMonthStart, $lt: previousToDate } } },
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: previousMonthStart, $lt: previousToDate } } },
         { $group: { _id: null, revenue: { $sum: NET_AMOUNT } } },
+      ]).toArray(),
+      // Đã thu trong tháng (DB-REV-02): phiếu thu theo ngày thu; phí VC khách trả hộ, giảm nợ trả hàng và bù trừ không phải tiền thu.
+      this.db.collection('payments').aggregate([
+        { $match: { status: 'POSTED', kind: { $nin: ['FREIGHT', 'RETURN', 'OFFSET'] }, receivedAt: { $gte: thisMonthStart, $lt: monthStarts[6] } } },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 }, payNow: { $sum: { $cond: [{ $eq: ['$autoPayNow', true] }, '$amount', 0] } } } },
       ]).toArray(),
     ]);
 
     const revenueByMonth = new Map(monthlyRows.map((row) => [String(row._id), decimalString(row.revenue)]));
+    const thisMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const revenueThisMonthGross = new Decimal(decimalString(monthlyRows.find((row) => String(row._id) === thisMonthKey)?.revenueGross ?? '0'));
+    const collected = collectedRows[0];
     const monthlyRevenue = monthStarts.slice(0, 6).map((start, index) => {
       const parts = vnParts(start);
       const key = `${parts.year}-${String(parts.month).padStart(2, '0')}`;
@@ -205,8 +213,8 @@ export class DashboardService {
         params: { name: String(promotion.name), days: daysLeft },
       });
     }
-    // Phiếu bảo hành quá hẹn trả — chỉ người phụ trách bảo hành và Giám đốc cần thấy.
-    if (user?.roles.some((role) => ['ADMIN', 'DIRECTOR', 'WARRANTY'].includes(role))) {
+    // Phiếu bảo hành quá hẹn trả — người phụ trách bảo hành (nhân viên, Quản lý kho) và Giám đốc (xem).
+    if (user?.roles.some((role) => ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUSE_MANAGER'].includes(role))) {
       const settings = await warrantySettings(this.db);
       const overdueWarranty = (await openWarrantyTickets(this.db)).filter((ticket) => ticketSla(ticket, settings, now).tone === 'overdue').length;
       if (overdueWarranty > 0) {
@@ -226,6 +234,10 @@ export class DashboardService {
       generatedAt: now.toISOString(),
       period: { month: `${year}-${String(month).padStart(2, '0')}`, label: `${String(month).padStart(2, '0')}/${year}` },
       revenueThisMonth: revenueThisMonth.toFixed(2),
+      revenueThisMonthGross: revenueThisMonthGross.toFixed(2),
+      collectedThisMonth: new Decimal(decimalString(collected?.total ?? '0')).toFixed(2),
+      collectedCount: Number(collected?.count ?? 0),
+      collectedPayNow: new Decimal(decimalString(collected?.payNow ?? '0')).toFixed(2),
       revenuePreviousMonth: revenuePreviousMonth.toFixed(2),
       // 3 ngày đầu tháng số liệu quá ít để so sánh có ý nghĩa.
       revenueChangePercent: elapsedDays > 3 && revenuePreviousToDate.gt(0)

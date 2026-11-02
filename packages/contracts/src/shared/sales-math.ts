@@ -13,7 +13,12 @@
  *
  * Phiếu thật BH Giang Châu: 586.000 ÷ 1,08 = 542.592,59; Σ thành tiền = 74.842.592,30
  * → cộng tiền hàng 74.842.592, thuế 8% 5.987.407, tổng 80.830.000 (tổng lấy từ số chưa làm tròn nên lệch 1 đồng so với
- * cộng hai số đã làm tròn — giống hệt phiếu giấy).
+ * cộng hai số đã làm tròn — giống hệt phiếu giấy). Đây là mẫu PXK-001 (một thuế suất cho cả phiếu).
+ *
+ * Mẫu PXK-002 (thuế suất từng dòng, 27/10/2026) — `allocateLineVat`: tổng thanh toán của mỗi thuế suất tính như PXK-001
+ * (làm tròn một lần từ Σ thành tiền chưa làm tròn, khớp bảng giá đã gồm thuế), tiền thuế = tổng thanh toán − cộng tiền hàng,
+ * rồi chia tiền thuế về từng dòng (thành tiền × thuế suất, làm tròn tới đồng theo phần lẻ lớn nhất) để cộng các dòng ra đúng
+ * tiền thuế — không lệch đồng nào giữa cột thuế dòng, tiền thuế và tổng thanh toán.
  */
 
 /** Thuế suất GTGT chọn trên phiếu. KCT = hàng không chịu thuế GTGT (không tính tiền thuế). */
@@ -43,6 +48,7 @@ export function vatPercent(rate: string | number | null | undefined): string {
 /** Nhãn thuế suất in trên phiếu: "8 %" hoặc "KCT". */
 export function vatLabel(rate: string | number | null | undefined, separator = ' '): string {
   if (rate === 'KCT') return 'KCT';
+  if (rate === 'MIXED') return 'Theo từng dòng';
   return `${vatPercent(rate ?? '0')}${separator}%`;
 }
 
@@ -209,6 +215,86 @@ export function documentTotals(netAmountSum: string | number, vatRate: string): 
     netTotal: fixed(roundDiv(net, E), 0),
     taxTotal: fixed(roundDiv(net * tax, E * PERCENT_BASE), 0),
     grandTotal: fixed(roundDiv(net * (PERCENT_BASE + tax), E * PERCENT_BASE), 0),
+  };
+}
+
+/** Tiền thuế GTGT của một dòng: thành tiền × thuế suất, làm tròn tới đồng (KCT = 0). */
+export function lineTax(netAmount: string | number, vatRate: string | number | null | undefined): string {
+  return fixed(roundDiv(toScaled(netAmount) * toScaled(vatPercent(vatRate)), E * PERCENT_BASE), 0);
+}
+
+/** Tổng từ thuế đã lưu trên từng dòng: cộng tiền hàng = làm tròn Σ thành tiền; tiền thuế = Σ thuế dòng; tổng = cộng hai số. */
+export function linesTotals(lines: ReadonlyArray<{ netAmount: string; taxAmount: string }>): DocumentTotals {
+  const net = roundDiv(lines.reduce<bigint>((sum, line) => sum + toScaled(line.netAmount), 0n), E);
+  const tax = lines.reduce<bigint>((sum, line) => sum + roundDiv(toScaled(line.taxAmount), E), 0n);
+  return { netTotal: fixed(net, 0), taxTotal: fixed(tax, 0), grandTotal: fixed(net + tax, 0) };
+}
+
+/**
+ * Một dòng theo đơn giá chưa thuế nhập tay (phiếu giảm nợ trả hàng): tiền hàng = SL × đơn giá (làm tròn tới đồng), thuế = SL × đơn
+ * giá × thuế suất (làm tròn tới đồng), thành tiền = hai số cộng lại.
+ */
+export function pricedLineAmounts(quantity: string | number, unitPrice: string | number, vatRate: string | number | null | undefined): { netAmount: string; taxAmount: string; amount: string } {
+  const net = roundDiv(toScaled(quantity) * toScaled(unitPrice), E * 100n); // xu (2 số lẻ)
+  const netDong = roundDiv(net, 100n);
+  const tax = roundDiv(net * toScaled(vatPercent(vatRate)), 100n * PERCENT_BASE);
+  return { netAmount: fixed(netDong, 0), taxAmount: fixed(tax, 0), amount: fixed(netDong + tax, 0) };
+}
+
+/** Thuế suất chung của phiếu: một thuế suất cho mọi dòng → thuế suất đó; nhiều thuế suất → "MIXED". */
+export function commonVatRate(rates: ReadonlyArray<string>, fallback: string): string {
+  const unique = [...new Set(rates)];
+  return unique.length === 0 ? fallback : unique.length === 1 ? (unique[0] as string) : 'MIXED';
+}
+
+/**
+ * Mẫu PXK-002 — thuế suất từng dòng, không lệch đồng nào:
+ *   cộng tiền hàng   = làm tròn( Σ thành tiền )
+ *   tổng thanh toán  = Σ theo thuế suất làm tròn( Σ thành tiền cùng thuế suất × (1 + thuế suất) )   ← như PXK-001, khớp bảng giá
+ *   tiền thuế        = tổng thanh toán − cộng tiền hàng
+ *   thuế từng dòng   = thành tiền × thuế suất làm tròn xuống, phần còn thiếu cộng 1 đồng cho dòng có phần lẻ lớn nhất
+ * → Σ thuế dòng = tiền thuế, cộng tiền hàng + tiền thuế = tổng thanh toán; mỗi dòng lệch số chính xác dưới 1 đồng.
+ * Dòng KCT / tặng (thành tiền 0) luôn thuế 0. Thuế dòng trả về dạng "273778.00" (đồng).
+ */
+export function allocateLineVat(lines: ReadonlyArray<{ netAmount: string; vatRate: string }>): DocumentTotals & { taxAmounts: string[] } {
+  const nets = lines.map((line) => toScaled(line.netAmount)); // × 10^4 đồng
+  const rates = lines.map((line) => toScaled(vatPercent(line.vatRate))); // × 10^4 phần trăm
+  const netTotal = roundDiv(nets.reduce((sum, value) => sum + value, 0n), E);
+  const groups = new Map<bigint, bigint>();
+  nets.forEach((net, index) => groups.set(rates[index] as bigint, (groups.get(rates[index] as bigint) ?? 0n) + net));
+  let grandTotal = 0n;
+  for (const [rate, net] of groups) grandTotal += roundDiv(net * (PERCENT_BASE + rate), E * PERCENT_BASE);
+  const taxTotal = grandTotal - netTotal;
+
+  const denominator = E * PERCENT_BASE;
+  const taxable = (index: number) => (nets[index] as bigint) > 0n && (rates[index] as bigint) > 0n;
+  const taxes = nets.map((net, index) => (taxable(index) ? (net * (rates[index] as bigint)) / denominator : 0n));
+  const eligible = nets
+    .map((net, index) => ({ index, remainder: taxable(index) ? (net * (rates[index] as bigint)) % denominator : 0n }))
+    .filter((item) => taxable(item.index));
+  let difference = taxTotal - taxes.reduce((sum, value) => sum + value, 0n);
+  if (eligible.length) {
+    // Thiếu: cộng cho dòng phần lẻ lớn nhất trước; thừa: trừ ở dòng phần lẻ nhỏ nhất trước (cùng phần lẻ thì dòng trên trước).
+    const up = [...eligible].sort((a, b) => (a.remainder === b.remainder ? a.index - b.index : a.remainder > b.remainder ? -1 : 1));
+    const down = [...up].reverse();
+    for (let step = 0; difference !== 0n && step < 4 * eligible.length + 8; step += 1) {
+      if (difference > 0n) {
+        const target = up[step % up.length] as { index: number };
+        taxes[target.index] = (taxes[target.index] as bigint) + 1n;
+        difference -= 1n;
+      } else {
+        const target = down[step % down.length] as { index: number };
+        if ((taxes[target.index] as bigint) <= 0n) continue;
+        taxes[target.index] = (taxes[target.index] as bigint) - 1n;
+        difference += 1n;
+      }
+    }
+  }
+  return {
+    netTotal: fixed(netTotal, 0),
+    taxTotal: fixed(taxTotal, 0),
+    grandTotal: fixed(grandTotal, 0),
+    taxAmounts: taxes.map((tax) => fixed(tax * 100n, 2)),
   };
 }
 

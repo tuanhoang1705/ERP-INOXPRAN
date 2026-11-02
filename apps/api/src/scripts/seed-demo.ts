@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import Decimal from 'decimal.js';
 import { Decimal128, type Db, type Document, MongoClient, ObjectId } from 'mongodb';
+import { OLD_PROVINCES } from '@inoxpran/contracts';
 import { vnDayStart, vnMonthStart, vnParts } from '../common/domain';
 import { hashPassword } from '../modules/auth/password';
 import { ObjectStorage } from '../common/object-storage';
@@ -38,10 +39,13 @@ const SALES_TIERS = [
   { minimumRevenue: '400000000', discountRate: '2' },
   { minimumRevenue: '1000000000', discountRate: '3' },
 ];
-const REVENUE_STATUSES = new Set(['RESERVED', 'SHIPPED', 'DELIVERED']);
+/** Doanh thu ghi khi giao thành công (AR-DLV-01, 28/10/2026), theo ngày giao. */
+const REVENUE_STATUSES = new Set(['DELIVERED']);
+/** Tỉnh cũ (PV-01) theo tên tỉnh ghi trên khách demo (tên tỉnh trước sáp nhập 2025). */
+const demoProvince = (name: string) => OLD_PROVINCES.find((item) => item.name === name || (name === 'Huế' && item.code === 'THUA-THIEN-HUE'));
 
 const OPERATIONAL_COLLECTIONS = [
-  'products', 'product_categories', 'partners', 'warehouses', 'locations', 'price_books', 'promotions', 'regions', 'employees',
+  'products', 'product_categories', 'partners', 'warehouses', 'locations', 'price_books', 'promotions', 'regions', 'employees', 'sales_territories',
   'sales_orders', 'shipments', 'receivables', 'payments', 'inventory_balances', 'inventory_movements', 'inventory_reservations',
   'inventory_transfers', 'purchase_orders', 'goods_receipts', 'approval_requests', 'notifications', 'outbox_events',
   'idempotency_keys', 'counters', 'overdue_reviews', 'audit_events', 'attachments', 'branches', 'warranty_tickets', 'warranty_fault_codes',
@@ -364,6 +368,16 @@ async function seedDemo(): Promise<void> {
       categoryIds: promotion.categoryCodes.map((code) => (categoryIds.get(code) as ObjectId).toHexString()), productIds: [], customerTiers: promotion.customerTiers,
     }));
 
+    // Phân vùng NVKD theo tỉnh cũ (PV-01): tỉnh của khách demo → NVKD đang phụ trách (mỗi tỉnh một người).
+    const territoryOwners = new Map<string, string>();
+    for (const dealer of dealers) {
+      const province = demoProvince(dealer.province);
+      if (province && dealer.tier !== 'RETAIL' && !territoryOwners.has(province.code)) territoryOwners.set(province.code, dealer.salesRep);
+    }
+    await db.collection('sales_territories').insertMany([...territoryOwners].map(([provinceCode, repCode]) => ({
+      _id: new ObjectId(), provinceCode, channel: 'ALL', employeeId: employeeIds.get(repCode), employeeName: employees.find((employee) => employee.code === repCode)?.name, demoData: true, createdAt: now, updatedAt: now,
+    })));
+
     const customerIds = new Map<string, ObjectId>();
     await db.collection('partners').insertMany([
       ...dealers.map((dealer) => {
@@ -372,6 +386,7 @@ async function seedDemo(): Promise<void> {
         return {
           _id, code: dealer.code, name: dealer.name, kind: 'CUSTOMER', customerTier: dealer.tier, regionCode: dealer.regionCode ?? undefined,
           province: dealer.province, address: dealer.address, salesRepId: employeeIds.get(dealer.salesRep),
+          ...(demoProvince(dealer.province) ? { provinceOldCode: demoProvince(dealer.province)!.code, provinceNewCode: demoProvince(dealer.province)!.newCode } : {}),
           salesRepName: employees.find((employee) => employee.code === dealer.salesRep)?.name,
           creditLimit: D(dealer.creditLimit), paymentTermDays: dealer.paymentTermDays,
           taxCode: dealer.taxCode ?? (dealer.tier === 'RETAIL' ? undefined : `DEMO-${dealer.code}`),
@@ -441,7 +456,7 @@ async function seedDemo(): Promise<void> {
       }
       const windowStart = vnDayStart(draft.date).getTime() - 89 * DAY_MS;
       const windowRevenue = (revenueHistory.get(dealer.code) ?? [])
-        .filter((entry) => entry.at >= windowStart)
+        .filter((entry) => entry.at >= windowStart && entry.at < draft.date.getTime())
         .reduce((sum, entry) => sum.add(entry.net), new Decimal(0));
       const salesTierRate = dealer.tier === 'RETAIL' ? '0' : resolveSalesTierRate(windowRevenue.toString(), SALES_TIERS);
       const buildLine = (item: PriceListItem, unit: string, quantity: number, factor: number, grossPrice: number, gift: boolean, discountTier: string, promotion: PromotionRule | undefined): GeneratedLine => {
@@ -514,8 +529,8 @@ async function seedDemo(): Promise<void> {
           if (order.deliveredAt > now) { order.status = 'SHIPPED'; delete order.deliveredAt; }
         }
       }
-      if (REVENUE_STATUSES.has(order.status)) {
-        revenueHistory.set(dealer.code, [...(revenueHistory.get(dealer.code) ?? []), { at: draft.date.getTime(), net: order.net }]);
+      if (REVENUE_STATUSES.has(order.status) && order.deliveredAt) {
+        revenueHistory.set(dealer.code, [...(revenueHistory.get(dealer.code) ?? []), { at: order.deliveredAt.getTime(), net: order.net }]);
       }
       orders.push(order);
     }
@@ -547,7 +562,10 @@ async function seedDemo(): Promise<void> {
         status: order.deliveredAt ? 'DELIVERED' : 'SHIPPED', shippedAt, ...(order.deliveredAt ? { deliveredAt: order.deliveredAt } : {}),
         shippedBy: keeperFor(order)?.id ?? actorId, shippedByName: keeperFor(order)?.name ?? mainKeeper.name, version: 1, createdAt: shippedAt, updatedAt: order.deliveredAt ?? shippedAt, demoData: true,
       });
-      const dueDate = new Date(vnDayStart(shippedAt).getTime() + order.dealer.paymentTermDays * DAY_MS + 17 * HOUR_MS);
+      // Công nợ ghi khi giao thành công (AR-DLV-01): phiếu đã xuất chưa giao chưa có khoản phải thu; hạn tính từ ngày giao.
+      const deliveredAt = order.deliveredAt as Date | undefined;
+      if (!deliveredAt) continue;
+      const dueDate = new Date(vnDayStart(deliveredAt).getTime() + order.dealer.paymentTermDays * DAY_MS + 17 * HOUR_MS);
       const receivableId = new ObjectId();
       const scenario = unpaidFromDaysAgo[order.dealer.code];
       const unpaidBoundary = scenario ? new Date(today.getTime() - scenario.days * DAY_MS) : null;
@@ -555,7 +573,7 @@ async function seedDemo(): Promise<void> {
       let paidAt: Date | null = null;
       if (order.channel === 'B2C') {
         paid = order.total;
-        paidAt = shippedAt;
+        paidAt = deliveredAt;
       } else if (unpaidBoundary && dueDate >= unpaidBoundary) {
         if (scenario?.partial && dueDate < today) {
           paid = order.total.div(2).toDecimalPlaces(0);
@@ -564,16 +582,16 @@ async function seedDemo(): Promise<void> {
       } else if (dueDate < now) {
         paid = order.total;
         paidAt = new Date(dueDate.getTime() - randInt(0, 6) * DAY_MS);
-        if (paidAt < shippedAt) paidAt = new Date(shippedAt.getTime() + 3 * DAY_MS);
-      } else if (random() < 0.3 && shippedAt < new Date(today.getTime() - 7 * DAY_MS)) {
+        if (paidAt < deliveredAt) paidAt = new Date(deliveredAt.getTime() + 3 * DAY_MS);
+      } else if (random() < 0.3 && deliveredAt < new Date(today.getTime() - 7 * DAY_MS)) {
         paid = order.total;
-        paidAt = new Date(shippedAt.getTime() + randInt(5, 7) * DAY_MS);
+        paidAt = new Date(deliveredAt.getTime() + randInt(5, 7) * DAY_MS);
       }
       if (paidAt && paidAt > now) paidAt = new Date(now.getTime() - HOUR_MS);
       const status = paid.eq(order.total) ? 'PAID' : paid.gt(0) ? 'PARTIALLY_PAID' : 'OPEN';
       receivables.push({
-        _id: receivableId, code: nextCode('AR', shippedAt), partnerId: order.customerId, salesOrderId: order._id, salesOrderCode: order.code,
-        shipmentId, amount: D(order.total), paidAmount: D(paid), dueDate, status, version: 1, createdAt: shippedAt, updatedAt: paidAt ?? shippedAt, demoData: true,
+        _id: receivableId, code: nextCode('AR', deliveredAt), partnerId: order.customerId, salesOrderId: order._id, salesOrderCode: order.code,
+        shipmentId, amount: D(order.total), paidAmount: D(paid), dueDate, status, version: 1, createdAt: deliveredAt, updatedAt: paidAt ?? deliveredAt, demoData: true,
       });
       if (paid.gt(0) && paidAt) {
         payments.push({
@@ -586,9 +604,11 @@ async function seedDemo(): Promise<void> {
     }
 
     // Đơn chờ duyệt vượt hạn mức: chỉnh hạn mức Đông Đô để đơn hôm nay thực sự vượt hạn mức.
+    // Hạn mức: công nợ chưa thu + phiếu đã xuất kho chưa giao (AR-DLV-01).
     const exposureOf = (customerId: ObjectId) => receivables
       .filter((row) => (row.partnerId as ObjectId).equals(customerId) && row.status !== 'PAID')
-      .reduce((sum, row) => sum.add(row.amount.toString()).minus(row.paidAmount.toString()), new Decimal(0));
+      .reduce((sum, row) => sum.add(row.amount.toString()).minus(row.paidAmount.toString()), new Decimal(0))
+      .add(orders.filter((order) => order.customerId.equals(customerId) && order.shippedAt && !order.deliveredAt).reduce((sum, order) => sum.add(order.total), new Decimal(0)));
     const creditPushOrder = orders.find((order) => order.dealer.code === 'KH006' && order.status === 'PENDING_APPROVAL');
     if (creditPushOrder) {
       const exposure = exposureOf(creditPushOrder.customerId);
@@ -790,14 +810,14 @@ async function seedDemo(): Promise<void> {
       if (slowItem) {
         const when = at(4, 14);
         const customer = await partnerOf('KH005');
-        const code = nextCode('TH', when, 4, true);
+        const code = nextCode('NK', when, 4, true);
         move(slowItem, { movementType: 'CUSTOMER_RETURN', direction: 'IN', category: 'SLOW_RETURN_IN', referenceType: 'StockReturn', referenceId: code, partnerId: customer._id, reason: 'Hàng bán chậm khách trả lại', occurredAt: when }, 3);
         stockReturns.push(returnDoc(code, 'CUSTOMER', 'SLOW_RETURN_IN', customer, warehouseId, slowItem, 3, 'Hàng bán chậm khách trả lại', when));
       }
       if (defectItem) {
         const when = at(3, 11);
         const customer = await partnerOf('KH007');
-        const code = nextCode('TH', when, 4, true);
+        const code = nextCode('NK', when, 4, true);
         move(defectItem, { movementType: 'CUSTOMER_RETURN', direction: 'IN', category: 'IMPORT_DEFECT_IN', referenceType: 'StockReturn', referenceId: code, partnerId: customer._id, reason: 'Khách nhận hàng bị móp nắp — lỗi từ nhà máy', occurredAt: when }, 1, defectiveWarehouseId);
         stockReturns.push(returnDoc(code, 'CUSTOMER', 'IMPORT_DEFECT_IN', customer, defectiveWarehouseId, defectItem, 1, 'Khách nhận hàng bị móp nắp — lỗi từ nhà máy', when));
         defectBalances.push({ _id: new ObjectId(), warehouseId: defectiveWarehouseId, productId: productOf(defectItem), onHand: D(1), reserved: D(0), locationCode: 'HL-01', createdAt: when, updatedAt: when, demoData: true });

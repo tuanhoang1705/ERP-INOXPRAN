@@ -11,7 +11,7 @@
   import { api } from '$lib/api';
   import { company } from '$lib/company';
   import { applyPrintFit } from '$lib/print-fit';
-  import { coverageText, resolutionText, statusText } from '$lib/warranty';
+  import { resolutionText, statusText, ticketCoverageText } from '$lib/warranty';
   import { daysBetween, remainingWarrantyDays } from '$shared/warranty';
 
   let ticket = $state<WarrantyTicket | null>(null);
@@ -81,9 +81,9 @@
         <tr><th>Sản phẩm / Model /<br /><i>产品 / 型号</i></th><td>{ticket.product.sku} — {ticket.product.name}</td><th>Số Serial / <i>序列号</i></th><td>{ticket.product.serial ?? 'Chưa in serial — nhận diện theo mã hàng + hóa đơn / 暂无序列号'}</td></tr>
         <tr>
           <th>Ngày mua / Ngày xuất bán /<br /><i>购买日期 / 出售日期</i></th>
-          <td>{ticket.invoice ? `${fmtDay(ticket.invoice.date)} — HĐ số / 发票号 ${ticket.invoice.number}` : 'Không có hóa đơn / 无发票'}</td>
+          <td>{ticket.invoice ? `${fmtDay(ticket.invoice.date)} — HĐ số / 发票号 ${ticket.invoice.number}` : ticket.invoicelessWarranty ? 'Không có hóa đơn — bảo hành theo xác nhận của nhân viên / 无发票——经受理人员确认予以保修' : 'Không có hóa đơn / 无发票'}{ticket.declaredPurchaseDate ? ` · khách khai mua / 客户自述购买 ${fmtDay(ticket.declaredPurchaseDate)}` : ''}</td>
           <th>Trạng thái bảo hành / <i>保修状态</i></th>
-          <td>{coverageText(ticket.coverage, vi)} / {coverageText(ticket.coverage, zh)}{ticket.warranty.expiresOn ? ` — đến / 至 ${fmtDay(ticket.warranty.expiresOn)}` : ''}</td>
+          <td>{ticketCoverageText(ticket, vi)} / {ticketCoverageText(ticket, zh)}{ticket.warranty.expiresOn ? ` — đến / 至 ${fmtDay(ticket.warranty.expiresOn)}` : ''}</td>
         </tr>
         <tr>
           <th>Ngày hẹn trả /<br /><i>约定交付日期</i></th>

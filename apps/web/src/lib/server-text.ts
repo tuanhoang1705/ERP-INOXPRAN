@@ -6,6 +6,7 @@
 import type { AppNotification, DashboardSummary, TextParams } from '@inoxpran/contracts';
 import { m } from '$lib/paraglide/messages';
 import { date, num, vnd } from '$lib/format';
+import { money } from '$lib/purchase';
 import { planText } from '$lib/warranty';
 import { WARRANTY_PLANS, type WarrantyPlan } from '$shared/warranty';
 
@@ -64,6 +65,10 @@ export function notificationText(notification: AppNotification): { title: string
       return { title: m.tb_da_duyet_cho_doi_chieu({ code }), message: m.tb_doi_chieu_chi_tiet({ customer }) };
     case 'SALES_READY_FOR_SWK':
       return { title: m.tb_cho_lap_swk({ code }), message: m.tb_cho_lap_swk_chi_tiet({ customer }) };
+    case 'SALES_DELIVERY_PENDING':
+      return { title: m.tb_cho_xac_nhan_giao({ code, slip: text(p, 'slip') }), message: m.tb_cho_xac_nhan_giao_chi_tiet({ customer }) };
+    case 'SALES_DELIVERED_RECEIVABLE':
+      return { title: m.tb_da_giao_ghi_cong_no({ code, amount: vnd(text(p, 'amount')) }), message: m.tb_da_giao_ghi_cong_no_chi_tiet({ customer, due: date(text(p, 'due')) }) };
     case 'PRICE_OVERRIDE_REQUESTED':
       return { title: m.tb_gia_xin_quyen({ requester: text(p, 'requester') }), message: m.tb_gia_xin_quyen_chi_tiet({ customer: text(p, 'customer') || '—', reason: text(p, 'reason') }) };
     case 'PRICE_OVERRIDE_DECIDED':
@@ -115,12 +120,28 @@ export function notificationText(notification: AppNotification): { title: string
     case 'WARRANTY_OVERDUE':
       return { title: m.tb_bh_qua_hen({ code }), message: m.tb_bh_qua_hen_chi_tiet({ customer, product: text(p, 'product'), date: date(text(p, 'promisedDate')), days: count(p, 'lateDays') }) };
     case 'WARRANTY_STOCK_MOVED':
+      // Thông báo trước 20/10/2026 có `defect` (bảo hành còn nhập hàng lỗi); nay hàng lỗi nhập qua Phiếu trả hàng.
+      if (text(p, 'defect')) {
+        return {
+          title: text(p, 'exchange') ? m.tb_bh_doi_hang({ code, product: text(p, 'product'), exchange: text(p, 'exchange'), defect: text(p, 'defect') }) : m.tb_bh_nhap_hang_loi({ code, defect: text(p, 'defect') }),
+          message: m.tb_bh_kho_chi_tiet({ customer, product: text(p, 'product') }),
+        };
+      }
       return {
-        title: text(p, 'exchange') ? m.tb_bh_doi_hang({ code, product: text(p, 'product'), exchange: text(p, 'exchange'), defect: text(p, 'defect') }) : m.tb_bh_nhap_hang_loi({ code, defect: text(p, 'defect') }),
-        message: m.tb_bh_kho_chi_tiet({ customer, product: text(p, 'product') }),
+        title: text(p, 'exchange') ? m.tb_bh_xuat_doi({ code, product: text(p, 'product'), exchange: text(p, 'exchange') }) : m.tb_bh_da_tra_doi_hoan({ code }),
+        message: text(p, 'returnSlip')
+          ? m.tb_bh_hang_loi_theo_phieu({ customer, product: text(p, 'product'), slip: text(p, 'returnSlip') })
+          : m.tb_bh_can_phieu_tra({ customer, product: text(p, 'product') }),
       };
     case 'CRM_FOLLOW_UP_DUE':
       return { title: m.tb_crm_cham_soc({ count: count(p, 'count') }), message: m.tb_crm_cham_soc_chi_tiet({ overdue: count(p, 'overdue'), first: text(p, 'first') }) };
+    case 'CUSTOMER_RETURN_CHANGED':
+      return {
+        title: text(p, 'action') === 'VOID' ? m.tb_khach_tra_huy({ code }) : m.tb_khach_tra_sua({ code }),
+        message: text(p, 'credit')
+          ? m.tb_khach_tra_tu_huy_giam_no({ customer, reason: text(p, 'reason'), credit: text(p, 'credit') })
+          : m.tb_khach_tra_sua_chi_tiet({ customer, reason: text(p, 'reason') }),
+      };
     case 'CUSTOMER_RETURN_POSTED':
       return {
         title: m.tb_khach_tra_hang({ code }),
@@ -128,6 +149,11 @@ export function notificationText(notification: AppNotification): { title: string
           ? m.tb_khach_tra_hang_gia_tri({ customer, order: text(p, 'order'), amount: vnd(text(p, 'amount')) })
           : m.tb_khach_tra_hang_chi_tiet({ customer }),
       };
+    case 'PURCHASE_RECEIPT_PAYABLE': {
+      const amount = money(String(text(p, 'amount')).replace('-', ''), text(p, 'currency') || 'VND');
+      const params = { code, order: text(p, 'order'), supplier: text(p, 'supplier'), amount };
+      return { title: text(p, 'action') === 'CORRECT' ? m.tb_mua_sua_nhap(params) : m.tb_mua_nhap_kho(params), message: m.tb_mua_nhap_chi_tiet() };
+    }
     case 'STOCK_COUNT_VARIANCE':
       return {
         title: m.tb_kiem_ke_lech({ code, count: text(p, 'count') }),
