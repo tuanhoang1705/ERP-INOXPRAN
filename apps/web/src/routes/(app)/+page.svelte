@@ -100,20 +100,19 @@
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if notice}<div class="banner success">{notice}</div>{/if}
 
-<!-- DB-REV-02 (31/10/2026): doanh thu trước thuế là số chính, sau thuế là dòng phụ; thêm card tiền đã thu trong tháng. -->
+<!-- DB-REV-03 (03/11/2026): một chỉ số doanh số gồm VAT (bỏ số trước thuế); card "Công nợ đã thu tháng". -->
 <section class="kpis five">
   <article class="card kpi top green">
-    <p class="label">{m.doanh_thu_thang()} {monthLabel} · <span class="basis">{m.dt_truoc_thue()}</span></p>
-    <p class="value">{summary ? vnd(summary.revenueThisMonth) : '—'}</p>
-    <p class="gross">{m.dt_sau_thue()}: <b>{summary ? vnd(summary.revenueThisMonthGross) : '—'}</b></p>
+    <p class="label">{m.doanh_so_thang()} {monthLabel} · <span class="basis">{m.ds_gom_vat()}</span></p>
+    <p class="value">{summary ? vnd(summary.revenueThisMonthGross) : '—'}</p>
     <p class="note">
-      {#if summary?.revenueChangePercent !== null && summary?.revenueChangePercent !== undefined}
-        <span class="dot" class:red={summary.revenueChangePercent < 0}></span>{summary.revenueChangePercent >= 0 ? '+' : ''}{percent(summary.revenueChangePercent)} {m.so_voi()} {periodText(summary.revenueComparisonLabel)}
-      {:else if summary}<span class="dot"></span>{m.dau_thang_thang_truoc_dat()} {vnd(summary.revenuePreviousMonth)}{/if}
+      {#if summary?.revenueGrossChangePercent !== null && summary?.revenueGrossChangePercent !== undefined}
+        <span class="dot" class:red={summary.revenueGrossChangePercent < 0}></span>{summary.revenueGrossChangePercent >= 0 ? '+' : ''}{percent(summary.revenueGrossChangePercent)} {m.so_voi()} {periodText(summary.revenueComparisonLabel)}
+      {:else if summary}<span class="dot"></span>{m.dau_thang_thang_truoc_dat()} {vnd(summary.revenuePreviousMonthGross)}{/if}
     </p>
   </article>
   <article class="card kpi top blue">
-    <p class="label">{m.da_thu_thang()} {monthLabel}</p>
+    <p class="label">{m.cong_no_da_thu_thang()} {monthLabel}</p>
     <p class="value">{summary ? vnd(summary.collectedThisMonth) : '—'}</p>
     <p class="note"><span class="dot blue"></span>{m.so_phieu_thu({ count: summary?.collectedCount ?? 0 })}{#if summary && Number(summary.collectedPayNow) > 0}{' · '}{m.gom_thanh_toan_ngay({ amount: vnd(summary.collectedPayNow) })}{/if}</p>
   </article>
@@ -235,8 +234,6 @@
   .kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .kpis.five .value { font-size: clamp(17px, 1.3vw, 23px); }
   .kpi .basis { color: var(--green); font-weight: 600; }
-  .kpi .gross { margin: -2px 0 6px; color: var(--muted); font-size: 12.5px; }
-  .kpi .gross b { color: var(--text); font-weight: 600; }
   @media (max-width: 1360px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 1100px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 640px) { .kpis.five { grid-template-columns: 1fr; } }

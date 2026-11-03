@@ -1,15 +1,19 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateCustomerPaymentSchema, CreatePaymentSchema, SetAutoHoldExemptSchema } from '@inoxpran/contracts';
+import { CreateCustomerPaymentSchema, CreatePaymentSchema, HistoryDocumentCreateSchema, HistoryDocumentEditSchema, HistoryPaymentCreateSchema, HistoryPaymentEditSchema, HistoryRowDeleteSchema, SetAutoHoldExemptSchema } from '@inoxpran/contracts';
 import { Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
+import { HistoryEditService } from './history-edit.service';
 import { ReceivablesService } from './receivables.service';
 
 @ApiTags('Receivables')
 @Controller()
 export class ReceivablesController {
-  constructor(private readonly receivables: ReceivablesService) {}
+  constructor(
+    private readonly receivables: ReceivablesService,
+    private readonly history: HistoryEditService,
+  ) {}
 
   @Get('receivables')
   list(
@@ -94,6 +98,44 @@ export class ReceivablesController {
   @Post('receivables/overdue-review')
   review(@Req() request: AuthenticatedRequest) {
     return this.receivables.runReview(request);
+  }
+
+  /** Thêm dòng sổ công nợ cũ bị thiếu (03/11/2026): chứng từ bán / phiếu giảm nợ, ghi vào lô lịch sử công nợ của khách. */
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Post('receivables/history/documents')
+  createHistoryDocument(@Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.createDocument(HistoryDocumentCreateSchema.parse(body), request, key);
+  }
+
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Post('receivables/history/payments')
+  createHistoryPayment(@Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.createPayment(HistoryPaymentCreateSchema.parse(body), request, key);
+  }
+
+  /** Sửa / xóa dòng công nợ nhập từ sổ cũ trên sổ chi tiết của khách (CN-HIST-EDIT-01, 02/11/2026). */
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Patch('receivables/history/documents/:id')
+  editHistoryDocument(@Param('id') id: string, @Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.editDocument(id, HistoryDocumentEditSchema.parse(body), request, key);
+  }
+
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Delete('receivables/history/documents/:id')
+  deleteHistoryDocument(@Param('id') id: string, @Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.deleteDocument(id, HistoryRowDeleteSchema.parse(body), request, key);
+  }
+
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Patch('receivables/history/payments/:id')
+  editHistoryPayment(@Param('id') id: string, @Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.editPayment(id, HistoryPaymentEditSchema.parse(body), request, key);
+  }
+
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Delete('receivables/history/payments/:id')
+  deleteHistoryPayment(@Param('id') id: string, @Body() body: unknown, @Headers('idempotency-key') key: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.history.deletePayment(id, HistoryRowDeleteSchema.parse(body), request, key);
   }
 
   @Roles('ADMIN', 'ACCOUNTANT')

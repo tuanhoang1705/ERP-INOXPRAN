@@ -262,7 +262,8 @@
   .tray { position: absolute; top: 46px; right: 0; width: min(380px, calc(100vw - 24px)); overflow: hidden; color: var(--text); }
   .tray header { display: flex; align-items: baseline; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--line); }
   .tray header small { color: var(--muted); font-size: 12px; }
-  .tray-list { max-height: 360px; overflow: auto; }
+  /* Đủ chỗ cho 3 thông báo dài (3–4 dòng) cùng lúc; màn thấp thì co theo chiều cao cửa sổ. */
+  .tray-list { max-height: min(520px, calc(100vh - 180px)); overflow: auto; }
   .tray-list button { display: grid; grid-template-columns: 8px 1fr; gap: 10px; width: 100%; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); text-align: left; }
   .tray-list button:hover { background: var(--surface-2); }
   .tray-list i { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--amber); }
@@ -271,9 +272,9 @@
   .tray-list b { font-size: 13px; }
   .tray-list small { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .tray p { margin: 0; padding: 26px 16px; color: var(--muted); text-align: center; }
-  .tray footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12.5px; }
+  .tray footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 3px 10px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12px; line-height: 1.3; }
   .tray footer span { margin-right: auto; color: var(--text); }
-  .tray footer button { padding: 5px 10px; border-radius: 6px; font-weight: 600; }
+  .tray footer button { padding: 3px 8px; border-radius: 6px; font-weight: 600; }
   .tray footer .danger { color: var(--red); }
   .tray footer .danger:hover:not(:disabled) { background: #fdecec; }
   .tray footer .link { color: var(--muted); }

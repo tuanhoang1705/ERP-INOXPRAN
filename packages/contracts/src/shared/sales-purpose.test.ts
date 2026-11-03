@@ -19,9 +19,20 @@ describe('loại phiếu (SAL-TYPE-01)', () => {
   it('bộ lọc Mongo: B2B / B2C chỉ phiếu bán, hàng mẫu / kiểm định theo purpose', () => {
     expect(slipTypeFilter('SAMPLE')).toEqual({ purpose: 'SAMPLE' });
     expect(slipTypeFilter('GIFT')).toEqual({ purpose: 'GIFT' });
-    expect(slipTypeFilter('B2C')).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT'] }, channel: 'B2C' });
-    expect(slipTypeFilter('B2B')).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT'] }, channel: { $ne: 'B2C' } });
-    expect(SALE_ONLY_FILTER).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT'] } });
+    expect(slipTypeFilter('B2C')).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] }, channel: 'B2C' });
+    expect(slipTypeFilter('B2B')).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] }, channel: { $ne: 'B2C' } });
+    expect(SALE_ONLY_FILTER).toEqual({ purpose: { $nin: ['SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] } });
+  });
+
+  it('phiếu đổi bảo hành (02/11/2026): không tính doanh thu, có khách, thẻ kho "Xuất đổi bảo hành", không lập trên form', () => {
+    const order = { purpose: 'WARRANTY', channel: 'B2B', customerName: 'Công ty Bằng Ánh', salesRepName: 'Trần Ngọc Kiên' };
+    expect(isNonSalePurpose('WARRANTY')).toBe(true);
+    expect(isLoanPurpose('WARRANTY')).toBe(false);
+    expect(slipTypeOf(order)).toBe('WARRANTY');
+    expect(slipTypeFilter('WARRANTY')).toEqual({ purpose: 'WARRANTY' });
+    expect(orderParty(order)).toBe('Công ty Bằng Ánh');
+    expect(nonSaleOutCategory('WARRANTY')).toBe('WARRANTY_OUT');
+    expect(CreateSalesOrderSchema.safeParse({ purpose: 'WARRANTY', warehouseId: '6ae5f4ebdb3a1121be416088', salesRepId: '6ae5f4ebdb3a1121be416083', lines: [{ productId: '6ae5f4ecdb3a1121be4160a6', unit: 'Bộ', quantity: '1' }] }).success).toBe(false);
   });
 
   it('thẻ kho: hàng mẫu dùng cột 样品, kiểm định có cột riêng (chỉ hiện khi có)', () => {

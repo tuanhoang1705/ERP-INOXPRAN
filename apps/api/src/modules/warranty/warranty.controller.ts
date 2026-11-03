@@ -20,6 +20,7 @@ const CoveragePreviewSchema = z.object({
   declaredPurchaseDate: z.string().refine(isDateOnly).optional(),
 });
 const PhotoKindSchema = z.enum(WARRANTY_PHOTO_KINDS).default('OTHER');
+const WarrantyExchangeOrderSchema = z.object({ version: z.number().int().positive() });
 const UpdateFaultCodeSchema = WarrantyFaultCodeInputSchema.omit({ code: true }).partial();
 /** Danh mục mã lỗi: nhân viên bảo hành và Quản lý kho quản lý (Giám đốc chỉ xem). */
 const FAULT_CODE_EDITORS = ['ADMIN', 'WARRANTY', 'WAREHOUSE_MANAGER'];
@@ -121,6 +122,13 @@ export class WarrantyController {
   @Post('tickets/:id/actions')
   act(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
     return this.warranty.act(id, WarrantyActionSchema.parse(body), request, key);
+  }
+
+  /** Phiếu đổi mới đã trả khách trước 02/11/2026: lập phiếu BH & SWK đổi bảo hành để in đưa thủ kho. */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Post('tickets/:id/exchange-order')
+  issueExchangeOrder(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
+    return this.warranty.issueExchangeOrder(id, WarrantyExchangeOrderSchema.parse(body).version, request, key);
   }
 
   /** Ảnh khi nhận / phiếu đã ký: thân request = dữ liệu ảnh PNG/JPEG/WebP, tên file trong header x-file-name, loại ảnh ở ?kind=. */

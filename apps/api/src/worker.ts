@@ -76,7 +76,15 @@ async function main(): Promise<void> {
         status: 'ACTIVE',
         $or: [{ roles: { $in: targetRoles } }, { _id: { $in: targetUserIds } }],
       }).toArray();
-      if (users.length === 0) throw new Error('No active notification recipient matches target roles or users');
+      // Chưa có tài khoản nào nhận (VD vai trò chưa có người): bỏ qua, không phải lỗi — trước 03/11/2026 thử lại 5 lần rồi thành
+      // dead-letter, Giám sát hệ thống báo "tác vụ lỗi" giả.
+      if (users.length === 0) {
+        await db.collection('outbox_events').updateOne(
+          { _id: eventId },
+          { $set: { status: 'SENT', sentAt: new Date(), skippedReason: 'NO_RECIPIENT' }, $unset: { lockedUntil: '', lastError: '' } },
+        );
+        return;
+      }
 
       const now = new Date();
       await db.collection('notifications').bulkWrite(

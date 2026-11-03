@@ -43,12 +43,14 @@ export class SequenceService {
     );
   }
 
-  /** Số đầu tiên đã ghi nhận của tháng (null nếu chưa có). */
-  async floor(prefix: string, at: Date, session?: ClientSession): Promise<number | null> {
-    const { year, month } = vnParts(at);
-    const key = `${prefix}:${String(year).slice(-2)}${String(month).padStart(2, '0')}`;
-    const row = await this.db.collection<CounterDocument & { floor?: number }>('counters').findOne({ _id: key }, session ? { session } : {});
-    return typeof row?.floor === 'number' ? row.floor : null;
+  /** Số đầu tiên đã ghi nhận trong năm — nhỏ nhất trong các tháng (null nếu chưa có); số phiếu BH đếm tiếp cả năm. */
+  async yearFloor(prefix: string, at: Date, session?: ClientSession): Promise<number | null> {
+    const { year } = vnParts(at);
+    const rows = await this.db.collection<CounterDocument & { floor?: number }>('counters')
+      .find({ _id: { $regex: `^${prefix}:${String(year).slice(-2)}\\d{2}$` } }, { projection: { floor: 1 }, ...(session ? { session } : {}) })
+      .toArray();
+    const floors = rows.map((row) => row.floor).filter((value): value is number => typeof value === 'number');
+    return floors.length ? Math.min(...floors) : null;
   }
 
   async next(prefix: string, session?: ClientSession, width = 5, at = new Date(), style: 'dash' | 'compact' = 'dash'): Promise<string> {

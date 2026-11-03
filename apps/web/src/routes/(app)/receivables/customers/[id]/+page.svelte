@@ -9,7 +9,7 @@
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, Download, HandCoins, Shuffle, Tags, Truck } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Download, HandCoins, Pencil, Plus, Shuffle, Tags, Trash2, Truck } from 'lucide-svelte';
   import { api, download } from '$lib/api';
   import { date, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
@@ -18,10 +18,13 @@
   import CustomerPaymentDrawer, { type PostedPayment } from '$lib/components/CustomerPaymentDrawer.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
   import SegmentItemsDialog, { type SegmentHolder } from '$lib/components/SegmentItemsDialog.svelte';
+  import HistoryRowDialog, { type HistoryRowInfo, type HistoryRowResult } from '$lib/components/HistoryRowDialog.svelte';
 
   type Row = {
     date: string; kind: 'DEBIT' | 'VOID' | 'RETURN' | 'FREIGHT' | 'RECEIPT'; refId: string; code: string; documentNo: string; description: string; detail?: string;
     salesOrderId?: string; sourceType?: string; segments?: Array<{ code: string; amount: string }>; debit: string; receipt: string; freight: string; returns: string; balance: string;
+    /** Dòng nhập từ sổ công nợ cũ — kế toán sửa / xóa được (CN-HIST-EDIT-01). */
+    history?: HistoryRowInfo;
   };
   type SegmentInfo = { code: string; name: string; active: boolean; manualOnly: boolean; outstanding: string; scope: 'ALL' | 'SELECTED'; enabled: boolean; holding?: SegmentHolder };
   type Statement = {
@@ -59,6 +62,21 @@
   let itemsOpen = $state(false);
   let itemsSegment = $state<SegmentInfo | null>(null);
   let tagTarget = $state<{ id: string; label: string; current: string } | null>(null);
+  // Sửa / xóa dòng sổ công nợ cũ (CN-HIST-EDIT-01, 02/11/2026).
+  let historyOpen = $state(false);
+  let historyMode = $state<'edit' | 'delete' | 'create'>('edit');
+  let historyRow = $state<Row | null>(null);
+  function openHistory(row: Row | null, mode: 'edit' | 'delete' | 'create') {
+    historyRow = row;
+    historyMode = mode;
+    historyOpen = true;
+  }
+  function historySaved(result: HistoryRowResult) {
+    success = result.action === 'DELETED' ? m.hx_da_xoa({ code: result.code, balance: vnd(result.balance) })
+      : result.action === 'CREATED' ? m.hx_da_them({ code: result.code, balance: vnd(result.balance) })
+      : m.hx_da_sua({ code: result.code, balance: vnd(result.balance) });
+    void load();
+  }
   let tagSegment = $state('');
   let tagReason = $state('');
   function openTag(id: string, label: string, current = '') {
@@ -164,6 +182,7 @@
     switch (row.kind) {
       case 'DEBIT':
         if (row.sourceType === 'HISTORY_IMPORT') return m.cn_dong_lich_su();
+        if (row.sourceType === 'MANUAL') return m.hx_dong_them_tay();
         if (row.sourceType === 'OPENING_BALANCE') return m.imp_chung_tu_dau_ky({ no: row.documentNo });
         if (row.sourceType === 'WARRANTY_SERVICE') return m.wr_service_fee_of({ code: row.documentNo });
         return row.salesOrderId ? m.cn_dong_xuat_ban() : row.description;
@@ -196,6 +215,7 @@
     <button class="btn" onclick={exportExcel} disabled={!data}><Download size={16} />{m.xuat_excel()}</button>
     {#if canCollect}
       {#if data && Number(data.prepayment) > 0 && Number(data.openDebt) > 0}<button class="btn" onclick={offset} disabled={working}><Shuffle size={16} />{m.cn_bu_tru_tra_truoc()}</button>{/if}
+      <button class="btn" onclick={() => openHistory(null, 'create')}><Plus size={16} />{m.hx_them_dong()}</button>
       <button class="btn" onclick={() => { drawerKind = 'FREIGHT'; drawerOpen = true; }}>{m.cn_ghi_phi_vc()}</button>
       <button class="btn primary" onclick={() => { drawerKind = 'RECEIPT'; drawerOpen = true; }}><HandCoins size={16} />{m.cn_thu_tien()}</button>
     {/if}
@@ -277,7 +297,10 @@
               <td>
                 {rowLabel(row)}{#if row.detail}<small>{row.detail}</small>{/if}
                 {#each row.segments ?? [] as part (part.code)}<small class="segment-note">{m.seg_trong_do({ name: segmentName(part.code), amount: num(part.amount) })}</small>{/each}
+                {#if row.history?.edited}<small class="edited" title={row.history.edited.reason}>{row.history.added ? m.hx_them_tay({ who: row.history.edited.byName, date: date(row.history.edited.at) }) : m.hx_da_sua_tay({ who: row.history.edited.byName, date: date(row.history.edited.at) })}</small>{/if}
                 {#if canCollect && row.kind === 'DEBIT' && data.segments.some((segment) => segment.active)}<button class="link-btn tag" onclick={() => openTag(row.refId, row.documentNo, data?.openDocuments.find((doc) => doc.id === row.refId)?.segmentTag ?? '')}><Tags size={12} />{m.seg_gan_nhom()}</button>{/if}
+                {#if canCollect && row.history?.locked}<small class="locked">{row.history.locked === 'PAY_NOW' ? m.hx_khoa_pay_now() : m.hx_khoa_tra_hang()}</small>
+                {:else if canCollect && row.history}<span class="row-actions"><button class="link-btn tag" onclick={() => openHistory(row, 'edit')}><Pencil size={12} />{m.hx_sua()}</button><button class="link-btn tag danger" onclick={() => openHistory(row, 'delete')}><Trash2 size={12} />{m.hx_xoa()}</button></span>{/if}
               </td>
               <td class="num">{money(row.debit)}</td>
               <td class="num">{money(row.receipt)}</td>
@@ -337,6 +360,8 @@
   {/snippet}
 </Dialog>
 
+<HistoryRowDialog bind:open={historyOpen} mode={historyMode} partnerId={id} id={historyRow?.refId ?? ''} code={historyRow ? (historyRow.code !== historyRow.documentNo ? `${historyRow.documentNo} (${historyRow.code})` : historyRow.code) : ''} info={historyRow?.history ?? null} onsaved={historySaved} />
+
 <SegmentItemsDialog bind:open={itemsOpen} title={itemsSegment ? m.seg_hang_dang_no_tieu_de({ name: itemsSegment.name }) : ''} holders={itemsSegment?.holding ? [itemsSegment.holding] : []} />
 
 <style>
@@ -361,6 +386,9 @@
   .ledger td small.segment-note { color: var(--navy-2); }
   .link-btn.tag { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 0; border: 0; background: none; color: var(--navy-2); font: inherit; font-size: 11.5px; cursor: pointer; }
   .link-btn.tag:hover { text-decoration: underline; }
+  .row-actions { display: inline-flex; gap: 12px; margin-left: 10px; }
+  .link-btn.tag.danger { color: var(--red, #b42318); }
+  .ledger td small.edited { color: #b4501f; }
   .tag-form { display: grid; gap: 14px; }
   .tag-form p { margin: 0; font-size: 13px; }
   td small { display: block; color: var(--subtle); font-size: 11.5px; }

@@ -9,6 +9,31 @@ import Decimal from 'decimal.js';
  * số dư theo sổ luôn bằng tổng còn nợ của các chứng từ (kể cả khoản trả trước âm).
  */
 export type LedgerKind = 'DEBIT' | 'VOID' | 'RETURN' | 'FREIGHT' | 'RECEIPT';
+
+/** Dòng nhập từ sổ công nợ cũ — kế toán sửa / xóa được trên sổ chi tiết (CN-HIST-EDIT-01, 02/11/2026); dữ liệu để điền form. */
+export interface LedgerHistory {
+  kind: 'DOCUMENT' | 'PAYMENT';
+  version?: number;
+  /** Ngày chứng từ / ngày thu (YYYY-MM-DD, giờ Việt Nam). */
+  date: string;
+  documentNo?: string;
+  invoiceNo?: string;
+  amount: string;
+  note?: string;
+  paymentKind?: string;
+  /** Phần phiếu thu theo đúng chứng từ (lập trên ERP) đã trả vào chứng từ — số tối thiểu khi sửa, có thì không xóa được. */
+  erpPaid?: string;
+  erpPayments?: string[];
+  edited?: { at: string; byName: string; reason: string };
+  /** Dòng kế toán thêm tay (không có trong file sổ cũ). */
+  added?: boolean;
+  /** Số chứng từ / số HĐ do kế toán ghi (sổ cũ, dòng thêm tay) — phiếu BH / phí bảo hành giữ số gốc. */
+  numbered?: boolean;
+  /** Công nợ của phiếu BH: sửa ở đây chỉ đổi công nợ, phiếu BH giữ nguyên. */
+  salesOrderCode?: string;
+  /** Phiếu thu tự động đơn thanh toán ngay / phiếu giảm nợ từ Phiếu trả hàng: sửa ở chứng từ gốc. */
+  locked?: 'PAY_NOW' | 'STOCK_RETURN';
+}
 const KIND_ORDER: Record<LedgerKind, number> = { DEBIT: 0, VOID: 1, RETURN: 2, FREIGHT: 3, RECEIPT: 4 };
 
 export interface LedgerReceivable {
@@ -31,6 +56,7 @@ export interface LedgerReceivable {
   voidReason?: string | undefined;
   /** Phần nhóm công nợ tách riêng của chứng từ (CN-SEG-01) — hiện "trong đó …" trên dòng phát sinh. */
   segments?: ReadonlyArray<{ code: string; amount: string }> | undefined;
+  history?: LedgerHistory | undefined;
 }
 
 export interface LedgerPayment {
@@ -45,6 +71,7 @@ export interface LedgerPayment {
   note?: string | undefined;
   mode?: string | undefined;
   documentNo?: string | undefined;
+  history?: LedgerHistory | undefined;
 }
 
 export interface LedgerRow {
@@ -60,6 +87,7 @@ export interface LedgerRow {
   salesOrderId?: string;
   sourceType?: string;
   segments?: Array<{ code: string; amount: string }>;
+  history?: LedgerHistory;
   debit: string;
   receipt: string;
   freight: string;
@@ -92,6 +120,10 @@ function receivableLabel(row: LedgerReceivable): { documentNo: string; descripti
       description: `Công nợ lịch sử${parts.length ? ` — ${parts.join(' · ')}` : ''}${row.note ? ` · ${row.note}` : ''}`,
     };
   }
+  if (row.sourceType === 'MANUAL') {
+    const parts = [row.historyInvoiceNo ? `HĐ ${row.historyInvoiceNo}` : '', row.historyDocumentNo ? `CT ${row.historyDocumentNo}` : ''].filter(Boolean);
+    return { documentNo: row.historyInvoiceNo || row.historyDocumentNo || row.code, description: `Công nợ thêm tay${parts.length ? ` — ${parts.join(' · ')}` : ''}${row.note ? ` · ${row.note}` : ''}` };
+  }
   if (row.sourceType === 'OPENING_BALANCE') return { documentNo: row.openingDocumentNo ?? row.code, description: `Công nợ đầu kỳ — chứng từ ${row.openingDocumentNo ?? ''}`.trim() };
   if (row.salesOrderCode) return { documentNo: row.salesOrderCode, description: `Xuất bán — phiếu ${row.salesOrderCode}` };
   if (row.warrantyCode) return { documentNo: row.warrantyCode, description: `Phí dịch vụ bảo hành ${row.warrantyCode}` };
@@ -116,9 +148,9 @@ export function ledgerEvents(receivables: readonly LedgerReceivable[], payments:
     const amount = new Decimal(row.amount);
     if (amount.lte(0)) continue;
     const label = receivableLabel(row);
-    const link = { ...(row.salesOrderId ? { salesOrderId: row.salesOrderId } : {}), ...(row.sourceType ? { sourceType: row.sourceType } : {}), ...(row.note && row.sourceType === 'HISTORY_IMPORT' ? { detail: row.note } : {}) };
+    const link = { ...(row.salesOrderId ? { salesOrderId: row.salesOrderId } : {}), ...(row.sourceType ? { sourceType: row.sourceType } : {}), ...(row.note && (row.sourceType === 'HISTORY_IMPORT' || row.sourceType === 'MANUAL') ? { detail: row.note } : {}) };
     const segments = (row.segments ?? []).filter((part) => new Decimal(part.amount).gt(0)).map((part) => ({ code: part.code, amount: new Decimal(part.amount).toFixed(2) }));
-    events.push({ at: row.createdAt, date: row.createdAt.toISOString(), kind: 'DEBIT', refId: row.id, code: row.code, ...label, ...link, ...(segments.length ? { segments } : {}), debit: amount.toFixed(2), receipt: zero, freight: zero, returns: zero, effect: amount });
+    events.push({ at: row.createdAt, date: row.createdAt.toISOString(), kind: 'DEBIT', refId: row.id, code: row.code, ...label, ...link, ...(segments.length ? { segments } : {}), ...(row.history ? { history: row.history } : {}), debit: amount.toFixed(2), receipt: zero, freight: zero, returns: zero, effect: amount });
     if (row.status === 'VOIDED') {
       const at = row.voidedAt ?? row.updatedAt ?? row.createdAt;
       events.push({
@@ -135,6 +167,7 @@ export function ledgerEvents(receivables: readonly LedgerReceivable[], payments:
     const detail = [row.reference, row.note].filter(Boolean).join(' · ');
     events.push({
       ...(detail ? { detail } : {}),
+      ...(row.history ? { history: row.history } : {}),
       at: row.receivedAt, date: row.receivedAt.toISOString(), kind, refId: row.id, code: row.code, documentNo: row.documentNo || row.reference || row.code, description: paymentLabel(row, kind),
       debit: zero, receipt: kind === 'RECEIPT' ? amount.toFixed(2) : zero, freight: kind === 'FREIGHT' ? amount.toFixed(2) : zero, returns: kind === 'RETURN' ? amount.toFixed(2) : zero,
       effect: amount.neg(),

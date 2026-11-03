@@ -77,6 +77,8 @@
   /** Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không khách, không tiền; hàng mang về nhập lại theo phiếu. */
   const nonSale = $derived(isNonSalePurpose(order?.purpose));
   const gift = $derived(order?.purpose === 'GIFT');
+  /** Phiếu đổi bảo hành (02/11/2026): phiếu bảo hành sinh ra — có khách, 0 đ, đã giao; sửa / hủy trên phiếu bảo hành. */
+  const warrantyExchange = $derived(order?.purpose === 'WARRANTY');
   const age = $derived(order && nonSale ? loanAge(order) : { days: 0, overdue: 0 });
   // Quyền nghiệp vụ (PERM-01): làm trực tiếp, hoặc gửi đề nghị để Admin duyệt (SAL-CHG-01).
   const canDiscard = $derived(can('sales.discard'));
@@ -190,8 +192,8 @@
       at: order.shippedAt, done: rank >= 3, current: status === 'RESERVED' && confirmationStatus !== 'PENDING',
       ...(keeperOwner.warn ? { owner: order.warehouseKeeperName ? m.sst_thu_kho_mat_quyen({ name: order.warehouseKeeperName }) : keeperOwner.owner, warn: true } : order.warehouseKeeperName || rank >= 3 ? {} : keeperOwner),
     };
-    if (order.purpose === 'GIFT') {
-      // Xuất tặng: không đối chiếu khách, không thu hồi — xong khi kho xuất.
+    if (order.purpose === 'GIFT' || order.purpose === 'WARRANTY') {
+      // Xuất tặng / đổi bảo hành: không đối chiếu khách, không thu hồi — xong khi kho xuất.
       list.push(keeperStep);
     } else if (isNonSalePurpose(order.purpose)) {
       // Hàng mẫu / kiểm định: không qua bước KD đối chiếu khách; bước cuối là hàng mang về / chốt.
@@ -341,9 +343,10 @@
       {#if order.status === 'SHIPPED' && canDeliverThis && !nonSale}<button class="btn navy" disabled={working} onclick={() => (deliverAsk = true)}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
-      {#if canEditIssued && issuedStage}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
-      {#if canVoid && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
-      {#if canRequestChange && !pendingChange}
+      {#if warrantyExchange && order.warrantyTicketId}<a class="btn soft" href={`/warranty/${order.warrantyTicketId}`}>{m.bhx_mo_phieu_bao_hanh({ code: order.warrantyCode ?? '' })}</a>{/if}
+      {#if canEditIssued && issuedStage && !warrantyExchange}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
+      {#if canVoid && shippedStage && !warrantyExchange}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
+      {#if canRequestChange && !pendingChange && !warrantyExchange}
         {#if !canEditIssued && issuedStage}<a class="btn soft" href={`/sales/orders/${order.id}/edit?request=1`}><Send size={15} />{m.yc_de_nghi_sua()}</a>{/if}
         {#if !canVoid && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => openChange('VOID')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
         {#if !canDiscard && cancellable}<button class="btn danger-soft" disabled={working} onclick={() => openChange('CANCEL')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
@@ -407,6 +410,9 @@
   {#if order.status === 'RESERVED' && order.confirmationStatus === 'CONFIRMED' && !canShipThis && (canCreate || canIssue || canConfirm)}
     <div class="banner info"><WarehouseIcon size={17} /><span>{m.da_doi_chieu_xong_phan_viec()} <b>{order.warehouseKeeperName ?? '—'}</b>.</span></div>
   {/if}
+  {#if warrantyExchange}
+    <div class="banner info"><CircleAlert size={17} /><span>{m.bhx_banner({ code: order.warrantyCode ?? '' })}</span></div>
+  {/if}
   {#if reasons.length}
     <div class="banner warning"><CircleAlert size={17} /><span>{m.ly_do_can_duyet_2()} {reasons.map((reason) => approvalReason[reason] ?? reason).join(' · ')}</span></div>
   {/if}
@@ -415,7 +421,7 @@
     <div>
       <article class="card info">
         <dl>
-          {#if nonSale}
+          {#if nonSale && !warrantyExchange}
           <div class="wide2"><dt>{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
           <div class="wide2"><dt>{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</dt><dd>{order.destination ?? '—'}</dd></div>
           {#if !gift}<div class="wide2"><dt>{m.lp_hen_tra()}</dt><dd>{order.expectedReturnDate ? date(order.expectedReturnDate) : '—'}{#if order.shippedAt && (order.loanStatus === 'OUT' || order.loanStatus === 'PARTIAL')} · <span class:overdue={age.overdue > 0}>{age.overdue > 0 ? m.lp_qua_hen({ days: age.overdue }) : m.lp_da_muon_ngay({ days: age.days })}</span>{/if}</dd></div>{/if}
@@ -517,7 +523,7 @@
         <div><dt>{m.lp_tong_so_luong()}</dt><dd>{num(order.lines.reduce((sum, line) => sum + Number(line.quantity), 0))}</dd></div>
         <div class="total"><dt>{m.tong_tien_thanh_toan()}</dt><dd>{vnd('0')}</dd></div>
       </dl>
-      <p class="words">{gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</p>
+      <p class="words">{warrantyExchange ? m.bhx_khong_tinh_tien() : gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</p>
     </aside>
     {:else}
     <aside class="card summary">

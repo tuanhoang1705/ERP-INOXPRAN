@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CreateSalesOrderSchema, SalesQuoteRequestSchema, UpdateSalesOrderSchema } from '../index.js';
-import { isZeroPriceLine, ZERO_PRICE_KINDS, zeroPriceKindOf } from './sales-line-kind.js';
+import { isZeroPriceLine, otherLinesLast, ZERO_PRICE_KINDS, zeroPriceKindOf, zeroPricedSaleLine } from './sales-line-kind.js';
 
 const id = '6ad03a72341e3981d6f66b4b';
 const line = { productId: id, unit: 'Cái', quantity: '2' };
@@ -23,6 +23,19 @@ describe('hàng tặng / đổi / bù trên phiếu bán', () => {
 
   it('không nhận loại ngoài danh sách', () => {
     expect(CreateSalesOrderSchema.safeParse({ ...order, lines: [{ ...line, zeroPriceKind: 'PAID' }] }).success).toBe(false);
+  });
+
+  it('hàng khác luôn xếp cuối, giữ thứ tự trong từng nhóm', () => {
+    const rows = [{ sku: 'A' }, { sku: 'T1', gift: true }, { sku: 'B' }, { sku: 'D1', zeroPriceKind: 'EXCHANGE' as const }, { sku: 'C' }];
+    expect(otherLinesLast(rows).map((row) => row.sku)).toEqual(['A', 'B', 'C', 'T1', 'D1']);
+    expect(otherLinesLast([{ sku: 'A', gift: false }, { sku: 'B', gift: false }]).map((row) => row.sku)).toEqual(['A', 'B']);
+  });
+
+  it('phiếu bán: dòng hàng bán đơn giá 0 bị chặn, hàng khác 0 đ thì được', () => {
+    expect(zeroPricedSaleLine([{ unitPrice: '480000' }, { unitPrice: '0', gift: true, zeroPriceKind: 'GIFT' }])).toBe(-1);
+    expect(zeroPricedSaleLine([{ unitPrice: '480000' }, { unitPrice: '0.00' }])).toBe(1);
+    expect(zeroPricedSaleLine([{ unitPrice: { toString: () => '0.00' } }])).toBe(0);
+    expect(zeroPricedSaleLine([{ unitPrice: '' }])).toBe(0);
   });
 
   it.each(['SAMPLE', 'INSPECTION', 'GIFT'])('phiếu %s không nhận dòng hàng khác kèm theo dù không gửi cờ gift', (purpose) => {

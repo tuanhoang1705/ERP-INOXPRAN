@@ -12,7 +12,8 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
-  import { CircleAlert, CircleCheck, Clock, Copy, Gift, Info, ListPlus, Lock, Pencil, Plus, RotateCcw, ScanLine, Trash2, X } from 'lucide-svelte';
+  import { flip } from 'svelte/animate';
+  import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, CircleAlert, CircleCheck, Clock, Copy, Gift, Info, ListPlus, Lock, Pencil, Plus, RotateCcw, ScanLine, Trash2, X } from 'lucide-svelte';
   import Dialog from './Dialog.svelte';
   import { api } from '$lib/api';
   import { num, todayIso, vnd } from '$lib/format';
@@ -32,7 +33,7 @@
   import CustomerPicker from './CustomerPicker.svelte';
   import { SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, type SalesSlipType } from '$lib/slip-type';
   import { defaultReturnDate } from '$shared/sales-purpose';
-  import { ZERO_PRICE_KINDS, zeroPriceKindOf, type ZeroPriceKind } from '$shared/sales-line-kind';
+  import { otherLinesLast, ZERO_PRICE_KINDS, zeroPriceKindOf, zeroPricedSaleLine, type ZeroPriceKind } from '$shared/sales-line-kind';
   import { vnDate } from '$shared/warranty';
 
   type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
@@ -46,7 +47,10 @@
   type Employee = { id: string; code: string; name: string; role: string };
   /** name: tên hàng in trên phiếu — mặc định tên trong danh mục, kế toán sửa tay được (SAL-NAME-01). */
   /** vatRate: thuế suất GTGT của dòng (thuế dòng như MISA — 27/10/2026); trống = thuế suất mặc định. */
-  type Line = { productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; zeroPriceKind?: ZeroPriceKind | undefined; name?: string | undefined; overrideUnitPrice?: string | undefined; vatRate?: VatRate | undefined };
+  /** key: mã dòng trên trình duyệt (giữ ô đang gõ / nút đang bấm khi chuyển dòng lên xuống) — không gửi máy chủ. */
+  type Line = { key: number; productId: string; skuInput: string; unit: string; quantity: string; gift: boolean; zeroPriceKind?: ZeroPriceKind | undefined; name?: string | undefined; overrideUnitPrice?: string | undefined; vatRate?: VatRate | undefined };
+  let lineKey = 0;
+  const blankLine = (gift = false, zeroPriceKind?: ZeroPriceKind): Line => ({ key: ++lineKey, productId: '', skuInput: '', unit: '', quantity: '', gift, ...(gift ? { zeroPriceKind: zeroPriceKind ?? 'GIFT' } : {}) });
   type Grant = { id: string; code?: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decidedByName?: string; decisionNote?: string };
 
   let { existing = null, requestMode = false }: { existing?: ExistingOrder | null; requestMode?: boolean } = $props();
@@ -129,7 +133,7 @@
   let vatTouched = $state(false);
   /** Mẫu chọn khi lập phiếu mới (27/10/2026): mặc định PXK-002 thuế từng dòng; phiếu đã lập giữ mẫu của nó. */
   let newTemplate = $state<SalesIssueTemplate>(NEW_SALES_ISSUE_TEMPLATE);
-  let lines = $state<Line[]>([{ productId: '', skuInput: '', unit: '', quantity: '', gift: false }]);
+  let lines = $state<Line[]>([blankLine()]);
   let scan = $state('');
   let scanInput = $state<HTMLInputElement>();
 
@@ -188,7 +192,8 @@
   }
   function applyPrice(index: number) {
     const line = lines[index];
-    if (line && priceDraft.trim() !== '' && Number(priceDraft) >= 0) line.overrideUnitPrice = money(priceDraft);
+    if (line && priceDraft.trim() !== '' && Number(priceDraft) > 0) line.overrideUnitPrice = money(priceDraft);
+    else if (line && priceDraft.trim() !== '') error = m.bh_gia_ban_lon_hon_0({ row: index + 1 });
     editingPrice = null;
   }
   function resetPrice(index: number) {
@@ -275,8 +280,8 @@
           vatRate = existing.taxRate;
           vatTouched = true;
         }
-        lines = existing.lines.map((line) => ({
-          productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift), name: line.productName,
+        lines = otherLinesLast(existing.lines).map((line) => ({
+          key: ++lineKey, productId: line.productId, skuInput: line.sku, unit: line.unit, quantity: String(Number(line.quantity)), gift: Boolean(line.gift), name: line.productName,
           ...(zeroPriceKindOf(line) ? { zeroPriceKind: zeroPriceKindOf(line) } : {}),
           // PXK-002: thuế suất của từng dòng.
           ...(isVatRate(line.vatRate) ? { vatRate: line.vatRate } : {}),
@@ -308,7 +313,7 @@
       const remainder = source.loanRemainder ?? [];
       if (!remainder.length) return;
       loanSource = { id: source.id, code: source.code };
-      lines = remainder.map((line) => ({ productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false, name: line.productName }));
+      lines = remainder.map((line) => ({ key: ++lineKey, productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false, name: line.productName }));
       if (source.salesRepId) salesRepId = source.salesRepId;
       note = m.lp_lap_phieu_ban_tu_mau({ code: source.code });
     } catch (caught) {
@@ -326,7 +331,9 @@
       if (!expectedReturnDate) expectedReturnDate = defaultReturnDate(todayIso());
     } else expectedReturnDate = '';
     if (nowNonSale) {
-      lines = lines.filter((line) => !line.gift).map((line) => ({ ...line, overrideUnitPrice: undefined }));
+      // Hàng tặng / đổi / bù thành dòng thường (phiếu không bán đều 0 đ) — không bỏ dòng, để phiếu bán lập nhầm đã xuất kho
+      // chuyển sang hàng mẫu / kiểm định / tặng mà thẻ kho không lệch (03/11/2026).
+      lines = lines.map((line) => ({ ...line, gift: false, zeroPriceKind: undefined, overrideUnitPrice: undefined }));
       if (!lines.length) addLine();
       editingPrice = null;
       if (description.startsWith('Bán hàng ')) description = '';
@@ -489,8 +496,9 @@
     error = '';
     let target = lines.find((line) => !line.productId && !line.gift);
     if (!target) {
-      lines.push({ productId: '', skuInput: '', unit: '', quantity: '', gift: false });
-      target = lines[lines.length - 1] as Line;
+      const at = saleLineEnd();
+      lines.splice(at, 0, blankLine());
+      target = lines[at] as Line;
     }
     setProduct(target, found.product, found.unit);
     scan = '';
@@ -504,8 +512,27 @@
     }
   }
 
+  /** Vị trí ngay sau dòng hàng bán cuối cùng — hàng khác (tặng / đổi / bù) luôn ở cuối phiếu (03/11/2026). */
+  function saleLineEnd() {
+    const first = lines.findIndex((line) => line.gift);
+    return first < 0 ? lines.length : first;
+  }
+  /** Dòng hàng bán mới chèn trên nhóm hàng khác; dòng hàng khác thêm ở cuối. */
   function addLine(gift = false) {
-    lines.push({ productId: '', skuInput: '', unit: '', quantity: '', gift, ...(gift ? { zeroPriceKind: 'GIFT' as const } : {}) });
+    if (gift) lines.push(blankLine(true));
+    else lines.splice(saleLineEnd(), 0, blankLine());
+  }
+  /** Chuyển dòng lên / xuống theo ý kế toán — trong nhóm của dòng (hàng khác vẫn ở cuối). */
+  function canMove(index: number, step: -1 | 1) {
+    const line = lines[index];
+    const other = lines[index + step];
+    return Boolean(line && other && line.gift === other.gift);
+  }
+  function moveLine(index: number, step: -1 | 1) {
+    if (!canMove(index, step)) return;
+    editingPrice = null;
+    const [line] = lines.splice(index, 1);
+    if (line) lines.splice(index + step, 0, line);
   }
   /** Thêm nhanh dòng hàng tặng cùng mã (như phiếu thật: tặng 1 sản phẩm mỗi mã). */
   function addGiftFor(line: Line) {
@@ -513,7 +540,7 @@
     if (!product) return;
     const existingGift = lines.find((other) => other.productId === product.id && zeroPriceKindOf(other) === 'GIFT');
     if (existingGift) existingGift.quantity = String(Number(existingGift.quantity || 0) + 1);
-    else lines.push({ productId: product.id, skuInput: product.sku, unit: product.baseUnit, quantity: '1', gift: true, zeroPriceKind: 'GIFT', name: line.name || product.name });
+    else lines.push({ key: ++lineKey, productId: product.id, skuInput: product.sku, unit: product.baseUnit, quantity: '1', gift: true, zeroPriceKind: 'GIFT', name: line.name || product.name });
   }
   function removeLine(index: number) {
     lines.splice(index, 1);
@@ -542,12 +569,14 @@
     const line = lines[index];
     if (!line) return;
     editingPrice = null;
-    lines.splice(index + 1, 0, { ...$state.snapshot(line) });
+    lines.splice(index + 1, 0, { ...$state.snapshot(line), key: ++lineKey });
     void focusLine(index + 1, 'input.qty');
   }
+  /** Dòng trống cùng nhóm ngay dưới dòng đang chọn (dưới hàng khác thì là dòng hàng khác cùng loại). */
   function insertLineBelow(index: number) {
     editingPrice = null;
-    lines.splice(index + 1, 0, { productId: '', skuInput: '', unit: '', quantity: '', gift: false });
+    const line = lines[index];
+    lines.splice(index + 1, 0, line?.gift ? blankLine(true, zeroPriceKindOf(line)) : blankLine());
     void focusLine(index + 1, 'input.sku');
   }
   const rowMenuItems = $derived.by((): ContextMenuItem[] => {
@@ -558,6 +587,8 @@
     return [
       { label: m.bh_ctx_sao_chep_dong(), icon: Copy, disabled: !product, action: () => duplicateLine(index) },
       { label: m.bh_ctx_them_dong_duoi(), icon: ListPlus, action: () => insertLineBelow(index) },
+      { label: m.bh_ctx_chuyen_len(), icon: ArrowUp, disabled: !canMove(index, -1), action: () => moveLine(index, -1) },
+      { label: m.bh_ctx_chuyen_xuong(), icon: ArrowDown, disabled: !canMove(index, 1), action: () => moveLine(index, 1) },
       ...(product && !line.gift && !nonSale ? [{ label: m.tang_kem({ sku: product.sku }), icon: Gift, action: () => addGiftFor(line) }] : []),
       { label: m.xoa_dong({ p0: index + 1 }), icon: Trash2, danger: true, action: () => removeLine(index) },
     ];
@@ -627,6 +658,19 @@
     if (!calc.lines.some((line) => line && (nonSale || !lines[line.index]?.gift))) {
       error = m.phieu_can_it_nhat_mot_dong();
       return;
+    }
+    // Phiếu bán B2B / B2C: không dòng hàng bán 0 đ, tổng > 0 (03/11/2026 — máy chủ chặn cùng quy tắc).
+    if (!nonSale) {
+      const priced = calc.lines.flatMap((line) => (line && lines[line.index] ? [{ row: line.index, gift: lines[line.index]?.gift, unitPrice: line.unitPrice }] : []));
+      const zero = priced[zeroPricedSaleLine(priced)];
+      if (zero) {
+        error = m.bh_gia_ban_lon_hon_0({ row: zero.row + 1 });
+        return;
+      }
+      if (!(Number(summary.grandTotal) > 0)) {
+        error = m.bh_tong_ban_lon_hon_0();
+        return;
+      }
     }
     if (requestedDeliveryDate && requestedDeliveryDate < orderDate) {
       error = m.ngay_giao_du_kien_phai_lon();
@@ -814,13 +858,13 @@
     <table class="table lines">
       <thead><tr><th>{m.stt()}</th><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.ton_kha_dung()}</th><th class="num">{m.so_luong()}</th><th class="num">{m.don_gia()}<small>{!lineVat && vatRate === 'KCT' ? m.khong_chiu_thue() : m.chua_thue_gtgt()}</small></th><th class="num">CK (%)</th><th class="num">{m.thanh_tien()}</th>{#if lineVat && !nonSale}<th class="num">{m.bh_phan_tram_thue()}</th><th class="num">{m.bh_tien_thue_dong()}</th>{/if}<th><span class="sr-only">{m.thao_tac()}</span></th></tr></thead>
       <tbody bind:this={lineBody} oncontextmenu={openRowMenu}>
-        {#each lines as line, index}
+        {#each lines as line, index (line.key)}
           {@const product = productById.get(line.productId)}
           {@const computed = calc.lines[index]}
           {@const basis = basisById.get(line.productId)}
           {@const demand = calc.demandByProduct.get(line.productId) ?? 0}
           {@const lineError = calc.lineErrors[index]}
-          <tr data-line={index} class={line.gift ? zeroPriceRowClass(zeroPriceKindOf(line) ?? 'GIFT') : ''}>
+          <tr data-line={index} class={line.gift ? zeroPriceRowClass(zeroPriceKindOf(line) ?? 'GIFT') : ''} animate:flip={{ duration: 160 }}>
             <td class="muted">{index + 1}</td>
             <td><input class="input sku" list="sku-list" bind:value={line.skuInput} onchange={() => onSkuChange(line)} placeholder="INP…" aria-label={m.ma_hang_dong({ p0: index + 1 })} /></td>
             <td class="name">{#if product}<input class="input pname" bind:value={line.name} maxlength="300" onblur={() => { if (!line.name?.trim()) line.name = product.name; }} aria-label={m.ten_hang_dong({ p0: index + 1 })} title={line.name && line.name !== product.name ? m.ten_hang_danh_muc({ name: product.name }) : ''} />{/if}{#if line.gift}{@const kind = zeroPriceKindOf(line) ?? 'GIFT'}<select class={`kind-select ${zeroPriceKindTone(kind)}`} value={kind} onchange={(event) => (line.zeroPriceKind = event.currentTarget.value as ZeroPriceKind)} aria-label={m.bh_loai_hang_khac_dong({ row: index + 1 })}>{#each ZERO_PRICE_KINDS as option}<option value={option}>{zeroPriceKindLabel(option)}</option>{/each}</select>{/if}</td>
@@ -859,6 +903,10 @@
               <td class="num">{computed ? dong(computed.taxAmount) : ''}</td>
             {/if}
             <td><div class="row-actions">
+              {#if lines.length > 1}<span class="move">
+                <button class="icon" onclick={() => moveLine(index, -1)} disabled={!canMove(index, -1)} title={!canMove(index, -1) && index > 0 ? m.bh_hang_khac_luon_cuoi() : m.bh_chuyen_len({ row: index + 1 })} aria-label={m.bh_chuyen_len({ row: index + 1 })}><ChevronUp size={14} /></button>
+                <button class="icon" onclick={() => moveLine(index, 1)} disabled={!canMove(index, 1)} title={!canMove(index, 1) && index < lines.length - 1 ? m.bh_hang_khac_luon_cuoi() : m.bh_chuyen_xuong({ row: index + 1 })} aria-label={m.bh_chuyen_xuong({ row: index + 1 })}><ChevronDown size={14} /></button>
+              </span>{/if}
               {#if product && !line.gift && !nonSale}<button class="icon gift" onclick={() => addGiftFor(line)} title={m.tang_kem_1_san_pham_cung()} aria-label={m.tang_kem({ sku: product.sku })}><Gift size={14} /></button>{/if}
               <button class="icon remove" onclick={() => removeLine(index)} aria-label={m.xoa_dong({ p0: index + 1 })}><X size={14} /></button>
             </div></td>
@@ -1023,6 +1071,10 @@
   .icon { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; }
   .icon.gift { background: var(--orange-soft); color: var(--orange); }
   .icon.remove { background: var(--red-soft); color: var(--red); }
+  .move { display: inline-flex; gap: 1px; }
+  .move .icon { width: 22px; border-radius: 6px; background: var(--gray-soft); color: var(--text); }
+  .move .icon:hover:not(:disabled) { background: var(--blue-soft); color: var(--navy); }
+  .move .icon:disabled { opacity: 0.3; cursor: default; }
   .warnings { display: grid; gap: 6px; padding: 12px 22px 0; }
   .warnings p { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0; padding: 8px 14px; border-radius: 8px; font-size: 13px; }
   .warnings .warning { background: var(--orange-soft); color: #b4501f; }

@@ -161,7 +161,7 @@
               {#if editable}<td class="row-actions"><button class="icon-btn danger" aria-label={`${m.crud_xoa()} ${row.sku}`} onclick={() => remove(row)}><Trash2 size={15} /></button></td>{/if}
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="8">{m.gr_chua_co()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="8">{m.gia_rieng_chua_co()}</td></tr>{/if}
       </tbody>
     </table>
   </div>

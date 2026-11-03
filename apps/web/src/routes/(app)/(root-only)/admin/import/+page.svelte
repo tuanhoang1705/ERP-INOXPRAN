@@ -25,7 +25,7 @@
   type DryRun = { ok: boolean; mode: Mode; fileName: string; sha256: string; sheets: SheetSummary[]; totals: Totals; adjustment?: Adjustment; errors: Array<{ sheet: string; row: number; column: string; message: string }>; truncated: boolean };
   type Batch = {
     id: string; code: string; fileName: string; status: 'COMMITTED' | 'ROLLED_BACK'; mode: Mode; kind?: 'INITIAL' | 'AR_HISTORY'; cutoff?: string; paymentCount?: number; adjustment?: Adjustment; sheets: SheetSummary[]; totals: Totals;
-    replacedAt?: string; replacements?: number;
+    replacedAt?: string; replacements?: number; manualEdits?: number;
     createdCount: number; updatedCount: number; openingCount: number; receivableCount: number; createdByName: string; createdAt: string;
     confirmations: Array<{ role: string; name: string; at: string }>; rolledBackAt?: string; rolledBackByName?: string;
   };
@@ -347,7 +347,7 @@
         {#each batches as batch (batch.id)}
           <tr class:muted={batch.status === 'ROLLED_BACK'}>
             <td class="code">{batch.code}</td>
-            <td>{batch.fileName}{#if batch.mode === 'ADJUST_OPENING'} <span class="pill warning">{m.imp_dc_nhan()}</span>{/if}{#if batch.kind === 'AR_HISTORY'} <span class="pill orange">{m.ar_nhan_lo({ cutoff: batch.cutoff ?? '' })}</span>{#if batch.replacements} <span class="pill neutral">{m.rep_da_thay_nhan({ count: batch.replacements })}</span>{/if}{/if}<small>{dateTime(batch.createdAt)}</small></td>
+            <td>{batch.fileName}{#if batch.mode === 'ADJUST_OPENING'} <span class="pill warning">{m.imp_dc_nhan()}</span>{/if}{#if batch.kind === 'AR_HISTORY'} <span class="pill orange">{m.ar_nhan_lo({ cutoff: batch.cutoff ?? '' })}</span>{#if batch.replacements} <span class="pill neutral">{m.rep_da_thay_nhan({ count: batch.replacements })}</span>{/if}{#if batch.manualEdits} <span class="pill warning">{m.hx_lo_da_sua_tay({ count: batch.manualEdits })}</span>{/if}{/if}<small>{dateTime(batch.createdAt)}</small></td>
             <td class="num">{num(batch.createdCount)}</td>
             <td class="num">{num(batch.updatedCount)}</td>
             <td class="num">{num(batch.openingCount)}</td>

@@ -86,6 +86,7 @@ export const actionText = (action: string): string =>
     TEST: m.wr_act_test(),
     RESCHEDULE: m.wr_act_reschedule(),
     RETURN: m.wr_act_return(),
+    EXCHANGE_ORDER: m.bhx_act_lap_phieu(),
     CANCEL: m.wr_act_cancel(),
   })[action] ?? action;
 

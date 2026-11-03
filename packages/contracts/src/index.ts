@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { VAT_RATES } from './shared/sales-math.js';
 import { DEFAULT_SALES_ISSUE_TEMPLATE, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesOrderCodeProblem } from './shared/sales-templates.js';
-import { isLoanPurpose, isNonSalePurpose, LOAN_CLOSE_OUTCOMES, LOAN_STATUSES, SALES_PURPOSES, SALES_SLIP_TYPES } from './shared/sales-purpose.js';
+import { FORM_SALES_PURPOSES, isLoanPurpose, isNonSalePurpose, LOAN_CLOSE_OUTCOMES, LOAN_STATUSES, SALES_PURPOSES, SALES_SLIP_TYPES } from './shared/sales-purpose.js';
 import { isZeroPriceLine, ZERO_PRICE_KINDS, type ZeroPriceKind } from './shared/sales-line-kind.js';
 import { isDateOnly, WARRANTY_CHANNELS, WARRANTY_EXCLUSIONS, WARRANTY_PLANS } from './shared/warranty.js';
 import type { WarrantyChannel, WarrantyCoverage, WarrantyExclusion, WarrantyPhotoKind, WarrantyPlan, WarrantyResolution, WarrantyStatus } from './shared/warranty.js';
@@ -440,6 +440,8 @@ export const SalesOrderCodeSchema = z
   .refine((code) => salesOrderCodeProblem(code) !== 'RESERVED', 'Số phiếu trùng kiểu số của chứng từ khác (SWK, AR, PO, TH…) — dùng số khác');
 /** Mục đích phiếu: bán hàng / xuất hàng mẫu / xuất kiểm định (SAL-TYPE-01). Thiếu = bán hàng. */
 export const SalesPurposeSchema = z.enum(SALES_PURPOSES);
+/** Loại lập được trên form (phiếu đổi bảo hành WARRANTY chỉ do phiếu bảo hành sinh ra). */
+export const SalesFormPurposeSchema = z.enum(FORM_SALES_PURPOSES);
 export const SalesSlipTypeSchema = z.enum(SALES_SLIP_TYPES);
 const SalesOrderInputObject = z.object({
   /** Bỏ trống = hệ thống tự sinh BHyyyymm####; có giá trị = số phiếu tự nhập (không được trùng). */
@@ -448,7 +450,7 @@ const SalesOrderInputObject = z.object({
   priceOverrideRequestId: IdSchema.optional(),
   /** Mã phiên mở form lập phiếu — quyền sửa giá chưa gắn phiếu chỉ dùng được trong đúng phiên đã xin. */
   formSessionId: z.string().uuid().optional(),
-  purpose: SalesPurposeSchema.default('SALE'),
+  purpose: SalesFormPurposeSchema.default('SALE'),
   /** Bắt buộc với phiếu bán; phiếu hàng mẫu / kiểm định không có khách hàng. */
   customerId: IdSchema.optional(),
   warehouseId: IdSchema,
@@ -813,6 +815,9 @@ export const SalesOrderSchema = z.object({
   code: CodeSchema,
   /** Thiếu = phiếu bán. Phiếu hàng mẫu / kiểm định không có khách hàng (customer* trống). */
   purpose: SalesPurposeSchema.optional(),
+  /** Phiếu đổi hàng bảo hành (purpose WARRANTY): phiếu bảo hành sinh ra phiếu này. */
+  warrantyTicketId: IdSchema.optional(),
+  warrantyCode: z.string().optional(),
   customerId: IdSchema.optional(),
   customerCode: CodeSchema.optional(),
   customerName: z.string().optional(),
@@ -1159,6 +1164,39 @@ export type CreateCustomerPayment = z.infer<typeof CreateCustomerPaymentSchema>;
 export const SetAutoHoldExemptSchema = z.object({ exempt: z.boolean() });
 
 /**
+ * Sửa / xóa dòng công nợ nhập từ sổ cũ (CN-HIST-EDIT-01, 02/11/2026): chứng từ bán `HISTORY_IMPORT` và phiếu giảm nợ
+ * `mode: HISTORY` của lô lịch sử công nợ — kế toán chỉnh lại số sai của sổ cũ; luôn ghi lý do.
+ */
+const HistoryEditReasonSchema = z.string().trim().min(5, 'Lý do tối thiểu 5 ký tự').max(300);
+const HistoryEditDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải có dạng YYYY-MM-DD');
+export const HistoryDocumentEditSchema = z.object({
+  version: z.number().int().positive(),
+  date: HistoryEditDateSchema,
+  documentNo: z.string().trim().max(60).optional(),
+  invoiceNo: z.string().trim().max(60).optional(),
+  amount: PositiveDecimalStringSchema,
+  note: z.string().trim().max(500).optional(),
+  reason: HistoryEditReasonSchema,
+});
+export type HistoryDocumentEdit = z.infer<typeof HistoryDocumentEditSchema>;
+export const HistoryPaymentEditSchema = z.object({
+  date: HistoryEditDateSchema,
+  kind: z.enum(['RECEIPT', 'FREIGHT', 'RETURN']),
+  reference: z.string().trim().max(100).optional(),
+  amount: PositiveDecimalStringSchema,
+  note: z.string().trim().max(500).optional(),
+  reason: HistoryEditReasonSchema,
+});
+export type HistoryPaymentEdit = z.infer<typeof HistoryPaymentEditSchema>;
+export const HistoryRowDeleteSchema = z.object({ version: z.number().int().positive().optional(), reason: HistoryEditReasonSchema });
+export type HistoryRowDelete = z.infer<typeof HistoryRowDeleteSchema>;
+/** Thêm dòng sổ công nợ cũ bị thiếu (03/11/2026): ghi vào lô lịch sử công nợ của khách. */
+export const HistoryDocumentCreateSchema = HistoryDocumentEditSchema.omit({ version: true }).extend({ partnerId: IdSchema });
+export type HistoryDocumentCreate = z.infer<typeof HistoryDocumentCreateSchema>;
+export const HistoryPaymentCreateSchema = HistoryPaymentEditSchema.extend({ partnerId: IdSchema });
+export type HistoryPaymentCreate = z.infer<typeof HistoryPaymentCreateSchema>;
+
+/**
  * Nhóm công nợ tách riêng (CN-SEG-01) — VD "Quạt & vợt muỗi": phần nợ của hàng thuộc nhóm hàng / mã hàng được theo dõi
  * riêng, không tính quá hạn / cảnh báo / tự khóa. manualOnly = chỉ gắn tay theo chứng từ (VD "Hàng mẫu", "Đơn 2025").
  */
@@ -1300,6 +1338,9 @@ export const DashboardSummarySchema = z.object({
   collectedPayNow: MoneySchema,
   revenuePreviousMonth: MoneySchema,
   revenueChangePercent: z.number().nullable(),
+  /** Doanh số gồm VAT (03/11/2026 — ô chính trên bảng điều khiển): tháng trước và % so cùng kỳ tháng trước. */
+  revenuePreviousMonthGross: MoneySchema,
+  revenueGrossChangePercent: z.number().nullable(),
   revenueComparisonLabel: z.string(),
   pendingApprovalOrders: z.number().int().nonnegative(),
   pendingOver24h: z.number().int().nonnegative(),
@@ -1657,6 +1698,11 @@ export interface WarrantyTicket {
     reference: string;
     movedAt: string;
   };
+  /**
+   * Phiếu BH & SWK đổi hàng bảo hành (02/11/2026): số theo dãy phiếu bán, in đưa thủ kho xuất sản phẩm mới trả khách.
+   * Tự lập khi trả khách (đổi mới, hệ thống xuất kho); phiếu đã trả trước đó lập bằng nút "Lập phiếu BH & SWK".
+   */
+  exchangeOrder?: { id: string; code: string; warehouseSlipNo: string };
   /** Phí dịch vụ ngoài bảo hành đã ghi công nợ. */
   receivable?: { id: string; code: string; amount: string; partnerCode: string; partnerName: string; dueDate: string };
   refund?: { amount: string };

@@ -16,7 +16,7 @@
   import { api } from '$lib/api';
   import { slipPreparerName, type PrintViewer } from '$lib/print-preparer';
 
-  type Order = SalesOrder & { templateCode?: string; warehouseKeeperName?: string; issuedByName?: string; shippedAt?: string; shippedByName?: string; issuedAt?: string };
+  type Order = SalesOrder & { templateCode?: string; warehouseKeeperName?: string; issuedByName?: string; shippedAt?: string; shippedByName?: string; issuedAt?: string; receiverName?: string };
 
   let order = $state<Order | null>(null);
   /** Tài khoản đang mở bản in — trang in nằm ngoài AppShell nên tự tải (PRINT-PREP-01). */
@@ -30,8 +30,10 @@
   const slipDate = $derived(order ? new Date(type === 'SWK' ? order.shippedAt ?? order.updatedAt : order.orderDate ?? order.createdAt) : new Date());
   const draft = $derived(order?.status === 'DRAFT' || order?.status === 'PENDING_APPROVAL');
   const netTotal = $derived(order ? order.netTotal ?? String(Number(order.subtotal) - Number(order.discountTotal)) : '0');
+  /** Phiếu đổi hàng bảo hành (02/11/2026): in khách nhận hàng đổi, số phiếu bảo hành; không tiền, bỏ cột giá. */
+  const warranty = $derived(order?.purpose === 'WARRANTY');
   /** Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không tiền — in người mượn, nơi gửi, hẹn trả; bỏ cột giá. */
-  const loan = $derived(isNonSalePurpose(order?.purpose));
+  const loan = $derived(isNonSalePurpose(order?.purpose) && !warranty);
   const totalQuantity = $derived(order ? order.lines.reduce((sum, line) => sum + Number(line.quantity), 0) : 0);
 
   const money = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
@@ -102,7 +104,39 @@
     <p class="date">{dayParts(slipDate)}</p>
     <p class="no">Số: {slipNo}</p>
 
-    {#if loan}
+    {#if warranty}
+    <table class="buyer">
+      <tbody>
+        <tr><th>Khách hàng:</th><td>{order.buyer?.name ?? order.customerName}</td><th class="right-label">Mã khách hàng:</th><td class="right-value">{order.customerCode}</td></tr>
+        <tr><th>Địa chỉ:</th><td colspan="3">{order.buyer?.address ?? ''}</td></tr>
+        <tr><th>Điện thoại:</th><td colspan="3">{order.buyer?.phone ?? ''}</td></tr>
+        <tr><th>Phiếu bảo hành:</th><td colspan="3">{order.warrantyCode ?? ''}</td></tr>
+        <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
+        <tr><th>Ghi chú:</th><td colspan="3">Hàng đổi bảo hành — xuất sản phẩm mới trả khách, không tính tiền.</td></tr>
+      </tbody>
+    </table>
+
+    <table class="lines">
+      <colgroup><col style="width:6%" /><col style="width:14%" /><col /><col style="width:10%" /><col style="width:12%" /><col style="width:18%" /></colgroup>
+      <thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        {#each order.lines as line, index}
+          <tr>
+            <td class="center">{index + 1}</td>
+            <td>{line.sku}</td>
+            <td class="center">{line.productName}</td>
+            <td>{line.unit}</td>
+            <td class="center">{quantity.format(Number(line.quantity))}</td>
+            <td class="center">Đổi bảo hành</td>
+          </tr>
+        {/each}
+      </tbody>
+      <tfoot>
+        <tr class="sum"><td colspan="4"><b>Cộng</b></td><td class="center"><b>{quantity.format(totalQuantity)}</b></td><td></td></tr>
+      </tfoot>
+    </table>
+    <p class="attached">Ghi chú: {order.note ?? ''}</p>
+    {:else if loan}
     <table class="buyer">
       <tbody>
         {#if order.purpose === 'GIFT'}
@@ -186,7 +220,9 @@
     <p class="sign-date">{dayParts(slipDate)}</p>
     <section class="signatures">
       {#each [
-        ...(loan
+        ...(warranty
+          ? [{ title: 'Người nhận hàng', name: order.receiverName ?? '' }, { title: 'Kế toán trưởng', name: '' }]
+          : loan
           ? [{ title: order.purpose === 'GIFT' ? 'Người nhận hàng' : 'Người mượn hàng', name: order.salesRepName ?? '' }, { title: 'Kế toán trưởng', name: '' }]
           : [{ title: 'Người mua hàng', name: '' }, { title: 'Kế toán trưởng', name: '' }, { title: 'Nhân viên bán hàng', name: order.salesRepName ?? '' }]),
         { title: 'Thủ kho', name: order.warehouseKeeperName ?? '' },

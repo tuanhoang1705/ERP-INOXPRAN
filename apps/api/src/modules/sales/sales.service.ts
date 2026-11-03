@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, LoanClose, LoanPurpose, LoanReturn, NotificationTemplate, PermissionKey, SalesPriceSheet, SalesQuote, SalesQuoteRequest, SalesStepOwners, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
-import { CANCELLABLE_SALES_STATUSES, cancelledCode, hasKeeperRole, expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from '@inoxpran/contracts';
-import { isZeroPriceLine } from '@inoxpran/contracts';
+import { CANCELLABLE_SALES_STATUSES, cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, hasKeeperRole,expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderYearPattern, salesOrderYearSequence, warehouseSlipNumber } from '@inoxpran/contracts';
+import { isZeroPriceLine, otherLinesLast, zeroPricedSaleLine, type ZeroPriceLine } from '@inoxpran/contracts';
 import { defaultReturnDate, isLoanPurpose, isNonSale, isNonSalePurpose, loanInCategory, nonSaleOutCategory, orderParty, PURPOSE_LABEL_VI, purposeOf, SALES_SLIP_TYPES, slipTypeFilter, vnDate, type SalesSlipType } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
@@ -45,6 +45,9 @@ const SALE_ONLY_FIELDS = [
 
 /** Thao tác thực hiện khi duyệt đề nghị sửa / hủy (SAL-CHG-01) — ghi kèm vào nhật ký. */
 export interface SalesChangeVia { code: string; requestedBy: string; requestedByName: string }
+
+/** Hồ sơ khách lẻ chung: khách vãng lai không có hồ sơ (phí dịch vụ / phiếu đổi bảo hành ghi vào đây, kèm tên / SĐT người nhận). */
+export const WALK_IN_PARTNER_CODE = 'KH000';
 
 /** Admin / quản trị gốc được đặt NVKD của phiếu khác NVKD phụ trách vùng của khách (PV-01). */
 const canOverrideRep = (user: Pick<RequestUser, 'roles' | 'root'>) => Boolean(user.root) || user.roles.includes('ADMIN');
@@ -376,6 +379,21 @@ export class SalesService {
     return keeper;
   }
 
+  /** Phiếu bán B2B / B2C không có dòng hàng bán 0 đ, tổng > 0 (03/11/2026): hàng xuất mẫu lập nhầm thành phiếu bán làm sai phân loại kho. */
+  private assertSalePriced(lines: ReadonlyArray<ZeroPriceLine & { sku?: unknown; unitPrice: unknown }>, grandTotal: unknown) {
+    const zeroLine = zeroPricedSaleLine(lines);
+    if (zeroLine >= 0) {
+      throw new BadRequestException({
+        code: 'SALE_ZERO_PRICE',
+        message: `Dòng ${zeroLine + 1} (${String(lines[zeroLine]?.sku ?? '')}): phiếu bán B2B / B2C không được có đơn giá 0 đ — hàng không tính tiền thêm bằng "Thêm hàng khác" (tặng / đổi / bù); xuất hàng mẫu / kiểm định / tặng thì chọn đúng Loại phiếu`,
+        details: [{ path: ['lines', zeroLine, 'overrideUnitPrice'] }],
+      });
+    }
+    if (!new Decimal(decimalString(grandTotal)).gt(0)) {
+      throw new BadRequestException({ code: 'SALE_ZERO_TOTAL', message: 'Phiếu bán B2B / B2C phải có tổng tiền lớn hơn 0 đ — xuất hàng mẫu / kiểm định / tặng thì chọn đúng Loại phiếu' });
+    }
+  }
+
   /** Dựng nội dung phiếu xuất kho bán hàng từ dữ liệu nhập: thông tin người mua, nhân viên, giá và tổng tiền. */
   private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean; assignableKeeper?: boolean; allowRepOverride?: boolean } = {}) {
     // Phiếu xuất hàng mẫu / kiểm định / xuất tặng (SAL-TYPE-01): không khách hàng, người nhận = nhân viên phụ trách, đơn giá 0.
@@ -398,7 +416,9 @@ export class SalesService {
     }
     // PXK-001: một thuế suất cho cả phiếu (phiếu cũ, gọi API không ghi mẫu); PXK-002: thuế suất từng dòng (27/10/2026).
     const template = salesIssueTemplate(input.templateCode);
-    if (!nonSale && !input.lines.some((line) => !isZeroPriceLine(line))) {
+    // Hàng khác (tặng / đổi / bù) luôn ở cuối phiếu (03/11/2026) — số dòng trong thông báo lỗi khớp thứ tự trên form.
+    const lines = otherLinesLast(input.lines);
+    if (!nonSale && !lines.some((line) => !isZeroPriceLine(line))) {
       throw new BadRequestException({ code: 'ONLY_GIFT_LINES', message: 'Phiếu cần ít nhất một dòng hàng bán (ngoài hàng tặng / đổi / bù)' });
     }
     const salesRepId = input.salesRepId ? toObjectId(input.salesRepId, 'salesRepId') : (customer?.salesRepId as ObjectId | undefined);
@@ -423,7 +443,8 @@ export class SalesService {
       throw new BadRequestException({ code: 'RETURN_BEFORE_ORDER', message: 'Ngày hẹn trả phải lớn hơn hoặc bằng ngày chứng từ', details: [{ path: ['expectedReturnDate'] }] });
     }
     const keeper = input.warehouseKeeperId ? await this.loadKeeper(input.warehouseKeeperId, warehouseId, session, options.assignableKeeper) : null;
-    const priced = customer ? await this.pricing.priceLines(input.lines, customer, session, input.taxRate, template.vatMode) : await this.pricing.zeroLines(input.lines, session, input.taxRate, template.vatMode);
+    const priced = customer ? await this.pricing.priceLines(lines, customer, session, input.taxRate, template.vatMode) : await this.pricing.zeroLines(lines, session, input.taxRate, template.vatMode);
+    if (!nonSale) this.assertSalePriced(priced.lines, priced.grandTotal);
     const purpose = nonSale ? input.purpose : 'SALE';
     // Phần riêng của từng loại; khi đổi loại phiếu, các trường của loại kia bị gỡ ($unset).
     const partyFields = customer
@@ -472,7 +493,7 @@ export class SalesService {
         templateCode: template.code,
         taxRate: priced.vatRate,
         pricesIncludeTax: priced.settings.pricesIncludeTax,
-        lineCount: input.lines.length,
+        lineCount: lines.length,
         lines: priced.lines.map((line) => ({
           productId: line.productId,
           sku: line.sku,
@@ -599,24 +620,31 @@ export class SalesService {
   }
 
   /**
-   * Số tự sinh BH + năm + tháng + 4 số (đánh lại mỗi tháng), **nối tiếp số lớn nhất đã có trong tháng** — kể cả số
-   * kế toán tự nhập (vd. nhập tay 104 → phiếu tự sinh sau là 0105). Vẫn bỏ qua số đã bị dùng nếu có.
+   * Số tự sinh BH + năm + tháng + 4 số, 4 số cuối **đếm tiếp cả năm** (NUM-01, kế toán 02/11/2026: BH2026100160 → BH2026110161;
+   * sang năm mới đánh lại từ 0001), nối tiếp số lớn nhất đã có trong năm — kể cả số kế toán tự nhập (vd. nhập tay 104 → phiếu
+   * tự sinh sau là 0105). Vẫn bỏ qua số đã bị dùng nếu có.
    */
   private async nextAutoCode(orderDate: Date, session: ClientSession, request: AuthenticatedRequest): Promise<string> {
-    const prefix = salesOrderPeriodPrefix(vnParts(orderDate));
-    const pattern = { $regex: `^${prefix}\\d{4}$` };
-    // Số cuối đang dùng (phiếu hủy đã đổi sang đuôi -H nên tự bị loại; phiếu nháp xóa thì không còn).
-    const [highest] = await this.db.collection('sales_orders').find({ code: pattern, status: { $ne: 'CANCELLED' } }, { session, projection: { code: 1 } }).sort({ code: -1 }).limit(1).toArray();
-    // Số đầu tiên của tháng: bộ đếm, hoặc suy từ dữ liệu cũ (kể cả số gốc của phiếu đã hủy).
+    const { year, month } = vnParts(orderDate);
+    const prefix = salesOrderPeriodPrefix({ year, month });
+    const pattern = { $regex: salesOrderYearPattern(year) };
+    const sequenceOf = (field: string) => ({ $toInt: { $substrCP: [field, prefix.length, 4] } });
+    // Số lớn nhất đang dùng trong năm (phiếu hủy đã đổi sang đuôi -H nên tự bị loại; phiếu nháp xóa thì không còn).
+    const [highest] = await this.db.collection('sales_orders')
+      .aggregate<{ value: number }>([{ $match: { code: pattern, status: { $ne: 'CANCELLED' } } }, { $group: { _id: null, value: { $max: sequenceOf('$code') } } }], { session })
+      .toArray();
+    // Số đầu tiên của năm: bộ đếm, hoặc suy từ dữ liệu cũ (kể cả số gốc của phiếu đã hủy).
     const [lowest] = await this.db.collection('sales_orders')
-      .find({ $or: [{ code: pattern }, { originalCode: pattern }] }, { session, projection: { code: 1, originalCode: 1 } })
-      .sort({ code: 1 })
-      .limit(50)
-      .toArray()
-      .then((rows) => [rows.map((row) => salesOrderSequence(String(row.originalCode ?? row.code), prefix)).filter((value): value is number => value !== null).sort((a, b) => a - b)[0]]);
-    const tracked = await this.sequences.floor('BH', orderDate, session);
-    const floor = [tracked, lowest ?? null].filter((value): value is number => typeof value === 'number').sort((a, b) => a - b)[0] ?? null;
-    let sequence = nextSalesOrderSequence(highest ? salesOrderSequence(String(highest.code), prefix) : null, floor);
+      .aggregate<{ value: number }>([
+        { $match: { $or: [{ code: pattern }, { originalCode: pattern }] } },
+        { $project: { source: { $ifNull: ['$originalCode', '$code'] } } },
+        { $match: { source: pattern } },
+        { $group: { _id: null, value: { $min: sequenceOf('$source') } } },
+      ], { session })
+      .toArray();
+    const tracked = await this.sequences.yearFloor('BH', orderDate, session);
+    const floor = [tracked, lowest?.value ?? null].filter((value): value is number => typeof value === 'number').sort((a, b) => a - b)[0] ?? null;
+    let sequence = nextSalesOrderSequence(highest?.value ?? null, floor);
     for (let attempt = 0; attempt < 50; attempt += 1, sequence += 1) {
       const code = `${prefix}${String(sequence).padStart(4, '0')}`;
       const holder = await this.db.collection('sales_orders').findOne({ code }, { session });
@@ -631,9 +659,129 @@ export class SalesService {
     throw new ConflictException({ code: 'SALES_ORDER_CODE_EXISTS', message: 'Không sinh được số phiếu BH mới, vui lòng thử lại' });
   }
 
-  /** Số tự nhập đúng dạng BH + tháng + 4 số: ghi nhận làm số đầu tiên / số cuối của tháng. */
+  /**
+   * Phiếu BH & SWK đổi hàng bảo hành (02/11/2026): phiếu bảo hành "Đổi mới" xuất 1 sản phẩm mới trả khách → lập phiếu BH
+   * loại "Đổi bảo hành" số theo dãy phiếu bán (SWK cùng số), 0 đ, đã giao, không công nợ / doanh thu, để in đưa thủ kho.
+   * Kho đã trừ ở phiếu bảo hành (thẻ kho "Xuất đổi bảo hành") — phiếu này không ghi kho lần nữa; gắn số BH vào thẻ kho đó.
+   */
+  async issueWarrantyExchange(
+    input: { ticket: Document; warehouse: Document; at: Date; receiverName?: string },
+    request: AuthenticatedRequest,
+    session: ClientSession,
+  ): Promise<{ id: ObjectId; code: string; warehouseSlipNo: string }> {
+    const { ticket, warehouse, at } = input;
+    const customer = ticket.customer as { partnerId?: ObjectId; name: string; phone?: string; address?: string };
+    const partner = customer.partnerId
+      ? await this.db.collection('partners').findOne({ _id: customer.partnerId }, { session })
+      : await this.db.collection('partners').findOne({ code: WALK_IN_PARTNER_CODE }, { session });
+    if (!partner) {
+      throw new ConflictException({ code: 'WALK_IN_PARTNER_MISSING', message: `Chưa có hồ sơ khách lẻ (mã ${WALK_IN_PARTNER_CODE}) để lập phiếu BH đổi bảo hành — thêm ở Danh mục › Hồ sơ đại lý & khách hàng` });
+    }
+    const product = ticket.product as { productId: ObjectId; sku: string; name: string };
+    const catalog = await this.db.collection('products').findOne({ _id: product.productId }, { session, projection: { baseUnit: 1, categoryId: 1 } });
+    const code = await this.nextAutoCode(at, session, request);
+    const warehouseSlipNo = await this.warehouseSlipCode(code, session);
+    const zero = decimal('0');
+    const one = decimal('1');
+    const ticketCode = String(ticket.code);
+    const actor = request.user.displayName;
+    const id = new ObjectId();
+    await this.db.collection('sales_orders').insertOne({
+      _id: id,
+      code,
+      codeMode: 'AUTO',
+      purpose: 'WARRANTY',
+      warrantyTicketId: ticket._id,
+      warrantyCode: ticketCode,
+      customerId: partner._id,
+      customerCode: String(partner.code),
+      customerName: customer.partnerId ? String(partner.name) : customer.name,
+      ...(partner.customerTier ? { customerTier: partner.customerTier } : {}),
+      ...(partner.province ? { province: partner.province } : {}),
+      ...(partner.regionCode ? { regionCode: partner.regionCode } : {}),
+      buyer: {
+        code: String(partner.code),
+        name: customer.name,
+        ...(customer.address ?? partner.address ? { address: String(customer.address ?? partner.address) } : {}),
+        ...(customer.phone ?? partner.phone ? { phone: String(customer.phone ?? partner.phone) } : {}),
+        ...(customer.partnerId && partner.taxCode ? { taxCode: String(partner.taxCode) } : {}),
+      },
+      channel: partner.customerTier === 'RETAIL' || !customer.partnerId ? 'B2C' : 'B2B',
+      ...(partner.salesRepId ? { salesRepId: partner.salesRepId, ...(partner.salesRepName ? { salesRepName: partner.salesRepName } : {}) } : {}),
+      contactName: customer.name,
+      description: `Đổi sản phẩm mới theo phiếu bảo hành ${ticketCode}`,
+      warehouseId: warehouse._id,
+      orderDate: at,
+      templateCode: DEFAULT_SALES_ISSUE_TEMPLATE,
+      taxRate: '0',
+      pricesIncludeTax: true,
+      lineCount: 1,
+      lines: [{
+        productId: product.productId,
+        sku: product.sku,
+        productName: product.name,
+        ...(catalog?.categoryId ? { categoryId: catalog.categoryId } : {}),
+        unit: String(catalog?.baseUnit ?? ''),
+        gift: false,
+        pricingSource: 'WARRANTY_EXCHANGE',
+        quantity: one,
+        baseQuantity: one,
+        listUnitPrice: zero,
+        unitPrice: zero,
+        discountRate: zero,
+        tierDiscountRate: zero,
+        salesTierDiscountRate: zero,
+        promotionDiscountRate: zero,
+        netAmount: zero,
+        lineTotal: zero,
+      }],
+      subtotal: zero,
+      discountTotal: zero,
+      netTotal: zero,
+      taxTotal: zero,
+      grandTotal: zero,
+      status: 'DELIVERED',
+      approvalStatus: 'NOT_REQUIRED',
+      confirmationStatus: 'NOT_REQUIRED',
+      createdBy: toObjectId(request.user.sub),
+      createdByName: actor,
+      issuedAt: at,
+      issuedBy: request.user.sub,
+      issuedByName: actor,
+      warehouseSlipNo,
+      shippedAt: at,
+      shippedByName: actor,
+      ...(input.receiverName ? { receiverName: input.receiverName } : {}),
+      deliveredAt: at,
+      deliveredByName: actor,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }, { session });
+    // Thẻ kho "Xuất đổi bảo hành" của phiếu bảo hành mang luôn số phiếu BH để tra cứu theo số BH / SWK.
+    await this.db.collection('inventory_movements').updateMany(
+      { referenceType: 'WarrantyTicket', referenceId: ticketCode, movementType: 'WARRANTY_EXCHANGE_OUT' },
+      { $set: { salesOrderCode: code } },
+      { session },
+    );
+    await this.audit.record({
+      actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+      action: 'SALES_ORDER_WARRANTY_EXCHANGE', entityType: 'SalesOrder', entityId: id.toHexString(),
+      after: { code, warehouseSlipNo, warrantyCode: ticketCode, sku: product.sku, customer: customer.name },
+    }, session);
+    return { id, code, warehouseSlipNo };
+  }
+
+  /** Phiếu đổi bảo hành gắn với phiếu bảo hành: không sửa / hủy / đề nghị sửa trên phiếu BH. */
+  private assertNotWarrantyExchange(order: Document | null) {
+    if (order?.purpose === 'WARRANTY') {
+      throw new ConflictException({ code: 'WARRANTY_EXCHANGE_LOCKED', message: `Phiếu đổi bảo hành (theo phiếu bảo hành ${String(order.warrantyCode ?? '')}) — không sửa / hủy trên phiếu BH` });
+    }
+  }
+
+  /** Số tự nhập đúng dạng BH + năm + tháng + 4 số: ghi nhận làm số đầu tiên / số cuối của năm. */
   private async trackManualCode(code: string, orderDate: Date, session: ClientSession) {
-    const sequence = salesOrderSequence(code, salesOrderPeriodPrefix(vnParts(orderDate)));
+    const sequence = salesOrderYearSequence(code, vnParts(orderDate).year);
     if (sequence !== null) await this.sequences.track('BH', orderDate, sequence, session);
   }
 
@@ -897,6 +1045,7 @@ export class SalesService {
     const orderId = toObjectId(id);
     const before = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
     if (!before) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+    this.assertNotWarrantyExchange(before);
     assertWarehouseAccess(request, (before.warehouseId as ObjectId).toHexString());
     if (before.status === 'DRAFT') {
       throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu nháp chưa phát hành — dùng "Xóa phiếu" thay vì hủy' });
@@ -1051,6 +1200,7 @@ export class SalesService {
     const orderId = toObjectId(id);
     const before = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
     if (!before) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+    this.assertNotWarrantyExchange(before);
     if (!['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status))) {
       throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu chưa xuất kho — dùng "Hủy phiếu" / "Xóa phiếu" thông thường' });
     }
@@ -1169,6 +1319,7 @@ export class SalesService {
     const orderId = toObjectId(id);
     const before = await this.db.collection('sales_orders').findOne({ _id: orderId, version: input.version }, { session });
     if (!before) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+    this.assertNotWarrantyExchange(before);
     if (before.status === 'DRAFT') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu nháp sửa theo cách thông thường' });
     if (before.status === 'CANCELLED') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã hủy không sửa được' });
     const shipped = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status));
@@ -1569,6 +1720,8 @@ export class SalesService {
           // Thủ kho đã chọn phải còn được phân công bước 4 lúc phát hành (SAL-STEP-01).
           await this.loadKeeper((order.warehouseKeeperId as ObjectId).toHexString(), order.warehouseId as ObjectId, session, true);
           if (isNonSale(order)) return this.submitLoan(order, request, session);
+          // Nháp lưu trước quy tắc 03/11/2026 vẫn có thể còn dòng hàng bán 0 đ.
+          this.assertSalePriced(order.lines as Array<ZeroPriceLine & { sku?: unknown; unitPrice: unknown }>, order.grandTotal);
           const customer = await this.loadCustomer(order.customerId as ObjectId, session);
           this.assertCustomerCanOrder(customer);
           const settings = await this.db.collection<{ _id: string } & Document>('settings').findOne({ _id: 'approval' }, { session });

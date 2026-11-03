@@ -113,7 +113,7 @@ export class DashboardService {
       }).sort({ validTo: 1 }).toArray(),
       this.db.collection('sales_orders').aggregate([
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: previousMonthStart, $lt: previousToDate } } },
-        { $group: { _id: null, revenue: { $sum: NET_AMOUNT } } },
+        { $group: { _id: null, revenue: { $sum: NET_AMOUNT }, revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
       ]).toArray(),
       // Đã thu trong tháng (DB-REV-02): phiếu thu theo ngày thu; phí VC khách trả hộ, giảm nợ trả hàng và bù trừ không phải tiền thu.
       this.db.collection('payments').aggregate([
@@ -139,6 +139,10 @@ export class DashboardService {
     const revenueThisMonth = new Decimal(monthlyRevenue[5]?.revenue ?? '0');
     const revenuePreviousMonth = new Decimal(monthlyRevenue[4]?.revenue ?? '0');
     const revenuePreviousToDate = new Decimal(decimalString(previousToDateRows[0]?.revenue ?? '0'));
+    // Doanh số gồm VAT (03/11/2026): ô chính của bảng điều khiển.
+    const previousKey = `${vnParts(previousMonthStart).year}-${String(vnParts(previousMonthStart).month).padStart(2, '0')}`;
+    const revenuePreviousMonthGross = new Decimal(decimalString(monthlyRows.find((row) => String(row._id) === previousKey)?.revenueGross ?? '0'));
+    const revenuePreviousToDateGross = new Decimal(decimalString(previousToDateRows[0]?.revenueGross ?? '0'));
     const previousMonthNumber = vnParts(previousMonthStart).month;
     const overdue = new Decimal(decimalString(overdueRows[0]?.total ?? '0'));
 
@@ -242,6 +246,10 @@ export class DashboardService {
       // 3 ngày đầu tháng số liệu quá ít để so sánh có ý nghĩa.
       revenueChangePercent: elapsedDays > 3 && revenuePreviousToDate.gt(0)
         ? revenueThisMonth.minus(revenuePreviousToDate).div(revenuePreviousToDate).mul(100).toDecimalPlaces(1).toNumber()
+        : null,
+      revenuePreviousMonthGross: revenuePreviousMonthGross.toFixed(2),
+      revenueGrossChangePercent: elapsedDays > 3 && revenuePreviousToDateGross.gt(0)
+        ? revenueThisMonthGross.minus(revenuePreviousToDateGross).div(revenuePreviousToDateGross).mul(100).toDecimalPlaces(1).toNumber()
         : null,
       revenueComparisonLabel: `cùng kỳ tháng ${previousMonthNumber}`,
       pendingApprovalOrders,

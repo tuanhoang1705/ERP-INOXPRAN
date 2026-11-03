@@ -17,6 +17,20 @@ export function isZeroPriceLine(line: ZeroPriceLine): boolean {
   return zeroPriceKindOf(line) !== undefined;
 }
 
+/** Hàng khác (tặng / đổi / bù) luôn ở cuối phiếu (03/11/2026): dòng hàng bán trước, giữ nguyên thứ tự trong từng nhóm. */
+export function otherLinesLast<T extends ZeroPriceLine>(lines: readonly T[]): T[] {
+  return [...lines.filter((line) => !isZeroPriceLine(line)), ...lines.filter((line) => isZeroPriceLine(line))];
+}
+
+/**
+ * Phiếu bán B2B / B2C (03/11/2026): dòng hàng bán phải có đơn giá lớn hơn 0 — hàng không tính tiền thêm bằng "Thêm hàng khác"
+ * (tặng / đổi / bù), xuất mẫu / kiểm định / tặng chọn đúng Loại phiếu để kho phân loại đúng. Trả về vị trí dòng hàng bán đầu
+ * tiên có đơn giá 0 (hoặc -1).
+ */
+export function zeroPricedSaleLine(lines: ReadonlyArray<ZeroPriceLine & { unitPrice: unknown }>): number {
+  return lines.findIndex((line) => !isZeroPriceLine(line) && !(Number(String(line.unitPrice)) > 0));
+}
+
 /** Bản in BH / SWK luôn dùng tiếng Việt. */
 export const ZERO_PRICE_LABEL_VI: Record<ZeroPriceKind, string> = {
   GIFT: 'Hàng tặng',

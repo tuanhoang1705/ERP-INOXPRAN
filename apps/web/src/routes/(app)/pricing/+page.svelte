@@ -12,9 +12,7 @@
     productId: string; sku: string; name: string; categoryName?: string; baseUnit: string; packSize?: number;
     distributorPrice: string | null; dealerPrice: string | null; retailPrice: string; availability: string; clearance: boolean;
   };
-  type Book = { code: string; name: string; customerTier: string; version: number; validFrom: string; lineCount: number };
   let rows = $state<PriceRow[]>([]);
-  let books = $state<Book[]>([]);
   let categories = $state<Array<{ id: string; name: string }>>([]);
   let categoryId = $state('');
   let search = $state('');
@@ -30,10 +28,9 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<PriceRow> & { books: Book[] }>(`/price-list?${pageQuery({ categoryId, search, at }, page, pageSize)}`);
+      const result = await api<Paged<PriceRow>>(`/price-list?${pageQuery({ categoryId, search, at }, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
-      books = result.books;
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_bang_gia();
     } finally {
@@ -66,13 +63,6 @@
     <p class="page-sub">{m.gia_chua_vat_theo_bang_bao()}</p>
   </div>
   <div class="actions"><a class="btn" href="/pricing/tiers">{m.chinh_sach_chiet_khau()}</a></div>
-</section>
-
-<section class="books">
-  {#each books as book}
-    <article class="card book"><span>{book.customerTier === 'TIER_1' ? m.cap_1_npp() : book.customerTier === 'TIER_2' ? m.cap_2_dai_ly_2() : m.tat_ca()}</span><b>{book.name}</b><small>{book.code} {m.phien_ban()} {book.version} {m.hieu_luc_tu()} {date(book.validFrom)} · {book.lineCount} {m.ma_2()}</small></article>
-  {/each}
-  <article class="card book"><span>{m.khach_le()}</span><b>{m.gia_ban_le_niem_yet()}</b><small>{m.lay_tu_danh_muc_san_pham()}</small></article>
 </section>
 
 <section class="card filters">
@@ -112,11 +102,6 @@
 </section>
 
 <style>
-  .books { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 18px; }
-  .book { display: grid; gap: 4px; padding: 16px 18px; }
-  .book span { width: fit-content; padding: 2px 9px; border-radius: 999px; background: var(--blue-soft); color: var(--navy-2); font-size: 11.5px; font-weight: 700; }
-  .book b { font-size: 15px; }
-  .book small { color: var(--muted); font-size: 12px; }
   .filters { grid-template-columns: 2fr 1fr 1fr; }
   th.npp { background: #eaf6e4; color: #3f7a2a; }
   td.npp { background: #f5fbf2; }

@@ -15,7 +15,8 @@ import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { applyAllocations } from './allocation-store';
 import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, OVERDUE_HOLD_REASON, releaseHoldIfCleared, runOverdueReview } from './overdue-review';
-import { buildLedger, type LedgerPayment, type LedgerReceivable } from './ledger';
+import { buildLedger, type LedgerHistory, type LedgerPayment, type LedgerReceivable } from './ledger';
+import { DOCUMENT_MODES } from './reallocate';
 import { buildSummaryWorkbook, type SummaryCustomer, type SummaryMonth } from './summary-workbook';
 import { pendingDeliveryOf } from './pending-delivery';
 import { loadSegmentItems } from './segment-items';
@@ -428,6 +429,49 @@ export class ReceivablesService {
   /** Chứng từ / phiếu thu (bản ghi Mongo) → dữ liệu dựng sổ chi tiết (ledger.ts). */
   private toLedger(receivables: Document[], payments: Document[]) {
     const optional = (value: unknown) => (value === undefined || value === null || value === '' ? undefined : String(value));
+    const vnDay = (value: Date) => new Date(value.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
+    // Dòng sổ cũ sửa / xóa được (CN-HIST-EDIT-01): phần phiếu thu theo đúng chứng từ trên ERP đã trả vào từng chứng từ.
+    const pinned = new Map<string, { amount: Decimal; codes: string[] }>();
+    for (const payment of payments) {
+      if (payment.status !== 'POSTED' || payment.mode === 'HISTORY' || !DOCUMENT_MODES.has(String(payment.mode ?? ''))) continue;
+      for (const allocation of (payment.allocations as Document[] | undefined) ?? []) {
+        const key = String(allocation.receivableId);
+        const entry = pinned.get(key) ?? { amount: new Decimal(0), codes: [] };
+        entry.amount = entry.amount.add(decimalString(allocation.amount));
+        if (!entry.codes.includes(String(payment.code))) entry.codes.push(String(payment.code));
+        pinned.set(key, entry);
+      }
+    }
+    const edited = (row: Document) => ({
+      ...(row.manualEditedAt ? { edited: { at: (row.manualEditedAt as Date).toISOString(), byName: String(row.manualEditedByName ?? ''), reason: String(row.manualEditReason ?? '') } } : {}),
+      ...(row.manualAdded === true ? { added: true } : {}),
+    });
+    // Mọi dòng sổ sửa / xóa được (03/11/2026): phát sinh nợ dương (trừ khoản âm hệ thống sinh), phiếu thu / phí VC / trả hàng.
+    const historyOfDocument = (row: Document): LedgerHistory | undefined => {
+      if (row.status === 'VOIDED' || ['CUSTOMER_PREPAYMENT', 'SALES_VOID_CREDIT'].includes(String(row.sourceType ?? '')) || new Decimal(decimalString(row.amount)).lte(0)) return undefined;
+      const pin = pinned.get((row._id as ObjectId).toHexString());
+      const numbered = ['HISTORY_IMPORT', 'MANUAL', 'OPENING_BALANCE'].includes(String(row.sourceType ?? ''));
+      return {
+        kind: 'DOCUMENT', version: Number(row.version ?? 1), date: optional(row.documentDate) ?? vnDay(row.createdAt as Date), amount: decimalString(row.amount),
+        ...(numbered ? { numbered: true } : {}),
+        ...(optional(row.salesOrderCode) ? { salesOrderCode: String(row.salesOrderCode) } : {}),
+        ...(optional(row.historyDocumentNo) ? { documentNo: String(row.historyDocumentNo) } : {}),
+        ...(optional(row.historyInvoiceNo) ? { invoiceNo: String(row.historyInvoiceNo) } : {}),
+        ...(optional(row.note) ? { note: String(row.note) } : {}),
+        ...(pin?.amount.gt(0) ? { erpPaid: pin.amount.toFixed(2), erpPayments: pin.codes } : {}),
+        ...edited(row),
+      };
+    };
+    const historyOfPayment = (row: Document): LedgerHistory | undefined => (row.status === 'POSTED' && ['RECEIPT', 'FREIGHT', 'RETURN'].includes(String(row.kind ?? 'RECEIPT'))
+      ? {
+          kind: 'PAYMENT', date: vnDay(row.receivedAt as Date), amount: decimalString(row.amount), paymentKind: String(row.kind ?? 'RECEIPT'),
+          // Phiếu gắn chứng từ khác: sửa ở chứng từ gốc.
+          ...(row.autoPayNow ? { locked: 'PAY_NOW' as const } : row.stockReturnId ? { locked: 'STOCK_RETURN' as const } : {}),
+          ...(optional(row.reference) ? { documentNo: String(row.reference) } : {}),
+          ...(optional(row.note) ? { note: String(row.note) } : {}),
+          ...edited(row),
+        }
+      : undefined);
     const ledgerReceivables: LedgerReceivable[] = receivables.map((row) => ({
       id: (row._id as ObjectId).toHexString(),
       code: String(row.code),
@@ -447,6 +491,7 @@ export class ReceivablesService {
       note: optional(row.note),
       voidReason: optional(row.voidReason),
       segments: ((row.segments as Document[] | undefined) ?? []).map((part) => ({ code: String(part.code), amount: decimalString(part.amount) })),
+      history: historyOfDocument(row),
     }));
     const ledgerPayments: LedgerPayment[] = payments.map((row) => ({
       id: (row._id as ObjectId).toHexString(),
@@ -460,6 +505,7 @@ export class ReceivablesService {
       note: optional(row.note),
       mode: optional(row.mode),
       documentNo: optional(row.historyDocumentNo),
+      history: historyOfPayment(row),
     }));
     return { ledgerReceivables, ledgerPayments };
   }

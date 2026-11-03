@@ -43,7 +43,7 @@
     loan === 'OUT' ? m.lp_hang_mau_chua_tra()
       : type === 'B2C' ? m.phieu_xuat_kho_ban_le_b2c()
       : type === 'B2B' ? m.phieu_xuat_kho_dai_ly_b2b()
-      : type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT' ? slipTypeLabel(type)
+      : type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT' || type === 'WARRANTY' ? slipTypeLabel(type)
       : m.phieu_xuat_kho_ban_hang(),
   );
 
@@ -173,7 +173,7 @@
               {:else}
                 <td>{row.customerName}<small>{row.customerCode}{row.province ? ` · ${row.province}` : ''}</small></td>
               {/if}
-              <td><span class="tag" class:b2c={row.channel === 'B2C' && !row.purpose?.match(/SAMPLE|INSPECTION|GIFT/)} class:loan={row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT'}>{slipTypeShort(slipTypeOf(row))}</span></td>
+              <td><span class="tag" class:b2c={row.channel === 'B2C' && !row.purpose?.match(/SAMPLE|INSPECTION|GIFT|WARRANTY/)} class:loan={row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT' || row.purpose === 'WARRANTY'}>{slipTypeShort(slipTypeOf(row))}</span></td>
               <td class="muted">{row.salesRepName ?? '—'}</td>
               <td class="num">{row.lineCount ?? row.lines.length}</td>
               <td class="num"><b>{num(row.grandTotal)}</b></td>

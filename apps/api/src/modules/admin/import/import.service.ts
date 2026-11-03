@@ -777,6 +777,8 @@ export class ImportService {
       paymentCount: ((batch.paymentIds as unknown[]) ?? []).length,
       // Lô lịch sử đã thay bằng file mới (số chính xác từ Excel gốc): số lần thay, lần gần nhất.
       ...(batch.replacedAt ? { replacedAt: (batch.replacedAt as Date).toISOString(), replacedByName: batch.replacedByName, replacements: ((batch.replacements as unknown[]) ?? []).length } : {}),
+      // Dòng sổ cũ kế toán sửa / xóa tay trên sổ chi tiết khách (CN-HIST-EDIT-01) — Đối chiếu lô lệch file là vì vậy.
+      ...(((batch.manualEdits as unknown[] | undefined) ?? []).length ? { manualEdits: (batch.manualEdits as unknown[]).length } : {}),
       ...(batch.adjustment ? { adjustment: batch.adjustment } : {}),
       sheets: batch.sheets,
       totals: batch.totals,

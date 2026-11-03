@@ -211,9 +211,9 @@
 <section class="card">
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th>{m.nhom_hang()}</th><th>{m.dvt()}</th><th class="num">{m.sp_thung()}</th><th class="num">{m.gia_ban_le()}</th><th class="num">{m.ton_kha_dung()}</th><th class="num">{m.dinh_muc()}</th><th>{m.tinh_trang()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
+      <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th>{m.nhom_hang()}</th><th>{m.dvt()}</th><th class="num">{m.sp_thung()}</th><th class="num">{m.ton_kha_dung()}</th><th class="num">{m.dinh_muc()}</th><th>{m.tinh_trang()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="10">{m.dang_tai_danh_muc()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan="9">{m.dang_tai_danh_muc()}</td></tr>
         {:else if rows.length}
           {#each rows as row (row.id)}
             {@const info = availabilityLabel[row.availability] ?? { label: row.availability, tone: '' }}
@@ -223,7 +223,6 @@
               <td class="muted">{row.categoryName ?? '—'}</td>
               <td>{row.baseUnit}</td>
               <td class="num">{row.packSize ?? '—'}</td>
-              <td class="num">{num(row.listPrice)}</td>
               <td class="num"><b class:low={Number(row.available) <= Number(row.minimumStock) && Number(row.minimumStock) > 0}>{num(row.available ?? 0)}</b></td>
               <td class="num muted">{num(row.minimumStock)}</td>
               <td>
@@ -239,7 +238,7 @@
               {/if}
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="10">{m.khong_co_san_pham_phu_hop()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="9">{m.khong_co_san_pham_phu_hop()}</td></tr>{/if}
       </tbody>
     </table>
   </div>

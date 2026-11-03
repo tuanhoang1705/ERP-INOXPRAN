@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, NEW_SALES_ISSUE_TEMPLATE, expandSalesOrderCode, nextSalesOrderSequence, normalizeSalesOrderCode, periodOfDate, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, warehouseSlipNumber } from './sales-templates.js';
+import { cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, NEW_SALES_ISSUE_TEMPLATE, expandSalesOrderCode, nextSalesOrderSequence, normalizeSalesOrderCode, periodOfDate, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderSequence, salesOrderYearPattern, salesOrderYearSequence, warehouseSlipNumber } from './sales-templates.js';
 
 describe('mẫu chứng từ phiếu xuất kho bán hàng', () => {
   it('PXK-001 là mẫu mặc định, một thuế suất cho cả phiếu', () => {
@@ -70,6 +70,15 @@ describe('dùng lại số cuối của phiếu xóa / hủy (13/10/2026)', () =
     expect(nextSalesOrderSequence(107, 104)).toBe(108);
     expect(nextSalesOrderSequence(null, 104)).toBe(104);
     expect(nextSalesOrderSequence(null, null)).toBe(1);
+  });
+  it('số thứ tự đếm tiếp cả năm (02/11/2026): BH2026100160 → BH2026110161, sang năm mới đánh lại', () => {
+    expect(salesOrderYearSequence('BH2026100160', 2026)).toBe(160);
+    expect(salesOrderYearSequence('BH2026110161', 2026)).toBe(161);
+    expect(salesOrderYearSequence('BH2026100160', 2027)).toBeNull();
+    expect(salesOrderYearSequence('BH2026110161-H1', 2026)).toBeNull();
+    expect(salesOrderYearSequence('BH2026130001', 2026)).toBeNull();
+    expect(salesOrderYearSequence('BH003/0826', 2026)).toBeNull();
+    expect(new RegExp(salesOrderYearPattern(2026)).test('BH2026010001')).toBe(true);
   });
   it('phiếu hủy đổi sang đuôi -H nhỏ nhất chưa dùng', () => {
     expect(cancelledCode('BH2026100104', new Set())).toBe('BH2026100104-H1');

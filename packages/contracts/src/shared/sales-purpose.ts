@@ -7,19 +7,23 @@
  * không tính doanh thu. Hàng mẫu / kiểm định có hẹn trả (mặc định 15 ngày), mang về nhập lại theo phiếu, phần không về thì
  * chốt kèm lý do; thẻ kho ghi "Hàng mẫu xuất" / "Xuất kiểm định". Xuất tặng ghi "Hàng tặng KM / combo xuất".
  * Phiếu cũ không có `purpose` là phiếu bán.
+ * - WARRANTY (02/11/2026): đổi hàng bảo hành — hệ thống tự lập khi phiếu bảo hành "Đổi mới" trả khách (số BH / SWK theo dãy
+ *   phiếu bán), có khách hàng, 0 đ, không công nợ / doanh thu, không sửa / hủy trên phiếu BH (gắn với phiếu bảo hành).
  */
 import type { InventoryCategory } from './inventory-categories.js';
 
-export const SALES_PURPOSES = ['SALE', 'SAMPLE', 'INSPECTION', 'GIFT'] as const;
+export const SALES_PURPOSES = ['SALE', 'SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] as const;
 export type SalesPurpose = (typeof SALES_PURPOSES)[number];
-export const NON_SALE_PURPOSES = ['SAMPLE', 'INSPECTION', 'GIFT'] as const satisfies readonly SalesPurpose[];
+/** Loại lập được trên form phiếu BH (phiếu đổi bảo hành chỉ do phiếu bảo hành sinh ra). */
+export const FORM_SALES_PURPOSES = ['SALE', 'SAMPLE', 'INSPECTION', 'GIFT'] as const satisfies readonly SalesPurpose[];
+export const NON_SALE_PURPOSES = ['SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] as const satisfies readonly SalesPurpose[];
 export type NonSalePurpose = (typeof NON_SALE_PURPOSES)[number];
 /** Loại có hàng mang về: hẹn trả, nhập lại, chốt phần chưa trả. */
 export const LOAN_PURPOSES = ['SAMPLE', 'INSPECTION'] as const satisfies readonly NonSalePurpose[];
 export type LoanPurpose = (typeof LOAN_PURPOSES)[number];
 
-/** "Loại phiếu" hiển thị và lọc: bán B2B / bán lẻ B2C / xuất hàng mẫu / xuất kiểm định / xuất tặng. */
-export const SALES_SLIP_TYPES = ['B2B', 'B2C', 'SAMPLE', 'INSPECTION', 'GIFT'] as const;
+/** "Loại phiếu" hiển thị và lọc: bán B2B / bán lẻ B2C / xuất hàng mẫu / xuất kiểm định / xuất tặng / đổi bảo hành. */
+export const SALES_SLIP_TYPES = ['B2B', 'B2C', 'SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] as const;
 export type SalesSlipType = (typeof SALES_SLIP_TYPES)[number];
 
 /** Hẹn trả mặc định của hàng mẫu / kiểm định: hôm nay + 15 ngày. */
@@ -36,7 +40,12 @@ export type LoanCloseOutcome = (typeof LOAN_CLOSE_OUTCOMES)[number];
 type PurposeLike = { purpose?: unknown; [key: string]: unknown };
 
 export function isNonSalePurpose(purpose: unknown): purpose is NonSalePurpose {
-  return purpose === 'SAMPLE' || purpose === 'INSPECTION' || purpose === 'GIFT';
+  return purpose === 'SAMPLE' || purpose === 'INSPECTION' || purpose === 'GIFT' || purpose === 'WARRANTY';
+}
+
+/** Phiếu đổi hàng bảo hành (có khách hàng, 0 đ, gắn phiếu bảo hành — không sửa / hủy trên phiếu BH). */
+export function isWarrantyExchange(order: PurposeLike | null | undefined): boolean {
+  return order?.purpose === 'WARRANTY';
 }
 
 export function isLoanPurpose(purpose: unknown): purpose is LoanPurpose {
@@ -67,7 +76,7 @@ export const SALE_ONLY_FILTER: Readonly<Record<string, unknown>> = { purpose: { 
 
 /** Loại phát sinh thẻ kho khi xuất phiếu không phải bán. */
 export function nonSaleOutCategory(purpose: NonSalePurpose): InventoryCategory {
-  return purpose === 'INSPECTION' ? 'INSPECTION_OUT' : purpose === 'GIFT' ? 'GIFT_OUT' : 'SAMPLE_OUT';
+  return purpose === 'INSPECTION' ? 'INSPECTION_OUT' : purpose === 'GIFT' ? 'GIFT_OUT' : purpose === 'WARRANTY' ? 'WARRANTY_OUT' : 'SAMPLE_OUT';
 }
 
 export function loanInCategory(purpose: LoanPurpose): InventoryCategory {
@@ -84,6 +93,7 @@ export const PURPOSE_LABEL_VI: Readonly<Record<SalesPurpose, string>> = {
   SAMPLE: 'Xuất hàng mẫu',
   INSPECTION: 'Xuất kiểm định',
   GIFT: 'Xuất tặng',
+  WARRANTY: 'Đổi bảo hành',
 };
 
 /** Tiêu đề phiếu in theo loại. */
@@ -92,11 +102,12 @@ export const PURPOSE_TITLE_VI: Readonly<Record<SalesPurpose, string>> = {
   SAMPLE: 'PHIẾU XUẤT KHO HÀNG MẪU',
   INSPECTION: 'PHIẾU XUẤT KHO KIỂM ĐỊNH',
   GIFT: 'PHIẾU XUẤT KHO HÀNG TẶNG',
+  WARRANTY: 'PHIẾU XUẤT KHO ĐỔI HÀNG BẢO HÀNH',
 };
 
 /** Bên nhận trên phiếu (thông báo / nhật ký phía máy chủ): tên khách, hoặc "Hàng mẫu — <NV> (gửi <nơi>)" / "Xuất tặng — <NV> (tặng <ai>)". */
 export function orderParty(order: PurposeLike & { customerName?: unknown; salesRepName?: unknown; destination?: unknown }): string {
-  if (!isNonSalePurpose(order.purpose)) return String(order.customerName ?? '');
+  if (!isNonSalePurpose(order.purpose) || order.purpose === 'WARRANTY') return String(order.customerName ?? '');
   const head = order.purpose === 'INSPECTION' ? 'Kiểm định' : order.purpose === 'GIFT' ? 'Xuất tặng' : 'Hàng mẫu';
   const who = order.salesRepName ? ` — ${String(order.salesRepName)}` : '';
   const where = order.destination ? ` (${order.purpose === 'GIFT' ? 'tặng' : 'gửi'} ${String(order.destination)})` : '';

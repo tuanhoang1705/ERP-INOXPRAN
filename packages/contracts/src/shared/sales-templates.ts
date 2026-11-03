@@ -59,9 +59,22 @@ export function normalizeSalesOrderCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
-/** Tiền tố số phiếu BH của một tháng: BH + năm + tháng (đánh số lại mỗi tháng): BH202610. */
+/** Tiền tố số phiếu BH của một tháng: BH + năm + tháng: BH202610. 4 số cuối chạy tiếp cả năm, không đánh lại mỗi tháng. */
 export function salesOrderPeriodPrefix(period: { year: number; month: number }): string {
   return `BH${period.year}${String(period.month).padStart(2, '0')}`;
+}
+
+/**
+ * Số phiếu BH dạng chuẩn của một năm (mọi tháng): BH + năm + tháng + 4 số. Số thứ tự đếm tiếp cả năm, sang năm mới đánh lại
+ * từ 0001 (NUM-01, kế toán 02/11/2026): BH2026100160 → BH2026110161.
+ */
+export function salesOrderYearPattern(year: number): string {
+  return `^BH${year}(0[1-9]|1[0-2])\\d{4}$`;
+}
+
+/** Số thứ tự trong năm của mã dạng chuẩn: BH2026110161 → 161; không đúng dạng / khác năm → null. */
+export function salesOrderYearSequence(code: string, year: number): number | null {
+  return new RegExp(salesOrderYearPattern(year)).test(code) ? Number(code.slice(-4)) : null;
 }
 
 /** Năm / tháng từ ngày chứng từ dạng YYYY-MM-DD. */
@@ -80,8 +93,8 @@ export function salesOrderSequence(code: string, prefix: string): number | null 
 }
 
 /**
- * Số tự sinh kế tiếp trong tháng = số cuối đang dùng + 1 (số của phiếu cuối bị xóa / hủy được dùng lại; số trống ở giữa
- * bỏ qua). Tháng chưa còn phiếu nào → bắt đầu lại từ số đầu tiên của tháng (vd. đơn 104), chưa từng có thì từ 1.
+ * Số tự sinh kế tiếp trong năm = số lớn nhất đang dùng trong năm + 1 (số của phiếu cuối bị xóa / hủy được dùng lại; số trống
+ * ở giữa bỏ qua). Năm chưa còn phiếu nào → bắt đầu lại từ số đầu tiên của năm (vd. đơn 104), chưa từng có thì từ 1.
  */
 export function nextSalesOrderSequence(highest: number | null, floor: number | null): number {
   return highest !== null ? highest + 1 : floor ?? 1;

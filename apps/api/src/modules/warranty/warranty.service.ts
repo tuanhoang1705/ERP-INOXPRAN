@@ -32,6 +32,7 @@ import { ticketSla, WARRANTY_TICKETS, warrantySettings } from './warranty-sla';
 import { slicePage, type PageRequest } from '../../common/paging';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { SalesService, WALK_IN_PARTNER_CODE } from '../sales/sales.service';
 import { WarrantyFaultCodesService } from './warranty-fault-codes.service';
 import { buildWarrantyReport, shiftMonth } from './warranty-report';
 
@@ -45,8 +46,6 @@ export const WARRANTY_VIEWER_ROLES = ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUS
 
 const RESOLUTION_BY_PROPOSAL = { REJECT: 'REJECTED', EXCHANGE: 'EXCHANGED', REFUND: 'REFUNDED' } as const;
 const PHOTO_PURPOSE = 'WARRANTY_PHOTO';
-/** Khách vãng lai (không có hồ sơ): phí dịch vụ ghi vào hồ sơ khách lẻ chung, ghi kèm tên / SĐT người trả. */
-const WALK_IN_PARTNER_CODE = 'KH000';
 const ESCAPE = /[.*+?^${}()|[\]\\]/g;
 
 interface PriorServices {
@@ -73,6 +72,7 @@ export class WarrantyService {
     private readonly inventory: InventoryService,
     private readonly evidence: EvidenceIntakeService,
     private readonly faultCodes: WarrantyFaultCodesService,
+    private readonly sales: SalesService,
   ) {}
 
   private collection() {
@@ -737,6 +737,12 @@ export class WarrantyService {
             const returnSlip = action.returnSlipCode ? await this.returnSlipFor(ticket, action.returnSlipCode, session) : null;
             const stock = await this.moveStock(ticket, resolution, { exchangeDelivered: resolution === 'EXCHANGED' && Boolean(action.exchangeDelivered), returnSlip }, request.user.sub, session, now);
             set.stock = stock;
+            if (stock.exchange) {
+              // Hệ thống xuất 1 sản phẩm mới đổi cho khách → lập phiếu BH & SWK đổi bảo hành để in đưa thủ kho (02/11/2026).
+              const order = await this.issueExchangeOrderIn(ticket, stock.exchange.warehouseCode, now, action.receiverName, request, session);
+              set.exchangeOrder = order;
+              historyNote = `${action.note ? `${action.note} · ` : ''}Phiếu BH ${order.code} · SWK ${order.warehouseSlipNo} (đổi bảo hành)`;
+            }
             if (resolution === 'EXCHANGED') {
               // Chi phí đổi mới = giá vốn tham chiếu của sản phẩm mới.
               const product = await this.db.collection('products').findOne({ _id: (ticket.product as { productId: ObjectId }).productId }, { session, projection: { standardCost: 1 } });
@@ -811,6 +817,49 @@ export class WarrantyService {
           after: { status: next, version: action.version + 1 },
           metadata: { note: historyNote ?? null },
         },
+        session,
+      );
+      return this.present(result, now);
+    });
+  }
+
+  /** Lập phiếu BH & SWK đổi bảo hành cho phiếu bảo hành (kho xuất hàng đổi = kho đã ghi trên phiếu bảo hành). */
+  private async issueExchangeOrderIn(ticket: Document, warehouseCode: string, at: Date, receiverName: string | undefined, request: AuthenticatedRequest, session: ClientSession) {
+    const warehouse = await this.db.collection('warehouses').findOne({ code: warehouseCode }, { session });
+    if (!warehouse) throw new ConflictException({ code: 'WAREHOUSE_NOT_FOUND', message: `Không tìm thấy kho ${warehouseCode} đã xuất hàng đổi` });
+    const order = await this.sales.issueWarrantyExchange({ ticket, warehouse, at, ...(receiverName ? { receiverName } : {}) }, request, session);
+    return { id: order.id, code: order.code, warehouseSlipNo: order.warehouseSlipNo };
+  }
+
+  /**
+   * Phiếu đổi mới đã trả khách trước khi có phiếu BH đổi bảo hành (trước 02/11/2026): lập phiếu BH & SWK để in đưa thủ kho.
+   * Chỉ khi hệ thống đã xuất hàng đổi từ kho (không áp dụng cho "hàng đổi đã giao trước") và phiếu chưa có phiếu BH đổi.
+   */
+  async issueExchangeOrder(id: string, version: number, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`warranty-exchange-order:${id}`, idempotencyKey, { version }, async (session) => {
+      const ticketId = toObjectId(id);
+      const ticket = await this.collection().findOne({ _id: ticketId }, { session });
+      if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+      if (ticket.version !== version) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+      if (!request.user.roles.some((role) => WARRANTY_STAFF_ROLES.includes(role))) {
+        throw new ForbiddenException({ code: 'WARRANTY_STAFF_ONLY', message: 'Chỉ nhân viên bảo hành / Quản lý kho được cập nhật phiếu' });
+      }
+      const exchange = (ticket.stock as { exchange?: { warehouseCode: string } } | undefined)?.exchange;
+      if (ticket.status !== 'RETURNED' || (ticket.result as { resolution?: string } | undefined)?.resolution !== 'EXCHANGED' || !exchange) {
+        throw new ConflictException({ code: 'WARRANTY_EXCHANGE_ORDER_NOT_ALLOWED', message: 'Chỉ lập phiếu BH & SWK cho phiếu đổi mới đã trả khách, hệ thống đã xuất hàng đổi từ kho' });
+      }
+      if (ticket.exchangeOrder) {
+        throw new ConflictException({ code: 'WARRANTY_EXCHANGE_ORDER_EXISTS', message: `Phiếu bảo hành đã có phiếu BH ${String((ticket.exchangeOrder as { code: string }).code)}` });
+      }
+      const now = new Date();
+      const order = await this.issueExchangeOrderIn(ticket, exchange.warehouseCode, (ticket.returnedAt as Date | undefined) ?? now, ticket.returnedTo ? String(ticket.returnedTo) : undefined, request, session);
+      const note = `Phiếu BH ${order.code} · SWK ${order.warehouseSlipNo} (đổi bảo hành)`;
+      const history = { at: now, byName: request.user.displayName, action: 'EXCHANGE_ORDER', from: 'RETURNED', to: 'RETURNED', note };
+      const update: Document = { $set: { exchangeOrder: order, updatedAt: now }, $inc: { version: 1 }, $push: { history } };
+      const result = await this.collection().findOneAndUpdate({ _id: ticketId, version }, update, { session, returnDocument: 'after' });
+      if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+      await this.audit.record(
+        { actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: 'WARRANTY_EXCHANGE_ORDER', entityType: 'WarrantyTicket', entityId: id, before: { version }, after: { version: version + 1, exchangeOrder: order.code }, metadata: { note } },
         session,
       );
       return this.present(result, now);

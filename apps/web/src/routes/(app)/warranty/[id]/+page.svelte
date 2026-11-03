@@ -63,6 +63,8 @@
   const productFaultCodes = $derived(faultCodes.filter((row) => row.active && (!row.categoryIds.length || row.categoryNames.includes(ticket?.product.categoryName ?? ''))));
   const faultName = (code: string | undefined) => (code ? faultCodes.find((row) => row.code === code)?.name : undefined);
   const resolutionNow = $derived(ticket?.result?.resolution);
+  /** Phiếu đổi mới đã trả, hệ thống đã xuất hàng đổi nhưng chưa có phiếu BH & SWK (trả trước 02/11/2026). */
+  const needsExchangeOrder = $derived(Boolean(ticket && ticket.status === 'RETURNED' && ticket.result?.resolution === 'EXCHANGED' && ticket.stock?.exchange && !ticket.exchangeOrder));
   const billable = $derived(Boolean(ticket?.result && ticket.result.chargedTo === 'CUSTOMER' && Number(ticket.result.cost) > 0 && ticket.result.resolution !== 'REJECTED'));
 
   /** Danh mục mã lỗi tải một lần (danh mục có thể trống — không dùng độ dài mảng làm cờ). */
@@ -135,6 +137,26 @@
 
   const optional = (value: string) => value.trim() || undefined;
 
+  /** Lập phiếu BH & SWK đổi bảo hành cho phiếu đã trả (02/11/2026) — số theo dãy phiếu bán, in đưa thủ kho. */
+  async function issueExchangeOrder() {
+    if (!ticket) return;
+    busy = true;
+    error = '';
+    try {
+      const photos = ticket.photos;
+      const next = await api<Ticket>(`/warranty/tickets/${ticket.id}/exchange-order`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: ticket.version }) });
+      prepare({ ...next, photos });
+      notice = 'saved';
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.wr_load_error();
+    } finally {
+      busy = false;
+    }
+  }
+  function printExchange(type: 'BH' | 'SWK') {
+    if (ticket?.exchangeOrder) window.open(`/print/sales-issue/${ticket.exchangeOrder.id}?type=${type}`, '_blank', 'noopener');
+  }
+
   function diagnose(event: SubmitEvent) {
     event.preventDefault();
     const payload: WarrantyFaultLine[] = lines
@@ -171,11 +193,18 @@
       {#if isStaff && !['RETURNED', 'CANCELLED'].includes(ticket.status)}<button class="btn" onclick={() => (editOpen = true)}><Pencil size={16} />{m.wr_act_edit()}</button>{/if}
       {#if isStaff && actions.includes('RESCHEDULE')}<button class="btn" onclick={() => (rescheduleOpen = true)}><CalendarClock size={16} />{m.wr_reschedule()}</button>{/if}
       {#if isStaff && actions.includes('CANCEL')}<button class="btn danger" onclick={() => (cancelOpen = true)}><X size={16} />{m.wr_act_cancel()}</button>{/if}
+      {#if ticket.exchangeOrder}
+        <button class="btn" onclick={() => printExchange('BH')}><Printer size={16} />{m.in_phieu_bh()}</button>
+        <button class="btn" onclick={() => printExchange('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>
+      {:else if needsExchangeOrder && isStaff}
+        <button class="btn primary" disabled={busy} onclick={issueExchangeOrder}><Plus size={16} />{m.bhx_lap_phieu()}</button>
+      {/if}
       <a class="btn navy" href={`/print/warranty/${ticket.id}`} target="_blank" rel="noopener"><Printer size={16} />{m.wr_print()}</a>
     </div>
   </section>
 
   {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span></div>{/if}
+  {#if needsExchangeOrder && isStaff}<div class="banner warning"><TriangleAlert size={17} /><span>{m.bhx_can_lap({ sku: ticket.product.sku })}</span></div>{/if}
   {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : m.wr_saved({ code: ticket.code })}</div>{/if}
 
   <article class={`card sla tone-${sla.tone}`}>
@@ -278,6 +307,7 @@
           <div><dt>{m.wr_stock_link()}</dt><dd>
             {#if ticket.stock.exchange}{m.wr_stock_exchange_out({ warehouse: ticket.stock.exchange.warehouseName, sku: ticket.product.sku })}<br />{/if}
             {#if ticket.stock.exchangeDelivered}{m.wr_stock_exchange_delivered()}<br />{/if}
+            {#if ticket.exchangeOrder}<a class="link" href={`/sales/orders/${ticket.exchangeOrder.id}`}>{m.bhx_phieu_bh_swk({ code: ticket.exchangeOrder.code, slip: ticket.exchangeOrder.warehouseSlipNo })}</a><br />{/if}
             {#if ticket.stock.defect}{m.wr_stock_defect_in({ warehouse: ticket.stock.defect.warehouseName })}
             {:else if ticket.stock.returnSlip}<a class="link" href="/inventory/returns">{m.wr_stock_return_slip({ code: ticket.stock.returnSlip.code, warehouse: ticket.stock.returnSlip.warehouseName })}</a>
             {:else}<span class="muted">{m.wr_stock_no_slip()}</span>{/if}
@@ -364,7 +394,7 @@
           <div class="field"><label for="test-note">{m.wr_note()}</label><textarea id="test-note" rows="2" bind:value={note}></textarea></div>
           <button class="btn primary" disabled={busy} onclick={() => act({ type: 'TEST', ...checks, note: optional(note) })}>{m.wr_record_test()}</button>
         {:else if ticket.status === 'READY'}
-          {#if resolutionNow === 'EXCHANGED'}<p class="info-note">{m.wr_return_exchange_note({ sku: ticket.product.sku })}</p>{/if}
+          {#if resolutionNow === 'EXCHANGED'}<p class="info-note">{m.wr_return_exchange_note({ sku: ticket.product.sku })} {m.bhx_tra_khach_ghi_chu()}</p>{/if}
           {#if resolutionNow === 'REFUNDED'}
             <p class="info-note">{m.wr_return_refund_note()}</p>
             <div class="field"><label for="refund">{m.wr_refund_amount()} <span class="req">*</span></label><NumberInput id="refund" bind:value={refundAmount} /><small class="hint">{vnd(refundAmount || 0)}</small></div>
