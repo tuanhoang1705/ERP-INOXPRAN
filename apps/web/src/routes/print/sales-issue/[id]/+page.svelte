@@ -111,6 +111,7 @@
         <tr><th>Địa chỉ:</th><td colspan="3">{order.buyer?.address ?? ''}</td></tr>
         <tr><th>Điện thoại:</th><td colspan="3">{order.buyer?.phone ?? ''}</td></tr>
         <tr><th>Phiếu bảo hành:</th><td colspan="3">{order.warrantyCode ?? ''}</td></tr>
+        <tr><th>Nhân viên phụ trách:</th><td colspan="3">{order.salesRepName ?? ''}</td></tr>
         <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
         <tr><th>Ghi chú:</th><td colspan="3">Hàng đổi bảo hành — xuất sản phẩm mới trả khách, không tính tiền.</td></tr>
       </tbody>

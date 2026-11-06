@@ -1,5 +1,5 @@
 import { ConflictException, ForbiddenException, HttpException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { CANCELLABLE_SALES_STATUSES, type CreateSalesChangeRequest, type SalesChangeKind, type SalesChangeRequestView, type SalesChangeStatus, orderParty } from '@inoxpran/contracts';
+import { CANCELLABLE_SALES_STATUSES, SALES_EDIT_GRANT_HOURS, salesEditStage, type CreateSalesChangeRequest, type SalesChangeKind, type SalesChangeRequestView, type SalesChangeStatus, orderParty } from '@inoxpran/contracts';
 import { ObjectId, type ClientSession, type Db, type Document } from 'mongodb';
 import { assertWarehouseAccess } from '../../common/access';
 import { AuditService } from '../../common/audit.service';
@@ -17,7 +17,10 @@ import { SalesService, type SalesChangeVia } from './sales.service';
 
 const COLLECTION = 'sales_change_requests';
 const SHIPPED = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'];
-const KIND_LABEL: Record<SalesChangeKind, string> = { EDIT: 'sửa', VOID: 'hủy (đã giao)', CANCEL: 'hủy', DELETE: 'xóa' };
+const KIND_LABEL: Record<SalesChangeKind, string> = { EDIT: 'sửa', EDIT_GRANT: 'sửa', VOID: 'hủy (đã giao)', CANCEL: 'hủy', DELETE: 'xóa' };
+const HOUR_MS = 3_600_000;
+/** Quyền sửa đã cấp còn hạn (chưa dùng) — chặn gửi thêm đề nghị cho phiếu như một đề nghị đang chờ. */
+const openGrantFilter = (now: Date) => ({ kind: 'EDIT_GRANT', status: 'GRANTED', expiresAt: { $gt: now } });
 
 /**
  * Đề nghị sửa / hủy / xóa phiếu BH (SAL-CHG-01, 14/10/2026): người có quyền `sales.change_request` (mặc định kế toán, thủ kho,
@@ -38,11 +41,16 @@ export class SalesChangeRequestsService {
 
   private present(row: Document): SalesChangeRequestView & { preview?: unknown } {
     const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : undefined);
+    // Quyền sửa đã cấp mà quá hạn chưa dùng → hiện "Hết hạn" (không cần tiến trình nền cập nhật).
+    const expired = row.status === 'GRANTED' && row.expiresAt instanceof Date && row.expiresAt.getTime() <= Date.now();
     return {
       id: (row._id as ObjectId).toHexString(),
       code: String(row.code),
       kind: row.kind as SalesChangeKind,
-      status: row.status as SalesChangeStatus,
+      status: (expired ? 'EXPIRED' : row.status) as SalesChangeStatus,
+      ...(iso(row.expiresAt) ? { expiresAt: iso(row.expiresAt) as string } : {}),
+      ...(iso(row.appliedAt) ? { appliedAt: iso(row.appliedAt) as string } : {}),
+      ...(row.result ? { result: row.result } : {}),
       orderId: (row.orderId as ObjectId).toHexString(),
       orderCode: String(row.orderCode),
       orderVersion: Number(row.orderVersion),
@@ -72,7 +80,9 @@ export class SalesChangeRequestsService {
         level: approved ? 'INFO' : 'WARNING',
         title: approved ? `Đề nghị ${String(row.code)} đã được duyệt` : `Đề nghị ${String(row.code)} không được thực hiện`,
         message: approved
-          ? `${request.user.displayName} duyệt đề nghị ${KIND_LABEL[row.kind as SalesChangeKind]} phiếu ${String(row.orderCode)}.`
+          ? row.kind === 'EDIT_GRANT'
+            ? `${request.user.displayName} cho phép sửa phiếu ${String(row.orderCode)} — mở phiếu, bấm "Sửa phiếu" trong ${SALES_EDIT_GRANT_HOURS} giờ.`
+            : `${request.user.displayName} duyệt đề nghị ${KIND_LABEL[row.kind as SalesChangeKind]} phiếu ${String(row.orderCode)}.`
           : `${request.user.displayName}: ${extra.note ?? ''}`,
         href: `/sales/orders/${(row.orderId as ObjectId).toHexString()}`,
         template,
@@ -92,19 +102,38 @@ export class SalesChangeRequestsService {
       }
       assertWarehouseAccess(request, (order.warehouseId as ObjectId).toHexString());
       if (order.version !== input.version) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      // SAL-EDIT-GRANT-01 (06/11/2026): sửa xong mới xin duyệt (EDIT) không còn dùng — "Sửa phiếu" = xin phép trước (EDIT_GRANT).
+      if (input.kind === 'EDIT') {
+        throw new ConflictException({ code: 'SALES_CHANGE_EDIT_RETIRED', message: 'Đề nghị sửa kèm nội dung không còn dùng — bấm "Sửa phiếu" để xin phép sửa, được duyệt rồi mới sửa' });
+      }
+      if (input.kind === 'EDIT_GRANT' && can(request.user, 'sales.edit_issued')) {
+        throw new ConflictException({ code: 'SALES_CHANGE_NOT_NEEDED', message: 'Bạn có quyền sửa phiếu đã phát hành — sửa trực tiếp, không cần xin phép' });
+      }
       const status = String(order.status);
-      const allowed = input.kind === 'EDIT' ? !['DRAFT', 'CANCELLED'].includes(status)
+      const stage = salesEditStage(order as never);
+      const allowed = input.kind === 'EDIT_GRANT' ? stage === 'EDIT'
         : input.kind === 'VOID' ? SHIPPED.includes(status)
         : input.kind === 'CANCEL' ? (CANCELLABLE_SALES_STATUSES as readonly string[]).includes(status)
         : status === 'DRAFT';
       if (!allowed) {
-        const hint = { EDIT: 'chỉ sửa phiếu đã phát hành, chưa hủy', VOID: 'chỉ hủy theo cách này với phiếu đã xuất / đã giao', CANCEL: 'chỉ hủy phiếu đã phát hành chưa xuất kho', DELETE: 'chỉ xóa phiếu nháp' }[input.kind];
+        const hint = {
+          EDIT: '',
+          EDIT_GRANT: stage === 'UNDO' ? 'phiếu chưa đối chiếu với khách — dùng "Hoàn tác phiếu"' : 'chỉ sửa phiếu đã đối chiếu với khách trở đi, chưa hủy',
+          VOID: 'chỉ hủy theo cách này với phiếu đã xuất / đã giao',
+          CANCEL: 'chỉ hủy phiếu đã phát hành chưa xuất kho',
+          DELETE: 'chỉ xóa phiếu nháp',
+        }[input.kind];
         throw new ConflictException({ code: 'SALES_CHANGE_NOT_ALLOWED', message: `Không gửi được đề nghị ${KIND_LABEL[input.kind]}: ${hint}` });
       }
-      const pending = await this.db.collection(COLLECTION).findOne({ orderId, status: 'PENDING' }, { session, projection: { code: 1 } });
-      if (pending) throw new ConflictException({ code: 'SALES_CHANGE_PENDING_EXISTS', message: `Phiếu đang có đề nghị ${String(pending.code)} chờ duyệt — chờ kết quả hoặc rút đề nghị đó` });
-      const changes = input.kind === 'EDIT' && input.changes ? { ...input.changes, version: order.version } : undefined;
-      const preview = changes ? await this.sales.previewEdit(changes, session) : undefined;
+      const pending = await this.db.collection(COLLECTION).findOne({ orderId, $or: [{ status: 'PENDING' }, openGrantFilter(new Date())] }, { session, projection: { code: 1, status: 1 } });
+      if (pending) {
+        throw new ConflictException({
+          code: 'SALES_CHANGE_PENDING_EXISTS',
+          message: pending.status === 'GRANTED'
+            ? `Phiếu đang có quyền sửa ${String(pending.code)} chưa dùng — sửa phiếu hoặc trả lại quyền đó trước`
+            : `Phiếu đang có đề nghị ${String(pending.code)} chờ duyệt — chờ kết quả hoặc rút đề nghị đó`,
+        });
+      }
       const now = new Date();
       const document = {
         _id: new ObjectId(),
@@ -116,7 +145,6 @@ export class SalesChangeRequestsService {
         orderVersion: Number(order.version),
         customerName: orderParty(order) || null,
         reason: input.reason,
-        ...(changes ? { changes, preview } : {}),
         requestedBy: toObjectId(request.user.sub),
         requestedByName: request.user.displayName,
         requestedAt: now,
@@ -193,6 +221,25 @@ export class SalesChangeRequestsService {
         const order = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
         const now = new Date();
         const decided = { decidedBy: toObjectId(request.user.sub), decidedByName: request.user.displayName, decidedAt: now, updatedAt: now, ...(note ? { decisionNote: note } : {}) };
+        // Xin phép sửa (SAL-EDIT-GRANT-01): duyệt = cấp quyền sửa cho người xin (chưa sửa gì lúc này); phiếu đổi sau khi xin vẫn
+        // cấp được, miễn vẫn ở giai đoạn sửa được.
+        if (row.kind === 'EDIT_GRANT') {
+          if (!order || salesEditStage(order as never) !== 'EDIT') {
+            throw new ConflictException({ code: 'SALES_CHANGE_STALE', message: !order ? 'Phiếu không còn trong hệ thống' : 'Phiếu không còn ở giai đoạn sửa được (đã hủy hoặc đã hoàn tác)' });
+          }
+          const granted = await this.db.collection(COLLECTION).findOneAndUpdate(
+            { _id: row._id, status: 'PENDING' },
+            { $set: { status: 'GRANTED', expiresAt: new Date(now.getTime() + SALES_EDIT_GRANT_HOURS * HOUR_MS), ...decided } },
+            { session, returnDocument: 'after' },
+          );
+          await this.notifyRequester(row, 'SALES_CHANGE_APPROVED', request, session, { note: note ?? '' });
+          await this.audit.record({
+            actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+            action: 'SALES_EDIT_GRANTED', entityType: 'SalesOrder', entityId: orderId.toHexString(),
+            metadata: { code: String(row.code), requestedBy: String(row.requestedByName), hours: SALES_EDIT_GRANT_HOURS, ...(note ? { note } : {}) },
+          }, session);
+          return this.present(granted as Document);
+        }
         if (!order || order.version !== row.orderVersion) {
           const error = !order ? 'Phiếu không còn trong hệ thống' : 'Phiếu đã thay đổi sau khi gửi đề nghị — mở phiếu và gửi lại đề nghị';
           const failed = await this.db.collection(COLLECTION).findOneAndUpdate({ _id: row._id, status: 'PENDING' }, { $set: { status: 'FAILED', error, ...decided } }, { session, returnDocument: 'after' });
@@ -254,15 +301,16 @@ export class SalesChangeRequestsService {
     });
   }
 
-  /** Người gửi rút đề nghị đang chờ. */
+  /** Người gửi rút đề nghị đang chờ, hoặc trả lại quyền sửa đã được cấp mà chưa dùng. */
   async withdraw(id: string, request: AuthenticatedRequest) {
     const row = await this.db.collection(COLLECTION).findOne({ _id: toObjectId(id) });
     if (!row) throw new NotFoundException({ code: 'SALES_CHANGE_NOT_FOUND', message: 'Không tìm thấy đề nghị' });
     if (String(row.requestedBy) !== request.user.sub) throw new ForbiddenException({ code: 'SALES_CHANGE_NOT_OWNER', message: 'Chỉ người gửi được rút đề nghị' });
     const now = new Date();
     const updated = await this.db.collection(COLLECTION).findOneAndUpdate(
-      { _id: row._id, status: 'PENDING' },
-      { $set: { status: 'WITHDRAWN', decidedAt: now, decidedByName: request.user.displayName, updatedAt: now } },
+      { _id: row._id, status: { $in: ['PENDING', 'GRANTED'] } },
+      // Quyền đã cấp mà trả lại: giữ người / lúc duyệt, chỉ ghi lúc rút.
+      { $set: row.status === 'GRANTED' ? { status: 'WITHDRAWN', withdrawnAt: now, updatedAt: now } : { status: 'WITHDRAWN', decidedAt: now, decidedByName: request.user.displayName, updatedAt: now } },
       { returnDocument: 'after' },
     );
     if (!updated) throw new ConflictException({ code: 'SALES_CHANGE_STATE', message: 'Đề nghị không còn chờ duyệt' });

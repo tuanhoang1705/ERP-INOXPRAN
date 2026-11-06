@@ -5,11 +5,11 @@
   import { vndInWords } from '$lib/vnd-words';
   import { vatLabel } from '$shared/sales-math';
   import { salesIssueTemplate } from '$shared/sales-templates';
-  import { canDeliverOrder, canShipOrder } from '$shared/sales-steps';
+  import { canDeliverOrder, canShipOrder, salesEditStage, SALES_EDIT_GRANT_HOURS } from '$shared/sales-steps';
   import { zeroPriceKindOf } from '$shared/sales-line-kind';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { Ban, Check, CircleAlert, CircleCheck, Hourglass, MessageSquareWarning, Paperclip, Pencil, Printer, Send, ShieldAlert, ShieldCheck, Trash2, Warehouse as WarehouseIcon } from 'lucide-svelte';
+  import { Ban, Check, CircleAlert, CircleCheck, Hourglass, MessageSquareWarning, Paperclip, Pencil, Printer, Send, ShieldAlert, ShieldCheck, Trash2, Undo2, Warehouse as WarehouseIcon } from 'lucide-svelte';
   import { goto } from '$app/navigation';
   import ChangeRequestDialog from '$lib/components/ChangeRequestDialog.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -87,8 +87,14 @@
   const canRequestChange = $derived(can('sales.change_request'));
   const canApproveChange = $derived(can('sales.change_approve'));
   const canDelete = $derived(Boolean(order && order.status === 'DRAFT' && canDiscard));
-  const issuedStage = $derived(Boolean(order && order.status !== 'DRAFT' && order.status !== 'CANCELLED'));
+  /**
+   * Giai đoạn sửa (SAL-UNDO-01 / SAL-EDIT-GRANT-01, 06/11/2026 — máy chủ chặn theo cùng hàm): UNDO = đã phát hành, chưa đối chiếu
+   * khách → chỉ "Hoàn tác phiếu"; EDIT = đã đối chiếu trở đi → "Sửa phiếu" (người duyệt sửa thẳng, người khác xin phép trước).
+   */
+  const editStage = $derived(order ? salesEditStage(order) : 'NONE');
   let pendingChange = $state<ChangeRequest | null>(null);
+  /** Quyền sửa phiếu đã được duyệt cho chính mình, còn hạn (SAL-EDIT-GRANT-01). */
+  let myGrant = $state<ChangeRequest | null>(null);
   let changeOpen = $state(false);
   let changeKind = $state<ChangeKind>('CANCEL');
   let changeReason = $state('');
@@ -107,7 +113,7 @@
     try {
       const created = await api<ChangeRequest>(`/sales-orders/${order.id}/change-requests`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ kind: changeKind, version: order.version, reason: changeReason.trim() }) });
       changeOpen = false;
-      success = m.yc_da_gui({ code: created.code });
+      success = changeKind === 'EDIT_GRANT' ? m.yc_da_xin_sua({ code: created.code }) : m.yc_da_gui({ code: created.code });
       await load();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_the_hoan_tat_thao_tac();
@@ -116,13 +122,13 @@
       working = false;
     }
   }
-  async function withdrawChange() {
-    if (!pendingChange) return;
+  async function withdrawChange(target = pendingChange) {
+    if (!target) return;
     working = true;
     error = '';
     try {
-      await api(`/sales-change-requests/${pendingChange.id}/withdraw`, { method: 'POST', idempotentCommand: true });
-      success = m.yc_da_rut({ code: pendingChange.code });
+      await api(`/sales-change-requests/${target.id}/withdraw`, { method: 'POST', idempotentCommand: true });
+      success = m.yc_da_rut({ code: target.code });
       await load();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_the_hoan_tat_thao_tac();
@@ -132,7 +138,7 @@
   }
   async function changeDecided(result: ChangeRequest) {
     if (result.status === 'FAILED') error = m.yc_khong_thuc_hien({ code: result.code, error: result.error ?? '' });
-    else success = result.status === 'APPLIED' ? m.yc_da_duyet({ code: result.code }) : m.yc_da_tu_choi({ code: result.code });
+    else success = result.status === 'GRANTED' ? m.yc_da_cap_quyen({ code: result.code, who: result.requestedByName }) : result.status === 'APPLIED' ? m.yc_da_duyet({ code: result.code }) : m.yc_da_tu_choi({ code: result.code });
     if (result.status === 'APPLIED' && result.kind === 'DELETE') {
       await goto(`/sales/orders?deleted=${encodeURIComponent(result.orderCode)}`);
       return;
@@ -228,6 +234,10 @@
       pendingChange = canRequestChange || canApproveChange
         ? (await api<ChangeRequest[]>(`/sales-change-requests?orderId=${page.params.id}&status=PENDING`).catch(() => []))[0] ?? null
         : null;
+      myGrant = canRequestChange && !canEditIssued
+        ? (await api<ChangeRequest[]>(`/sales-change-requests?orderId=${page.params.id}&status=GRANTED`).catch(() => []))
+          .find((row) => row.kind === 'EDIT_GRANT' && row.status === 'GRANTED' && row.requestedById === session.user?.sub) ?? null
+        : null;
       if (order.status === 'PENDING_APPROVAL') {
         const pending = await api<Array<{ entityId: string; reasons: string[] }>>('/approval-requests?status=PENDING').catch(() => []);
         reasons = pending.find((item) => item.entityId === order?.id)?.reasons ?? [];
@@ -246,6 +256,7 @@
     if (created === 'issued') success = m.da_phat_hanh_phieu_bh_va();
     if (created === 'root-edited') success = m.root_da_luu_thay_doi();
     if (created === 'change-requested') success = m.yc_da_gui_chung();
+    if (created === 'granted-edited') success = m.yc_da_sua_theo_quyen();
     const repriced = page.url.searchParams.get('repriced');
     if (repriced) repricedNote = m.bang_gia_hoac_khuyen_mai_vua({ p0: vnd(repriced) });
     warehouses = await api<Warehouse[]>('/warehouses').catch(() => []);
@@ -275,10 +286,11 @@
   /** Hỏi lại trước khi xác nhận giao: lúc này mới ghi doanh thu và công nợ (AR-DLV-01). */
   let deliverAsk = $state(false);
   const deliverText = $derived(order ? deliveryConfirmation(order) : null);
+  /** Hoàn tác phiếu (SAL-UNDO-01): về bước Lập phiếu, nhả hàng giữ — thay "Yêu cầu sửa". */
   async function requestRevision() {
-    if (!revisionNote.trim()) return;
+    if (revisionNote.trim().length < 5) return;
     revisionOpen = false;
-    await command('customer-confirmation', { decision: 'REVISION_REQUESTED', note: revisionNote.trim() }, m.da_tra_phieu_ve_ke_toan());
+    await command('undo-issue', { reason: revisionNote.trim() }, m.da_hoan_tac_phieu());
     revisionNote = '';
   }
   async function discard() {
@@ -335,19 +347,23 @@
       {#if order.status === 'DRAFT' && (canCreate || canIssue)}<a class="btn soft" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.sua_phieu()}</a>{/if}
       {#if order.status === 'DRAFT' && canIssue}<button class="btn primary" disabled={working} onclick={issue}>{m.phat_hanh_phieu_bh()}</button>{/if}
       {#if order.status === 'PENDING_APPROVAL' && hasRole(roles, ['SALES_MANAGER', 'DIRECTOR'])}<button class="btn primary" disabled={working} onclick={approve}>{m.duyet_giu_hang()}</button>{/if}
+      {#if editStage === 'UNDO' && (canIssue || canConfirm)}<button class="btn danger-soft" disabled={working} onclick={() => { revisionNote = ''; revisionOpen = true; }}><Undo2 size={16} />{m.hoan_tac_phieu()}</button>{/if}
       {#if order.status === 'RESERVED' && order.confirmationStatus === 'PENDING' && canConfirm}
-        <button class="btn danger-soft" disabled={working} onclick={() => (revisionOpen = true)}><MessageSquareWarning size={16} />{m.yeu_cau_sua()}</button>
         <button class="btn primary" disabled={working} onclick={() => (confirmTarget = order)}><Paperclip size={16} />{m.xac_nhan_doi_chieu_kem_anh()}</button>
       {/if}
       {#if order.status === 'RESERVED' && order.confirmationStatus !== 'PENDING' && canShipThis}<button class="btn primary" disabled={working} onclick={() => (issueTarget = order)}>{m.lap_phieu_swk_xuat_kho()}</button>{/if}
+      <!-- Phiếu mẫu / kiểm định / tặng: trang phiếu theo dõi hàng mang về (khối hàng mẫu); xác nhận đã giao (không ghi công nợ) ở trang Giao hàng. -->
       {#if order.status === 'SHIPPED' && canDeliverThis && !nonSale}<button class="btn navy" disabled={working} onclick={() => (deliverAsk = true)}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
       {#if warrantyExchange && order.warrantyTicketId}<a class="btn soft" href={`/warranty/${order.warrantyTicketId}`}>{m.bhx_mo_phieu_bao_hanh({ code: order.warrantyCode ?? '' })}</a>{/if}
-      {#if canEditIssued && issuedStage && !warrantyExchange}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
+      {#if canEditIssued && editStage === 'EDIT'}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
+      {#if !canEditIssued && canRequestChange && editStage === 'EDIT'}
+        {#if myGrant}<a class="btn primary" href={`/sales/orders/${order.id}/edit?grant=${myGrant.id}`}><Pencil size={15} />{m.root_sua_phieu()}</a>
+        {:else if !pendingChange}<button class="btn soft" disabled={working} onclick={() => openChange('EDIT_GRANT')}><Pencil size={15} />{m.root_sua_phieu()}</button>{/if}
+      {/if}
       {#if canVoid && shippedStage && !warrantyExchange}<button class="btn danger-soft" disabled={working} onclick={() => { voidReason = ''; voidOpen = true; }}><Ban size={15} />{m.root_huy_phieu_da_giao()}</button>{/if}
       {#if canRequestChange && !pendingChange && !warrantyExchange}
-        {#if !canEditIssued && issuedStage}<a class="btn soft" href={`/sales/orders/${order.id}/edit?request=1`}><Send size={15} />{m.yc_de_nghi_sua()}</a>{/if}
         {#if !canVoid && shippedStage}<button class="btn danger-soft" disabled={working} onclick={() => openChange('VOID')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
         {#if !canDiscard && cancellable}<button class="btn danger-soft" disabled={working} onclick={() => openChange('CANCEL')}><Send size={15} />{m.yc_de_nghi_huy()}</button>{/if}
         {#if !canDiscard && order.status === 'DRAFT'}<button class="btn danger-soft" disabled={working} onclick={() => openChange('DELETE')}><Send size={15} />{m.yc_de_nghi_xoa()}</button>{/if}
@@ -359,13 +375,23 @@
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
 {#if repricedNote}<div class="banner warning"><CircleAlert size={17} /><span>{repricedNote}</span></div>{/if}
+{#if myGrant}
+  <div class="banner success change-banner">
+    <Pencil size={17} />
+    <span>{m.yc_duoc_sua({ code: myGrant.code, by: myGrant.decidedByName ?? '—', at: dateTime(myGrant.expiresAt ?? '') })}</span>
+    <span class="change-actions">
+      <button class="btn small" disabled={working} onclick={() => withdrawChange(myGrant)}>{m.yc_tra_quyen()}</button>
+      <a class="btn small primary" href={`/sales/orders/${order?.id ?? ''}/edit?grant=${myGrant.id}`}>{m.root_sua_phieu()}</a>
+    </span>
+  </div>
+{/if}
 {#if pendingChange}
   <div class="banner warning change-banner">
     <Hourglass size={17} />
     <span>{m.yc_dang_cho({ code: pendingChange.code, kind: changeKindLabel(pendingChange.kind), who: pendingChange.requestedByName, at: dateTime(pendingChange.requestedAt) })} <b>{m.bh_ly_do()}:</b> {pendingChange.reason}</span>
     <span class="change-actions">
       {#if pendingChange.kind === 'EDIT'}<button class="btn small" onclick={() => { decideAction = 'view'; decideOpen = true; }}>{m.yc_xem_thay_doi()}</button>{/if}
-      {#if pendingChange.requestedById === session.user?.sub}<button class="btn small" disabled={working} onclick={withdrawChange}>{m.yc_rut()}</button>{/if}
+      {#if pendingChange.requestedById === session.user?.sub}<button class="btn small" disabled={working} onclick={() => withdrawChange()}>{m.yc_rut()}</button>{/if}
       {#if canApproveChange}
         <button class="btn small danger-soft" disabled={working} onclick={() => { decideAction = 'reject'; decideOpen = true; }}>{m.yc_tu_choi()}</button>
         <button class="btn small primary" disabled={working} onclick={() => { decideAction = 'approve'; decideOpen = true; }}>{m.yc_duyet()}</button>
@@ -437,7 +463,7 @@
           <div><dt>{m.ma_so_thue()}</dt><dd>{order.buyer?.taxCode ?? '—'}</dd></div>
           <div class="wide2"><dt>{m.dien_giai()}</dt><dd>{order.description ?? '—'}</dd></div>
           <div><dt>{m.ten_khach_hang_lien_he()}</dt><dd>{order.contactName ?? '—'}</dd></div>
-          <div><dt>{m.nhan_vien_ban_hang()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
+          <div><dt>{warrantyExchange ? m.lp_nguoi_phu_trach() : m.nhan_vien_ban_hang()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
           <div class="wide2"><dt>{m.dia_diem_giao_hang()}</dt><dd>{order.deliveryLocation ?? m.khach_lay_tai_kho()}</dd></div>
           <div><dt>{m.kho_xuat()}</dt><dd>{warehouses.find((item) => item.id === order?.warehouseId)?.name ?? '—'}</dd></div>
           <div><dt>{m.dieu_khoan()}</dt><dd>{order.paymentTermDays ? m.cong_no_ngay_2({ paymentTermDays: order.paymentTermDays }) : `${m.thanh_toan_ngay()}${order.payNowMethod ? ` (${order.payNowMethod === 'CASH' ? m.pn_tien_mat() : m.pn_chuyen_khoan()})` : ''}`} · <span class="tag" class:b2c={order.channel === 'B2C'}>{order.channel ?? 'B2B'}</span></dd></div>
@@ -542,15 +568,16 @@
   </section>
 {/if}
 
-<Dialog bind:open={revisionOpen} title={m.yeu_cau_ke_toan_sua_phieu()}>
-  <p class="lead">{m.phieu_se_quay_ve_trang_thai()}</p>
+<Dialog bind:open={revisionOpen} title={m.hoan_tac_tieu_de({ code: order?.code ?? '' })}>
+  <p class="lead">{m.hoan_tac_giai_thich()}</p>
   <div class="field">
-    <label for="revision-note">{m.noi_dung_can_sua()} <span class="req">*</span></label>
+    <label for="revision-note">{m.bh_ly_do()} <span class="req">*</span></label>
     <textarea id="revision-note" rows="4" maxlength="500" bind:value={revisionNote} placeholder={m.vd_khach_doi_inp6004_tu_15()}></textarea>
+    {#if revisionNote.trim() && revisionNote.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}
   </div>
   {#snippet footer()}
     <button class="btn" onclick={() => (revisionOpen = false)}>{m.huy()}</button>
-    <button class="btn primary" disabled={!revisionNote.trim() || working} onclick={requestRevision}>{m.gui_yeu_cau_sua()}</button>
+    <button class="btn danger" disabled={revisionNote.trim().length < 5 || working} onclick={requestRevision}><Undo2 size={15} />{m.hoan_tac_phieu()}</button>
   {/snippet}
 </Dialog>
 
@@ -594,7 +621,7 @@
 </Dialog>
 
 <Dialog bind:open={changeOpen} title={m.yc_tieu_de({ kind: changeKindLabel(changeKind), code: order?.code ?? '' })}>
-  <p class="lead">{m.yc_giai_thich()}</p>
+  <p class="lead">{changeKind === 'EDIT_GRANT' ? m.yc_xin_sua_giai_thich({ hours: SALES_EDIT_GRANT_HOURS }) : m.yc_giai_thich()}</p>
   <div class="field">
     <label for="change-reason">{m.bh_ly_do()} <span class="req">*</span></label>
     <textarea id="change-reason" rows="3" maxlength="300" bind:value={changeReason} placeholder={m.bh_ly_do_placeholder()}></textarea>

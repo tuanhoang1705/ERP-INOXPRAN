@@ -8,5 +8,7 @@ import { SegmentsService } from './segments.service';
 @Module({
   controllers: [ReceivablesController, SegmentsController],
   providers: [ReceivablesService, SegmentsService, HistoryEditService],
+  // Sửa phiếu BH / phí bảo hành làm tổng nhỏ hơn số đã thu → xếp lại phần thu theo khách thành khách trả trước (06/11/2026).
+  exports: [HistoryEditService],
 })
 export class ReceivablesModule {}

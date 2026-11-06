@@ -1,20 +1,34 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   coverageFor,
+  DEFECT_RETURN_CATEGORIES,
   MAX_WARRANTY_PHOTOS,
+  plansForCoverage,
   RESOLUTIONS_RETURNING_DEFECT,
   serviceDays,
   vnDate,
   WARRANTY_ACTIONS_BY_STATUS,
+  WARRANTY_EDIT_GRANT_HOURS,
+  warrantyEditableStages,
+  type WarrantyEditDecision,
+  type WarrantyEditRequestInput,
+  type WarrantyEditRequestStatus,
+  type WarrantyEditRequestView,
+  type WarrantyEditStage,
+  type WarrantyPlan,
+  type WarrantyStageEdit,
   type WarrantyPhotoKind,
   type WarrantyReport,
   type WarrantyResolution,
   type CreateWarrantyTicket,
+  type CustomerReturnCategory,
   type UpdateWarrantyIntake,
+  type WarrantyReturnSlipOption,
   type NotificationTemplate,
   type TextParams,
   type WarrantyAction,
   type WarrantyCoverage,
+  type WarrantyExchangeOrder,
   type WarrantyStatus,
 } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
@@ -27,12 +41,17 @@ import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
 import type { AuthenticatedRequest, RequestUser } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
+import { resolveStaff, type PickedStaff } from '../../common/staff';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { ticketSla, WARRANTY_TICKETS, warrantySettings } from './warranty-sla';
 import { slicePage, type PageRequest } from '../../common/paging';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { SalesService, WALK_IN_PARTNER_CODE } from '../sales/sales.service';
+import { HistoryEditService } from '../receivables/history-edit.service';
+
+/** Tên giai đoạn ghi lịch sử / thông báo (WAR-EDIT-01). */
+const WARRANTY_STAGE_LABEL: Record<WarrantyEditStage, string> = { INTAKE: 'Tiếp nhận', DIAGNOSE: 'Chẩn đoán', REPAIR: 'Sửa chữa', TEST: 'Kiểm tra', RETURN: 'Trả khách' };
 import { WarrantyFaultCodesService } from './warranty-fault-codes.service';
 import { buildWarrantyReport, shiftMonth } from './warranty-report';
 
@@ -73,6 +92,8 @@ export class WarrantyService {
     private readonly evidence: EvidenceIntakeService,
     private readonly faultCodes: WarrantyFaultCodesService,
     private readonly sales: SalesService,
+    /** Sửa phí sửa của phiếu đã trả làm số tiền nhỏ hơn số đã thu → xếp lại tiền thu của khách (WAR-EDIT-01). */
+    private readonly ledger: HistoryEditService,
   ) {}
 
   private collection() {
@@ -86,6 +107,7 @@ export class WarrantyService {
     return {
       ...serializeDocument(ticket),
       sla: { ...sla, dueAt: sla.dueAt.toISOString(), warningAt: sla.warningAt.toISOString() },
+      editRequests: [...((ticket.editRequests as Document[] | undefined) ?? [])].reverse().map((row) => this.editRequestView(row, now)),
     };
   }
 
@@ -94,13 +116,15 @@ export class WarrantyService {
   }
 
   async list(
-    filter: { status?: string | undefined; tone?: string | undefined; search?: string | undefined; customerId?: string | undefined; from?: string | undefined; to?: string | undefined },
+    filter: { status?: string | undefined; tone?: string | undefined; search?: string | undefined; customerId?: string | undefined; from?: string | undefined; to?: string | undefined; editRequest?: string | undefined },
     paging: PageRequest | null = null,
     viewer?: Viewer,
   ) {
     // Lọc theo ngày nhận phiếu (LIST-DATE-01) ngay trong truy vấn để khoảng ngày cũ vẫn ra đủ (không bị giới hạn 500 phiếu mới nhất).
     const own: Filter<Document> = dateRangeFilter('receivedAt', filter.from, filter.to);
     if (filter.status) own.status = filter.status;
+    // Phiếu có yêu cầu sửa chờ duyệt (WAR-EDIT-01).
+    if (filter.editRequest === 'PENDING') own['editRequests.status'] = 'PENDING';
     // Tab Bảo hành trên hồ sơ khách hàng.
     if (filter.customerId) own['customer.partnerId'] = toObjectId(filter.customerId, 'customerId');
     if (filter.search) {
@@ -170,6 +194,8 @@ export class WarrantyService {
     const ticket = await this.collection().findOne({ _id: toObjectId(id) }, { projection: { status: 1, code: 1 } });
     if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
     if (ticket.status === 'RETURNED') throw new ConflictException({ code: 'WARRANTY_PHOTO_LOCKED', message: 'Phiếu đã trả khách: ảnh là chứng từ, không xóa được' });
+    // SEC-UI-01 (06/11/2026): phiếu đã hủy cũng giữ nguyên ảnh (web không cho tải lên / xóa ảnh phiếu hủy).
+    if (ticket.status === 'CANCELLED') throw new ConflictException({ code: 'WARRANTY_PHOTO_LOCKED', message: 'Phiếu đã hủy: không xóa được ảnh' });
     const filter = {
       _id: toObjectId(photoId, 'photoId'),
       entityId: ticket._id,
@@ -255,6 +281,52 @@ export class WarrantyService {
       throw new BadRequestException({ code: 'WARRANTY_RETURN_SLIP_PRODUCT', message: `Phiếu ${code} không có mã ${product.sku}`, details: [{ path: ['returnSlipCode'] }] });
     }
     return slip;
+  }
+
+  /**
+   * Gợi ý ô "Phiếu trả hàng đã nhập hàng lỗi" (05/11/2026, yêu cầu của người dùng — vừa gõ vừa chọn): phiếu khách trả chưa hủy
+   * có mã sản phẩm của phiếu bảo hành. Phiếu của chính khách lên đầu, rồi phiếu hàng lỗi, rồi phiếu mới nhất; ghi kèm phiếu
+   * bảo hành khác đã gắn phiếu đó (một phiếu trả có thể gồm nhiều cái nên vẫn chọn được).
+   */
+  async returnSlipOptions(id: string): Promise<WarrantyReturnSlipOption[]> {
+    const ticket = await this.collection().findOne({ _id: toObjectId(id, 'id') }, { projection: { product: 1, customer: 1 } });
+    if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+    const productId = (ticket.product as { productId: ObjectId }).productId;
+    const partnerId = (ticket.customer as { partnerId?: ObjectId }).partnerId;
+    const slips = await this.db.collection('stock_returns').find(
+      { kind: 'CUSTOMER', status: { $ne: 'VOIDED' }, 'lines.productId': productId },
+      { sort: { postedAt: -1 }, limit: 80, projection: { code: 1, legacyCode: 1, partnerId: 1, partnerName: 1, warehouseName: 1, category: 1, receivedAt: 1, postedAt: 1, createdAt: 1, lines: 1 } },
+    ).toArray();
+    const codes = slips.map((slip) => String(slip.code));
+    const linked = codes.length
+      ? await this.collection().find({ _id: { $ne: ticket._id }, 'stock.returnSlip.code': { $in: codes } }, { projection: { code: 1, 'stock.returnSlip.code': 1 } }).toArray()
+      : [];
+    const ticketsBySlip = new Map<string, string[]>();
+    for (const row of linked) {
+      const slipCode = String((row.stock as { returnSlip: { code: string } }).returnSlip.code);
+      ticketsBySlip.set(slipCode, [...(ticketsBySlip.get(slipCode) ?? []), String(row.code)]);
+    }
+    const rank = (slip: Document) => (partnerId && (slip.partnerId as ObjectId | undefined)?.equals(partnerId) ? 0 : 2) + (DEFECT_RETURN_CATEGORIES.includes(slip.category as CustomerReturnCategory) ? 0 : 1);
+    return slips
+      .map((slip, index) => ({ slip, index, rank: rank(slip) }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .slice(0, 30)
+      .map(({ slip }) => {
+        const quantity = (slip.lines as Document[])
+          .filter((line) => (line.productId as ObjectId).equals(productId))
+          .reduce((sum, line) => sum.add(decimalString(line.quantity ?? '0')), new Decimal(0));
+        return {
+          code: String(slip.code),
+          ...(slip.legacyCode ? { legacyCode: String(slip.legacyCode) } : {}),
+          partnerName: String(slip.partnerName ?? ''),
+          samePartner: Boolean(partnerId && (slip.partnerId as ObjectId | undefined)?.equals(partnerId)),
+          category: String(slip.category ?? ''),
+          warehouseName: String(slip.warehouseName ?? ''),
+          date: ((slip.receivedAt ?? slip.postedAt ?? slip.createdAt) as Date).toISOString(),
+          quantity: quantity.toString(),
+          linkedTickets: ticketsBySlip.get(String(slip.code)) ?? [],
+        };
+      });
   }
 
   /** Phí sửa ngoài bảo hành khách đã đồng ý → khoản phải thu (đại lý theo số ngày nợ; khách vãng lai thu ngay, ghi vào hồ sơ khách lẻ). */
@@ -360,12 +432,14 @@ export class WarrantyService {
         ...choice,
       });
       const now = new Date();
+      // SEC-UI-01 (06/11/2026): như khi sửa thông tin tiếp nhận — ngày tiếp nhận không sau hôm nay.
+      if (input.receivedDate > vnDate(now)) throw new BadRequestException({ code: 'WARRANTY_DATE_INVALID', message: 'Ngày tiếp nhận không được sau hôm nay', details: [{ path: ['receivedDate'] }] });
       // Tiếp nhận hôm nay: giờ thực; nhập bù ngày trước: tính từ 08:00 ngày đó.
       const receivedAt = input.receivedDate === vnDate(now) ? now : new Date(`${input.receivedDate}T08:00:00+07:00`);
       const id = new ObjectId();
       const document: Document = {
         _id: id,
-        code: await this.sequences.next('SC', session, 4, receivedAt, 'compact'),
+        code: await this.sequences.next('SC', session, receivedAt),
         status: 'RECEIVED',
         version: 1,
         channel: input.channel,
@@ -434,10 +508,17 @@ export class WarrantyService {
       if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
       if (ticket.version !== input.version) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
       const status = ticket.status as WarrantyStatus;
-      if (status === 'RETURNED' || status === 'CANCELLED') {
-        throw new ConflictException({ code: 'WARRANTY_EDIT_CLOSED', message: 'Phiếu đã trả khách / đã hủy, không sửa thông tin tiếp nhận được' });
-      }
       const now = new Date();
+      // WAR-EDIT-01 (06/11/2026): yêu cầu sửa giai đoạn Tiếp nhận đã được duyệt (hoặc Quản lý kho / Admin) mở khóa phiếu đã trả khách
+      // và các trường quyết định diện bảo hành sau khi đã chẩn đoán.
+      const grantId = input.requestId ? this.stageGrant(ticket, 'INTAKE', input.requestId, request.user, now) : null;
+      const unlocked = Boolean(grantId) || this.isWarrantyApprover(request.user);
+      if (status === 'CANCELLED' || (status === 'RETURNED' && !unlocked)) {
+        throw new ConflictException({
+          code: 'WARRANTY_EDIT_CLOSED',
+          message: status === 'CANCELLED' ? 'Phiếu đã hủy, không sửa được' : 'Phiếu đã trả khách — gửi "Yêu cầu sửa phiếu" (giai đoạn Tiếp nhận) để được duyệt sửa',
+        });
+      }
       if (input.receivedDate > vnDate(now)) throw new BadRequestException({ code: 'WARRANTY_DATE_INVALID', message: 'Ngày tiếp nhận không được sau hôm nay', details: [{ path: ['receivedDate'] }] });
       if (String(ticket.promisedDate) < input.receivedDate) {
         throw new BadRequestException({ code: 'WARRANTY_DATE_INVALID', message: 'Ngày tiếp nhận sau ngày hẹn trả — dời hẹn trả trước', details: [{ path: ['receivedDate'] }] });
@@ -459,10 +540,10 @@ export class WarrantyService {
         || Boolean(ticket.invoicelessWarranty) !== choice.noInvoiceWarranty
         || String(ticket.declaredPurchaseDate ?? '') !== (choice.declaredPurchaseDate ?? '')
         || String(ticket.receivedDate) !== input.receivedDate;
-      if (coverageChanged && status !== 'RECEIVED') {
+      if (coverageChanged && status !== 'RECEIVED' && !unlocked) {
         throw new ConflictException({
           code: 'WARRANTY_EDIT_AFTER_DIAGNOSE',
-          message: 'Phiếu đã chẩn đoán: không đổi sản phẩm / hóa đơn / bảo hành không hóa đơn / ngày tiếp nhận nữa (diện bảo hành đã dùng để quyết định) — hủy phiếu và lập phiếu mới nếu nhập sai',
+          message: 'Phiếu đã chẩn đoán: đổi sản phẩm / hóa đơn / bảo hành không hóa đơn / ngày tiếp nhận cần gửi "Yêu cầu sửa phiếu" (giai đoạn Tiếp nhận) và được duyệt',
         });
       }
       const technician = input.technicianId ? await this.resolveTechnician(input.technicianId, request.user, session) : null;
@@ -513,10 +594,15 @@ export class WarrantyService {
         const settings = await warrantySettings(this.db);
         const prior = await this.priorServices(product._id as ObjectId, invoiceNumber, session, ticketId);
         const coverage = coverageFor({ invoiceDate: input.invoiceDate ? (prior.restartedOn ?? input.invoiceDate) : null, receivedDate: input.receivedDate, months: settings.warrantyMonths, extensionDays: prior.extensionDays, ...choice });
-        change('Diện bảo hành', ticket.coverage, coverage.coverage);
-        set.coverage = coverage.coverage;
-        if (coverage.exclusion) set.exclusion = coverage.exclusion;
-        else unset.exclusion = '';
+        // Lý do sửa chữa ghi lúc chẩn đoán (khác "không hóa đơn") giữ nguyên: phiếu vẫn không thuộc diện bảo hành.
+        const diagnosedExclusion = ticket.plan && ticket.exclusion && ticket.exclusion !== 'NO_INVOICE';
+        const nextCoverage = diagnosedExclusion ? 'NOT_COVERED' : coverage.coverage;
+        change('Diện bảo hành', ticket.coverage, nextCoverage);
+        set.coverage = nextCoverage;
+        if (!diagnosedExclusion) {
+          if (coverage.exclusion) set.exclusion = coverage.exclusion;
+          else unset.exclusion = '';
+        }
         if (coverage.invoiceless) set.invoicelessWarranty = true;
         else unset.invoicelessWarranty = '';
         if (choice.declaredPurchaseDate) set.declaredPurchaseDate = choice.declaredPurchaseDate;
@@ -534,6 +620,8 @@ export class WarrantyService {
           set.receivedDate = input.receivedDate;
           set.receivedAt = input.receivedDate === vnDate(now) ? now : new Date(`${input.receivedDate}T08:00:00+07:00`);
           set['lines.0.receivedDate'] = input.receivedDate;
+          // Phiếu đã trả khách: số ngày xử lý tính lại theo ngày tiếp nhận mới.
+          if (ticket.returnedAt instanceof Date) set.serviceDays = serviceDays(set.receivedAt as Date, ticket.returnedAt);
         }
       }
       change('Kỹ thuật', ticket.technicianName, technician ? technician.displayName : ticket.technicianName);
@@ -552,12 +640,16 @@ export class WarrantyService {
       set['lines.0.symptom'] = input.symptom;
       if (!changes.length) throw new BadRequestException({ code: 'WARRANTY_UNCHANGED', message: 'Phiếu chưa có thay đổi nào' });
       for (const key of Object.keys(set)) delete unset[key];
+      if (grantId) {
+        set['editRequests.$[grant].status'] = 'APPLIED';
+        set['editRequests.$[grant].appliedAt'] = now;
+      }
 
-      const history = { at: now, byName: request.user.displayName, action: 'EDIT', from: status, to: status, note: `${input.reason} — ${changes.join('; ')}` };
+      const history = { at: now, byName: request.user.displayName, action: 'EDIT', from: status, to: status, note: `${input.reason}${grantId ? ' (yêu cầu đã duyệt)' : ''} — ${changes.join('; ')}` };
       const result = await this.collection().findOneAndUpdate(
         { _id: ticketId, version: input.version },
         { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}), $inc: { version: 1 }, $push: { history } } as Document,
-        { session, returnDocument: 'after' },
+        { session, returnDocument: 'after', ...(grantId ? { arrayFilters: [{ 'grant.id': grantId }] } : {}) },
       );
       if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
       await this.audit.record(
@@ -618,10 +710,8 @@ export class WarrantyService {
             coverage = 'NOT_COVERED';
             set.exclusion = action.exclusion;
           }
+          // Sửa chữa bảo hành miễn phí chọn được ở mọi diện / lý do sửa chữa (05/11/2026 — plansForCoverage).
           const plan = action.plan;
-          if (plan === 'REPAIR' && coverage !== 'IN_WARRANTY') {
-            throw new BadRequestException({ code: 'WARRANTY_PLAN_INVALID', message: 'Sản phẩm không còn bảo hành: lập báo giá sửa chữa có tính phí hoặc đề nghị từ chối' });
-          }
           if ((plan === 'EXCHANGE' || plan === 'REFUND') && coverage !== 'IN_WARRANTY') {
             throw new BadRequestException({ code: 'WARRANTY_PLAN_INVALID', message: 'Chỉ đổi mới / hoàn tiền cho sản phẩm còn bảo hành' });
           }
@@ -693,7 +783,9 @@ export class WarrantyService {
             resolution: action.resolution,
             ...(action.replacedParts ? { replacedParts: action.replacedParts } : {}),
             cost: decimal(action.cost),
-            chargedTo: ticket.coverage === 'IN_WARRANTY' ? 'COMPANY' : 'CUSTOMER',
+            // Sửa theo hướng "sửa chữa bảo hành (miễn phí)" thì công ty chịu, kể cả máy hết hạn / có lý do sửa chữa (05/11/2026);
+            // sửa theo báo giá khách đồng ý thì khách trả. Phiếu cũ chưa lưu hướng xử lý: theo diện bảo hành.
+            chargedTo: (ticket.plan ? ticket.plan === 'REPAIR' : ticket.coverage === 'IN_WARRANTY') ? 'COMPANY' : 'CUSTOMER',
             completedAt: now,
             ...(action.note ? { note: action.note } : {}),
           };
@@ -733,13 +825,18 @@ export class WarrantyService {
           if (!returnsDefect && (action.returnSlipCode || action.exchangeDelivered)) {
             throw new BadRequestException({ code: 'WARRANTY_RETURN_OPTION_INVALID', message: 'Chỉ ghi phiếu trả hàng / hàng đổi đã giao khi kết quả là đổi mới hoặc hoàn tiền' });
           }
+          // Người phụ trách phiếu BH đổi bảo hành (STAFF-PICK-01): chỉ khi hệ thống xuất hàng đổi và lập phiếu.
+          if ((action.salesRepId || action.staffUserId) && (resolution !== 'EXCHANGED' || action.exchangeDelivered)) {
+            throw new BadRequestException({ code: 'WARRANTY_RETURN_OPTION_INVALID', message: 'Chỉ chọn người phụ trách khi đổi mới và hệ thống xuất hàng đổi (lập phiếu BH đổi bảo hành)' });
+          }
+          const staff = await resolveStaff(this.db, { salesRepId: action.salesRepId, staffUserId: action.staffUserId }, session);
           if (resolution && returnsDefect) {
             const returnSlip = action.returnSlipCode ? await this.returnSlipFor(ticket, action.returnSlipCode, session) : null;
             const stock = await this.moveStock(ticket, resolution, { exchangeDelivered: resolution === 'EXCHANGED' && Boolean(action.exchangeDelivered), returnSlip }, request.user.sub, session, now);
             set.stock = stock;
             if (stock.exchange) {
               // Hệ thống xuất 1 sản phẩm mới đổi cho khách → lập phiếu BH & SWK đổi bảo hành để in đưa thủ kho (02/11/2026).
-              const order = await this.issueExchangeOrderIn(ticket, stock.exchange.warehouseCode, now, action.receiverName, request, session);
+              const order = await this.issueExchangeOrderIn(ticket, stock.exchange.warehouseCode, now, action.receiverName, staff, request, session);
               set.exchangeOrder = order;
               historyNote = `${action.note ? `${action.note} · ` : ''}Phiếu BH ${order.code} · SWK ${order.warehouseSlipNo} (đổi bảo hành)`;
             }
@@ -824,10 +921,10 @@ export class WarrantyService {
   }
 
   /** Lập phiếu BH & SWK đổi bảo hành cho phiếu bảo hành (kho xuất hàng đổi = kho đã ghi trên phiếu bảo hành). */
-  private async issueExchangeOrderIn(ticket: Document, warehouseCode: string, at: Date, receiverName: string | undefined, request: AuthenticatedRequest, session: ClientSession) {
+  private async issueExchangeOrderIn(ticket: Document, warehouseCode: string, at: Date, receiverName: string | undefined, staff: PickedStaff | null, request: AuthenticatedRequest, session: ClientSession) {
     const warehouse = await this.db.collection('warehouses').findOne({ code: warehouseCode }, { session });
     if (!warehouse) throw new ConflictException({ code: 'WAREHOUSE_NOT_FOUND', message: `Không tìm thấy kho ${warehouseCode} đã xuất hàng đổi` });
-    const order = await this.sales.issueWarrantyExchange({ ticket, warehouse, at, ...(receiverName ? { receiverName } : {}) }, request, session);
+    const order = await this.sales.issueWarrantyExchange({ ticket, warehouse, at, ...(receiverName ? { receiverName } : {}), staff }, request, session);
     return { id: order.id, code: order.code, warehouseSlipNo: order.warehouseSlipNo };
   }
 
@@ -835,8 +932,9 @@ export class WarrantyService {
    * Phiếu đổi mới đã trả khách trước khi có phiếu BH đổi bảo hành (trước 02/11/2026): lập phiếu BH & SWK để in đưa thủ kho.
    * Chỉ khi hệ thống đã xuất hàng đổi từ kho (không áp dụng cho "hàng đổi đã giao trước") và phiếu chưa có phiếu BH đổi.
    */
-  async issueExchangeOrder(id: string, version: number, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
-    return this.idempotency.execute(`warranty-exchange-order:${id}`, idempotencyKey, { version }, async (session) => {
+  async issueExchangeOrder(id: string, input: WarrantyExchangeOrder, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    const { version } = input;
+    return this.idempotency.execute(`warranty-exchange-order:${id}`, idempotencyKey, input, async (session) => {
       const ticketId = toObjectId(id);
       const ticket = await this.collection().findOne({ _id: ticketId }, { session });
       if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
@@ -852,7 +950,8 @@ export class WarrantyService {
         throw new ConflictException({ code: 'WARRANTY_EXCHANGE_ORDER_EXISTS', message: `Phiếu bảo hành đã có phiếu BH ${String((ticket.exchangeOrder as { code: string }).code)}` });
       }
       const now = new Date();
-      const order = await this.issueExchangeOrderIn(ticket, exchange.warehouseCode, (ticket.returnedAt as Date | undefined) ?? now, ticket.returnedTo ? String(ticket.returnedTo) : undefined, request, session);
+      const staff = await resolveStaff(this.db, { salesRepId: input.salesRepId, staffUserId: input.staffUserId }, session);
+      const order = await this.issueExchangeOrderIn(ticket, exchange.warehouseCode, (ticket.returnedAt as Date | undefined) ?? now, ticket.returnedTo ? String(ticket.returnedTo) : undefined, staff, request, session);
       const note = `Phiếu BH ${order.code} · SWK ${order.warehouseSlipNo} (đổi bảo hành)`;
       const history = { at: now, byName: request.user.displayName, action: 'EXCHANGE_ORDER', from: 'RETURNED', to: 'RETURNED', note };
       const update: Document = { $set: { exchangeOrder: order, updatedAt: now }, $inc: { version: 1 }, $push: { history } };
@@ -867,6 +966,390 @@ export class WarrantyService {
   }
 
   /** Số phiếu đang quá hẹn trả (ô cảnh báo trên dashboard). */
+  // ---------- WAR-EDIT-01 (06/11/2026): yêu cầu sửa phiếu theo giai đoạn — duyệt trước rồi mới sửa ----------
+
+  private isWarrantyApprover(user: Pick<RequestUser, 'roles' | 'root'>) {
+    return Boolean(user.root) || user.roles.some((role) => WARRANTY_APPROVER_ROLES.includes(role));
+  }
+
+  private editRequestView(row: Document, now = new Date()): WarrantyEditRequestView {
+    const iso = (value: unknown) => (value instanceof Date ? value.toISOString() : undefined);
+    const expired = row.status === 'GRANTED' && row.expiresAt instanceof Date && row.expiresAt <= now;
+    return {
+      id: String(row.id),
+      stage: row.stage as WarrantyEditStage,
+      reason: String(row.reason),
+      status: (expired ? 'EXPIRED' : row.status) as WarrantyEditRequestStatus,
+      requestedById: String(row.requestedBy),
+      requestedByName: String(row.requestedByName),
+      requestedAt: iso(row.requestedAt) as string,
+      ...(row.decidedByName ? { decidedByName: String(row.decidedByName) } : {}),
+      ...(iso(row.decidedAt) ? { decidedAt: iso(row.decidedAt) as string } : {}),
+      ...(row.decisionNote ? { decisionNote: String(row.decisionNote) } : {}),
+      ...(iso(row.expiresAt) ? { expiresAt: iso(row.expiresAt) as string } : {}),
+      ...(iso(row.appliedAt) ? { appliedAt: iso(row.appliedAt) as string } : {}),
+    };
+  }
+
+  private async loadForEdit(id: string, version: number, session: ClientSession) {
+    const ticket = await this.collection().findOne({ _id: toObjectId(id) }, { session });
+    if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+    if (ticket.version !== version) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+    return ticket;
+  }
+
+  private async notifyWarranty(id: string, payload: Document, session: ClientSession) {
+    await this.outbox.enqueue({ eventType: 'NOTIFICATION_REQUESTED', aggregateType: 'WarrantyTicket', aggregateId: id, payload: { category: 'WARRANTY', href: `/warranty/${id}`, ...payload } }, session);
+  }
+
+  /**
+   * Quyền sửa một giai đoạn: Quản lý kho / Admin (người duyệt) sửa thẳng; người khác phải có yêu cầu của chính mình đã được duyệt,
+   * đúng giai đoạn, còn hạn, chưa dùng. Trả id yêu cầu để đánh dấu "đã sửa" (null = người duyệt sửa thẳng).
+   */
+  private stageGrant(ticket: Document, stage: WarrantyEditStage, requestId: string | undefined, user: RequestUser, now: Date): ObjectId | null {
+    const rows = (ticket.editRequests as Document[] | undefined) ?? [];
+    if (this.isWarrantyApprover(user) && !requestId) return null;
+    if (!requestId) {
+      throw new ForbiddenException({ code: 'WARRANTY_EDIT_NEEDS_APPROVAL', message: `Sửa giai đoạn ${WARRANTY_STAGE_LABEL[stage]} cần gửi "Yêu cầu sửa phiếu" và được Quản lý kho duyệt trước` });
+    }
+    const row = rows.find((item) => String(item.id) === requestId);
+    if (!row || String(row.requestedBy) !== user.sub) throw new ForbiddenException({ code: 'WARRANTY_EDIT_GRANT_NOT_FOUND', message: 'Không có quyền sửa nào của bạn khớp yêu cầu này' });
+    if (row.stage !== stage) throw new ConflictException({ code: 'WARRANTY_EDIT_GRANT_STAGE', message: `Quyền sửa được duyệt cho giai đoạn ${WARRANTY_STAGE_LABEL[row.stage as WarrantyEditStage]}` });
+    if (row.status !== 'GRANTED' || !(row.expiresAt instanceof Date) || row.expiresAt <= now) {
+      const message = row.status === 'APPLIED' ? 'Quyền sửa đã dùng — gửi yêu cầu mới nếu cần sửa tiếp' : row.status === 'PENDING' ? 'Yêu cầu sửa đang chờ duyệt' : 'Quyền sửa không còn hiệu lực (hết hạn / bị từ chối / đã rút)';
+      throw new ConflictException({ code: 'WARRANTY_EDIT_GRANT_STATE', message });
+    }
+    return row.id as ObjectId;
+  }
+
+  /** Nhân viên bảo hành gửi yêu cầu sửa một giai đoạn (bắt buộc lý do) → báo Quản lý kho / Admin. */
+  async requestEdit(id: string, input: WarrantyEditRequestInput, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`warranty-edit-request:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
+      const ticket = await this.loadForEdit(id, input.version, session);
+      if (this.isWarrantyApprover(request.user)) {
+        throw new ConflictException({ code: 'WARRANTY_EDIT_NOT_NEEDED', message: 'Bạn có quyền duyệt — bấm "Sửa phiếu" để sửa trực tiếp' });
+      }
+      if (!warrantyEditableStages(ticket as never).includes(input.stage)) {
+        throw new ConflictException({ code: 'WARRANTY_EDIT_STAGE_INVALID', message: ticket.status === 'CANCELLED' ? 'Phiếu đã hủy không sửa được' : `Phiếu chưa qua giai đoạn ${WARRANTY_STAGE_LABEL[input.stage]}` });
+      }
+      const now = new Date();
+      const open = ((ticket.editRequests as Document[] | undefined) ?? []).find((row) => row.status === 'PENDING' || (row.status === 'GRANTED' && row.expiresAt instanceof Date && row.expiresAt > now));
+      if (open) {
+        throw new ConflictException({
+          code: 'WARRANTY_EDIT_PENDING_EXISTS',
+          message: open.status === 'PENDING' ? 'Phiếu đang có yêu cầu sửa chờ duyệt — chờ kết quả hoặc rút yêu cầu đó' : 'Phiếu đang có quyền sửa đã duyệt chưa dùng — sửa xong hoặc rút trước',
+        });
+      }
+      const status = ticket.status as WarrantyStatus;
+      const row = { id: new ObjectId(), stage: input.stage, reason: input.reason, status: 'PENDING', requestedBy: toObjectId(request.user.sub), requestedByName: request.user.displayName, requestedAt: now };
+      const history = { at: now, byName: request.user.displayName, action: 'EDIT_REQUEST', from: status, to: status, note: `[${WARRANTY_STAGE_LABEL[input.stage]}] ${input.reason}` };
+      const result = await this.collection().findOneAndUpdate(
+        { _id: ticket._id, version: input.version },
+        { $push: { editRequests: row, history }, $inc: { version: 1 }, $set: { updatedAt: now } } as Document,
+        { session, returnDocument: 'after' },
+      );
+      if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+      const code = String(ticket.code);
+      await this.notifyWarranty(id, {
+        targetRoles: WARRANTY_APPROVER_ROLES,
+        level: 'WARNING',
+        title: `${request.user.displayName} xin sửa phiếu bảo hành ${code} (${WARRANTY_STAGE_LABEL[input.stage]})`,
+        message: input.reason,
+        template: 'WARRANTY_EDIT_REQUESTED',
+        params: { code, stage: input.stage, requester: request.user.displayName, reason: input.reason },
+      }, session);
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: 'WARRANTY_EDIT_REQUESTED',
+        entityType: 'WarrantyTicket', entityId: id, metadata: { stage: input.stage, reason: input.reason, requestId: row.id.toHexString() },
+      }, session);
+      return this.present(result, now);
+    });
+  }
+
+  /** Quản lý kho / Admin duyệt (cho sửa trong WARRANTY_EDIT_GRANT_HOURS giờ) hoặc từ chối (bắt buộc lý do). */
+  async decideEdit(id: string, requestId: string, input: WarrantyEditDecision, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`warranty-edit-decide:${requestId}`, idempotencyKey, input, async (session) => {
+      const ticket = await this.collection().findOne({ _id: toObjectId(id) }, { session });
+      if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+      const row = ((ticket.editRequests as Document[] | undefined) ?? []).find((item) => String(item.id) === requestId);
+      if (!row || row.status !== 'PENDING') throw new ConflictException({ code: 'WARRANTY_EDIT_STATE', message: 'Yêu cầu sửa không còn chờ duyệt' });
+      const now = new Date();
+      const status = ticket.status as WarrantyStatus;
+      const decided: Document = {
+        'editRequests.$[row].status': input.approved ? 'GRANTED' : 'REJECTED',
+        'editRequests.$[row].decidedBy': toObjectId(request.user.sub),
+        'editRequests.$[row].decidedByName': request.user.displayName,
+        'editRequests.$[row].decidedAt': now,
+        ...(input.approved ? { 'editRequests.$[row].expiresAt': new Date(now.getTime() + WARRANTY_EDIT_GRANT_HOURS * 3_600_000) } : {}),
+        ...(input.note ? { 'editRequests.$[row].decisionNote': input.note } : {}),
+        updatedAt: now,
+      };
+      const stage = WARRANTY_STAGE_LABEL[row.stage as WarrantyEditStage];
+      const history = { at: now, byName: request.user.displayName, action: input.approved ? 'EDIT_GRANTED' : 'EDIT_REJECTED', from: status, to: status, note: `[${stage}] ${String(row.requestedByName)}${input.note ? ` — ${input.note}` : ''}` };
+      const result = await this.collection().findOneAndUpdate(
+        { _id: ticket._id },
+        { $set: decided, $push: { history }, $inc: { version: 1 } } as Document,
+        { session, returnDocument: 'after', arrayFilters: [{ 'row.id': row.id, 'row.status': 'PENDING' }] },
+      );
+      if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+      const code = String(ticket.code);
+      await this.notifyWarranty(id, {
+        targetUserIds: [String(row.requestedBy)],
+        level: input.approved ? 'INFO' : 'WARNING',
+        title: input.approved ? `Được sửa phiếu bảo hành ${code} (${stage}) trong ${WARRANTY_EDIT_GRANT_HOURS} giờ` : `Yêu cầu sửa phiếu bảo hành ${code} bị từ chối`,
+        message: input.note ?? `${request.user.displayName} ${input.approved ? 'đã duyệt' : 'từ chối'}`,
+        template: 'WARRANTY_EDIT_DECIDED',
+        params: { code, stage: String(row.stage), approved: input.approved ? 'yes' : 'no', approver: request.user.displayName, note: input.note ?? '' },
+      }, session);
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: input.approved ? 'WARRANTY_EDIT_GRANTED' : 'WARRANTY_EDIT_REJECTED',
+        entityType: 'WarrantyTicket', entityId: id, metadata: { stage: row.stage, requestId, requestedBy: String(row.requestedByName), note: input.note ?? null },
+      }, session);
+      return this.present(result, now);
+    });
+  }
+
+  /** Người xin rút yêu cầu đang chờ hoặc trả lại quyền sửa chưa dùng. */
+  async withdrawEdit(id: string, requestId: string, request: AuthenticatedRequest) {
+    const ticket = await this.collection().findOne({ _id: toObjectId(id) });
+    if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+    const row = ((ticket.editRequests as Document[] | undefined) ?? []).find((item) => String(item.id) === requestId);
+    if (!row) throw new NotFoundException({ code: 'WARRANTY_EDIT_NOT_FOUND', message: 'Không tìm thấy yêu cầu sửa' });
+    if (String(row.requestedBy) !== request.user.sub) throw new ForbiddenException({ code: 'WARRANTY_EDIT_NOT_OWNER', message: 'Chỉ người gửi được rút yêu cầu' });
+    const now = new Date();
+    const status = ticket.status as WarrantyStatus;
+    const history = { at: now, byName: request.user.displayName, action: 'EDIT_WITHDRAWN', from: status, to: status, note: `[${WARRANTY_STAGE_LABEL[row.stage as WarrantyEditStage]}]` };
+    const result = await this.collection().findOneAndUpdate(
+      { _id: ticket._id },
+      { $set: { 'editRequests.$[row].status': 'WITHDRAWN', 'editRequests.$[row].withdrawnAt': now, updatedAt: now }, $push: { history }, $inc: { version: 1 } } as Document,
+      { returnDocument: 'after', arrayFilters: [{ 'row.id': row.id, 'row.status': { $in: ['PENDING', 'GRANTED'] } }] },
+    );
+    if (!result || !((result.editRequests as Document[]).find((item) => String(item.id) === requestId)?.status === 'WITHDRAWN')) {
+      throw new ConflictException({ code: 'WARRANTY_EDIT_STATE', message: 'Yêu cầu không còn chờ duyệt / chưa dùng' });
+    }
+    await this.audit.record({ actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: 'WARRANTY_EDIT_WITHDRAWN', entityType: 'WarrantyTicket', entityId: id, metadata: { requestId } });
+    return this.present(result, now);
+  }
+
+  /** Diện bảo hành theo dữ liệu tiếp nhận (chưa tính lý do sửa chữa ghi lúc chẩn đoán). */
+  private async intakeCoverage(ticket: Document, session: ClientSession) {
+    const settings = await warrantySettings(this.db);
+    const invoice = ticket.invoice as { number: string; date: string } | undefined;
+    const prior = await this.priorServices((ticket.product as { productId: ObjectId }).productId, invoice?.number, session, ticket._id as ObjectId);
+    const choice = noInvoiceChoice({ invoiceDate: invoice?.date, noInvoiceWarranty: Boolean(ticket.invoicelessWarranty), declaredPurchaseDate: ticket.declaredPurchaseDate as string | undefined });
+    return coverageFor({ invoiceDate: invoice?.date ? (prior.restartedOn ?? invoice.date) : null, receivedDate: String(ticket.receivedDate), months: settings.warrantyMonths, extensionDays: prior.extensionDays, ...choice });
+  }
+
+  /**
+   * Phí sửa đổi trên phiếu đã trả khách: ghi / sửa số tiền / hủy công nợ phí dịch vụ (WARRANTY_SERVICE). Đã thu nhiều hơn số mới:
+   * phần thu theo khách được xếp lại (thừa → khách trả trước); bỏ phí mà đã thu tiền thì phải sửa phiếu thu trước.
+   */
+  private async syncServiceBill(ticket: Document, charge: Decimal, set: Document, unset: Document, changes: string[], session: ClientSession, now: Date) {
+    const link = ticket.receivable as { id: ObjectId; code: string; amount: unknown } | undefined;
+    const existing = link ? await this.db.collection('receivables').findOne({ _id: link.id }, { session }) : null;
+    const money = (value: Decimal) => `${Number(value.toFixed(0)).toLocaleString('vi-VN')} đ`;
+    if (existing && existing.status !== 'VOIDED') {
+      const paid = new Decimal(decimalString(existing.paidAmount));
+      const before = new Decimal(decimalString(existing.amount));
+      if (charge.isZero()) {
+        if (paid.gt(0)) {
+          throw new ConflictException({ code: 'WARRANTY_BILL_PAID', message: `Phí sửa ${String(existing.code)} đã thu ${money(paid)} — sửa / xóa phiếu thu trên sổ công nợ khách trước khi bỏ phí` });
+        }
+        await this.db.collection('receivables').updateOne(
+          { _id: existing._id },
+          { $set: { status: 'VOIDED', statusBeforeVoid: existing.status, voidedAt: now, voidReason: `Sửa phiếu bảo hành ${String(ticket.code)}: bỏ phí sửa`, updatedAt: now }, $inc: { version: 1 } },
+          { session },
+        );
+        unset.receivable = '';
+        changes.push(`Công nợ ${String(existing.code)}: hủy`);
+        return { code: String(existing.code), amount: '0' };
+      }
+      if (charge.eq(before)) return null;
+      const overpaid = paid.gt(charge);
+      if (overpaid) {
+        const fixed = await this.ledger.fixedPaidOn(existing._id as ObjectId, session);
+        if (fixed.total.gt(charge)) {
+          throw new ConflictException({ code: 'WARRANTY_BILL_PAID', message: `Phí sửa đã thu ${money(fixed.total)} bằng phiếu thu theo chứng từ (${fixed.codes.join(', ')}) — sửa phiếu thu đó trên sổ công nợ khách trước` });
+        }
+      }
+      const status = overpaid || paid.eq(charge) ? 'PAID' : paid.gt(0) ? 'PARTIALLY_PAID' : existing.status === 'OVERDUE' ? 'OVERDUE' : 'OPEN';
+      await this.db.collection('receivables').updateOne({ _id: existing._id }, { $set: { amount: decimal(charge.toFixed(2)), status, updatedAt: now }, $inc: { version: 1 } }, { session });
+      if (overpaid) await this.ledger.rebuildPartner(existing.partnerId as ObjectId, session, now);
+      set['receivable.amount'] = decimal(charge.toFixed(2));
+      changes.push(`Công nợ ${String(existing.code)}: ${money(before)} → ${money(charge)}`);
+      return { code: String(existing.code), amount: charge.toFixed(0) };
+    }
+    if (charge.gt(0)) {
+      const receivable = await this.billService(ticket, charge, session, now);
+      set.receivable = receivable;
+      changes.push(`Ghi công nợ ${receivable.code}: ${money(charge)}`);
+      return { code: receivable.code, amount: charge.toFixed(0) };
+    }
+    return null;
+  }
+
+  /**
+   * Sửa dữ liệu một giai đoạn đã qua (Chẩn đoán / Sửa chữa / Kiểm tra / Trả khách — Tiếp nhận sửa qua updateIntake), cả khi phiếu đã
+   * trả khách. Hướng xử lý, xuất kho đổi máy và phiếu BH đổi bảo hành không đổi ở đây. Lịch sử ghi trường cũ → mới.
+   */
+  async editStage(id: string, input: WarrantyStageEdit, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`warranty-stage-edit:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
+      const ticket = await this.loadForEdit(id, input.version, session);
+      const now = new Date();
+      if (!warrantyEditableStages(ticket as never).includes(input.stage)) {
+        throw new ConflictException({ code: 'WARRANTY_EDIT_STAGE_INVALID', message: ticket.status === 'CANCELLED' ? 'Phiếu đã hủy không sửa được' : `Phiếu chưa qua giai đoạn ${WARRANTY_STAGE_LABEL[input.stage]}` });
+      }
+      const grantId = this.stageGrant(ticket, input.stage, input.requestId, request.user, now);
+      const set: Document = { updatedAt: now };
+      const unset: Document = {};
+      const changes: string[] = [];
+      const text = (value: unknown) => (value === undefined || value === null || value === '' ? '—' : String(value));
+      const change = (label: string, from: unknown, to: unknown) => {
+        if (text(from) !== text(to)) changes.push(`${label}: ${text(from)} → ${text(to)}`);
+      };
+      const optionalSet = (path: string, value: string | undefined) => {
+        if (value) set[path] = value;
+        else unset[path] = '';
+      };
+      const code = String(ticket.code);
+      const status = ticket.status as WarrantyStatus;
+      const notifications: Document[] = [];
+      switch (input.stage) {
+        case 'DIAGNOSE': {
+          await this.faultCodes.assertKnown(input.lines.map((line) => line.faultCode ?? ''));
+          const lineText = (lines: Document[]) => lines.map((line) => [line.faultCode, line.symptom, line.rootCause, line.action, line.partCode, line.note].filter(Boolean).join(' / ')).join(' | ');
+          change('Dòng lỗi', lineText((ticket.lines as Document[]) ?? []), lineText(input.lines));
+          set.lines = input.lines;
+          const before = ticket.exclusion === 'NO_INVOICE' ? '' : String(ticket.exclusion ?? '');
+          const after = input.exclusion ?? '';
+          if (ticket.exclusion === 'NO_INVOICE' && after) {
+            throw new BadRequestException({ code: 'WARRANTY_EXCLUSION_LOCKED', message: 'Phiếu không hóa đơn (sửa có tính phí): lý do theo tiếp nhận, sửa ở giai đoạn Tiếp nhận' });
+          }
+          if (ticket.exclusion !== 'NO_INVOICE' && before !== after) {
+            const base = await this.intakeCoverage(ticket, session);
+            const coverage = (after ? 'NOT_COVERED' : base.coverage) as WarrantyCoverage;
+            if (ticket.plan && !plansForCoverage(coverage).includes(ticket.plan as WarrantyPlan)) {
+              throw new BadRequestException({ code: 'WARRANTY_PLAN_INVALID', message: 'Lý do sửa chữa mới không hợp với hướng xử lý đã chọn (đổi mới / hoàn tiền chỉ khi còn bảo hành; báo giá chỉ khi không còn bảo hành) — hủy phiếu lập lại nếu đổi hướng xử lý' });
+            }
+            change('Lý do sửa chữa', before, after);
+            change('Diện bảo hành', ticket.coverage, coverage);
+            set.coverage = coverage;
+            if (after) set.exclusion = after;
+            else unset.exclusion = '';
+          }
+          if (input.quoteAmount !== undefined) {
+            if (ticket.plan !== 'QUOTE') throw new BadRequestException({ code: 'WARRANTY_QUOTE_INVALID', message: 'Chỉ phiếu báo giá có tiền báo giá' });
+            if (new Decimal(input.quoteAmount).lte(0)) throw new BadRequestException({ code: 'WARRANTY_QUOTE_REQUIRED', message: 'Tiền báo giá phải lớn hơn 0' });
+            change('Báo giá', decimalString(ticket.quoteAmount), new Decimal(input.quoteAmount).toFixed(0));
+            set.quoteAmount = decimal(input.quoteAmount);
+          }
+          break;
+        }
+        case 'REPAIR': {
+          const result = (ticket.result as Document | undefined) ?? {};
+          change('Kết quả', result.resolution, input.resolution);
+          change('Linh kiện thay', result.replacedParts, input.replacedParts);
+          change('Chi phí', decimalString(result.cost), new Decimal(input.cost).toFixed(0));
+          change('Bên chịu phí', result.chargedTo === 'COMPANY' ? 'Công ty' : 'Khách', input.chargedTo === 'COMPANY' ? 'Công ty' : 'Khách');
+          change('Ghi chú sửa', result.note, input.note);
+          set['result.resolution'] = input.resolution;
+          optionalSet('result.replacedParts', input.replacedParts);
+          set['result.cost'] = decimal(input.cost);
+          set['result.chargedTo'] = input.chargedTo;
+          optionalSet('result.note', input.note);
+          if (status === 'RETURNED') {
+            const charge = input.chargedTo === 'CUSTOMER' ? new Decimal(input.cost) : new Decimal(0);
+            const billed = await this.syncServiceBill(ticket, charge, set, unset, changes, session, now);
+            if (billed) {
+              notifications.push({
+                targetRoles: ['ACCOUNTANT'], level: 'INFO', template: 'WARRANTY_SERVICE_BILLED',
+                params: { code, customer: String((ticket.customer as Document).name), amount: billed.amount, receivable: billed.code },
+                title: `Phí dịch vụ bảo hành ${code} đã sửa: ${billed.amount} đ — công nợ ${billed.code}`,
+                message: String((ticket.customer as Document).name),
+              });
+            }
+          }
+          break;
+        }
+        case 'TEST': {
+          const test = (ticket.test as Document | undefined) ?? {};
+          const mark = (value: unknown) => (value ? 'đạt' : 'không đạt');
+          change('Chức năng', mark(test.functional), mark(input.functional));
+          change('An toàn', mark(test.safety), mark(input.safety));
+          change('Hiệu suất', mark(test.performance), mark(input.performance));
+          change('Ghi chú kiểm tra', test.note, input.note);
+          set['test.functional'] = input.functional;
+          set['test.safety'] = input.safety;
+          set['test.performance'] = input.performance;
+          optionalSet('test.note', input.note);
+          set['test.editedAt'] = now;
+          set['test.editedByName'] = request.user.displayName;
+          break;
+        }
+        case 'RETURN': {
+          if (input.returnedDate > vnDate(now)) throw new BadRequestException({ code: 'WARRANTY_DATE_INVALID', message: 'Ngày trả khách không được sau hôm nay', details: [{ path: ['returnedDate'] }] });
+          if (input.returnedDate < String(ticket.receivedDate)) throw new BadRequestException({ code: 'WARRANTY_DATE_INVALID', message: 'Ngày trả khách phải từ ngày tiếp nhận trở đi', details: [{ path: ['returnedDate'] }] });
+          const returnedAt = ticket.returnedAt as Date;
+          if (vnDate(returnedAt) !== input.returnedDate) {
+            const at = input.returnedDate === vnDate(now) ? now : new Date(`${input.returnedDate}T17:00:00+07:00`);
+            change('Ngày trả khách', vnDate(returnedAt), input.returnedDate);
+            set.returnedAt = at;
+            set.serviceDays = serviceDays(ticket.receivedAt as Date, at);
+          }
+          change('Người nhận', ticket.returnedTo, input.receiverName);
+          set.returnedTo = input.receiverName;
+          const resolution = (ticket.result as { resolution?: WarrantyResolution } | undefined)?.resolution;
+          if (input.refundAmount !== undefined) {
+            if (resolution !== 'REFUNDED') throw new BadRequestException({ code: 'WARRANTY_RETURN_OPTION_INVALID', message: 'Chỉ phiếu hoàn tiền có số tiền hoàn' });
+            if (new Decimal(input.refundAmount).lte(0)) throw new BadRequestException({ code: 'WARRANTY_REFUND_REQUIRED', message: 'Số tiền hoàn phải lớn hơn 0' });
+            change('Tiền hoàn', decimalString((ticket.refund as Document | undefined)?.amount), new Decimal(input.refundAmount).toFixed(0));
+            set.refund = { amount: decimal(input.refundAmount) };
+            set['result.cost'] = decimal(input.refundAmount);
+          }
+          if (input.returnSlipCode !== undefined) {
+            const returnsDefect = Boolean(resolution && RESOLUTIONS_RETURNING_DEFECT.includes(resolution));
+            const current = (ticket.stock as { returnSlip?: { code: string } } | undefined)?.returnSlip?.code ?? '';
+            if (input.returnSlipCode !== current) {
+              if (!returnsDefect || !ticket.stock) throw new BadRequestException({ code: 'WARRANTY_RETURN_OPTION_INVALID', message: 'Chỉ phiếu đổi mới / hoàn tiền có phiếu trả hàng liên kết' });
+              if (input.returnSlipCode) {
+                const slip = await this.returnSlipFor(ticket, input.returnSlipCode, session);
+                set['stock.returnSlip'] = { id: (slip._id as ObjectId).toHexString(), code: String(slip.code), warehouseName: String(slip.warehouseName), category: String(slip.category) };
+                change('Phiếu trả hàng', current, String(slip.code));
+              } else {
+                unset['stock.returnSlip'] = '';
+                change('Phiếu trả hàng', current, '');
+              }
+            }
+          }
+          break;
+        }
+      }
+      if (!changes.length) throw new BadRequestException({ code: 'WARRANTY_UNCHANGED', message: 'Phiếu chưa có thay đổi nào' });
+      for (const key of Object.keys(set)) delete unset[key];
+      if (grantId) {
+        set['editRequests.$[grant].status'] = 'APPLIED';
+        set['editRequests.$[grant].appliedAt'] = now;
+      }
+      const history = {
+        at: now, byName: request.user.displayName, action: 'EDIT_STAGE', from: status, to: status,
+        note: `[${WARRANTY_STAGE_LABEL[input.stage]}] ${input.reason}${grantId ? ' (yêu cầu đã duyệt)' : ''} — ${changes.join('; ')}`,
+      };
+      const result = await this.collection().findOneAndUpdate(
+        { _id: ticket._id, version: input.version },
+        { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}), $inc: { version: 1 }, $push: { history } } as Document,
+        { session, returnDocument: 'after', ...(grantId ? { arrayFilters: [{ 'grant.id': grantId }] } : {}) },
+      );
+      if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
+      for (const notification of notifications) await this.notifyWarranty(id, notification, session);
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId, action: 'WARRANTY_STAGE_EDITED',
+        entityType: 'WarrantyTicket', entityId: id, before: serializeDocument(ticket), after: serializeDocument(result),
+        metadata: { stage: input.stage, reason: input.reason, changes, requestId: grantId ? grantId.toHexString() : null },
+      }, session);
+      return this.present(result, now);
+    });
+  }
+
   async overdueCount(): Promise<number> {
     const settings = await warrantySettings(this.db);
     const now = new Date();

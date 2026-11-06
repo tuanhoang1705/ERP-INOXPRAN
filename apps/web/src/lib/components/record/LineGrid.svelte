@@ -24,10 +24,11 @@
    * chuyển dòng cùng cột, thêm dòng bằng ô nhập mã (gõ hoặc máy quét mã vạch — Enter để thêm, trùng mã thì cộng số lượng),
    * chọn / sắp xếp cột (nhớ theo người dùng trên trình duyệt), xuất CSV mở bằng Excel.
    */
-  import { ArrowDown, ArrowUp, Columns3, Download, Info, Plus, ScanBarcode, Trash2 } from 'lucide-svelte';
+  import { ArrowDown, ArrowUp, ChevronDown, Columns3, Copy, Download, Info, Plus, ScanBarcode, Trash2 } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { session } from '$lib/session.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import RowContextMenu from '$lib/components/RowContextMenu.svelte';
 
   let {
     rows = $bindable([]),
@@ -139,6 +140,24 @@
     }
   }
 
+  /**
+   * SAL-FILL-01 (06/11/2026, như MISA): mũi tên trong ô số (số lượng, đơn giá…) → "Sao chép dữ liệu cho các dòng dưới":
+   * chép giá trị ô đó xuống mọi dòng từ dòng đang chọn trở xuống.
+   */
+  let fillMenu = $state<{ open: boolean; x: number; y: number; rowIndex: number; columnKey: string }>({ open: false, x: 0, y: 0, rowIndex: -1, columnKey: '' });
+  function openFill(event: MouseEvent, rowIndex: number, columnKey: string) {
+    const rect = (event.currentTarget as Element).getBoundingClientRect();
+    fillMenu = { open: true, x: rect.left, y: rect.bottom + 2, rowIndex, columnKey };
+  }
+  function fillDown(rowIndex: number, columnKey: string) {
+    const column = columns.find((item) => item.key === columnKey);
+    const source = rows[rowIndex];
+    if (!column?.edit || source === undefined) return;
+    const value = column.edit.get(source);
+    for (const [index, row] of rows.entries()) if (index > rowIndex) column.edit.set(row, value);
+  }
+  const fillLabel = $derived(`${columns.find((item) => item.key === fillMenu.columnKey)?.label ?? ''} ${fillMenu.rowIndex + 1}`);
+
   function exportCsv() {
     const escape = (value: string) => (/[",\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
     const lines = [visible.map((column) => escape(column.label)).join(','), ...rows.map((row) => visible.map((column) => escape(column.value(row))).join(','))];
@@ -207,8 +226,11 @@
                     {#each column.edit.options(row) as option}<option value={option.value}>{option.label}</option>{/each}
                   </select>
                 {:else if column.edit.decimals !== undefined}
-                  <NumberInput class={column.align === 'right' ? 'cell right' : 'cell'} data-cell={`${rowIndex}:${column.key}`} value={column.edit.get(row)} decimals={column.edit.decimals}
-                    onvalue={(value) => column.edit?.set(row, value)} onkeydown={(event) => keydown(event, rowIndex, column.key)} aria-label={`${column.label} ${rowIndex + 1}`} />
+                  <span class="fill-cell">
+                    <NumberInput class={column.align === 'right' ? 'cell right' : 'cell'} data-cell={`${rowIndex}:${column.key}`} value={column.edit.get(row)} decimals={column.edit.decimals}
+                      onvalue={(value) => column.edit?.set(row, value)} onkeydown={(event) => keydown(event, rowIndex, column.key)} aria-label={`${column.label} ${rowIndex + 1}`} />
+                    {#if rowIndex < rows.length - 1}<button type="button" class="fill-btn" onclick={(event) => openFill(event, rowIndex, column.key)} title={m.bh_fill_sao_chep_xuong()} aria-label={`${m.bh_fill_sao_chep_xuong()} — ${column.label} ${rowIndex + 1}`} aria-haspopup="menu"><ChevronDown size={13} /></button>{/if}
+                  </span>
                 {:else}
                   <input class="cell" class:right={column.align === 'right'} data-cell={`${rowIndex}:${column.key}`} value={column.edit.get(row)} inputmode={column.edit.inputmode ?? 'text'}
                     oninput={(event) => column.edit?.set(row, event.currentTarget.value)} onkeydown={(event) => keydown(event, rowIndex, column.key)} aria-label={`${column.label} ${rowIndex + 1}`} />
@@ -238,6 +260,8 @@
     {/if}
   </table>
 </div>
+<RowContextMenu bind:open={fillMenu.open} x={fillMenu.x} y={fillMenu.y} label={fillLabel}
+  items={[{ label: m.bh_fill_sao_chep_xuong(), icon: Copy, action: () => fillDown(fillMenu.rowIndex, fillMenu.columnKey) }]} />
 
 <style>
   .grid-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; }
@@ -259,4 +283,9 @@
   td :global(.cell.right) { text-align: right; }
   td :global(.cell:focus) { outline: none; border-color: var(--navy-2); box-shadow: 0 0 0 2px rgba(27, 84, 128, 0.12); }
   tfoot td { font-weight: 700; }
+  .fill-cell { display: flex; align-items: center; gap: 3px; }
+  .fill-btn { display: inline-grid; flex: none; place-items: center; width: 20px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--muted); cursor: pointer; opacity: 0; transition: opacity 0.12s; }
+  .fill-btn:hover { color: var(--navy); border-color: var(--navy-2); }
+  td:hover .fill-btn, td:focus-within .fill-btn { opacity: 1; }
+  @media (hover: none) { .fill-btn { opacity: 1; } }
 </style>

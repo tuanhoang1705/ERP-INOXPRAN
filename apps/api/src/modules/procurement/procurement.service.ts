@@ -18,6 +18,7 @@ import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
+import { assertNotFutureDay } from '../../common/future-date';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -358,6 +359,7 @@ export class ProcurementService {
     const order = await this.db.collection('purchase_orders').findOne({ _id: toObjectId(id) });
     if (!order) throw new NotFoundException({ code: 'PURCHASE_ORDER_NOT_FOUND', message: 'Không tìm thấy đơn mua' });
     if (['DRAFT', 'CANCELLED'].includes(String(order.status))) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Đơn nháp / đã hủy chưa ghi nhận thanh toán' });
+    assertNotFutureDay(input.paidOn, 'paidOn', 'Ngày thanh toán');
     const payment = {
       id: new ObjectId().toHexString(),
       ...input,
@@ -374,6 +376,8 @@ export class ProcurementService {
   async removePayment(id: string, paymentId: string, request: AuthenticatedRequest) {
     const order = await this.db.collection('purchase_orders').findOne({ _id: toObjectId(id), 'payments.id': paymentId });
     if (!order) throw new NotFoundException({ code: 'PAYMENT_NOT_FOUND', message: 'Không tìm thấy khoản thanh toán' });
+    // SEC-UI-01 (06/11/2026): như ghi nhận thanh toán — đơn nháp / đã hủy không sửa khoản đã trả (web ẩn nút xóa).
+    if (['DRAFT', 'CANCELLED'].includes(String(order.status))) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Đơn nháp / đã hủy không xóa được khoản thanh toán' });
     const payment = (order.payments as Document[]).find((row) => row.id === paymentId);
     await this.db.collection('purchase_orders').updateOne({ _id: order._id }, { $pull: { payments: { id: paymentId } } as Document, $set: { updatedAt: new Date() } });
     await this.audit.record({ ...this.actor(request), action: 'SUPPLIER_PAYMENT_DELETED', entityType: 'PurchaseOrder', entityId: id, ...(payment ? { before: serializeDocument(payment) } : {}) });

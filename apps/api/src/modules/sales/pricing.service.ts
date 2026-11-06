@@ -72,6 +72,24 @@ export interface PriceBasis {
   discountRate: string;
 }
 
+export interface PricingOptions {
+  ignoreCustomerPrices?: boolean | undefined;
+  /** Thời điểm tính bảng giá / CTKM (mặc định: bây giờ). */
+  at?: Date | undefined;
+  /** Mã đang có trên phiếu được sửa: vẫn tính giá dù đã ngừng kinh doanh. */
+  keepProductIds?: readonly ObjectId[] | undefined;
+  /**
+   * CK bậc doanh số đã áp khi phát hành (sửa phiếu đã phát hành): giữ nguyên — doanh số lũy kế hiện tại đã gồm cả chính phiếu sau
+   * khi giao nên tính lại sẽ làm dòng không sửa đổi chiết khấu.
+   */
+  salesTierRate?: string | undefined;
+}
+
+/** Mã đang kinh doanh, cộng các mã đang có trên phiếu được sửa (đã ngừng vẫn giữ được). */
+function productStatusFilter(keep?: readonly ObjectId[]): Document {
+  return keep?.length ? { $or: [{ status: 'ACTIVE' }, { _id: { $in: [...keep] } }] } : { status: 'ACTIVE' };
+}
+
 @Injectable()
 export class PricingService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
@@ -140,10 +158,11 @@ export class PricingService {
     context: CustomerPricingContext,
     productIds?: ObjectId[],
     session?: ClientSession,
-    options_: { ignoreCustomerPrices?: boolean } = {},
+    options_: PricingOptions = {},
   ): Promise<Map<string, PriceBasis>> {
     const options = session ? { session } : {};
-    const now = new Date();
+    // SAL-EDIT-GRANT-01 (06/11/2026): sửa phiếu đã phát hành tính bảng giá / CTKM theo thời điểm của phiếu, không theo hôm nay.
+    const now = options_.at ?? new Date();
     // Giá riêng của khách (PRI-CUST-01): giá chốt, ưu tiên trước bảng giá cấp, không chiết khấu.
     const customerPrices = new Map<string, string>();
     if (customer._id && !options_.ignoreCustomerPrices) {
@@ -153,7 +172,7 @@ export class PricingService {
       for (const row of rows) customerPrices.set((row.productId as ObjectId).toHexString(), decimalString(row.unitPrice));
     }
     const [products, priceBooks, promotions] = await Promise.all([
-      this.db.collection('products').find({ status: 'ACTIVE', ...(productIds ? { _id: { $in: productIds } } : {}) }, options).toArray(),
+      this.db.collection('products').find({ ...productStatusFilter(options_.keepProductIds), ...(productIds ? { _id: { $in: productIds } } : {}) }, options).toArray(),
       this.db
         .collection('price_books')
         .find(
@@ -224,12 +243,13 @@ export class PricingService {
    * Tính giá các dòng phiếu. PXK-001 (DOCUMENT): một thuế suất cho cả phiếu, thuế tính một lần trên Σ thành tiền. PXK-002 (LINE,
    * 27/10/2026): thuế suất từng dòng (dòng không ghi → thuế suất phiếu / mặc định), tiền thuế chia về dòng không lệch đồng.
    */
-  async priceLines(lines: PricingLineInput[], customer: Document, session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT') {
+  async priceLines(lines: PricingLineInput[], customer: Document, session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT', pricing: Omit<PricingOptions, 'ignoreCustomerPrices'> = {}) {
     const settings = await this.settings(session);
-    const context = await this.customerContext(customer, settings, session);
+    const computed = await this.customerContext(customer, settings, session);
+    const context = pricing.salesTierRate !== undefined ? { ...computed, salesTierRate: pricing.salesTierRate } : computed;
     const documentRate = vatRate ?? settings.taxRate;
     const ids = [...new Set(lines.map((line) => line.productId))].map((id) => toObjectId(id, 'productId'));
-    const basis = await this.basis(customer, settings, context, ids, session);
+    const basis = await this.basis(customer, settings, context, ids, session, pricing);
 
     const pricedLines = [];
     let subtotal = new Decimal(0);
@@ -323,11 +343,11 @@ export class PricingService {
    * Phiếu xuất hàng mẫu / kiểm định (SAL-TYPE-01): không bán nên không có khách, không bảng giá — kiểm mã đang kinh doanh và
    * đơn vị như phiếu bán, mọi dòng đơn giá 0, tổng 0.
    */
-  async zeroLines(lines: PricingLineInput[], session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT') {
+  async zeroLines(lines: PricingLineInput[], session?: ClientSession, vatRate?: string, vatMode: VatMode = 'DOCUMENT', keepProductIds?: readonly ObjectId[]) {
     const settings = await this.settings(session);
     const documentRate = vatRate ?? settings.taxRate;
     const ids = [...new Set(lines.map((line) => line.productId))].map((id) => toObjectId(id, 'productId'));
-    const products = await this.db.collection('products').find({ _id: { $in: ids }, status: 'ACTIVE' }, session ? { session } : {}).toArray();
+    const products = await this.db.collection('products').find({ _id: { $in: ids }, ...productStatusFilter(keepProductIds) }, session ? { session } : {}).toArray();
     const byId = new Map(products.map((product) => [(product._id as ObjectId).toHexString(), product]));
     const pricedLines = lines.map((line) => {
       const productId = toObjectId(line.productId, 'productId');

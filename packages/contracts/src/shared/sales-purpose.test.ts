@@ -73,4 +73,13 @@ describe('loại phiếu (SAL-TYPE-01)', () => {
     expect(CreateSalesOrderSchema.safeParse({ ...base, purpose: 'GIFT', salesRepId: ID, expectedReturnDate: '2026-10-30' }).success).toBe(false);
     expect(CreateSalesOrderSchema.safeParse({ ...base, purpose: 'SAMPLE', salesRepId: ID, expectedReturnDate: '2026-10-30' }).success).toBe(true);
   });
+
+  it('người mượn / phụ trách là tài khoản không phải NVKD (STAFF-PICK-01): chỉ phiếu không bán, chọn một người', () => {
+    const base = { warehouseId: ID, lines: [line] };
+    for (const purpose of ['SAMPLE', 'INSPECTION', 'GIFT'] as const) {
+      expect(CreateSalesOrderSchema.safeParse({ ...base, purpose, staffUserId: ID }).success).toBe(true);
+    }
+    expect(CreateSalesOrderSchema.safeParse({ ...base, purpose: 'SAMPLE', salesRepId: ID, staffUserId: ID }).success).toBe(false);
+    expect(CreateSalesOrderSchema.safeParse({ ...base, customerId: ID, staffUserId: ID }).success).toBe(false);
+  });
 });

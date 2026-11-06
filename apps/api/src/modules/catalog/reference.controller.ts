@@ -8,6 +8,7 @@ import { decimalString, salesTierWindow, serializeDocument, toObjectId } from '.
 import { pageOf, pageRequest } from '../../common/paging';
 import { Public } from '../../common/public.decorator';
 import { Roles } from '../../common/roles.decorator';
+import { staffOptions } from '../../common/staff';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
 import { customerProvince, oldProvincesOf, provinceReportName, SALE_ONLY_FILTER } from '@inoxpran/contracts';
@@ -56,6 +57,15 @@ export class ReferenceController {
     ]);
     const countByCode = new Map(counts.map((row) => [String(row._id), Number(row.count)]));
     return rows.map((row) => ({ ...serializeDocument(row), dealerCount: countByCode.get(String(row.code)) ?? 0 }));
+  }
+
+  /**
+   * Người chọn làm người mượn / phụ trách (STAFF-PICK-01): NVKD đang hoạt động + tài khoản đang hoạt động không phải Admin, không
+   * gắn NVKD. Chỉ tên, mã / chức danh, vai trò — không email.
+   */
+  @Get('staff')
+  staff() {
+    return staffOptions(this.db);
   }
 
   /** Nhân viên kinh doanh kèm số đại lý đang phụ trách. */
@@ -255,8 +265,9 @@ export class ReferenceController {
         },
       ]).toArray(),
       this.db.collection('sales_orders').aggregate([
+        // Doanh số gồm VAT (DB-REV-04, 05/11/2026).
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: revenueWindow ?? { $gte: quarter.start }, customerId: { $in: ids } } },
-        { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } } } },
+        { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
       ]).toArray(),
       this.db.collection('partner_activities').aggregate([
         { $match: { partnerId: { $in: ids }, done: false, followUpOn: { $exists: true } } },

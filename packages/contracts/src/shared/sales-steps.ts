@@ -59,3 +59,23 @@ export function canDeliverOrder(actor: StepActor, keeperId: string | null | unde
   if (!holds(actor, 'sales.step.deliver')) return false;
   return isAdmin(actor) || !hasKeeperRole(actor.roles) || (Boolean(keeperId) && keeperId === actor.sub);
 }
+
+/**
+ * Giai đoạn sửa phiếu BH (SAL-UNDO-01 / SAL-EDIT-GRANT-01, 06/11/2026) — máy chủ chặn theo đúng hàm này, giao diện hiện nút theo nó:
+ * - DRAFT: phiếu nháp (bước 1–2) — sửa như thường;
+ * - UNDO: đã phát hành, chưa đối chiếu với khách (chờ duyệt ngoại lệ / chờ KD đối chiếu) — chỉ "Hoàn tác phiếu" về bước Lập phiếu,
+ *   không sửa trực tiếp;
+ * - EDIT: KD đã đối chiếu (hoặc phiếu không cần đối chiếu) trở đi — "Sửa phiếu": người duyệt sửa thẳng, người khác xin phép trước;
+ * - NONE: phiếu đã hủy, phiếu đổi bảo hành (sửa ở phiếu bảo hành).
+ */
+export type SalesEditStage = 'DRAFT' | 'UNDO' | 'EDIT' | 'NONE';
+export function salesEditStage(order: { status: string; confirmationStatus?: string | null | undefined; purpose?: string | null | undefined }): SalesEditStage {
+  if (order.status === 'CANCELLED' || order.purpose === 'WARRANTY') return 'NONE';
+  if (order.status === 'DRAFT') return 'DRAFT';
+  if (order.status === 'PENDING_APPROVAL' || order.status === 'APPROVED') return 'UNDO';
+  if (order.status === 'RESERVED' && order.confirmationStatus === 'PENDING') return 'UNDO';
+  return 'EDIT';
+}
+
+/** Quyền sửa phiếu được cấp sau khi duyệt (SAL-EDIT-GRANT-01): còn hiệu lực bao nhiêu giờ, dùng một lần. */
+export const SALES_EDIT_GRANT_HOURS = 24;

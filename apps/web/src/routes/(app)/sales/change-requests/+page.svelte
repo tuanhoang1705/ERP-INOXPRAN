@@ -46,7 +46,7 @@
     error = '';
     success = '';
     if (result.status === 'FAILED') error = m.yc_khong_thuc_hien({ code: result.code, error: result.error ?? '' });
-    else success = result.status === 'APPLIED' ? m.yc_da_duyet({ code: result.code }) : m.yc_da_tu_choi({ code: result.code });
+    else success = result.status === 'GRANTED' ? m.yc_da_cap_quyen({ code: result.code, who: result.requestedByName }) : result.status === 'APPLIED' ? m.yc_da_duyet({ code: result.code }) : m.yc_da_tu_choi({ code: result.code });
     await load(true);
   }
   async function withdraw(row: ChangeRequest) {
@@ -107,16 +107,19 @@
               <td>
                 <span class={`pill ${status.tone}`}>{status.label}</span>
                 {#if row.decidedByName && row.status !== 'PENDING'}<small>{row.decidedByName}{row.decidedAt ? ` · ${dateTime(row.decidedAt)}` : ''}</small>{/if}
+                {#if row.status === 'GRANTED' && row.expiresAt}<small>{m.yc_han_sua({ at: dateTime(row.expiresAt) })}</small>{/if}
+                {#if row.appliedAt}<small>{m.yc_da_sua_luc()} {dateTime(row.appliedAt)}</small>{/if}
                 {#if row.decisionNote}<small class="note">{row.decisionNote}</small>{/if}
                 {#if row.error}<small class="bad">{row.error}</small>{/if}
               </td>
               <td class="acts">
-                {#if row.kind === 'EDIT'}<button class="btn small" onclick={() => open(row, 'view')}>{m.yc_xem_thay_doi()}</button>{/if}
+                {#if row.kind === 'EDIT' || (row.kind === 'EDIT_GRANT' && row.result)}<button class="btn small" onclick={() => open(row, 'view')}>{m.yc_xem_thay_doi()}</button>{/if}
                 {#if row.status === 'PENDING' && approver}
                   <button class="btn small danger-soft" disabled={working === row.id} onclick={() => open(row, 'reject')}>{m.yc_tu_choi()}</button>
                   <button class="btn small primary" disabled={working === row.id} onclick={() => open(row, 'approve')}>{m.yc_duyet()}</button>
                 {/if}
-                {#if row.status === 'PENDING' && row.requestedById === session.user?.sub}<button class="btn small" disabled={working === row.id} onclick={() => withdraw(row)}>{m.yc_rut()}</button>{/if}
+                {#if (row.status === 'PENDING' || row.status === 'GRANTED') && row.requestedById === session.user?.sub}<button class="btn small" disabled={working === row.id} onclick={() => withdraw(row)}>{row.status === 'GRANTED' ? m.yc_tra_quyen() : m.yc_rut()}</button>{/if}
+                {#if row.status === 'GRANTED' && row.requestedById === session.user?.sub}<a class="btn small primary" href={`/sales/orders/${row.orderId}/edit?grant=${row.id}`}>{m.root_sua_phieu()}</a>{/if}
               </td>
             </tr>
           {/each}

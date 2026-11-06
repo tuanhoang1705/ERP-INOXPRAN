@@ -34,6 +34,22 @@ export const WARRANTY_PLANS = ['REPAIR', 'QUOTE', 'REJECT', 'EXCHANGE', 'REFUND'
 export type WarrantyPlan = (typeof WARRANTY_PLANS)[number];
 export const PLANS_NEEDING_APPROVAL: readonly WarrantyPlan[] = ['REJECT', 'EXCHANGE', 'REFUND'];
 
+/**
+ * Hướng xử lý chọn được theo diện bảo hành sau kiểm tra. Còn bảo hành: sửa miễn phí / đổi mới / hoàn tiền. Hết hạn hoặc có
+ * lý do sửa chữa (rơi vỡ, vào nước…): báo giá có tính phí, từ chối (khi có lý do) — và từ 05/11/2026 (yêu cầu của người dùng)
+ * vẫn chọn được **sửa chữa bảo hành miễn phí** (công ty chịu chi phí) ở mọi lý do.
+ */
+export function plansForCoverage(coverage: WarrantyCoverage): readonly WarrantyPlan[] {
+  if (coverage === 'IN_WARRANTY') return ['REPAIR', 'EXCHANGE', 'REFUND'];
+  if (coverage === 'OUT_OF_WARRANTY') return ['REPAIR', 'QUOTE'];
+  return ['REPAIR', 'QUOTE', 'REJECT'];
+}
+
+/** Hướng xử lý chọn sẵn: còn bảo hành thì sửa miễn phí, còn lại báo giá (sửa miễn phí phải chủ động chọn). */
+export function defaultPlanFor(coverage: WarrantyCoverage): WarrantyPlan {
+  return coverage === 'IN_WARRANTY' ? 'REPAIR' : 'QUOTE';
+}
+
 export const WARRANTY_RESOLUTIONS = ['REPAIRED', 'PART_REPLACED', 'EXCHANGED', 'REFUNDED', 'REJECTED', 'RETURNED_UNREPAIRED'] as const;
 export type WarrantyResolution = (typeof WARRANTY_RESOLUTIONS)[number];
 
@@ -52,6 +68,33 @@ export const WARRANTY_ACTIONS_BY_STATUS: Record<WarrantyStatus, readonly string[
   RETURNED: [],
   CANCELLED: [],
 };
+
+/**
+ * Sửa phiếu bảo hành theo giai đoạn (WAR-EDIT-01, 06/11/2026 — cả phiếu đang xử lý và phiếu đã trả khách): nhân viên bảo hành gửi
+ * "Yêu cầu sửa phiếu" chọn giai đoạn + lý do → Quản lý kho / Admin duyệt → người xin sửa dữ liệu của đúng giai đoạn đó một lần
+ * trong WARRANTY_EDIT_GRANT_HOURS giờ. Người duyệt sửa thẳng. Phiếu đã hủy không sửa.
+ */
+export const WARRANTY_EDIT_STAGES = ['INTAKE', 'DIAGNOSE', 'REPAIR', 'TEST', 'RETURN'] as const;
+export type WarrantyEditStage = (typeof WARRANTY_EDIT_STAGES)[number];
+export const WARRANTY_EDIT_GRANT_HOURS = 24;
+export const WARRANTY_EDIT_REQUEST_STATUSES = ['PENDING', 'GRANTED', 'APPLIED', 'REJECTED', 'WITHDRAWN', 'EXPIRED'] as const;
+export type WarrantyEditRequestStatus = (typeof WARRANTY_EDIT_REQUEST_STATUSES)[number];
+
+/** Giai đoạn phiếu đã đi qua (có dữ liệu để sửa) — máy chủ chặn theo đúng hàm này. */
+export function warrantyEditableStages(ticket: {
+  status: WarrantyStatus;
+  plan?: string | null | undefined;
+  result?: { resolution?: string | null | undefined } | null | undefined;
+  test?: unknown;
+}): WarrantyEditStage[] {
+  if (ticket.status === 'CANCELLED') return [];
+  const stages: WarrantyEditStage[] = ['INTAKE'];
+  if (ticket.plan) stages.push('DIAGNOSE');
+  if (ticket.result?.resolution === 'REPAIRED' || ticket.result?.resolution === 'PART_REPLACED') stages.push('REPAIR');
+  if (ticket.test) stages.push('TEST');
+  if (ticket.status === 'RETURNED') stages.push('RETURN');
+  return stages;
+}
 
 /** Từ lần bảo hành thứ 3 trong thời hạn mà vẫn lỗi: đề xuất đổi mới / hoàn tiền (Luật 19/2023, Điều 30 khoản 2 điểm đ). */
 export const REPEAT_REPAIR_THRESHOLD = 3;

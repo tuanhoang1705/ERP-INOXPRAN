@@ -2,8 +2,9 @@
 import { m } from '$lib/paraglide/messages';
 import { zeroPriceKindOf, type ZeroPriceKind } from '$shared/sales-line-kind';
 
-export type ChangeKind = 'EDIT' | 'VOID' | 'CANCEL' | 'DELETE';
-export type ChangeStatus = 'PENDING' | 'APPLIED' | 'REJECTED' | 'WITHDRAWN' | 'FAILED';
+/** EDIT_GRANT (SAL-EDIT-GRANT-01, 06/11/2026): xin phép sửa — duyệt trước, được cấp quyền sửa một lần trong 24 giờ. */
+export type ChangeKind = 'EDIT' | 'EDIT_GRANT' | 'VOID' | 'CANCEL' | 'DELETE';
+export type ChangeStatus = 'PENDING' | 'GRANTED' | 'APPLIED' | 'REJECTED' | 'WITHDRAWN' | 'FAILED' | 'EXPIRED';
 export interface ChangePreviewLine { sku: string; productName: string; unit: string; quantity: string; gift: boolean; zeroPriceKind?: ZeroPriceKind | undefined; unitPrice: string; lineTotal: string }
 export interface ChangeRequest {
   id: string;
@@ -23,15 +24,21 @@ export interface ChangeRequest {
   decisionNote?: string;
   error?: string;
   preview?: { customerName: string; grandTotal: string; lines: ChangePreviewLine[] };
+  /** Quyền sửa đã cấp: hạn dùng; đã dùng: lúc sửa và nội dung trước → sau. */
+  expiresAt?: string;
+  appliedAt?: string;
+  result?: { before: { customerName: string; grandTotal: string; lines: ChangePreviewLine[] }; after: { customerName: string; grandTotal: string; lines: ChangePreviewLine[] } };
 }
 
 export function changeKindLabel(kind: ChangeKind): string {
-  return { EDIT: m.yc_loai_sua(), VOID: m.yc_loai_huy_da_giao(), CANCEL: m.yc_loai_huy(), DELETE: m.yc_loai_xoa() }[kind];
+  return { EDIT: m.yc_loai_sua(), EDIT_GRANT: m.yc_loai_xin_sua(), VOID: m.yc_loai_huy_da_giao(), CANCEL: m.yc_loai_huy(), DELETE: m.yc_loai_xoa() }[kind];
 }
 
 export function changeStatus(status: ChangeStatus): { label: string; tone: string } {
   return {
     PENDING: { label: m.yc_tt_cho_duyet(), tone: 'warning' },
+    GRANTED: { label: m.yc_tt_da_cap_quyen(), tone: 'navy' },
+    EXPIRED: { label: m.yc_tt_het_han(), tone: 'neutral' },
     APPLIED: { label: m.yc_tt_da_thuc_hien(), tone: 'success' },
     REJECTED: { label: m.yc_tt_tu_choi(), tone: 'danger' },
     WITHDRAWN: { label: m.yc_tt_da_rut(), tone: 'neutral' },

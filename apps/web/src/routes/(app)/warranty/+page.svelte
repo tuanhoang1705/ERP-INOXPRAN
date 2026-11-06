@@ -24,6 +24,8 @@
   let search = $state(page.url.searchParams.get('search') ?? '');
   const tone = $derived(page.url.searchParams.get('tone') ?? '');
   const status = $derived(page.url.searchParams.get('status') ?? '');
+  /** Phiếu có yêu cầu sửa chờ duyệt (WAR-EDIT-01) — lọc chung ô trạng thái, giá trị "EDIT_REQUEST". */
+  const editRequest = $derived(page.url.searchParams.get('editRequest') ?? '');
   /** Phiếu vừa hủy (chuyển từ trang phiếu); phiếu đã hủy và lọc "Đã hủy" chỉ dành cho quản trị gốc (DOC-HIDE-01). */
   const cancelledCode = $derived(page.url.searchParams.get('cancelled') ?? '');
   const statuses = $derived(WARRANTY_STATUSES.filter((item) => item !== 'CANCELLED' || session.user?.root));
@@ -39,7 +41,7 @@
     loading = true;
     error = '';
     const query = new URLSearchParams();
-    for (const [key, value] of [['tone', tone], ['status', status], ['search', page.url.searchParams.get('search') ?? ''], ['from', page.url.searchParams.get('from') ?? ''], ['to', page.url.searchParams.get('to') ?? '']]) if (value) query.set(key, value);
+    for (const [key, value] of [['tone', tone], ['status', status], ['editRequest', editRequest], ['search', page.url.searchParams.get('search') ?? ''], ['from', page.url.searchParams.get('from') ?? ''], ['to', page.url.searchParams.get('to') ?? '']]) if (value) query.set(key, value);
     query.set('page', String(pageNo));
     query.set('pageSize', String(pageSize));
     try {
@@ -100,9 +102,10 @@
   <DateRangeFilter bind:from bind:to label={m.dr_ngay_nhan()} id="ticket-date" onchange={() => filter({ from, to })} />
   <div class="field">
     <label for="status">{m.trang_thai()}</label>
-    <select id="status" value={status} onchange={(event) => filter({ status: event.currentTarget.value })}>
+    <select id="status" value={editRequest ? 'EDIT_REQUEST' : status} onchange={(event) => { const value = event.currentTarget.value; filter(value === 'EDIT_REQUEST' ? { status: '', editRequest: 'PENDING' } : { status: value, editRequest: '' }); }}>
       <option value="">{m.wr_all_status()}</option>
       {#each statuses as item}<option value={item}>{statusText(item)}</option>{/each}
+      <option value="EDIT_REQUEST">{m.wr_loc_yc_sua()}</option>
     </select>
   </div>
   <div class="actions"><button class="btn navy" type="submit"><Search size={16} />{m.loc_du_lieu()}</button><a class="btn" href="/warranty">{m.dat_lai()}</a></div>

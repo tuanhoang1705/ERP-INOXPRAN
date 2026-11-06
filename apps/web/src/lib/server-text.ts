@@ -7,7 +7,7 @@ import type { AppNotification, DashboardSummary, TextParams } from '@inoxpran/co
 import { m } from '$lib/paraglide/messages';
 import { date, num, vnd } from '$lib/format';
 import { money } from '$lib/purchase';
-import { planText } from '$lib/warranty';
+import { planText, stageText } from '$lib/warranty';
 import { WARRANTY_PLANS, type WarrantyPlan } from '$shared/warranty';
 
 const isPlan = (value: string): value is WarrantyPlan => (WARRANTY_PLANS as readonly string[]).includes(value);
@@ -15,7 +15,7 @@ const isPlan = (value: string): value is WarrantyPlan => (WARRANTY_PLANS as read
 type DashboardAlert = DashboardSummary['alerts'][number];
 
 const text = (params: TextParams, key: string) => String(params[key] ?? '');
-const changeKind = (kind: string) => ({ EDIT: m.yc_loai_sua(), VOID: m.yc_loai_huy_da_giao(), CANCEL: m.yc_loai_huy(), DELETE: m.yc_loai_xoa() } as Record<string, string>)[kind] ?? kind;
+const changeKind = (kind: string) => ({ EDIT: m.yc_loai_sua(), EDIT_GRANT: m.yc_loai_xin_sua(), VOID: m.yc_loai_huy_da_giao(), CANCEL: m.yc_loai_huy(), DELETE: m.yc_loai_xoa() } as Record<string, string>)[kind] ?? kind;
 const count = (params: TextParams, key: string) => Number(params[key] ?? 0);
 
 export function alertText(alert: DashboardAlert): { title: string; detail: string } {
@@ -78,7 +78,9 @@ export function notificationText(notification: AppNotification): { title: string
     case 'SALES_CHANGE_REQUESTED':
       return { title: m.tb_yc_moi({ requester: text(p, 'requester'), kind: changeKind(text(p, 'kind')).toLowerCase(), order: text(p, 'order') }), message: text(p, 'reason') };
     case 'SALES_CHANGE_APPROVED':
-      return { title: m.tb_yc_duyet({ code, approver: text(p, 'approver') }), message: m.tb_yc_duyet_chi_tiet({ kind: changeKind(text(p, 'kind')), order: text(p, 'order') }) };
+      return text(p, 'kind') === 'EDIT_GRANT'
+        ? { title: m.tb_yc_duyet({ code, approver: text(p, 'approver') }), message: m.tb_yc_cho_sua_chi_tiet({ order: text(p, 'order') }) }
+        : { title: m.tb_yc_duyet({ code, approver: text(p, 'approver') }), message: m.tb_yc_duyet_chi_tiet({ kind: changeKind(text(p, 'kind')), order: text(p, 'order') }) };
     case 'SALES_CHANGE_REJECTED':
       return { title: m.tb_yc_tu_choi({ code }), message: `${text(p, 'approver')}: ${text(p, 'note')}` };
     case 'SALES_ORDER_ROOT_EDITED':
@@ -159,6 +161,12 @@ export function notificationText(notification: AppNotification): { title: string
         title: m.tb_kiem_ke_lech({ code, count: text(p, 'count') }),
         message: m.tb_kiem_ke_lech_chi_tiet({ warehouse: text(p, 'warehouse'), by: text(p, 'by'), count: text(p, 'count'), note: text(p, 'note') }),
       };
+    case 'WARRANTY_EDIT_REQUESTED':
+      return { title: m.tb_bh_xin_sua({ code, requester: text(p, 'requester'), stage: stageText(text(p, 'stage')) }), message: text(p, 'reason') };
+    case 'WARRANTY_EDIT_DECIDED':
+      return text(p, 'approved') === 'yes'
+        ? { title: m.tb_bh_cho_sua({ code, stage: stageText(text(p, 'stage')) }), message: m.tb_bh_cho_sua_chi_tiet({ approver: text(p, 'approver') }) }
+        : { title: m.tb_bh_khong_cho_sua({ code }), message: `${text(p, 'approver')}: ${text(p, 'note')}` };
     case 'WARRANTY_SERVICE_BILLED':
       return { title: m.tb_bh_phi_dich_vu({ code, amount: vnd(text(p, 'amount')), receivable: text(p, 'receivable') }), message: customer };
     default:

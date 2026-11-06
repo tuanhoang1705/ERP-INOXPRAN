@@ -1,25 +1,30 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import type { WarrantyFaultCode, WarrantyFaultLine, WarrantyTicket } from '@inoxpran/contracts';
+  import type { WarrantyFaultCode, WarrantyFaultLine, WarrantyReturnSlipOption, WarrantyTicket } from '@inoxpran/contracts';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { untrack } from 'svelte';
-  import { CalendarClock, CircleAlert, CircleCheck, Pencil, Plus, Printer, TriangleAlert, X } from 'lucide-svelte';
+  import { CalendarClock, CircleAlert, CircleCheck, FilePen, Hourglass, Pencil, Plus, Printer, Trash2, TriangleAlert, X } from 'lucide-svelte';
+  import WarrantyStageEditDialog from '$lib/components/WarrantyStageEditDialog.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
+  import SuggestInput, { type Suggestion } from '$lib/components/SuggestInput.svelte';
+  import { categoryLabel } from '$lib/inventory';
   import WarrantyPhotos from '$lib/components/WarrantyPhotos.svelte';
   import WarrantyIntakeDialog from '$lib/components/WarrantyIntakeDialog.svelte';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import StaffSelect from '$lib/components/StaffSelect.svelte';
+  import { loadStaff, staffPick, type StaffOption } from '$lib/staff';
   import { api } from '$lib/api';
   import { date, dateTime, todayIso, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
   import { session } from '$lib/session.svelte';
   import {
-    actionText, channelText, coverageTone, ticketCoverageText, exclusionText, planText, resolutionText, slaText, statusText, statusTone, toneText,
+    actionText, channelText, coverageTone, ticketCoverageText, exclusionText, planText, resolutionText, slaText, stageText, statusText, statusTone, toneText,
     WARRANTY_APPROVERS, WARRANTY_STAFF, type SlaView,
   } from '$lib/warranty';
   import {
-    remainingWarrantyDays, REPEAT_REPAIR_THRESHOLD, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_EXCLUSIONS,
-    type WarrantyCoverage, type WarrantyExclusion, type WarrantyPlan,
+    defaultPlanFor, plansForCoverage, remainingWarrantyDays, REPEAT_REPAIR_THRESHOLD, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_EDIT_GRANT_HOURS, WARRANTY_EXCLUSIONS,
+    warrantyEditableStages, type WarrantyCoverage, type WarrantyEditStage, type WarrantyExclusion, type WarrantyPlan,
   } from '$shared/warranty';
 
   type Ticket = WarrantyTicket & { sla: SlaView };
@@ -47,16 +52,48 @@
   /** Trả khách đổi mới / hoàn tiền (20/10/2026): hàng đổi đã giao trước; số phiếu trả hàng đã nhập hàng lỗi (chỉ liên kết). */
   let exchangeDelivered = $state(false);
   let returnSlipCode = $state('');
+  /** Gợi ý phiếu khách trả có mã sản phẩm này (05/11/2026) — tải khi phiếu sắp trả đổi mới / hoàn tiền. */
+  let returnSlips = $state<WarrantyReturnSlipOption[]>([]);
+  let returnSlipsFor = '';
+  let returnSlipsLoading = $state(false);
+  /** Người phụ trách phiếu BH đổi bảo hành (STAFF-PICK-01): NVKD hoặc nhân viên khác, trừ Admin. */
+  let staff = $state<StaffOption[]>([]);
+  let staffRequested = false;
+  let exchangeStaffId = $state('');
   let editOpen = $state(false);
+  // ---------- WAR-EDIT-01 (06/11/2026): yêu cầu sửa phiếu theo giai đoạn ----------
+  /** Hộp sửa tiếp nhận mở khóa (theo yêu cầu đã duyệt / người duyệt sửa thẳng). */
+  let intakeUnlocked = $state(false);
+  let intakeRequestId = $state('');
+  let stagePickOpen = $state(false);
+  let stagePick = $state<WarrantyEditStage>('INTAKE');
+  let stageReason = $state('');
+  let stageEditOpen = $state(false);
+  let stageEditStage = $state<'DIAGNOSE' | 'REPAIR' | 'TEST' | 'RETURN'>('DIAGNOSE');
+  let stageRequestId = $state('');
+  let decideOpen = $state(false);
+  let decideApproved = $state(true);
+  let decideNote = $state('');
   let faultCodes = $state<WarrantyFaultCode[]>([]);
 
   const isStaff = $derived(hasRole(session.user?.roles, WARRANTY_STAFF));
   const isApprover = $derived(hasRole(session.user?.roles, WARRANTY_APPROVERS));
+  const editableStages = $derived(ticket ? warrantyEditableStages(ticket) : []);
+  const pendingEdit = $derived(ticket?.editRequests?.find((row) => row.status === 'PENDING') ?? null);
+  const myEditGrant = $derived(ticket?.editRequests?.find((row) => row.status === 'GRANTED' && row.requestedById === session.user?.sub) ?? null);
   const actions = $derived(ticket ? WARRANTY_ACTIONS_BY_STATUS[ticket.status] : []);
   const effectiveCoverage = $derived<WarrantyCoverage>(exclusion ? 'NOT_COVERED' : (ticket?.coverage ?? 'NOT_COVERED'));
-  const allowedPlans = $derived<WarrantyPlan[]>(
-    effectiveCoverage === 'IN_WARRANTY' ? ['REPAIR', 'EXCHANGE', 'REFUND'] : effectiveCoverage === 'OUT_OF_WARRANTY' ? ['QUOTE'] : ['QUOTE', 'REJECT'],
-  );
+  // Sửa chữa bảo hành (miễn phí) chọn được ở mọi lý do sửa chữa (05/11/2026).
+  const allowedPlans = $derived(plansForCoverage(effectiveCoverage));
+  /** Sửa theo hướng "sửa chữa bảo hành (miễn phí)" → công ty chịu, kể cả máy hết hạn / có lý do sửa chữa; sửa theo báo giá → khách trả. */
+  const companyPays = $derived(ticket?.plan ? ticket.plan === 'REPAIR' : ticket?.coverage === 'IN_WARRANTY');
+  const returnSlipSuggestions = $derived<Suggestion[]>(returnSlips.map((slip) => ({
+    value: slip.code,
+    label: slip.partnerName,
+    detail: [date(slip.date), `SL ${slip.quantity}`, categoryLabel(slip.category), slip.warehouseName, slip.legacyCode].filter(Boolean).join(' · '),
+    ...(slip.linkedTickets.length ? { note: m.wr_phieu_tra_da_gan({ codes: slip.linkedTickets.join(', ') }) } : {}),
+    muted: !slip.samePartner,
+  })));
   const serviceNumber = $derived(ticket ? ticket.warranty.priorServiceCount + 1 : 1);
   const warrantyLeft = $derived(ticket?.warranty.expiresOn ? remainingWarrantyDays(ticket.warranty.expiresOn, todayIso()) : null);
   /** Mã lỗi của nhóm hàng của sản phẩm + mã dùng chung. */
@@ -66,6 +103,8 @@
   /** Phiếu đổi mới đã trả, hệ thống đã xuất hàng đổi nhưng chưa có phiếu BH & SWK (trả trước 02/11/2026). */
   const needsExchangeOrder = $derived(Boolean(ticket && ticket.status === 'RETURNED' && ticket.result?.resolution === 'EXCHANGED' && ticket.stock?.exchange && !ticket.exchangeOrder));
   const billable = $derived(Boolean(ticket?.result && ticket.result.chargedTo === 'CUSTOMER' && Number(ticket.result.cost) > 0 && ticket.result.resolution !== 'REJECTED'));
+  /** Trả khách đổi mới, hệ thống xuất hàng đổi và lập phiếu BH đổi bảo hành → chọn người phụ trách. */
+  const exchangeSlipOnReturn = $derived(resolutionNow === 'EXCHANGED' && !exchangeDelivered);
 
   /** Danh mục mã lỗi tải một lần (danh mục có thể trống — không dùng độ dài mảng làm cờ). */
   let faultCodesLoaded = false;
@@ -94,9 +133,9 @@
     note = '';
     lines = next.lines.map((line) => ({ faultCode: line.faultCode ?? '', receivedDate: line.receivedDate, symptom: line.symptom, rootCause: line.rootCause ?? '', action: line.action ?? '', partCode: line.partCode ?? '', note: line.note ?? '' }));
     exclusion = next.exclusion && next.exclusion !== 'NO_INVOICE' ? next.exclusion : '';
-    plan = next.coverage === 'IN_WARRANTY' ? 'REPAIR' : 'QUOTE';
+    plan = defaultPlanFor(next.coverage);
     quoteAmount = next.quoteAmount ? String(Math.round(Number(next.quoteAmount))) : '';
-    cost = next.coverage === 'IN_WARRANTY' ? '0' : quoteAmount || '0';
+    cost = (next.plan ? next.plan === 'QUOTE' : next.coverage !== 'IN_WARRANTY') ? quoteAmount || '0' : '0';
     replacedParts = next.result?.replacedParts ?? '';
     checks = { functional: false, safety: false, performance: false };
     receiverName = next.customer.name;
@@ -105,11 +144,33 @@
     refundAmount = '';
     exchangeDelivered = false;
     returnSlipCode = '';
+    exchangeStaffId = '';
+    // Danh sách người phụ trách chỉ tải khi phiếu sắp / cần lập phiếu BH đổi bảo hành.
+    const exchanging = next.result?.resolution === 'EXCHANGED' && (next.status === 'READY' || (next.status === 'RETURNED' && next.stock?.exchange && !next.exchangeOrder));
+    if (exchanging && !staffRequested && hasRole(session.user?.roles, WARRANTY_STAFF)) {
+      staffRequested = true;
+      void loadStaff().then((rows) => (staff = rows)).catch(() => (staffRequested = false));
+    }
+    const returning = next.status === 'READY' && (next.result?.resolution === 'EXCHANGED' || next.result?.resolution === 'REFUNDED');
+    if (returning && returnSlipsFor !== next.id && hasRole(session.user?.roles, WARRANTY_STAFF)) {
+      returnSlipsFor = next.id;
+      returnSlipsLoading = true;
+      void api<WarrantyReturnSlipOption[]>(`/warranty/tickets/${next.id}/return-slips`)
+        .then((rows) => (returnSlips = rows))
+        .catch(() => (returnSlipsFor = ''))
+        .finally(() => (returnSlipsLoading = false));
+    }
   }
 
   $effect(() => {
-    if (!allowedPlans.includes(plan)) plan = allowedPlans[0] as WarrantyPlan;
+    if (!allowedPlans.includes(plan)) plan = allowedPlans.includes(defaultPlanFor(effectiveCoverage)) ? defaultPlanFor(effectiveCoverage) : (allowedPlans[0] as WarrantyPlan);
   });
+
+  /** Đổi lý do sửa chữa: chọn lại hướng xử lý mặc định (có lý do → báo giá), sửa miễn phí phải chủ động chọn. */
+  function chooseExclusion(value: string) {
+    exclusion = value as WarrantyExclusion | '';
+    plan = defaultPlanFor(value ? 'NOT_COVERED' : (ticket?.coverage ?? 'NOT_COVERED'));
+  }
 
   async function act(body: Record<string, unknown>) {
     if (!ticket) return;
@@ -137,6 +198,61 @@
 
   const optional = (value: string) => value.trim() || undefined;
 
+  /** Mở form sửa của một giai đoạn: Tiếp nhận dùng hộp sửa thông tin tiếp nhận (mở khóa), giai đoạn khác dùng hộp sửa giai đoạn. */
+  function openStageForm(stage: WarrantyEditStage, requestId = '') {
+    if (stage === 'INTAKE') {
+      intakeUnlocked = true;
+      intakeRequestId = requestId;
+      editOpen = true;
+      return;
+    }
+    stageEditStage = stage;
+    stageRequestId = requestId;
+    stageEditOpen = true;
+  }
+  function openStagePick() {
+    stagePick = editableStages[editableStages.length - 1] ?? 'INTAKE';
+    stageReason = '';
+    stagePickOpen = true;
+  }
+  /** Người duyệt: mở thẳng form sửa; nhân viên bảo hành: gửi yêu cầu. */
+  async function submitStagePick() {
+    if (!ticket) return;
+    if (isApprover) {
+      stagePickOpen = false;
+      openStageForm(stagePick);
+      return;
+    }
+    if (stageReason.trim().length < 5) return;
+    await editRequestCall(`/warranty/tickets/${ticket.id}/edit-requests`, { version: ticket.version, stage: stagePick, reason: stageReason.trim() }, 'requested');
+    stagePickOpen = false;
+  }
+  async function editRequestCall(path: string, body: Record<string, unknown>, done: string) {
+    if (!ticket) return;
+    busy = true;
+    error = '';
+    try {
+      const photos = ticket.photos;
+      const next = await api<Ticket>(path, { method: 'POST', idempotentCommand: true, body: JSON.stringify(body) });
+      prepare({ ...next, photos });
+      notice = done;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.wr_load_error();
+    } finally {
+      busy = false;
+    }
+  }
+  async function decideEdit() {
+    if (!ticket || !pendingEdit || (!decideApproved && decideNote.trim().length < 5)) return;
+    decideOpen = false;
+    await editRequestCall(`/warranty/tickets/${ticket.id}/edit-requests/${pendingEdit.id}/decision`, { approved: decideApproved, note: optional(decideNote) }, decideApproved ? 'edit-granted' : 'edit-rejected');
+  }
+  const withdrawEdit = (id: string) => ticket && editRequestCall(`/warranty/tickets/${ticket.id}/edit-requests/${id}/withdraw`, {}, 'edit-withdrawn');
+  function stageSaved(next: Ticket) {
+    prepare({ ...next, photos: ticket?.photos });
+    notice = 'edited';
+  }
+
   /** Lập phiếu BH & SWK đổi bảo hành cho phiếu đã trả (02/11/2026) — số theo dãy phiếu bán, in đưa thủ kho. */
   async function issueExchangeOrder() {
     if (!ticket) return;
@@ -144,7 +260,7 @@
     error = '';
     try {
       const photos = ticket.photos;
-      const next = await api<Ticket>(`/warranty/tickets/${ticket.id}/exchange-order`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: ticket.version }) });
+      const next = await api<Ticket>(`/warranty/tickets/${ticket.id}/exchange-order`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: ticket.version, ...staffPick(staff, exchangeStaffId) }) });
       prepare({ ...next, photos });
       notice = 'saved';
     } catch (caught) {
@@ -190,22 +306,53 @@
       </p>
     </div>
     <div class="actions">
-      {#if isStaff && !['RETURNED', 'CANCELLED'].includes(ticket.status)}<button class="btn" onclick={() => (editOpen = true)}><Pencil size={16} />{m.wr_act_edit()}</button>{/if}
+      {#if isStaff && !['RETURNED', 'CANCELLED'].includes(ticket.status)}<button class="btn" onclick={() => { intakeUnlocked = false; intakeRequestId = ''; editOpen = true; }}><Pencil size={16} />{m.wr_act_edit()}</button>{/if}
+      {#if isApprover && editableStages.length}<button class="btn" onclick={openStagePick}><FilePen size={16} />{m.wr_sua_theo_giai_doan()}</button>
+      {:else if isStaff && editableStages.length && !pendingEdit && !myEditGrant}<button class="btn" onclick={openStagePick}><FilePen size={16} />{m.wr_yeu_cau_sua_phieu()}</button>{/if}
       {#if isStaff && actions.includes('RESCHEDULE')}<button class="btn" onclick={() => (rescheduleOpen = true)}><CalendarClock size={16} />{m.wr_reschedule()}</button>{/if}
       {#if isStaff && actions.includes('CANCEL')}<button class="btn danger" onclick={() => (cancelOpen = true)}><X size={16} />{m.wr_act_cancel()}</button>{/if}
       {#if ticket.exchangeOrder}
         <button class="btn" onclick={() => printExchange('BH')}><Printer size={16} />{m.in_phieu_bh()}</button>
         <button class="btn" onclick={() => printExchange('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>
       {:else if needsExchangeOrder && isStaff}
-        <button class="btn primary" disabled={busy} onclick={issueExchangeOrder}><Plus size={16} />{m.bhx_lap_phieu()}</button>
+        <button class="btn primary" disabled={busy || !exchangeStaffId} title={exchangeStaffId ? '' : m.lp_chon_nguoi_phu_trach()} onclick={issueExchangeOrder}><Plus size={16} />{m.bhx_lap_phieu()}</button>
       {/if}
       <a class="btn navy" href={`/print/warranty/${ticket.id}`} target="_blank" rel="noopener"><Printer size={16} />{m.wr_print()}</a>
     </div>
   </section>
 
   {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span></div>{/if}
-  {#if needsExchangeOrder && isStaff}<div class="banner warning"><TriangleAlert size={17} /><span>{m.bhx_can_lap({ sku: ticket.product.sku })}</span></div>{/if}
-  {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : m.wr_saved({ code: ticket.code })}</div>{/if}
+  {#if needsExchangeOrder && isStaff}
+    <div class="banner warning"><TriangleAlert size={17} />
+      <div class="exchange-body"><span>{m.bhx_can_lap({ sku: ticket.product.sku })}</span>
+        <div class="field exchange-staff"><label for="exchange-staff-late">{m.bhx_nguoi_phu_trach()} <span class="req">*</span></label><StaffSelect id="exchange-staff-late" bind:value={exchangeStaffId} options={staff} missing={!exchangeStaffId} placeholder={m.lp_chon_nguoi_phu_trach()} /></div>
+      </div>
+    </div>
+  {/if}
+  {#if pendingEdit}
+    <div class="banner warning edit-request">
+      <Hourglass size={17} />
+      <span>{m.wr_yc_dang_cho({ who: pendingEdit.requestedByName, stage: stageText(pendingEdit.stage), at: dateTime(pendingEdit.requestedAt) })} <b>{m.wr_reason()}:</b> {pendingEdit.reason}</span>
+      <span class="edit-actions">
+        {#if pendingEdit.requestedById === session.user?.sub}<button class="btn small" disabled={busy} onclick={() => withdrawEdit(pendingEdit.id)}>{m.wr_yc_rut()}</button>{/if}
+        {#if isApprover}
+          <button class="btn small danger-soft" disabled={busy} onclick={() => { decideApproved = false; decideNote = ''; decideOpen = true; }}>{m.wr_reject()}</button>
+          <button class="btn small primary" disabled={busy} onclick={() => { decideApproved = true; decideNote = ''; decideOpen = true; }}>{m.wr_approve()}</button>
+        {/if}
+      </span>
+    </div>
+  {/if}
+  {#if myEditGrant}
+    <div class="banner success edit-request">
+      <FilePen size={17} />
+      <span>{m.wr_yc_duoc_sua({ stage: stageText(myEditGrant.stage), by: myEditGrant.decidedByName ?? '—', at: dateTime(myEditGrant.expiresAt ?? '') })}</span>
+      <span class="edit-actions">
+        <button class="btn small" disabled={busy} onclick={() => withdrawEdit(myEditGrant.id)}>{m.wr_yc_tra_quyen()}</button>
+        <button class="btn small primary" onclick={() => openStageForm(myEditGrant.stage, myEditGrant.id)}>{m.wr_sua_giai_doan({ stage: stageText(myEditGrant.stage) })}</button>
+      </span>
+    </div>
+  {/if}
+  {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : notice === 'requested' ? m.wr_yc_da_gui() : notice === 'edit-granted' ? m.wr_yc_da_duyet({ hours: WARRANTY_EDIT_GRANT_HOURS }) : notice === 'edit-rejected' ? m.wr_yc_da_tu_choi() : notice === 'edit-withdrawn' ? m.wr_yc_da_rut() : m.wr_saved({ code: ticket.code })}</div>{/if}
 
   <article class={`card sla tone-${sla.tone}`}>
     <header class="card-head"><h2>{m.wr_sla_title()}</h2><b class="sla-text">{slaText(sla)}</b></header>
@@ -342,6 +489,7 @@
             {#each lines as line, index}
               <fieldset class="line">
                 <legend>{m.stt()} {index + 1}</legend>
+                {#if lines.length > 1}<button type="button" class="icon-btn danger remove-line" title={m.wr_xoa_dong_loi()} aria-label={`${m.wr_xoa_dong_loi()} ${index + 1}`} onclick={() => (lines = lines.filter((_, position) => position !== index))}><Trash2 size={15} /></button>{/if}
                 <label><span>{m.wr_col_fault()}</span>
                   <select bind:value={line.faultCode}>
                     <option value="">—</option>
@@ -358,7 +506,7 @@
             {#if lines.length < 5}<button type="button" class="btn small" onclick={() => (lines = [...lines, { faultCode: '', receivedDate: ticket?.receivedDate ?? todayIso(), symptom: '', rootCause: '', action: '', partCode: '', note: '' }])}><Plus size={14} />{m.wr_add_line()}</button>{/if}
             <div class="field">
               <label for="exclusion">{m.wr_exclusion()}</label>
-              <select id="exclusion" bind:value={exclusion} disabled={ticket.coverage === 'NOT_COVERED' && ticket.exclusion === 'NO_INVOICE'}>
+              <select id="exclusion" value={exclusion} onchange={(event) => chooseExclusion(event.currentTarget.value)} disabled={ticket.coverage === 'NOT_COVERED' && ticket.exclusion === 'NO_INVOICE'}>
                 <option value="">{ticket.exclusion === 'NO_INVOICE' ? m.wr_ex_no_invoice() : m.wr_exclusion_none()}</option>
                 {#each WARRANTY_EXCLUSIONS.filter((item) => item !== 'NO_INVOICE') as item}<option value={item}>{exclusionText(item)}</option>{/each}
               </select>
@@ -378,7 +526,7 @@
         {:else if ticket.status === 'REPAIRING'}
           <div class="field"><label for="resolution">{m.wr_resolution()}</label><select id="resolution" bind:value={resolution}><option value="PART_REPLACED">{resolutionText('PART_REPLACED')}</option><option value="REPAIRED">{resolutionText('REPAIRED')}</option></select></div>
           <div class="field"><label for="parts">{m.wr_replaced_parts()}</label><input id="parts" bind:value={replacedParts} maxlength="300" /></div>
-          <div class="field"><label for="cost">{m.wr_cost()}</label><NumberInput id="cost" value={cost} onvalue={(value) => (cost = value || '0')} /><small class="hint">{vnd(cost)} · {ticket.coverage === 'IN_WARRANTY' ? m.wr_charged_company() : m.wr_charged_customer()}</small></div>
+          <div class="field"><label for="cost">{m.wr_cost()}</label><NumberInput id="cost" value={cost} onvalue={(value) => (cost = value || '0')} /><small class="hint">{vnd(cost)} · {companyPays ? m.wr_charged_company() : m.wr_charged_customer()}</small></div>
           <div class="field"><label for="repair-note">{m.wr_note()} / {m.wr_parts_note()}</label><textarea id="repair-note" rows="2" bind:value={note}></textarea></div>
           <div class="row">
             <button class="btn primary" disabled={busy} onclick={() => act({ type: 'REPAIR_DONE', resolution, replacedParts: optional(replacedParts), cost, note: optional(note) })}>{m.wr_act_repair_done()}</button>
@@ -400,14 +548,22 @@
             <div class="field"><label for="refund">{m.wr_refund_amount()} <span class="req">*</span></label><NumberInput id="refund" bind:value={refundAmount} /><small class="hint">{vnd(refundAmount || 0)}</small></div>
           {/if}
           {#if resolutionNow === 'EXCHANGED'}<label class="check"><input type="checkbox" bind:checked={exchangeDelivered} />{m.wr_exchange_delivered()}</label>{/if}
+          {#if exchangeSlipOnReturn}
+            <div class="field"><label for="exchange-staff">{m.bhx_nguoi_phu_trach()} <span class="req">*</span></label><StaffSelect id="exchange-staff" bind:value={exchangeStaffId} options={staff} missing={!exchangeStaffId} placeholder={m.lp_chon_nguoi_phu_trach()} /><small class="hint">{m.bhx_nguoi_phu_trach_hint()}</small></div>
+          {/if}
           {#if resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED'}
-            <div class="field"><label for="return-slip">{m.wr_return_slip()}</label><input id="return-slip" value={returnSlipCode} maxlength="40" placeholder="NK2026100007" autocomplete="off" oninput={(event) => (returnSlipCode = event.currentTarget.value.toUpperCase())} /><small class="hint">{m.wr_return_slip_hint()}</small></div>
+            <div class="field">
+              <label for="return-slip">{m.wr_return_slip()}</label>
+              <SuggestInput id="return-slip" bind:value={returnSlipCode} options={returnSlipSuggestions} loading={returnSlipsLoading} uppercase maxlength={40}
+                placeholder={m.wr_return_slip_placeholder()} emptyText={m.wr_return_slip_none({ sku: ticket.product.sku })} toggleLabel={m.wr_mo_ds_phieu_tra()} />
+              <small class="hint">{m.wr_return_slip_hint()}</small>
+            </div>
           {/if}
           {#if billable}<p class="info-note">{m.wr_return_bill_note({ amount: vnd(ticket.result?.cost ?? 0) })}</p>{/if}
           <div class="field"><label for="receiver">{m.wr_returned_to()}</label><input id="receiver" bind:value={receiverName} required minlength="2" /></div>
           <div class="field"><label for="return-note">{m.wr_note()}</label><textarea id="return-note" rows="2" bind:value={note}></textarea></div>
           <p class="hint">{m.wr_return_signed_hint()}</p>
-          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount))} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}), ...(resolutionNow === 'EXCHANGED' && exchangeDelivered ? { exchangeDelivered: true } : {}), ...((resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED') && returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}) })}>{m.wr_return_btn()}</button>
+          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount)) || (exchangeSlipOnReturn && !exchangeStaffId)} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}), ...(resolutionNow === 'EXCHANGED' && exchangeDelivered ? { exchangeDelivered: true } : {}), ...(exchangeSlipOnReturn ? staffPick(staff, exchangeStaffId) : {}), ...((resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED') && returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}) })}>{m.wr_return_btn()}</button>
         {/if}
       </div>
     </article>
@@ -422,7 +578,33 @@
     </ol>
   </section>
 
-  <WarrantyIntakeDialog bind:open={editOpen} {ticket} onsaved={(next) => { prepare({ ...(next as Ticket), photos: ticket?.photos }); notice = 'edited'; }} />
+  <WarrantyIntakeDialog bind:open={editOpen} {ticket} unlocked={intakeUnlocked} requestId={intakeRequestId} onsaved={(next) => { prepare({ ...(next as Ticket), photos: ticket?.photos }); notice = 'edited'; }} />
+  <WarrantyStageEditDialog bind:open={stageEditOpen} {ticket} stage={stageEditStage} requestId={stageRequestId} {faultCodes} onsaved={(next) => stageSaved(next as Ticket)} />
+
+  <Dialog bind:open={stagePickOpen} title={isApprover ? m.wr_sua_theo_giai_doan() : m.wr_yc_sua_tieu_de({ code: ticket.code })}>
+    <p class="lead">{isApprover ? m.wr_sua_truc_tiep_giai_thich() : m.wr_yc_sua_giai_thich({ hours: WARRANTY_EDIT_GRANT_HOURS })}</p>
+    <fieldset class="stage-pick">
+      <legend>{m.wr_chon_giai_doan()}</legend>
+      {#each editableStages as stage}<label><input type="radio" name="stage-pick" value={stage} bind:group={stagePick} />{stageText(stage)}</label>{/each}
+    </fieldset>
+    {#if !isApprover}
+      <div class="field"><label for="stage-reason">{m.wr_reason()} <span class="req">*</span></label><textarea id="stage-reason" rows="3" maxlength="300" bind:value={stageReason}></textarea>
+        {#if stageReason.trim() && stageReason.trim().length < 5}<small class="error">{m.bh_ly_do_toi_thieu()}</small>{/if}</div>
+    {/if}
+    {#snippet footer()}
+      <button class="btn" onclick={() => (stagePickOpen = false)}>{m.huy()}</button>
+      <button class="btn primary" disabled={busy || (!isApprover && stageReason.trim().length < 5)} onclick={submitStagePick}>{isApprover ? m.wr_mo_form_sua() : m.wr_gui_yeu_cau()}</button>
+    {/snippet}
+  </Dialog>
+
+  <Dialog bind:open={decideOpen} title={m.wr_yc_quyet_dinh_tieu_de({ stage: stageText(pendingEdit?.stage ?? 'INTAKE') })}>
+    {#if pendingEdit}<p class="lead">{decideApproved ? m.wr_yc_duyet_giai_thich({ who: pendingEdit.requestedByName, hours: WARRANTY_EDIT_GRANT_HOURS }) : pendingEdit.reason}</p>{/if}
+    <div class="field"><label for="decide-note">{decideApproved ? m.wr_note() : m.wr_yc_ly_do_tu_choi()}{#if !decideApproved} <span class="req">*</span>{/if}</label><textarea id="decide-note" rows="3" maxlength="300" bind:value={decideNote}></textarea></div>
+    {#snippet footer()}
+      <button class="btn" onclick={() => (decideOpen = false)}>{m.huy()}</button>
+      <button class={`btn ${decideApproved ? 'primary' : 'danger'}`} disabled={busy || (!decideApproved && decideNote.trim().length < 5)} onclick={decideEdit}>{decideApproved ? m.wr_approve() : m.wr_reject()}</button>
+    {/snippet}
+  </Dialog>
 
   <Dialog bind:open={rescheduleOpen} title={m.wr_reschedule_title()}>
     <div class="field"><label for="new-date">{m.wr_new_date()}</label><input id="new-date" type="date" bind:value={newDate} min={ticket.receivedDate} /></div>
@@ -446,6 +628,18 @@
 {/if}
 
 <style>
+  /* WAR-EDIT-01: banner yêu cầu sửa, hộp chọn giai đoạn. */
+  .edit-request { flex-wrap: wrap; }
+  .edit-request > span:first-of-type { flex: 1 1 320px; min-width: 0; }
+  .edit-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lead { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+  .stage-pick { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .stage-pick legend { padding: 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .stage-pick label { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer; }
+  .exchange-body { display: grid; flex: 1; gap: 10px; min-width: 0; }
+  .exchange-staff { max-width: 420px; }
+  .exchange-staff label { color: inherit; font-weight: 600; }
+  .exchange-staff :global(select) { color: var(--text); }
   .pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
   .pill.tone-overdue { background: var(--red-soft); color: var(--red); }
   .pill.tone-warning { background: var(--amber-soft); color: var(--amber); }
@@ -480,11 +674,14 @@
   .next-body p { margin: 0; }
   .row { display: flex; flex-wrap: wrap; gap: 10px; }
   .diagnose { display: grid; gap: 12px; }
-  .line { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+  .line { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px; min-width: 0; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
   .line label { display: grid; gap: 3px; }
   .line label span { color: var(--subtle); font-size: 11.5px; }
   .line .full { grid-column: 1 / -1; }
   .line legend { padding: 0 4px; color: var(--subtle); font-size: 12px; }
+  /* Nút xóa dòng nằm trên viền khung, ngang hàng "STT n" (05/11/2026). */
+  .line { position: relative; }
+  .remove-line { position: absolute; top: -15px; right: 8px; width: 28px; height: 28px; border: 1px solid var(--line); background: var(--surface); }
   .line input { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; }
   .plans { display: grid; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
   .plans legend { padding: 0 4px; font-size: 13px; font-weight: 500; }
@@ -496,6 +693,8 @@
   .fault-name { display: block; color: var(--subtle); font-size: 11.5px; }
   .info-note { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--blue-soft); color: var(--navy); font-size: 13px; }
   .req { color: var(--red); }
+  /* Tên mã lỗi dài không đẩy khung rộng ra (điện thoại tràn ngang trước 05/11/2026). */
+  .line select, .line input { width: 100%; min-width: 0; }
   .line select { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: inherit; font-size: 13px; }
   .history li { font-size: 13.5px; }
   .history small { display: block; color: var(--subtle); font-size: 12px; }

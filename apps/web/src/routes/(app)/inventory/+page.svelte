@@ -29,6 +29,9 @@
   let adjustOpen = $state(false);
   let adjustProductId = $state('');
   const editable = $derived(can.editWarehouses());
+  /** Đang xem riêng kho hàng lỗi (INV-DEF-LIST-01): không có giữ chỗ / khả dụng / định mức, liệt kê mọi mã kể cả tồn 0. */
+  const defectiveView = $derived(warehouses.find((item) => item.id === warehouseId)?.purpose === 'DEFECTIVE');
+  const columnCount = $derived((defectiveView ? 6 : 9) + (editable ? 1 : 0));
   /** Phiếu kiểm kê đang mở (STK-01) trong phạm vi kho của người dùng → nhắc làm tiếp. */
   let openCounts = $state<StockCountView[]>([]);
 
@@ -36,7 +39,7 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<Row> & { lowCount: number }>(`/inventory/balances?${pageQuery({ warehouseId, search, low: lowOnly && !asOf ? '1' : '', asOf }, page, pageSize)}`);
+      const result = await api<Paged<Row> & { lowCount: number }>(`/inventory/balances?${pageQuery({ warehouseId, search, low: lowOnly && !asOf && !defectiveView ? '1' : '', asOf }, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
       lowCount = result.lowCount;
@@ -83,7 +86,7 @@
 <section class="page-head">
   <div>
     <nav class="crumbs" aria-label={m.duong_dan()}><a href="/inventory">{m.kho_giao_hang()}</a><span>{m.ton_kho()}</span></nav>
-    <h1 class="page-title">{lowOnly ? m.ton_kho_duoi_dinh_muc() : m.ton_kho_kha_dung()}</h1>
+    <h1 class="page-title">{defectiveView ? m.ton_kho() : lowOnly ? m.ton_kho_duoi_dinh_muc() : m.ton_kho_kha_dung()}</h1>
     <p class="page-sub">{m.ton_thuc_te_phan_da_giu()}</p>
   </div>
   <div class="actions">
@@ -98,7 +101,7 @@
   <div class="field"><label for="search">{m.ma_sp_ten_hang()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.quet_hoac_nhap_ma_vi_du()} /></div>
   <div class="field"><label for="as-of">{m.dr_ton_tai_ngay()}</label><input id="as-of" type="date" max={todayIso()} bind:value={asOf} onchange={refilter} placeholder={m.dr_ton_hien_tai()} /></div>
   <div class="field"><label for="warehouse">{m.kho()}</label><select id="warehouse" bind:value={warehouseId} onchange={refilter}><option value="">{m.tat_ca_kho()}</option>{#each warehouses as item}<option value={item.id}>{item.name}</option>{/each}</select></div>
-  <label class="check" class:muted={Boolean(asOf)}><input type="checkbox" bind:checked={lowOnly} onchange={refilter} disabled={Boolean(asOf)} />{m.chi_hien_duoi_dinh_muc()}{lowCount})</label>
+  {#if !defectiveView}<label class="check" class:muted={Boolean(asOf)}><input type="checkbox" bind:checked={lowOnly} onchange={refilter} disabled={Boolean(asOf)} />{m.chi_hien_duoi_dinh_muc()}{lowCount})</label>{/if}
 </section>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
@@ -107,29 +110,31 @@
 {#if success}<div class="banner success"><CircleCheck size={17} />{success}</div>{/if}
 
 <section class="card">
-  <header class="card-head head"><h2>{loading && !rows.length ? m.dang_tai() : m.ma_hang_2({ length: total })}</h2><span class="muted"><span class="dot amber"></span>{m.dong_to_vang_ton_kha_dung()}</span></header>
+  <header class="card-head head"><h2>{loading && !rows.length ? m.dang_tai() : m.ma_hang_2({ length: total })}</h2>{#if defectiveView}<span class="muted">{m.inv_kho_loi_moi_ma()}</span>{:else}<span class="muted"><span class="dot amber"></span>{m.dong_to_vang_ton_kha_dung()}</span>{/if}</header>
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th>{m.dvt()}</th><th>{m.crud_vi_tri()}</th><th class="num">{m.ton_thuc_te()}</th><th class="num">{m.da_giu_cho()}</th><th class="num">{m.kha_dung()}</th><th class="num">{m.dinh_muc_toi_thieu()}</th><th>{m.cap_nhat()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
+      <thead><tr><th>{m.ma_sp()}</th><th>{m.ten_san_pham()}</th><th>{m.dvt()}</th><th>{m.crud_vi_tri()}</th><th class="num">{m.ton_thuc_te()}</th>{#if !defectiveView}<th class="num">{m.da_giu_cho()}</th><th class="num">{m.kha_dung()}</th><th class="num">{m.dinh_muc_toi_thieu()}</th>{/if}<th>{m.cap_nhat()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="10">{m.dang_doc_so_ton()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan={columnCount}>{m.dang_doc_so_ton()}</td></tr>
         {:else if rows.length}
           {#each rows as row (`${row.warehouseId}-${row.productId}`)}
             {@const low = row.belowMinimum && Number(row.minimumStock) > 0}
-            <tr class:low>
-              <td><a class="code" href={`/inventory/movements?productId=${row.productId}`}>{row.sku}</a></td>
+            <tr class:low class:nil={defectiveView && Number(row.onHand) === 0}>
+              <td><a class="code" href={`/inventory/movements?productId=${row.productId}${warehouseId ? `&warehouseId=${warehouseId}` : ''}`}>{row.sku}</a></td>
               <td>{row.productName}</td>
               <td>{row.unit}</td>
               <td class="muted">{row.locationCode ?? '—'}</td>
               <td class="num">{num(row.onHand)}{#if Number(row.defectiveOnHand ?? 0) > 0}<small class="defect">{m.inv_gom_hang_loi({ count: num(row.defectiveOnHand) })}</small>{/if}</td>
-              <td class="num muted">{num(row.reserved)}</td>
-              <td class="num"><b class:warn={low} class:zero={!row.defective && Number(row.available) <= 0}>{num(row.available)}</b></td>
-              <td class="num muted">{num(row.minimumStock)}</td>
-              <td class="muted nowrap">{dateTime(row.updatedAt)}</td>
+              {#if !defectiveView}
+                <td class="num muted">{num(row.reserved)}</td>
+                <td class="num"><b class:warn={low} class:zero={!row.defective && Number(row.available) <= 0}>{num(row.available)}</b></td>
+                <td class="num muted">{num(row.minimumStock)}</td>
+              {/if}
+              <td class="muted nowrap">{row.updatedAt ? dateTime(row.updatedAt) : '—'}</td>
               {#if editable}<td class="row-actions"><button class="icon-btn" title={m.crud_dieu_chinh_ton()} aria-label={`${m.crud_dieu_chinh_ton()} ${row.sku}`} onclick={() => adjust(row.productId)}><SlidersHorizontal size={15} /></button></td>{/if}
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="10">{m.khong_co_ma_hang_phu_hop()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan={columnCount}>{m.khong_co_ma_hang_phu_hop()}</td></tr>{/if}
       </tbody>
     </table>
   </div>
@@ -147,6 +152,7 @@
   tr.low td:first-child { box-shadow: inset 3px 0 var(--amber); }
   .warn { color: var(--orange); }
   .zero { color: var(--red); }
+  tr.nil td { color: var(--muted); }
   .defect { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .actions-col { width: 48px; }
   @media (max-width: 900px) { .filters { grid-template-columns: 1fr 1fr; } }

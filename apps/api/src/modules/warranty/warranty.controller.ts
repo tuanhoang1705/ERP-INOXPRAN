@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Param, Patch, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateWarrantyTicketSchema, UpdateWarrantyIntakeSchema, isDateOnly, WARRANTY_PHOTO_KINDS, WarrantyActionSchema, WarrantyFaultCodeInputSchema } from '@inoxpran/contracts';
+import { CreateWarrantyTicketSchema, UpdateWarrantyIntakeSchema, isDateOnly, WARRANTY_PHOTO_KINDS, WarrantyActionSchema, WarrantyEditDecisionSchema, WarrantyEditRequestSchema, WarrantyExchangeOrderSchema, WarrantyFaultCodeInputSchema, WarrantyStageEditSchema } from '@inoxpran/contracts';
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { pageRequest } from '../../common/paging';
@@ -8,7 +8,7 @@ import { onlyProvided } from '../../common/patch';
 import { Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { WarrantyFaultCodesService } from './warranty-fault-codes.service';
-import { WARRANTY_STAFF_ROLES, WARRANTY_VIEWER_ROLES, WarrantyService } from './warranty.service';
+import { WARRANTY_APPROVER_ROLES, WARRANTY_STAFF_ROLES, WARRANTY_VIEWER_ROLES, WarrantyService } from './warranty.service';
 
 const CoveragePreviewSchema = z.object({
   productId: z.string().min(1),
@@ -20,7 +20,6 @@ const CoveragePreviewSchema = z.object({
   declaredPurchaseDate: z.string().refine(isDateOnly).optional(),
 });
 const PhotoKindSchema = z.enum(WARRANTY_PHOTO_KINDS).default('OTHER');
-const WarrantyExchangeOrderSchema = z.object({ version: z.number().int().positive() });
 const UpdateFaultCodeSchema = WarrantyFaultCodeInputSchema.omit({ code: true }).partial();
 /** Danh mục mã lỗi: nhân viên bảo hành và Quản lý kho quản lý (Giám đốc chỉ xem). */
 const FAULT_CODE_EDITORS = ['ADMIN', 'WARRANTY', 'WAREHOUSE_MANAGER'];
@@ -93,9 +92,37 @@ export class WarrantyController {
   list(
     @Req() request: AuthenticatedRequest,
     @Query('status') status?: string, @Query('tone') tone?: string, @Query('search') search?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string,
-    @Query('customerId') customerId?: string, @Query('from') from?: string, @Query('to') to?: string,
+    @Query('customerId') customerId?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('editRequest') editRequest?: string,
   ) {
-    return this.warranty.list({ status, tone, search, customerId, from, to }, pageRequest(page, pageSize), request.user);
+    return this.warranty.list({ status, tone, search, customerId, from, to, editRequest }, pageRequest(page, pageSize), request.user);
+  }
+
+  /** WAR-EDIT-01 (06/11/2026): nhân viên bảo hành xin sửa một giai đoạn của phiếu (cả phiếu đã trả khách). */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Post('tickets/:id/edit-requests')
+  requestEdit(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
+    return this.warranty.requestEdit(id, WarrantyEditRequestSchema.parse(body), request, key);
+  }
+
+  /** Quản lý kho / Admin duyệt hoặc từ chối yêu cầu sửa. */
+  @Roles(...WARRANTY_APPROVER_ROLES)
+  @Post('tickets/:id/edit-requests/:requestId/decision')
+  decideEdit(@Param('id') id: string, @Param('requestId') requestId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
+    return this.warranty.decideEdit(id, requestId, WarrantyEditDecisionSchema.parse(body), request, key);
+  }
+
+  /** Người xin rút yêu cầu / trả lại quyền sửa chưa dùng. */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Post('tickets/:id/edit-requests/:requestId/withdraw')
+  withdrawEdit(@Param('id') id: string, @Param('requestId') requestId: string, @Req() request: AuthenticatedRequest) {
+    return this.warranty.withdrawEdit(id, requestId, request);
+  }
+
+  /** Sửa dữ liệu một giai đoạn đã qua: người duyệt sửa thẳng, người khác theo yêu cầu đã duyệt (service kiểm tra). */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Patch('tickets/:id/stages')
+  editStage(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
+    return this.warranty.editStage(id, WarrantyStageEditSchema.parse(body), request, key);
   }
 
   @Roles(...WARRANTY_VIEWER_ROLES)
@@ -124,11 +151,18 @@ export class WarrantyController {
     return this.warranty.act(id, WarrantyActionSchema.parse(body), request, key);
   }
 
+  /** Gợi ý phiếu khách trả (có mã sản phẩm của phiếu) cho ô "Phiếu trả hàng đã nhập hàng lỗi" khi trả khách — 05/11/2026. */
+  @Roles(...WARRANTY_STAFF_ROLES)
+  @Get('tickets/:id/return-slips')
+  returnSlips(@Param('id') id: string) {
+    return this.warranty.returnSlipOptions(id);
+  }
+
   /** Phiếu đổi mới đã trả khách trước 02/11/2026: lập phiếu BH & SWK đổi bảo hành để in đưa thủ kho. */
   @Roles(...WARRANTY_STAFF_ROLES)
   @Post('tickets/:id/exchange-order')
   issueExchangeOrder(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {
-    return this.warranty.issueExchangeOrder(id, WarrantyExchangeOrderSchema.parse(body).version, request, key);
+    return this.warranty.issueExchangeOrder(id, WarrantyExchangeOrderSchema.parse(body), request, key);
   }
 
   /** Ảnh khi nhận / phiếu đã ký: thân request = dữ liệu ảnh PNG/JPEG/WebP, tên file trong header x-file-name, loại ảnh ở ?kind=. */

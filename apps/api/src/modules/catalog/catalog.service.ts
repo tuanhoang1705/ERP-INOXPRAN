@@ -181,7 +181,8 @@ export class CatalogService {
         { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: since } } },
         { $unwind: '$lines' },
         { $match: { 'lines.productId': productId } },
-        { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: '$lines.netAmount' }, orders: { $addToSet: '$_id' } } },
+        // Tiền bán gồm VAT (DB-REV-04, 05/11/2026).
+        { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: { $ifNull: ['$lines.lineTotal', '$lines.netAmount'] } }, orders: { $addToSet: '$_id' } } },
       ]).toArray(),
     ]);
     const warehouseById = new Map(warehouses.map((row) => [row._id.toHexString(), row]));
@@ -359,13 +360,14 @@ export class CatalogService {
           },
         },
       ]).toArray(),
+      // Doanh số gồm VAT (DB-REV-04, 05/11/2026).
       this.db.collection('sales_orders').aggregate([
         { $match: { customerId: partnerId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER } },
         {
           $group: {
             _id: null,
-            total: { $sum: { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] } },
-            yearToDate: { $sum: { $cond: [{ $gte: ['$deliveredAt', yearStart] }, { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] }, 0] } },
+            total: { $sum: { $ifNull: ['$grandTotal', 0] } },
+            yearToDate: { $sum: { $cond: [{ $gte: ['$deliveredAt', yearStart] }, { $ifNull: ['$grandTotal', 0] }, 0] } },
             orders: { $sum: 1 },
           },
         },

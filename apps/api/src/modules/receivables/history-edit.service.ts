@@ -3,6 +3,7 @@ import type { HistoryDocumentCreate, HistoryDocumentEdit, HistoryPaymentCreate, 
 import Decimal from 'decimal.js';
 import { ObjectId, type ClientSession, type Db, type Document, type WithId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
+import { assertNotFutureDay } from '../../common/future-date';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -19,6 +20,8 @@ const addDays = (day: string, days: number) => new Date(new Date(`${day}T00:00:0
 const vnDay = (value: Date) => new Date(value.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
 const KIND_LABEL: Record<string, string> = { RECEIPT: 'Thu tiền', FREIGHT: 'Phí vận chuyển khách trả', RETURN: 'Trả hàng / điều chỉnh giảm' };
 const LEDGER_KINDS = ['RECEIPT', 'FREIGHT', 'RETURN'];
+/** Phiếu xếp lại được theo ngày: sổ cũ, thu theo khách (không phải giảm nợ từ Phiếu trả hàng). */
+const flexiblePayment = (row: Document) => row.mode === 'HISTORY' || (row.mode === 'CUSTOMER' && LEDGER_KINDS.includes(String(row.kind ?? 'RECEIPT')) && !row.stockReturnId);
 /** Khoản phải thu âm do hệ thống sinh (trả trước, hủy phiếu đã thu) — không phải dòng sổ, không sửa tay. */
 const DERIVED_SOURCES = ['CUSTOMER_PREPAYMENT', 'SALES_VOID_CREDIT'];
 /** Chứng từ có số chứng từ / số HĐ do kế toán ghi (sổ cũ, dòng thêm tay); phiếu BH / phí bảo hành giữ số gốc. */
@@ -42,12 +45,13 @@ export class HistoryEditService {
 
   /** Thêm phát sinh nợ (điều chỉnh tăng / chứng từ sổ cũ bị thiếu) — khoản phải thu `MANUAL`. */
   async createDocument(input: HistoryDocumentCreate, request: AuthenticatedRequest, key: string | undefined) {
+    assertNotFutureDay(input.date, 'date', 'Ngày chứng từ');
     return this.idempotency.execute(`history-edit:${request.user.sub}`, key, { create: 'DOCUMENT', ...input }, async (session) => {
       const partner = await this.customer(input.partnerId, session);
       const now = new Date();
       const doc: Document = {
         _id: new ObjectId(),
-        code: await this.sequences.next('AR', session),
+        code: await this.sequences.next('AR', session, vnNoon(input.date)),
         partnerId: partner._id,
         sourceType: 'MANUAL',
         ...(input.documentNo ? { historyDocumentNo: input.documentNo } : {}),
@@ -70,12 +74,13 @@ export class HistoryEditService {
 
   /** Thêm phiếu thu / phí vận chuyển / trả hàng – giảm giá — như thu theo khách (phân bổ chứng từ cũ trước, dư → trả trước). */
   async createPayment(input: HistoryPaymentCreate, request: AuthenticatedRequest, key: string | undefined) {
+    assertNotFutureDay(input.date, 'date', 'Ngày chứng từ');
     return this.idempotency.execute(`history-edit:${request.user.sub}`, key, { create: 'PAYMENT', ...input }, async (session) => {
       const partner = await this.customer(input.partnerId, session);
       const now = new Date();
       const payment: Document = {
         _id: new ObjectId(),
-        code: await this.sequences.next('PAY', session),
+        code: await this.sequences.next('PAY', session, vnNoon(input.date)),
         partnerId: partner._id,
         amount: decimal(new Decimal(input.amount).toFixed(2)),
         kind: input.kind,
@@ -97,6 +102,7 @@ export class HistoryEditService {
   }
 
   async editDocument(id: string, input: HistoryDocumentEdit, request: AuthenticatedRequest, key: string | undefined) {
+    assertNotFutureDay(input.date, 'date', 'Ngày chứng từ');
     return this.idempotency.execute(`history-edit:${request.user.sub}`, key, { id, ...input }, async (session) => {
       const doc = await this.ledgerDocument(id, session);
       if (doc.version !== input.version) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Chứng từ đã được người khác cập nhật — tải lại rồi thử lại' });
@@ -160,6 +166,7 @@ export class HistoryEditService {
   }
 
   async editPayment(id: string, input: HistoryPaymentEdit, request: AuthenticatedRequest, key: string | undefined) {
+    assertNotFutureDay(input.date, 'date', 'Ngày chứng từ');
     return this.idempotency.execute(`history-edit:${request.user.sub}`, key, { id, ...input }, async (session) => {
       const payment = await this.ledgerPayment(id, session);
       const partner = await this.db.collection('partners').findOne({ _id: payment.partnerId as ObjectId }, { session, projection: { code: 1 } });
@@ -235,6 +242,34 @@ export class HistoryEditService {
   }
 
   /** Phiếu thu theo đúng chứng từ (phân bổ cố định) đã trả vào chứng từ — phần này không dời sang chứng từ khác được. */
+  /**
+   * Sửa chứng từ gốc làm số tiền nhỏ hơn số đã thu (SAL-EDIT-GRANT-01 phiếu BH, WAR-EDIT-01 phí bảo hành — 06/11/2026):
+   * phần đã thu bằng phiếu cố định (thu theo đúng chứng từ, bù trừ, giảm nợ trả hàng, thu ngay…) không tự chuyển đi được.
+   * Trả tổng phần cố định đó + số phiếu để báo người dùng; phần thu theo khách / sổ cũ sẽ được xếp lại bằng `rebuildPartner`.
+   */
+  async fixedPaidOn(receivableId: ObjectId, session?: ClientSession) {
+    const payments = await this.db.collection('payments').find({ status: 'POSTED', 'allocations.receivableId': receivableId }, { ...(session ? { session } : {}), projection: { code: 1, mode: 1, kind: 1, stockReturnId: 1, allocations: 1 } }).toArray();
+    let total = new Decimal(0);
+    const codes: string[] = [];
+    for (const payment of payments) {
+      if (flexiblePayment(payment)) continue;
+      for (const allocation of (payment.allocations as Document[] | undefined) ?? []) {
+        if (!(allocation.receivableId as ObjectId).equals(receivableId)) continue;
+        total = total.add(decimalString(allocation.amount));
+        if (!codes.includes(String(payment.code))) codes.push(String(payment.code));
+      }
+    }
+    return { total, codes };
+  }
+
+  /**
+   * Xếp lại tiền đã thu của khách sau khi số tiền một chứng từ đổi ở nơi khác (sửa phiếu BH / phí bảo hành): phiếu thu theo khách
+   * và sổ cũ lấy lại phần chứng từ còn chỗ, phần dư → khoản khách trả trước. Gọi trong giao dịch của thao tác sửa.
+   */
+  async rebuildPartner(partnerId: ObjectId, session: ClientSession, now: Date): Promise<string> {
+    return this.rebuild(partnerId, undefined, session, now);
+  }
+
   private async documentPins(receivableId: ObjectId, session: ClientSession) {
     const payments = await this.db.collection('payments').find({ status: 'POSTED', mode: { $ne: 'HISTORY' }, 'allocations.receivableId': receivableId }, { session, projection: { code: 1, mode: 1, allocations: 1 } }).toArray();
     let total = new Decimal(0);
@@ -317,9 +352,8 @@ export class HistoryEditService {
       this.db.collection('receivables').find({ partnerId }, { session }).toArray(),
       this.db.collection('payments').find({ partnerId, status: 'POSTED' }, { session }).toArray(),
     ]);
-    const flexible = (row: Document) => row.mode === 'HISTORY' || (row.mode === 'CUSTOMER' && LEDGER_KINDS.includes(String(row.kind ?? 'RECEIPT')) && !row.stockReturnId);
-    const movable = payments.filter(flexible);
-    const fixed = payments.filter((row) => !flexible(row));
+    const movable = payments.filter(flexiblePayment);
+    const fixed = payments.filter((row) => !flexiblePayment(row));
     const amountOf = (row: Document) => new Decimal(decimalString(row.amount));
     const pooled = receivables.filter((row) => row.status !== 'VOIDED' && amountOf(row).gt(0));
     const pooledIds = new Set(pooled.map((row) => (row._id as ObjectId).toHexString()));

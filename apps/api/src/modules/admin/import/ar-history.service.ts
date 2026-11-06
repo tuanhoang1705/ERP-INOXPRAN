@@ -441,7 +441,7 @@ export class ArHistoryImportService {
         if (parsed.errors.length) throw new UnprocessableEntityException({ code: 'IMPORT_HAS_ERRORS', message: `File còn ${parsed.errors.length} lỗi — chạy kiểm tra và sửa trước khi ghi`, details: parsed.errors.slice(0, 50) });
         const summary = this.summarize(analysis, parsed.errors);
         const batchId = new ObjectId();
-        const code = await this.sequences.next('IMP', session, 3);
+        const code = await this.sequences.next('IMP', session);
         const now = new Date();
         const { receivables, payments, byCustomer } = await this.buildRecords(analysis, batchId, code, cutoff, now, request, session);
         if (receivables.length) await this.db.collection('receivables').insertMany(receivables, { session });

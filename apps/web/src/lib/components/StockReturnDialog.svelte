@@ -41,7 +41,7 @@
   let products = $state<ProductOption[]>([]);
   let partners = $state<PartnerOption[]>([]);
   let partnersLoading = $state(false);
-  let form = $state({ partnerId: '', category: 'SLOW_RETURN_IN' as CustomerReturnCategory, warehouseId: '', sourceCode: '', note: '', receivedAt: '', reason: '' });
+  let form = $state({ partnerId: '', category: 'SLOW_RETURN_IN' as CustomerReturnCategory, warehouseId: '', sourceCode: '', preErp: false, note: '', receivedAt: '', reason: '' });
   let lines = $state<Line[]>([]);
   let errors = $state<Record<string, string>>({});
   let error = $state('');
@@ -69,14 +69,15 @@
           partnerId: row.partnerId ?? '',
           category: (CUSTOMER_RETURN_CATEGORIES as readonly string[]).includes(row.category) ? (row.category as CustomerReturnCategory) : 'SLOW_RETURN_IN',
           warehouseId: row.warehouseId,
-          sourceCode: row.salesOrderCode ?? row.purchaseOrderCode ?? '',
+          sourceCode: row.salesOrderCode ?? row.preErpSalesCode ?? row.purchaseOrderCode ?? '',
+          preErp: Boolean(row.preErpSalesCode),
           note: row.note,
           receivedAt: localValue(new Date(row.receivedAt ?? row.createdAt)),
           reason: '',
         };
         lines = row.lines.map((line) => ({ productId: line.productId, quantity: String(Number(line.quantity)), note: line.note ?? '' }));
       } else {
-        form = { partnerId: '', category: 'SLOW_RETURN_IN', warehouseId: defaultWarehouse(customer ? 'SLOW_RETURN_IN' : null), sourceCode: '', note: '', receivedAt: localValue(new Date()), reason: '' };
+        form = { partnerId: '', category: 'SLOW_RETURN_IN', warehouseId: defaultWarehouse(customer ? 'SLOW_RETURN_IN' : null), sourceCode: '', preErp: false, note: '', receivedAt: localValue(new Date()), reason: '' };
         lines = [{ productId: '', quantity: '', note: '' }];
       }
       errors = {};
@@ -119,7 +120,7 @@
         note: form.note.trim(),
         lines: filled.map((line) => ({ productId: line.productId, quantity: line.quantity, ...(line.note.trim() ? { note: line.note.trim() } : {}) })),
         ...(customer
-          ? { category: form.category, receivedAt: `${form.receivedAt}:00+07:00`, ...(source ? { salesOrderCode: source } : {}) }
+          ? { category: form.category, receivedAt: `${form.receivedAt}:00+07:00`, ...(source ? { [form.preErp ? 'preErpSalesCode' : 'salesOrderCode']: source } : {}) }
           : source ? { purchaseOrderCode: source } : {}),
         ...(editing ? { version: editing.version ?? 0, reason: form.reason.trim() } : {}),
       };
@@ -135,7 +136,7 @@
         const details = Array.isArray(caught.payload.details) ? (caught.payload.details as Array<{ path?: unknown[] }>) : [];
         for (const issue of details) {
           const key = issue.path?.[0];
-          if (typeof key === 'string') errors[key === 'salesOrderCode' || key === 'purchaseOrderCode' ? 'sourceCode' : key] ??= caught.message;
+          if (typeof key === 'string') errors[key === 'salesOrderCode' || key === 'preErpSalesCode' || key === 'purchaseOrderCode' ? 'sourceCode' : key] ??= caught.message;
         }
       }
       error = caught instanceof Error ? caught.message : m.crud_loi_luu();
@@ -177,9 +178,13 @@
     </div>
     <div class="field">
       <label for="sr-source">{customer ? m.inv_so_phieu_bh_goc() : m.inv_so_don_mua_goc()}</label>
-      <input id="sr-source" value={form.sourceCode} maxlength="40" autocomplete="off" placeholder={customer ? 'BH2026100001' : 'PO2610-00001'} aria-invalid={Boolean(errors.sourceCode)}
+      <input id="sr-source" value={form.sourceCode} maxlength="40" autocomplete="off" placeholder={customer ? 'BH2026100001' : 'PO2026100001'} aria-invalid={Boolean(errors.sourceCode)}
         oninput={(event) => (form.sourceCode = event.currentTarget.value.toUpperCase())} />
-      {#if errors.sourceCode}<span class="error">{errors.sourceCode}</span>{:else}<span class="hint">{customer ? m.inv_so_phieu_bh_goi_y() : m.inv_so_don_mua_goi_y()}</span>{/if}
+      {#if customer}
+        <!-- INV-RET-PREERP-01: phiếu BH lập trước khi có ERP — chỉ ghi số, không kiểm tra theo phiếu gốc. -->
+        <label class="pre-erp"><input id="sr-pre-erp" type="checkbox" bind:checked={form.preErp} />{m.inv_bh_truoc_erp()}</label>
+      {/if}
+      {#if errors.sourceCode}<span class="error">{errors.sourceCode}</span>{:else}<span class="hint">{customer ? (form.preErp ? m.inv_bh_truoc_erp_goi_y() : m.inv_so_phieu_bh_goi_y()) : m.inv_so_don_mua_goi_y()}</span>{/if}
     </div>
     <div class="field span">
       <label for="sr-note">{m.ghi_chu()} <span class="req">*</span></label>
@@ -242,5 +247,7 @@
   .qty-box { display: flex; align-items: center; gap: 6px; }
   .note { margin: 0; color: var(--muted); font-size: 12.5px; }
   .hint-sample { color: var(--navy-2); }
+  .pre-erp { display: flex; align-items: center; gap: 8px; margin-top: 2px; color: var(--text); font-size: 13px; font-weight: 400; cursor: pointer; }
+  .pre-erp input { width: 16px; height: 16px; accent-color: var(--navy); }
   @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 </style>

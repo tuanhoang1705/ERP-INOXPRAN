@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { effectivePermissions } from './permissions';
-import { canDeliverOrder, canShipOrder, isKeeperOnly, type StepActor } from './sales-steps';
+import { canDeliverOrder, canShipOrder, isKeeperOnly, salesEditStage, type StepActor } from './sales-steps';
 
 const actor = (sub: string, roles: string[], overrides: Record<string, boolean> = {}, root = false): StepActor => ({
   sub, roles, root, permissions: effectivePermissions({ roles, root, permissionOverrides: overrides }),
@@ -38,5 +38,20 @@ describe('5 bước phiếu BH — luật theo người (SAL-STEP-01)', () => {
     expect(isKeeperOnly(actor('k2', ['WAREHOUSE'], { 'sales.step.confirm': true }))).toBe(false);
     expect(isKeeperOnly(actor('k2', ['WAREHOUSE'], { 'sales.step.deliver': true }))).toBe(true);
     expect(isKeeperOnly(sales)).toBe(false);
+  });
+});
+
+describe('giai đoạn sửa phiếu BH (SAL-UNDO-01 / SAL-EDIT-GRANT-01, 06/11/2026)', () => {
+  it('nháp sửa thường; đã phát hành chưa đối chiếu → hoàn tác; đã đối chiếu trở đi → sửa phiếu', () => {
+    expect(salesEditStage({ status: 'DRAFT' })).toBe('DRAFT');
+    expect(salesEditStage({ status: 'PENDING_APPROVAL', confirmationStatus: 'PENDING' })).toBe('UNDO');
+    expect(salesEditStage({ status: 'RESERVED', confirmationStatus: 'PENDING' })).toBe('UNDO');
+    expect(salesEditStage({ status: 'RESERVED', confirmationStatus: 'CONFIRMED' })).toBe('EDIT');
+    // Phiếu mẫu / tặng không qua bước đối chiếu → sửa phiếu ngay sau phát hành.
+    expect(salesEditStage({ status: 'RESERVED', confirmationStatus: 'NOT_REQUIRED', purpose: 'SAMPLE' })).toBe('EDIT');
+    expect(salesEditStage({ status: 'SHIPPED', confirmationStatus: 'CONFIRMED' })).toBe('EDIT');
+    expect(salesEditStage({ status: 'DELIVERED', confirmationStatus: 'CONFIRMED' })).toBe('EDIT');
+    expect(salesEditStage({ status: 'CANCELLED' })).toBe('NONE');
+    expect(salesEditStage({ status: 'DELIVERED', purpose: 'WARRANTY' })).toBe('NONE');
   });
 });

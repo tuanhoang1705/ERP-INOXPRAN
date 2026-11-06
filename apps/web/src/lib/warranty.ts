@@ -73,6 +73,10 @@ export const channelText = (channel: WarrantyChannel, o: Options = {}): string =
 export const toneText = (tone: SlaTone): string =>
   ({ overdue: m.wr_tone_overdue(), warning: m.wr_tone_warning(), normal: m.wr_tone_normal(), closed: m.wr_tone_closed() })[tone];
 
+/** Tên giai đoạn sửa phiếu (WAR-EDIT-01). */
+export const stageText = (stage: string): string =>
+  ({ INTAKE: m.wr_stage_intake(), DIAGNOSE: m.wr_stage_diagnose(), REPAIR: m.wr_stage_repair(), TEST: m.wr_stage_test(), RETURN: m.wr_stage_return() } as Record<string, string>)[stage] ?? stage;
+
 export const actionText = (action: string): string =>
   ({
     RECEIVE: m.wr_act_receive(),
@@ -87,6 +91,11 @@ export const actionText = (action: string): string =>
     RESCHEDULE: m.wr_act_reschedule(),
     RETURN: m.wr_act_return(),
     EXCHANGE_ORDER: m.bhx_act_lap_phieu(),
+    EDIT_REQUEST: m.wr_act_edit_request(),
+    EDIT_GRANTED: m.wr_act_edit_granted(),
+    EDIT_REJECTED: m.wr_act_edit_rejected(),
+    EDIT_WITHDRAWN: m.wr_act_edit_withdrawn(),
+    EDIT_STAGE: m.wr_act_edit_stage(),
     CANCEL: m.wr_act_cancel(),
   })[action] ?? action;
 
@@ -104,6 +113,11 @@ export function slaText(sla: SlaView): string {
   if (sla.tone === 'closed') return sla.lateDays > 0 ? m.wr_late_on_return({ days: sla.lateDays }) : m.wr_on_time();
   if (sla.tone === 'overdue') return m.wr_days_late({ days: sla.lateDays });
   return m.wr_days_left({ days: sla.daysLeft });
+}
+
+/** Sản phẩm cho ô gõ-tìm ở form bảo hành (05/11/2026): mã hàng làm "mã", gõ mã hoặc tên (có dấu hay không) đều ra. */
+export function productPickOptions(products: ReadonlyArray<{ id: string; sku: string; name: string }>): Array<{ id: string; code: string; name: string }> {
+  return products.map((product) => ({ id: product.id, code: product.sku, name: product.name }));
 }
 
 /** Vai trò được tiếp nhận / cập nhật phiếu (khớp WARRANTY_STAFF_ROLES của API; ADMIN luôn được). */

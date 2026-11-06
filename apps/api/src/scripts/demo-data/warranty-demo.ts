@@ -360,11 +360,11 @@ export async function seedWarrantyDemo(db: Db, now: Date, counters: Map<string, 
     for (const item of ticket.lines as Document[]) item.receivedDate = receivedDate;
     ticket.version = (ticket.history as Document[]).length;
     ticket.updatedAt = (ticket.history as Document[]).at(-1)?.at ?? receivedAt;
-    const period = `${receivedDate.slice(2, 4)}${receivedDate.slice(5, 7)}`;
-    const counterKey = `SC:${period}`;
+    // Số SC như phiếu BH (NUM-01): SC + năm + tháng + 4 số đếm tiếp cả năm.
+    const counterKey = `SC:Y${receivedDate.slice(0, 4)}`;
     const sequence = (counters.get(counterKey) ?? 0) + 1;
     counters.set(counterKey, sequence);
-    ticket.code = `SC20${period}${String(sequence).padStart(4, '0')}`;
+    ticket.code = `SC${receivedDate.slice(0, 4)}${receivedDate.slice(5, 7)}${String(sequence).padStart(4, '0')}`;
     if (spec.status === 'RETURNED' && ticket.coverage === 'IN_WARRANTY' && priorKey) {
       priorByProduct.set(priorKey, { count: prior.count + 1, extensionDays: prior.extensionDays + Number(ticket.serviceDays ?? 0) });
     }

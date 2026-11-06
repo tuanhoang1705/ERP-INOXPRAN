@@ -2,6 +2,7 @@ import { SalesChangeRequestsController } from './sales-change-requests.controlle
 import { SalesChangeRequestsService } from './sales-change-requests.service';
 import { Module } from '@nestjs/common';
 import { InventoryModule } from '../inventory/inventory.module';
+import { ReceivablesModule } from '../receivables/receivables.module';
 import { PriceOverridesController } from './price-overrides.controller';
 import { PriceOverridesService } from './price-overrides.service';
 import { PricingService } from './pricing.service';
@@ -11,7 +12,7 @@ import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
 
 @Module({
-  imports: [InventoryModule],
+  imports: [InventoryModule, ReceivablesModule],
   controllers: [SalesController, PriceOverridesController, SalesChangeRequestsController, CustomerPricesController],
   providers: [PricingService, SalesService, PriceOverridesService, SalesChangeRequestsService, CustomerPricesService],
   exports: [SalesService],

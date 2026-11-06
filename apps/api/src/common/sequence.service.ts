@@ -9,14 +9,19 @@ interface CounterDocument {
   createdAt: Date;
 }
 
+/**
+ * Số chứng từ theo cách đánh số phiếu BH (NUM-01): tiền tố + năm + tháng của ngày chứng từ + 4 số đếm tiếp cả năm
+ * (PAY2026110301, NK2026110061). Năm sau đánh lại từ 0001; quá 9999 trong năm thì thành 5 số.
+ */
+export function documentCode(prefix: string, at: Date, sequence: number): string {
+  const { year, month } = vnParts(at);
+  return `${prefix}${year}${String(month).padStart(2, '0')}${String(sequence).padStart(4, '0')}`;
+}
+
 @Injectable()
 export class SequenceService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
-  /**
-   * Số chứng từ theo tháng. style 'dash': DH2610-0001; style 'compact': BH2026100001 / SWK2026090103
-   * (đúng định dạng phiếu xuất kho bán hàng của INOXPRAN).
-   */
   /** Đẩy bộ đếm của tháng lên ít nhất `value` (số đã dùng lớn nhất) để số tự sinh kế tiếp nối tiếp sau đó. */
   async ensureAtLeast(prefix: string, at: Date, value: number, session?: ClientSession): Promise<void> {
     if (value <= 0) return;
@@ -53,17 +58,24 @@ export class SequenceService {
     return floors.length ? Math.min(...floors) : null;
   }
 
-  async next(prefix: string, session?: ClientSession, width = 5, at = new Date(), style: 'dash' | 'compact' = 'dash'): Promise<string> {
-    const now = new Date();
-    const { year, month } = vnParts(at);
-    const period = `${String(year).slice(-2)}${String(month).padStart(2, '0')}`;
-    const key = `${prefix}:${period}`;
+  /**
+   * Số tự sinh kế tiếp của mọi chứng từ ngoài phiếu BH (06/11/2026, người dùng: "tất cả các phiếu theo cách tính số phiếu
+   * giống phiếu BH"): tiền tố + năm + tháng của `at` (ngày chứng từ) + 4 số đếm tiếp cả năm, bộ đếm `PREFIX:Y2026`.
+   * Trước đây mỗi tháng đánh lại (NK2026110001, PAY2611-00012) → năm đang dở thì đếm tiếp sau số lớn nhất đã cấp trong năm
+   * (bộ đếm tháng cũ), như phiếu BH khi đổi cách đếm: BH2026100160 → BH2026110161. Số đã cấp giữ nguyên.
+   * Ghi trong giao dịch → hai người lập cùng lúc xung đột ghi và được chạy lại, không trùng số.
+   */
+  async next(prefix: string, session?: ClientSession, at = new Date()): Promise<string> {
+    const { year } = vnParts(at);
+    const monthly = await this.db.collection<CounterDocument>('counters')
+      .find({ _id: { $regex: `^${prefix}:${String(year).slice(-2)}(0[1-9]|1[0-2])$` } }, { projection: { value: 1 }, ...(session ? { session } : {}) })
+      .toArray();
+    const base = Math.max(0, ...monthly.map((row) => Number(row.value) || 0));
     const counter = await this.db.collection<CounterDocument>('counters').findOneAndUpdate(
-      { _id: key },
-      { $inc: { value: 1 }, $setOnInsert: { createdAt: now } },
+      { _id: `${prefix}:Y${year}` },
+      [{ $set: { value: { $add: [{ $max: [{ $ifNull: ['$value', 0] }, base] }, 1] }, createdAt: { $ifNull: ['$createdAt', '$$NOW'] } } }],
       { upsert: true, returnDocument: 'after', ...(session ? { session } : {}) },
     );
-    const sequence = String(counter?.value ?? 1).padStart(width, '0');
-    return style === 'compact' ? `${prefix}${year}${String(month).padStart(2, '0')}${sequence}` : `${prefix}${period}-${sequence}`;
+    return documentCode(prefix, at, Number(counter?.value ?? base + 1));
   }
 }

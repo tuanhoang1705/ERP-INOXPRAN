@@ -33,6 +33,7 @@ import { OutboxService } from '../../common/outbox.service';
 import { pageOf, type PageRequest } from '../../common/paging';
 import type { AuthenticatedRequest, RequestUser } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
+import { resolveStaff } from '../../common/staff';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { OPEN_RECEIVABLE_STATUSES, releaseHoldIfCleared } from '../receivables/overdue-review';
 import { ReallocationError } from '../receivables/reallocate';
@@ -58,7 +59,16 @@ type Prepared = {
   salesOrder: Document | null;
   category: InventoryCategory;
   sourceCode: string | undefined;
+  /** Số phiếu BH trước khi có ERP (INV-RET-PREERP-01): chỉ ghi lại, không kiểm tra theo phiếu gốc. */
+  preErpCode: string | undefined;
 };
+
+/** Phiếu gốc hiển thị / so sánh khi sửa: phiếu BH trên ERP, phiếu BH trước ERP, hoặc đơn mua (trả nhà máy). */
+function sourceText(row: Document): string {
+  if (row.salesOrderCode) return String(row.salesOrderCode);
+  if (row.preErpSalesCode) return `${String(row.preErpSalesCode)} (trước ERP)`;
+  return String(row.purchaseOrderCode ?? '');
+}
 
 /** Thuế suất của một dòng phiếu BH: thuế dòng (27/10/2026), phiếu cũ theo thuế suất phiếu; thiếu = 0. */
 function lineRateOf(line: Document, order: Document): string {
@@ -491,7 +501,8 @@ export class StockReturnsService {
    */
   async createSample(input: CreateSampleReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(`sample-return:${request.user.sub}`, idempotencyKey, input, async (session) => {
-      const borrower = await this.db.collection('employees').findOne({ _id: toObjectId(input.borrowerId, 'borrowerId') }, { session });
+      // Người mượn: NVKD hoặc tài khoản không phải Admin (STAFF-PICK-01).
+      const borrower = await resolveStaff(this.db, { salesRepId: input.borrowerId, staffUserId: input.borrowerUserId }, session);
       if (!borrower) throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Không tìm thấy nhân viên mượn hàng', details: [{ path: ['borrowerId'] }] });
       const warehouse = await this.db.collection('warehouses').findOne({ _id: toObjectId(input.warehouseId, 'warehouseId'), active: true }, { session });
       if (!warehouse) throw new NotFoundException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không tìm thấy kho hoạt động', details: [{ path: ['warehouseId'] }] });
@@ -523,8 +534,8 @@ export class StockReturnsService {
         category: 'SAMPLE_IN' as InventoryCategory,
         noSlip: true,
         partnerName,
-        salesRepId: borrower._id,
-        borrowerName: String(borrower.name),
+        ...(borrower.kind === 'EMPLOYEE' ? { salesRepId: borrower.id } : { staffUserId: borrower.id }),
+        borrowerName: borrower.name,
         warehouseId: warehouse._id,
         warehouseName: String(warehouse.name),
         note: input.note,
@@ -617,6 +628,21 @@ export class StockReturnsService {
     const productById = await this.products(merged, session);
 
     const sourceCode = customer ? input.salesOrderCode : input.purchaseOrderCode;
+    // INV-RET-PREERP-01 (06/11/2026): phiếu BH lập trước khi có ERP — không có trên hệ thống nên không kiểm tra theo phiếu gốc.
+    const preErpCode = customer ? input.preErpSalesCode || undefined : undefined;
+    if (preErpCode) {
+      if (sourceCode) {
+        throw new BadRequestException({ code: 'RETURN_SOURCE_BOTH', message: 'Chọn một: phiếu BH trên ERP hoặc phiếu BH trước khi có ERP', details: [{ path: ['salesOrderCode'] }] });
+      }
+      const onErp = await this.db.collection('sales_orders').findOne({ code: preErpCode }, { session, projection: { _id: 1 } });
+      if (onErp) {
+        throw new BadRequestException({
+          code: 'RETURN_PRE_ERP_EXISTS',
+          message: `Phiếu ${preErpCode} có trên ERP — bỏ tích "trước khi có ERP" để kiểm tra theo phiếu`,
+          details: [{ path: ['salesOrderCode'] }],
+        });
+      }
+    }
     let salesOrder: Document | null = null;
     if (sourceCode) {
       const source = customer
@@ -649,7 +675,7 @@ export class StockReturnsService {
       }
     }
     const category: InventoryCategory = customer ? input.category : 'FACTORY_RETURN_OUT';
-    return { customer, partner, warehouse, merged, productById, salesOrder, category, sourceCode };
+    return { customer, partner, warehouse, merged, productById, salesOrder, category, sourceCode, preErpCode };
   }
 
   /** Ghi thẻ kho của phiếu theo nội dung hiện tại (nhập kho với khách trả, xuất kho với trả nhà máy). */
@@ -665,7 +691,11 @@ export class StockReturnsService {
         lines: this.stockLines(ready.merged),
         reason: note,
         actorId,
-        extra: { partnerId: ready.partner._id, ...(ready.customer && ready.sourceCode ? { salesOrderCode: ready.sourceCode } : {}) },
+        extra: {
+          partnerId: ready.partner._id,
+          ...(ready.customer && ready.sourceCode ? { salesOrderCode: ready.sourceCode } : {}),
+          ...(ready.preErpCode ? { preErpSalesCode: ready.preErpCode } : {}),
+        },
         ...(occurredAt ? { occurredAt } : {}),
       },
       session,
@@ -688,8 +718,8 @@ export class StockReturnsService {
       const now = new Date();
       const receivedAt = input.kind === 'CUSTOMER' ? this.receivedAtOf(input.receivedAt, now) : undefined;
       const ready = await this.prepare(input, session);
-      // Khách trả hàng: số NK theo tháng nhận hàng (NK-01); trả nhà máy: XT.
-      const code = ready.customer ? await nextReturnInCode(this.db, this.sequences, session, receivedAt ?? now) : await this.sequences.next('XT', session, 4, now, 'compact');
+      // Khách trả hàng: số NK theo tháng nhận hàng (NK-01); trả nhà máy: XT. Cả hai đếm tiếp cả năm như phiếu BH (NUM-01).
+      const code = ready.customer ? await nextReturnInCode(this.db, this.sequences, session, receivedAt ?? now) : await this.sequences.next('XT', session, now);
       await this.post(code, ready, input.note, receivedAt, request.user.sub, session);
       const { value, needsAccounting } = this.money(ready);
       const document = {
@@ -704,6 +734,7 @@ export class StockReturnsService {
         warehouseName: String(ready.warehouse.name),
         ...(ready.customer && ready.sourceCode ? { salesOrderCode: ready.sourceCode } : {}),
         ...(!ready.customer && ready.sourceCode ? { purchaseOrderCode: ready.sourceCode } : {}),
+        ...(ready.preErpCode ? { preErpSalesCode: ready.preErpCode } : {}),
         note: input.note,
         ...(receivedAt ? { receivedAt } : {}),
         postedAt: receivedAt ?? now,
@@ -720,7 +751,7 @@ export class StockReturnsService {
       if (needsAccounting) {
         await this.notifyAccountant(document, 'CUSTOMER_RETURN_POSTED', {
           title: `Khách trả hàng ${code} — cần điều chỉnh công nợ`,
-          message: `${String(ready.partner.name)} trả hàng${ready.sourceCode ? ` theo ${ready.sourceCode}` : ''}${value ? `, giá trị ${Number(value.total).toLocaleString('vi-VN')} đ` : ''}.`,
+          message: `${String(ready.partner.name)} trả hàng${ready.sourceCode ? ` theo ${ready.sourceCode}` : ready.preErpCode ? ` theo ${ready.preErpCode} (trước ERP)` : ''}${value ? `, giá trị ${Number(value.total).toLocaleString('vi-VN')} đ` : ''}.`,
           params: { code, customer: String(ready.partner.name), order: (ready.customer && ready.sourceCode) || '', amount: value?.total ?? '', category: ready.category },
         }, session);
       }
@@ -851,7 +882,7 @@ export class StockReturnsService {
     add('partner', `${String(row.partnerCode ?? '')} ${String(row.partnerName ?? '')}`.trim(), `${String(next.partnerCode)} ${String(next.partnerName)}`);
     add('category', String(row.category), String(next.category));
     add('warehouse', String(row.warehouseName), String(next.warehouseName));
-    add('source', String(row.salesOrderCode ?? row.purchaseOrderCode ?? ''), String(next.salesOrderCode ?? next.purchaseOrderCode ?? ''));
+    add('source', sourceText(row), sourceText(next));
     const before = (row.receivedAt as Date | undefined) ?? (row.postedAt as Date | undefined) ?? (row.createdAt as Date | undefined);
     if (next.receivedAt && (!before || minute(before) !== minute(next.receivedAt as Date))) {
       changes.push({ field: 'receivedAt', from: before ? before.toISOString() : '', to: (next.receivedAt as Date).toISOString() });
@@ -884,6 +915,7 @@ export class StockReturnsService {
         warehouseId: ready.warehouse._id,
         warehouseName: String(ready.warehouse.name),
         [ready.customer ? 'salesOrderCode' : 'purchaseOrderCode']: ready.sourceCode,
+        ...(ready.customer ? { preErpSalesCode: ready.preErpCode } : {}),
         note: input.note,
         receivedAt,
         lines: this.documentLines(ready.merged, ready.productById),

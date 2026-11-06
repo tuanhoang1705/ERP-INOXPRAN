@@ -3,8 +3,8 @@ import { VAT_RATES } from './shared/sales-math.js';
 import { DEFAULT_SALES_ISSUE_TEMPLATE, SALES_ISSUE_TEMPLATES, SALES_ORDER_CODE_PATTERN, salesOrderCodeProblem } from './shared/sales-templates.js';
 import { FORM_SALES_PURPOSES, isLoanPurpose, isNonSalePurpose, LOAN_CLOSE_OUTCOMES, LOAN_STATUSES, SALES_PURPOSES, SALES_SLIP_TYPES } from './shared/sales-purpose.js';
 import { isZeroPriceLine, ZERO_PRICE_KINDS, type ZeroPriceKind } from './shared/sales-line-kind.js';
-import { isDateOnly, WARRANTY_CHANNELS, WARRANTY_EXCLUSIONS, WARRANTY_PLANS } from './shared/warranty.js';
-import type { WarrantyChannel, WarrantyCoverage, WarrantyExclusion, WarrantyPhotoKind, WarrantyPlan, WarrantyResolution, WarrantyStatus } from './shared/warranty.js';
+import { isDateOnly, WARRANTY_CHANNELS, WARRANTY_EDIT_STAGES, WARRANTY_EXCLUSIONS, WARRANTY_PLANS } from './shared/warranty.js';
+import type { WarrantyChannel, WarrantyCoverage, WarrantyEditRequestStatus, WarrantyEditStage, WarrantyExclusion, WarrantyPhotoKind, WarrantyPlan, WarrantyResolution, WarrantyStatus } from './shared/warranty.js';
 import { USER_ROLES } from './shared/user-admin.js';
 import { CURRENCIES } from './shared/currency.js';
 import { ALLOCATION_METHODS, IMPORT_COST_TYPES } from './shared/landed-cost.js';
@@ -22,6 +22,7 @@ export * from './shared/catalog-access.js';
 export * from './shared/user-admin.js';
 export * from './shared/permissions.js';
 export * from './shared/sales-steps.js';
+export * from './shared/payment-terms.js';
 export * from './shared/currency.js';
 export * from './shared/packing.js';
 export * from './shared/landed-cost.js';
@@ -455,13 +456,16 @@ const SalesOrderInputObject = z.object({
   customerId: IdSchema.optional(),
   warehouseId: IdSchema,
   channel: SalesChannelSchema.default('B2B'),
-  /** Phiếu bán: NVKD phụ trách. Phiếu hàng mẫu / kiểm định: người mượn hàng (bắt buộc). */
+  /** Phiếu bán: NVKD phụ trách. Phiếu hàng mẫu / kiểm định / tặng: người mượn / phụ trách là NVKD (hoặc `staffUserId`). */
   salesRepId: IdSchema.optional(),
+  /** Phiếu hàng mẫu / kiểm định / tặng: người mượn / phụ trách là tài khoản không phải NVKD, trừ Admin (STAFF-PICK-01). */
+  staffUserId: IdSchema.optional(),
   /** Phiếu hàng mẫu / kiểm định: gửi tới đâu (tên đại lý / NPP, trung tâm kiểm định). */
   destination: z.string().trim().max(200).optional(),
   /** Phiếu hàng mẫu / kiểm định: ngày hẹn mang hàng về. */
   expectedReturnDate: z.string().date().optional(),
   orderDate: z.string().date().optional(),
+  /** Chỉ nhận SALES_PAYMENT_TERM_OPTIONS, hạn mặc định của khách, hoặc hạn đang lưu trên phiếu (máy chủ kiểm — SEC-UI-01). */
   paymentTermDays: z.number().int().min(0).max(365).optional(),
   /** Đơn thanh toán ngay (hạn 0 ngày): hình thức thu — giao xong hệ thống tự ghi phiếu thu (AR-PAYNOW-01, 31/10/2026). */
   payNowMethod: PayNowMethodSchema.optional(),
@@ -482,9 +486,11 @@ const SalesOrderInputObject = z.object({
 function checkSalesPurpose(input: z.infer<typeof SalesOrderInputObject>, ctx: z.RefinementCtx) {
   if (!isNonSalePurpose(input.purpose)) {
     if (!input.customerId) ctx.addIssue({ code: 'custom', path: ['customerId'], message: 'Chọn khách hàng' });
+    if (input.staffUserId) ctx.addIssue({ code: 'custom', path: ['staffUserId'], message: 'Phiếu bán chọn NVKD trong danh mục nhân viên kinh doanh' });
     return;
   }
-  if (!input.salesRepId) ctx.addIssue({ code: 'custom', path: ['salesRepId'], message: input.purpose === 'GIFT' ? 'Chọn nhân viên phụ trách' : 'Chọn nhân viên mượn hàng' });
+  if (!input.salesRepId && !input.staffUserId) ctx.addIssue({ code: 'custom', path: ['salesRepId'], message: input.purpose === 'GIFT' ? 'Chọn nhân viên phụ trách' : 'Chọn nhân viên mượn hàng' });
+  if (input.salesRepId && input.staffUserId) ctx.addIssue({ code: 'custom', path: ['staffUserId'], message: 'Chỉ chọn một người mượn / phụ trách' });
   if (input.customerId) ctx.addIssue({ code: 'custom', path: ['customerId'], message: 'Phiếu hàng mẫu / kiểm định / xuất tặng không gắn khách hàng' });
   if (input.priceOverrideRequestId || input.lines.some((line) => line.overrideUnitPrice !== undefined || isZeroPriceLine(line))) {
     ctx.addIssue({ code: 'custom', path: ['lines'], message: 'Phiếu hàng mẫu / kiểm định / xuất tặng không có giá sửa tay hay dòng hàng tặng (đơn giá luôn 0)' });
@@ -532,9 +538,14 @@ export type DiscardSalesOrder = z.infer<typeof DiscardSalesOrderSchema>;
  * gửi đề nghị kèm lý do; người có quyền `sales.change_approve` (mặc định Admin) duyệt thì hệ thống mới thực hiện.
  * EDIT: phiếu đã phát hành (kèm nội dung sửa); VOID: phiếu đã xuất / đã giao; CANCEL: phiếu đã phát hành chưa xuất; DELETE: phiếu nháp.
  */
-export const SALES_CHANGE_KINDS = ['EDIT', 'VOID', 'CANCEL', 'DELETE'] as const;
+/**
+ * EDIT_GRANT (SAL-EDIT-GRANT-01, 06/11/2026): **xin phép sửa** phiếu đã đối chiếu trở đi — chỉ ghi lý do; được duyệt (GRANTED) thì
+ * người xin sửa toàn bộ phiếu một lần trong SALES_EDIT_GRANT_HOURS giờ (APPLIED, lưu trước → sau); quá hạn = EXPIRED.
+ * EDIT (sửa xong mới xin duyệt) không tạo mới được nữa — đề nghị cũ còn chờ vẫn duyệt được.
+ */
+export const SALES_CHANGE_KINDS = ['EDIT', 'EDIT_GRANT', 'VOID', 'CANCEL', 'DELETE'] as const;
 export type SalesChangeKind = (typeof SALES_CHANGE_KINDS)[number];
-export const SALES_CHANGE_STATUSES = ['PENDING', 'APPLIED', 'REJECTED', 'WITHDRAWN', 'FAILED'] as const;
+export const SALES_CHANGE_STATUSES = ['PENDING', 'GRANTED', 'APPLIED', 'REJECTED', 'WITHDRAWN', 'FAILED', 'EXPIRED'] as const;
 export type SalesChangeStatus = (typeof SALES_CHANGE_STATUSES)[number];
 export const CreateSalesChangeRequestSchema = z.object({
   kind: z.enum(SALES_CHANGE_KINDS),
@@ -565,7 +576,24 @@ export interface SalesChangeRequestView {
   decidedAt?: string;
   decisionNote?: string;
   error?: string;
+  /** EDIT_GRANT đã được duyệt: hạn dùng quyền sửa. */
+  expiresAt?: string;
+  /** EDIT_GRANT đã dùng: lúc sửa và nội dung trước → sau (để người duyệt xem lại đã sửa gì). */
+  appliedAt?: string;
+  result?: { before: SalesChangePreview; after: SalesChangePreview };
 }
+/** Tóm tắt phiếu (khách, tổng, dòng hàng) dùng để so trước → sau. */
+export interface SalesChangePreview {
+  customerName: string;
+  grandTotal: string;
+  lines: Array<{ sku: string; productName: string; unit: string; quantity: string; gift: boolean; zeroPriceKind?: string; unitPrice: string; lineTotal: string }>;
+}
+/** Hoàn tác phiếu đã phát hành, chưa đối chiếu với khách (SAL-UNDO-01): về bước Lập phiếu, nhả hàng giữ; bắt buộc lý do. */
+export const UndoIssueSchema = z.object({
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(500),
+});
+export type UndoIssue = z.infer<typeof UndoIssueSchema>;
 /** Xin quyền sửa đơn giá cho phiếu BH đang lập (người duyệt sửa giá duyệt từ xa; người có sẵn quyền duyệt thì tự cấp). */
 export const PRICE_OVERRIDE_APPROVER_ROLES = ['ADMIN', 'DIRECTOR'] as const;
 export const PriceOverrideRequestSchema = z.object({
@@ -716,7 +744,8 @@ export interface SalesQuoteLine {
 }
 
 /** Không có khách = bảng của phiếu hàng mẫu / kiểm định: chỉ tồn khả dụng, đơn giá 0. */
-export const SalesPriceSheetRequestSchema = z.object({ customerId: IdSchema.optional(), warehouseId: IdSchema });
+/** `orderId`: đang sửa phiếu đã phát hành — giá theo thời điểm phát hành, giữ mã / khách đã ngừng của phiếu (SAL-EDIT-GRANT-01). */
+export const SalesPriceSheetRequestSchema = z.object({ customerId: IdSchema.optional(), warehouseId: IdSchema, orderId: IdSchema.optional() });
 
 /** Cơ sở tính giá của một mã hàng cho một khách: form dùng để tính tiền tức thời bằng priceLine(). */
 export interface SalesPriceSheetItem {
@@ -824,6 +853,8 @@ export const SalesOrderSchema = z.object({
   warehouseId: IdSchema,
   channel: SalesChannelSchema.optional(),
   salesRepId: IdSchema.optional(),
+  /** Người mượn / phụ trách là tài khoản không phải NVKD (STAFF-PICK-01) — tên ở `salesRepName`. */
+  staffUserId: IdSchema.optional(),
   salesRepName: z.string().optional(),
   destination: z.string().optional(),
   expectedReturnDate: z.string().date().optional(),
@@ -1258,7 +1289,8 @@ export const InventoryBalanceSchema = z.object({
   available: DecimalStringSchema,
   minimumStock: DecimalStringSchema,
   belowMinimum: z.boolean(),
-  updatedAt: z.string().datetime(),
+  /** null: mã chưa từng có tồn ở kho đang xem (kho hàng lỗi liệt kê mọi mã — INV-DEF-LIST-01, 06/11/2026). */
+  updatedAt: z.string().datetime().nullable(),
 });
 export type InventoryBalance = z.infer<typeof InventoryBalanceSchema>;
 
@@ -1298,6 +1330,8 @@ export const NOTIFICATION_TEMPLATES = [
   'WARRANTY_OVERDUE',
   'WARRANTY_STOCK_MOVED',
   'WARRANTY_SERVICE_BILLED',
+  'WARRANTY_EDIT_REQUESTED',
+  'WARRANTY_EDIT_DECIDED',
   'CRM_FOLLOW_UP_DUE',
   'CUSTOMER_RETURN_POSTED',
   /** Phiếu khách trả đã sửa / hủy sau khi lập (20/10/2026) — kế toán kiểm tra lại điều chỉnh công nợ. */
@@ -1352,6 +1386,7 @@ export const DashboardSummarySchema = z.object({
   lowStockSkuCount: z.number().int().nonnegative(),
   overdueReceivables: MoneySchema,
   dealersOverdue30: z.number().int().nonnegative(),
+  /** Doanh số 6 tháng gồm VAT (DB-REV-04, 05/11/2026 — trước đó chưa VAT). */
   monthlyRevenue: z.array(
     z.object({ month: z.string(), label: z.string(), revenue: MoneySchema, current: z.boolean() }),
   ),
@@ -1519,7 +1554,16 @@ function refineWarrantyInvoice(
  * Sản phẩm, hóa đơn, ngày tiếp nhận (quyết định diện bảo hành) chỉ sửa được trước khi chẩn đoán. Ngày hẹn trả: dùng "Dời hẹn".
  */
 export const UpdateWarrantyIntakeSchema = z
-  .object({ ...WarrantyIntakeFields, version: z.number().int().positive(), reason: z.string().trim().min(3).max(300) })
+  .object({
+    ...WarrantyIntakeFields,
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(3).max(300),
+    /**
+     * Sửa giai đoạn Tiếp nhận theo yêu cầu đã được duyệt (WAR-EDIT-01, 06/11/2026): mở khóa phiếu đã trả khách và các trường quyết
+     * định diện bảo hành sau khi đã chẩn đoán. Người duyệt (Quản lý kho / Admin) sửa thẳng, không cần.
+     */
+    requestId: IdSchema.optional(),
+  })
   .superRefine(refineWarrantyInvoice);
 export type UpdateWarrantyIntake = z.infer<typeof UpdateWarrantyIntakeSchema>;
 
@@ -1554,6 +1598,46 @@ export type CreateWarrantyTicket = z.infer<typeof CreateWarrantyTicketSchema>;
 
 const ActionBase = { version: z.number().int().positive(), note: OptionalText(500) };
 
+/**
+ * Người mượn / phụ trách chọn được (STAFF-PICK-01, 04/11/2026) — phiếu xuất hàng mẫu / kiểm định / tặng, phiếu đổi bảo hành,
+ * nhập lại hàng mẫu không phiếu: NVKD (danh mục nhân viên kinh doanh) hoặc tài khoản đang hoạt động không phải Admin.
+ * Tài khoản đã gắn hồ sơ NVKD chỉ hiện một lần, theo NVKD.
+ */
+export interface StaffOption {
+  kind: 'EMPLOYEE' | 'USER';
+  id: string;
+  name: string;
+  /** NVKD: mã nhân viên. */
+  code?: string;
+  /** Tài khoản: chức danh (nếu có). */
+  title?: string;
+  /** NVKD: SALES / SALES_MANAGER; tài khoản: vai trò. */
+  roles: string[];
+}
+/** Chọn một trong hai: NVKD (`salesRepId`) hoặc tài khoản (`staffUserId`). */
+export const StaffPickFields = { salesRepId: IdSchema.optional(), staffUserId: IdSchema.optional() };
+/** Lập phiếu BH & SWK đổi bảo hành cho phiếu đã trả trước 02/11/2026 — người phụ trách như khi trả khách. */
+export const WarrantyExchangeOrderSchema = z.object({ version: z.number().int().positive(), ...StaffPickFields });
+export type WarrantyExchangeOrder = z.infer<typeof WarrantyExchangeOrderSchema>;
+
+/** Gợi ý ô "Phiếu trả hàng đã nhập hàng lỗi" khi trả khách đổi mới / hoàn tiền (05/11/2026): phiếu khách trả có mã sản phẩm của phiếu bảo hành. */
+export interface WarrantyReturnSlipOption {
+  code: string;
+  /** Mã cũ TH… (phiếu lập trước khi đổi sang số NK). */
+  legacyCode?: string;
+  partnerName: string;
+  /** Phiếu của chính khách trên phiếu bảo hành. */
+  samePartner: boolean;
+  category: string;
+  warehouseName: string;
+  /** Ngày nhận hàng (hoặc ngày ghi phiếu). */
+  date: string;
+  /** Số lượng mã sản phẩm của phiếu bảo hành trên phiếu trả. */
+  quantity: string;
+  /** Phiếu bảo hành khác đã gắn phiếu trả này. */
+  linkedTickets: string[];
+}
+
 /** Thao tác trên phiếu bảo hành; trạng thái nào cho phép thao tác nào: WARRANTY_ACTIONS_BY_STATUS. */
 export const WarrantyActionSchema = z.discriminatedUnion('type', [
   z.object({
@@ -1587,10 +1671,74 @@ export const WarrantyActionSchema = z.discriminatedUnion('type', [
     exchangeDelivered: z.boolean().optional(),
     /** Phiếu trả hàng (TH…) đã nhập sản phẩm lỗi này vào kho — chỉ để liên kết chứng từ; phiếu bảo hành không ghi kho hàng lỗi. */
     returnSlipCode: z.string().trim().toUpperCase().max(40).optional(),
+    /** Đổi mới, hệ thống xuất hàng đổi: người phụ trách phiếu BH đổi bảo hành (STAFF-PICK-01) — thiếu = NVKD của khách. */
+    ...StaffPickFields,
   }),
   z.object({ type: z.literal('CANCEL'), ...ActionBase, reason: z.string().trim().min(3).max(300) }),
 ]);
 export type WarrantyAction = z.infer<typeof WarrantyActionSchema>;
+
+/** Yêu cầu sửa phiếu bảo hành theo giai đoạn (WAR-EDIT-01, 06/11/2026). */
+export const WarrantyEditRequestSchema = z.object({
+  version: z.number().int().positive(),
+  stage: z.enum(WARRANTY_EDIT_STAGES),
+  reason: z.string().trim().min(5, 'Ghi lý do (ít nhất 5 ký tự)').max(300),
+});
+export type WarrantyEditRequestInput = z.infer<typeof WarrantyEditRequestSchema>;
+export const WarrantyEditDecisionSchema = z.object({
+  approved: z.boolean(),
+  note: OptionalText(300),
+}).superRefine((value, context) => {
+  if (!value.approved && (value.note ?? '').length < 5) context.addIssue({ code: 'custom', path: ['note'], message: 'Ghi lý do từ chối (ít nhất 5 ký tự)' });
+});
+export type WarrantyEditDecision = z.infer<typeof WarrantyEditDecisionSchema>;
+const StageEditBase = { version: z.number().int().positive(), reason: z.string().trim().min(3).max(300), requestId: IdSchema.optional() };
+/**
+ * Sửa dữ liệu một giai đoạn đã qua (WAR-EDIT-01). Tiếp nhận sửa qua PATCH /warranty/tickets/:id (UpdateWarrantyIntakeSchema + requestId).
+ * Hướng xử lý không đổi ở đây (đổi hướng kéo theo kho / phiếu đổi máy — hủy phiếu lập lại).
+ */
+export const WarrantyStageEditSchema = z.discriminatedUnion('stage', [
+  z.object({
+    stage: z.literal('DIAGNOSE'),
+    ...StageEditBase,
+    lines: z.array(WarrantyFaultLineSchema).min(1).max(5),
+    exclusion: z.enum(WARRANTY_EXCLUSIONS).exclude(['NO_INVOICE']).optional(),
+    quoteAmount: MoneySchema.optional(),
+  }),
+  z.object({
+    stage: z.literal('REPAIR'),
+    ...StageEditBase,
+    resolution: z.enum(['REPAIRED', 'PART_REPLACED']),
+    replacedParts: OptionalText(300),
+    cost: MoneySchema,
+    chargedTo: z.enum(['COMPANY', 'CUSTOMER']),
+    note: OptionalText(500),
+  }),
+  z.object({ stage: z.literal('TEST'), ...StageEditBase, functional: z.boolean(), safety: z.boolean(), performance: z.boolean(), note: OptionalText(500) }),
+  z.object({
+    stage: z.literal('RETURN'),
+    ...StageEditBase,
+    returnedDate: DateOnlySchema,
+    receiverName: z.string().trim().min(2).max(120),
+    refundAmount: MoneySchema.optional(),
+    returnSlipCode: z.string().trim().toUpperCase().max(40).optional(),
+  }),
+]);
+export type WarrantyStageEdit = z.infer<typeof WarrantyStageEditSchema>;
+export interface WarrantyEditRequestView {
+  id: string;
+  stage: WarrantyEditStage;
+  reason: string;
+  status: WarrantyEditRequestStatus;
+  requestedById: string;
+  requestedByName: string;
+  requestedAt: string;
+  decidedByName?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  expiresAt?: string;
+  appliedAt?: string;
+}
 
 export interface WarrantyHistoryEntry {
   at: string;
@@ -1708,6 +1856,10 @@ export interface WarrantyTicket {
   refund?: { amount: string };
   /** Ảnh khi nhận / phiếu đã ký (trả kèm khi xem chi tiết). */
   photos?: WarrantyPhoto[];
+  /** Yêu cầu sửa theo giai đoạn (WAR-EDIT-01): mới nhất trước. */
+  editRequests?: WarrantyEditRequestView[];
+  /** Số ngày xử lý (tiếp nhận → trả khách). */
+  serviceDays?: number;
   history: WarrantyHistoryEntry[];
   createdAt: string;
   updatedAt: string;
@@ -1979,6 +2131,11 @@ export const CreateCustomerReturnSchema = z.object({
   /** Phiếu bán gốc (BH…): có thì kiểm tra mã hàng thuộc phiếu và không trả quá số đã xuất. */
   salesOrderCode: z.string().trim().toUpperCase().max(40).optional(),
   /**
+   * Số phiếu BH lập trước khi có ERP (INV-RET-PREERP-01, 06/11/2026): không có trên hệ thống nên không kiểm tra mã hàng / số lượng
+   * theo phiếu gốc; kế toán nhập giá trị khi xử lý. Không gửi cùng `salesOrderCode`. Số có trên ERP thì bị từ chối.
+   */
+  preErpSalesCode: z.string().trim().toUpperCase().max(40).optional(),
+  /**
    * Ngày giờ nhận hàng trả (20/10/2026): mặc định lúc lập phiếu; thẻ kho và báo cáo tồn tháng ghi theo ngày này.
    * Không được ở tương lai, không trước mốc tồn đầu kỳ (STOCK_OPENING_CUTOFF).
    */
@@ -2012,9 +2169,14 @@ export type VoidStockReturn = z.infer<typeof VoidStockReturnSchema>;
  */
 export const CreateSampleReturnSchema = z.object({
   warehouseId: IdSchema,
-  borrowerId: IdSchema,
+  /** Người mượn là NVKD (danh mục nhân viên kinh doanh) … */
+  borrowerId: IdSchema.optional(),
+  /** … hoặc tài khoản không phải NVKD, trừ Admin (STAFF-PICK-01). */
+  borrowerUserId: IdSchema.optional(),
   note: z.string().trim().min(5, 'Ghi rõ hàng mẫu mượn từ khi nào, vì sao không có phiếu (ít nhất 5 ký tự)').max(500),
   lines: z.array(StockReturnLineSchema).min(1).max(100),
+}).superRefine((value, ctx) => {
+  if (!value.borrowerId === !value.borrowerUserId) ctx.addIssue({ code: 'custom', path: ['borrowerId'], message: 'Chọn một người mượn hàng' });
 });
 export type CreateSampleReturn = z.infer<typeof CreateSampleReturnSchema>;
 
@@ -2041,6 +2203,8 @@ export interface StockReturn {
   warehouseId: string;
   warehouseName: string;
   salesOrderCode?: string;
+  /** Số phiếu BH trước khi có ERP (INV-RET-PREERP-01) — chỉ ghi lại, không liên kết. */
+  preErpSalesCode?: string;
   purchaseOrderCode?: string;
   note: string;
   lines: Array<{ productId: string; sku: string; productName: string; unit: string; quantity: string; note?: string }>;

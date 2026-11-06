@@ -9,6 +9,7 @@
    * máy chủ dùng khi lưu chứng từ — xem $lib/sales-issue và $shared/sales-math.
    */
   import type { Product, SalesOrder, SalesPriceSheet, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
+  import { paymentTermChoices } from '$shared/payment-terms';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
@@ -31,12 +32,16 @@
   import NumberInput from './NumberInput.svelte';
   import RowContextMenu, { type ContextMenuItem } from './RowContextMenu.svelte';
   import CustomerPicker from './CustomerPicker.svelte';
-  import { SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, type SalesSlipType } from '$lib/slip-type';
+  import { FORM_SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, type SalesSlipType } from '$lib/slip-type';
+  import { loadStaff, staffPick, withCurrent, type StaffOption } from '$lib/staff';
+  import StaffSelect from './StaffSelect.svelte';
   import { defaultReturnDate } from '$shared/sales-purpose';
   import { otherLinesLast, ZERO_PRICE_KINDS, zeroPriceKindOf, zeroPricedSaleLine, type ZeroPriceKind } from '$shared/sales-line-kind';
   import { vnDate } from '$shared/warranty';
 
-  type ExistingOrder = SalesOrder & { codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
+  /** Phiếu đã xuất / đã giao: số đã thu (phần thu theo chứng từ cố định) và số khách đã trả lại theo mã — báo trước khi sửa (SAL-EDIT-GRANT-01). */
+  type EditLimits = { paid: string; fixedPaid: string; fixedPaymentCodes: string[]; returned: Record<string, string> };
+  type ExistingOrder = SalesOrder & { editLimits?: EditLimits; codeMode?: 'AUTO' | 'MANUAL'; priceOverrideRequestId?: string; priceOverrideApprovedByName?: string; templateCode?: string; warehouseKeeperId?: string; contactName?: string; description?: string; deliveryLocation?: string; confirmationNote?: string; confirmationStatus?: string };
   type LoanSource = SalesOrder & { loanRemainder?: Array<{ productId: string; sku: string; productName?: string; quantity: string }> };
   type CatalogProduct = Product & { available?: string; categoryName?: string };
   type Dealer = {
@@ -53,9 +58,12 @@
   const blankLine = (gift = false, zeroPriceKind?: ZeroPriceKind): Line => ({ key: ++lineKey, productId: '', skuInput: '', unit: '', quantity: '', gift, ...(gift ? { zeroPriceKind: zeroPriceKind ?? 'GIFT' } : {}) });
   type Grant = { id: string; code?: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'; decidedByName?: string; decisionNote?: string };
 
-  let { existing = null, requestMode = false }: { existing?: ExistingOrder | null; requestMode?: boolean } = $props();
+  /**
+   * `grantId` (SAL-EDIT-GRANT-01, 06/11/2026): sửa phiếu đã đối chiếu trở đi bằng quyền đã được duyệt — mọi ô mở (kể cả đơn giá),
+   * lưu qua /granted-edit/:grantId (máy chủ kiểm quyền). Không có = sửa nháp, hoặc người có quyền sửa trực tiếp (`sales.edit_issued`).
+   */
+  let { existing = null, grantId = '' }: { existing?: ExistingOrder | null; grantId?: string } = $props();
   /** Đề nghị sửa (SAL-CHG-01): lý do bắt buộc, gửi cho Admin duyệt thay vì lưu thẳng. */
-  let requestReason = $state('');
 
   let dealers = $state<Dealer[]>([]);
   let dealerCodes = $state<string[]>([]);
@@ -109,8 +117,9 @@
   const loanType = $derived(slipType === 'SAMPLE' || slipType === 'INSPECTION');
   const gift = $derived(slipType === 'GIFT');
   const channel = $derived<'B2B' | 'B2C'>(slipType === 'B2C' ? 'B2C' : 'B2B');
-  /** Phiếu bán: NVKD; phiếu hàng mẫu / kiểm định: bất kỳ nhân viên nào mượn hàng. */
-  const employees = $derived(nonSale ? allEmployees : allEmployees.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER' || row.id === salesRepId));
+  /** Phiếu bán: NVKD. Phiếu hàng mẫu / kiểm định / tặng chọn trong `staff` — NVKD hoặc tài khoản không phải Admin (STAFF-PICK-01). */
+  const employees = $derived(allEmployees.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER' || row.id === salesRepId));
+  let staff = $state<StaffOption[]>([]);
   let destination = $state('');
   let expectedReturnDate = $state('');
   /** Lập phiếu bán từ phần hàng mẫu đại lý mua luôn (chốt "Đại lý mua luôn"). */
@@ -161,7 +170,8 @@
   /** "1,08" — hệ số tách thuế khỏi bảng giá gồm thuế của một thuế suất. */
   const divisorOf = (rate: string) => (1 + Number(vatPercent(rate)) / 100).toLocaleString(intlLocale(), { maximumFractionDigits: 2 });
   const defaultVat = $derived(sheet?.defaultVatRate ?? '8');
-  const termOptions = $derived([...new Set([0, 15, 21, 30, 45, 60, dealer?.paymentTermDays ?? 30])].sort((a, b) => a - b));
+  /** Cùng danh sách máy chủ nhận (SEC-UI-01): hạn chuẩn + hạn mặc định của khách + hạn đang lưu trên phiếu đang sửa. */
+  const termOptions = $derived(paymentTermChoices(dealer?.paymentTermDays ?? 30, existing?.paymentTermDays));
   const blocked = $derived(dealer?.status === 'ON_HOLD');
   const period = $derived(orderDate.slice(0, 7).replace('-', ''));
   /** Ô số phiếu ở chế độ Tự sinh: phiếu cũ giữ số tự sinh đang có; phiếu mới / phiếu đang mang số tự nhập sẽ được cấp số mới khi lưu. */
@@ -172,9 +182,9 @@
   const dong = (value: string) => num(roundDong(value));
 
   /** Quản trị gốc đang sửa phiếu đã phát hành: lưu qua /root, tồn kho / công nợ tự điều chỉnh theo chênh lệch. */
-  const rootEdit = $derived(Boolean(existing && existing.status !== 'DRAFT' && (requestMode || can('sales.edit_issued'))));
+  const rootEdit = $derived(Boolean(existing && existing.status !== 'DRAFT' && (grantId || can('sales.edit_issued'))));
   /** Người sửa trực tiếp phiếu đã phát hành (`sales.edit_issued`) sửa đơn giá luôn, không cần xin quyền sửa giá (máy chủ cũng cho phép). */
-  const grantApproved = $derived(grant?.status === 'APPROVED' || (rootEdit && !requestMode && can('sales.edit_issued')));
+  const grantApproved = $derived(grant?.status === 'APPROVED' || rootEdit);
   const shippedOrder = $derived(Boolean(existing && ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(existing.status)));
   /** Đơn giá chưa thuế dạng tiền 2 số lẻ gửi máy chủ ("480000", "123456.78"). */
   const money = (value: string) => String(Math.round(Number(value) * 100) / 100);
@@ -250,23 +260,25 @@
       manualCode = existing.code;
     }
     try {
-      const [dealerResult, productRows, warehouseRows, employeeRows] = await Promise.all([
+      const [dealerResult, productRows, warehouseRows, employeeRows, staffRows] = await Promise.all([
         api<{ rows: Dealer[] }>('/dealers?stage=CUSTOMER'),
         api<CatalogProduct[]>('/products?status=ACTIVE'),
         api<Warehouse[]>('/warehouses'),
         api<Employee[]>('/employees'),
+        loadStaff(),
       ]);
       setDealers(dealerResult.rows);
       products = productRows;
       warehouses = warehouseRows.filter((row) => row.active);
       allEmployees = employeeRows;
+      staff = existing ? withCurrent(staffRows, existing) : staffRows;
       if (existing) {
         customerId = existing.customerId ?? '';
         slipType = slipTypeOf(existing);
         destination = existing.destination ?? '';
         expectedReturnDate = existing.expectedReturnDate ?? '';
         orderDate = vnDate(new Date(existing.orderDate ?? existing.createdAt));
-        salesRepId = existing.salesRepId ?? '';
+        salesRepId = existing.staffUserId ?? existing.salesRepId ?? '';
         warehouseId = existing.warehouseId;
         warehouseKeeperId = existing.warehouseKeeperId ?? '';
         paymentTermDays = existing.paymentTermDays ?? 30;
@@ -326,6 +338,8 @@
     const wasNonSale = nonSale;
     slipType = type;
     const nowNonSale = type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT';
+    // Phiếu bán chỉ chọn NVKD: bỏ người mượn là tài khoản không phải NVKD.
+    if (!nowNonSale && staffPick(staff, salesRepId).staffUserId) salesRepId = '';
     // Hẹn trả mặc định 15 ngày cho hàng mẫu / kiểm định; loại khác không có hẹn trả.
     if (type === 'SAMPLE' || type === 'INSPECTION') {
       if (!expectedReturnDate) expectedReturnDate = defaultReturnDate(todayIso());
@@ -357,7 +371,9 @@
     sheetLoading = true;
     try {
       // Phiếu hàng mẫu / kiểm định: bảng không khách (giá 0, chỉ tồn khả dụng).
-      const result = await api<SalesPriceSheet>(`/sales-orders/price-sheet?${nonSale ? '' : `customerId=${customerId}&`}warehouseId=${warehouseId}`);
+      // Sửa phiếu đã phát hành: bảng giá theo thời điểm phát hành của phiếu — dòng không sửa giữ đúng giá cũ (SAL-EDIT-GRANT-01).
+      const issuedOrder = existing && existing.status !== 'DRAFT' ? `&orderId=${existing.id}` : '';
+      const result = await api<SalesPriceSheet>(`/sales-orders/price-sheet?${nonSale ? '' : `customerId=${customerId}&`}warehouseId=${warehouseId}${issuedOrder}`);
       if (sequence !== sheetSequence) return;
       sheet = result;
       if (!vatTouched && isVatRate(result.defaultVatRate)) vatRate = result.defaultVatRate;
@@ -549,7 +565,8 @@
 
   // ---------- Menu chuột phải trên dòng hàng (SAL-CTX-01, 27/10/2026 — kế toán: sao chép dòng như MISA) ----------
   let lineBody = $state<HTMLTableSectionElement>();
-  let rowMenu = $state({ open: false, x: 0, y: 0, index: -1 });
+  /** `column`: menu mở từ mũi tên trong ô Số lượng / Đơn giá (SAL-FILL-01); trống = chuột phải trên dòng. */
+  let rowMenu = $state<{ open: boolean; x: number; y: number; index: number; column: '' | 'quantity' | 'price' }>({ open: false, x: 0, y: 0, index: -1, column: '' });
   /** Chuột phải (hoặc phím menu) trên một dòng; giữ Shift thì để menu của trình duyệt (sao chép / dán chữ). */
   function openRowMenu(event: MouseEvent) {
     const row = (event.target as Element).closest<HTMLTableRowElement>('tr[data-line]');
@@ -558,7 +575,36 @@
     // Mở bằng bàn phím: trình duyệt không có tọa độ chuột → đặt menu dưới ô đang chọn.
     const keyboard = event.clientX === 0 && event.clientY === 0;
     const rect = (event.target as Element).getBoundingClientRect();
-    rowMenu = { open: true, x: keyboard ? rect.left : event.clientX, y: keyboard ? rect.bottom : event.clientY, index: Number(row.dataset.line) };
+    rowMenu = { open: true, x: keyboard ? rect.left : event.clientX, y: keyboard ? rect.bottom : event.clientY, index: Number(row.dataset.line), column: '' };
+  }
+  /** Mũi tên trong ô Số lượng / Đơn giá (như MISA): menu ngay dưới ô. */
+  function openCellMenu(event: MouseEvent, index: number, column: 'quantity' | 'price') {
+    const rect = (event.currentTarget as Element).getBoundingClientRect();
+    rowMenu = { open: true, x: rect.left, y: rect.bottom + 2, index, column };
+  }
+  /** Dòng sửa được đơn giá: dòng bán (không phải hàng tặng / phiếu không tính tiền) đã có giá, khi ô giá đang mở khóa. */
+  function priceEditable(index: number) {
+    const line = lines[index];
+    return Boolean(line && line.productId && canIssue && grantApproved && !nonSale && !line.gift && calc.lines[index]);
+  }
+  const hasLineBelow = (index: number) => lines.slice(index + 1).some((line) => line.productId);
+  const hasPriceBelow = (index: number) => lines.some((_, position) => position > index && priceEditable(position));
+  /**
+   * SAL-FILL-01 (06/11/2026, kế toán — như MISA "Sao chép dữ liệu cho các dòng dưới"): chép số lượng / đơn giá của dòng đang chọn
+   * xuống mọi dòng có mã hàng **từ dòng đó trở xuống**. Đơn giá chỉ chép vào dòng bán sửa giá được (ghi thành giá sửa tay).
+   */
+  function fillDown(column: 'quantity' | 'price', index: number) {
+    const source = lines[index];
+    if (!source) return;
+    editingPrice = null;
+    if (column === 'quantity') {
+      if (!(Number(source.quantity) > 0)) return;
+      for (const [position, line] of lines.entries()) if (position > index && line.productId) line.quantity = source.quantity;
+      return;
+    }
+    const value = source.overrideUnitPrice ?? calc.lines[index]?.unitPrice;
+    if (!value || !(Number(value) > 0)) return;
+    for (const [position, line] of lines.entries()) if (position > index && priceEditable(position)) line.overrideUnitPrice = money(String(value));
   }
   async function focusLine(index: number, selector: string) {
     await tick();
@@ -584,8 +630,22 @@
     const line = lines[index];
     if (!line) return [];
     const product = productById.get(line.productId);
+    if (rowMenu.column === 'quantity') {
+      return [
+        { label: m.bh_fill_sao_chep_xuong(), icon: Copy, disabled: !product || !(Number(line.quantity) > 0) || !hasLineBelow(index), action: () => fillDown('quantity', index) },
+        { label: m.bh_ctx_them_dong_duoi(), icon: ListPlus, action: () => insertLineBelow(index) },
+      ];
+    }
+    if (rowMenu.column === 'price') {
+      return [
+        { label: m.bh_fill_sao_chep_xuong(), icon: Copy, disabled: !priceEditable(index) || !hasPriceBelow(index), action: () => fillDown('price', index) },
+        { label: m.bh_ctx_them_dong_duoi(), icon: ListPlus, action: () => insertLineBelow(index) },
+      ];
+    }
     return [
       { label: m.bh_ctx_sao_chep_dong(), icon: Copy, disabled: !product, action: () => duplicateLine(index) },
+      { label: m.bh_ctx_chep_sl_xuong(), icon: ArrowDown, disabled: !product || !(Number(line.quantity) > 0) || !hasLineBelow(index), action: () => fillDown('quantity', index) },
+      ...(priceEditable(index) ? [{ label: m.bh_ctx_chep_gia_xuong(), icon: ArrowDown, disabled: !hasPriceBelow(index), action: () => fillDown('price', index) }] : []),
       { label: m.bh_ctx_them_dong_duoi(), icon: ListPlus, action: () => insertLineBelow(index) },
       { label: m.bh_ctx_chuyen_len(), icon: ArrowUp, disabled: !canMove(index, -1), action: () => moveLine(index, -1) },
       { label: m.bh_ctx_chuyen_xuong(), icon: ArrowDown, disabled: !canMove(index, 1), action: () => moveLine(index, 1) },
@@ -606,7 +666,7 @@
         ? { purpose: slipType, ...(destination.trim() ? { destination: destination.trim() } : {}), ...(loanType && expectedReturnDate ? { expectedReturnDate } : {}) }
         : { purpose: 'SALE', customerId, channel, paymentTermDays, ...(Number(paymentTermDays) === 0 && payNowMethod ? { payNowMethod } : {}) }),
       ...(warehouseKeeperId ? { warehouseKeeperId } : {}),
-      ...(salesRepId ? { salesRepId } : {}),
+      ...(nonSale ? staffPick(staff, salesRepId) : salesRepId ? { salesRepId } : {}),
       ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
       ...(contactName.trim() ? { contactName: contactName.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -638,13 +698,23 @@
       error = m.ngay_giao_du_kien_phai_lon();
       return;
     }
-    if (requestMode && requestReason.trim().length < 5) {
-      error = m.bh_ly_do_toi_thieu();
-      return;
-    }
     if (canIssue && !warehouseKeeperId) {
       error = m.chon_thu_kho_xuat_hang_chi();
       return;
+    }
+    // Sửa phiếu đã xuất / đã giao: báo trước những ràng buộc máy chủ vẫn giữ (SAL-EDIT-GRANT-01).
+    const limits = rootEdit ? existing?.editLimits : undefined;
+    if (limits) {
+      for (const [productId, quantity] of Object.entries(limits.returned)) {
+        if ((calc.demandByProduct.get(productId) ?? 0) < Number(quantity)) {
+          error = m.bh_sua_sl_duoi_da_tra({ sku: productById.get(productId)?.sku ?? existing?.lines.find((line) => line.productId === productId)?.sku ?? '', quantity: num(quantity) });
+          return;
+        }
+      }
+      if (Number(limits.fixedPaid) > 0 && Number(summary.grandTotal) < Number(limits.fixedPaid)) {
+        error = m.bh_sua_tong_duoi_thu_chung_tu({ amount: num(limits.fixedPaid), codes: limits.fixedPaymentCodes.join(', ') });
+        return;
+      }
     }
     const badLine = calc.lineErrors.findIndex((message) => message);
     if (badLine >= 0) {
@@ -679,20 +749,17 @@
     saving = true;
     const expectedTotal = summary.grandTotal;
     try {
-      if (existing && requestMode) {
-        await api(`/sales-orders/${existing.id}/change-requests`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ kind: 'EDIT', version: existing.version, reason: requestReason.trim(), changes: { ...payload(), version: existing.version } }) });
-        await goto(`/sales/orders/${existing.id}?created=change-requested`);
-        return;
-      }
+      // Sửa theo quyền đã duyệt → /granted-edit/:grantId; người có quyền sửa trực tiếp → /root; phiếu nháp → PATCH thường.
+      const editPath = grantId ? `/granted-edit/${grantId}` : rootEdit ? '/root' : '';
       const order = existing
-        ? await api<SalesOrder>(`/sales-orders/${existing.id}${rootEdit ? '/root' : ''}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
+        ? await api<SalesOrder>(`/sales-orders/${existing.id}${editPath}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
         : await api<SalesOrder>('/sales-orders', { method: 'POST', idempotentCommand: true, body: JSON.stringify(payload()) });
       if (issue) {
         await api(`/sales-orders/${order.id}/submit`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: order.version }) });
       }
       // Máy chủ tính lại bằng cùng công thức; chỉ lệch khi bảng giá/khuyến mãi vừa đổi trong lúc đang lập phiếu.
       const repriced = String(Number(order.grandTotal)) !== expectedTotal ? `&repriced=${expectedTotal}` : '';
-      await goto(`/sales/orders/${order.id}?created=${rootEdit ? 'root-edited' : issue ? 'issued' : canIssue ? 'draft' : 'requested'}${repriced}`);
+      await goto(`/sales/orders/${order.id}?created=${grantId ? 'granted-edited' : rootEdit ? 'root-edited' : issue ? 'issued' : canIssue ? 'draft' : 'requested'}${repriced}`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_the_luu_phieu();
     } finally {
@@ -713,9 +780,7 @@
   </div>
   <div class="actions">
     <a class="btn" href={existing ? `/sales/orders/${existing.id}` : '/sales/orders'}>{m.huy_bo()}</a>
-    {#if requestMode}
-      <button class="btn primary" disabled={saving || requestReason.trim().length < 5} onclick={() => save(false)}>{saving ? m.dang_gui() : m.yc_gui_de_nghi_sua()}</button>
-    {:else if rootEdit}
+    {#if rootEdit}
       <button class="btn primary" disabled={saving} onclick={() => save(false)}>{saving ? m.dang_xu_ly() : m.root_luu_thay_doi()}</button>
     {:else if canIssue}
       <button class="btn soft" disabled={saving} onclick={() => save(false)}>{m.luu_nhap()}</button>
@@ -731,14 +796,12 @@
   <div class="banner warning"><CircleAlert size={17} /><span><b>{m.kinh_doanh_yeu_cau_sua()}</b> {existing.confirmationNote}</span></div>
 {/if}
 {#if rootEdit}<div class="banner warning"><CircleAlert size={17} /><span>{shippedOrder ? m.root_sua_phieu_da_xuat() : m.root_sua_phieu_da_phat_hanh()}</span></div>{/if}
-{#if requestMode}
-  <div class="banner info request-reason">
-    <CircleAlert size={17} />
-    <div class="field">
-      <label for="request-reason">{m.yc_sua_ghi_chu()}</label>
-      <textarea id="request-reason" rows="2" maxlength="300" bind:value={requestReason} placeholder={m.yc_ly_do_sua()}></textarea>
-    </div>
-  </div>
+{#if grantId}<div class="banner info"><Info size={17} /><span>{m.yc_dang_sua_theo_quyen()}</span></div>{/if}
+{#if rootEdit && existing?.editLimits && (Number(existing.editLimits.paid) > 0 || Object.keys(existing.editLimits.returned).length)}
+  <div class="banner warning edit-limits"><CircleAlert size={17} /><span>
+    {#if Number(existing.editLimits.paid) > 0}{m.bh_sua_da_thu({ paid: num(existing.editLimits.paid) })}{#if Number(existing.editLimits.fixedPaid) > 0} {m.bh_sua_da_thu_chung_tu({ amount: num(existing.editLimits.fixedPaid) })}{/if}{/if}
+    {#if Object.keys(existing.editLimits.returned).length} {m.bh_sua_da_tra()}{/if}
+  </span></div>
 {/if}
 {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span><button class="close" onclick={() => (error = '')} aria-label={m.dong()}><X size={15} /></button></div>{/if}
 {#if loanSource}<div class="banner info"><Info size={17} /><span>{m.lp_dien_san_tu_mau({ code: loanSource.code })}</span></div>{/if}
@@ -749,7 +812,7 @@
   <header class="block-head"><span class="step">1</span><h2>{gift ? m.lp_thong_tin_xuat_tang() : nonSale ? m.lp_thong_tin_nguoi_muon() : m.thong_tin_nguoi_mua()}</h2><small>(<span class="req">*</span>{m.truong_bat_buoc()}</small></header>
   <div class="slip-types" role="radiogroup" aria-label={m.lp_loai_phieu()}>
     <span class="slip-label">{m.lp_loai_phieu()}</span>
-    {#each SLIP_TYPE_OPTIONS as type}
+    {#each FORM_SLIP_TYPE_OPTIONS as type}
       <button type="button" role="radio" aria-checked={slipType === type} class:on={slipType === type} class:loan={type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT'}
         disabled={Boolean(loanSource) && (type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT')} onclick={() => chooseSlipType(type)}>{slipTypeLabel(type)}</button>
     {/each}
@@ -774,7 +837,7 @@
     {#if nonSale}
       <div class="field">
         <label for="borrower">{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()} <span class="req">*</span></label>
-        <select id="borrower" bind:value={salesRepId} class:missing={!salesRepId}><option value="">{gift ? m.lp_chon_nguoi_phu_trach() : m.lp_chon_nguoi_muon()}</option>{#each employees as row}<option value={row.id}>{row.name} ({row.code})</option>{/each}</select>
+        <StaffSelect id="borrower" bind:value={salesRepId} options={staff} missing={!salesRepId} placeholder={gift ? m.lp_chon_nguoi_phu_trach() : m.lp_chon_nguoi_muon()} />
       </div>
       <div class="field"><label for="destination">{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</label><input id="destination" bind:value={destination} maxlength="200" placeholder={gift ? m.lp_tang_cho_goi_y() : m.lp_gui_toi_goi_y()} /></div>
     {:else}
@@ -848,7 +911,7 @@
   {#if nonSale}<!-- Phiếu không tính tiền: không có quyền sửa giá. -->
   {:else if canIssue && grant?.status === 'PENDING'}
     <div class="banner warning price-grant"><Clock size={16} /><span>{m.gia_dang_cho_duyet({ code: grant.code ?? '' })}</span><button type="button" class="link" onclick={cancelPriceRequest}>{m.gia_huy_yeu_cau()}</button></div>
-  {:else if grantApproved}
+  {:else if grantApproved && !grantId}<!-- Sửa theo quyền đã duyệt: banner riêng ở đầu form, ô giá mở sẵn. -->
     <div class="banner success price-grant"><Pencil size={16} /><span>{grant?.decidedByName && grant.decidedByName === session.user?.displayName ? m.gia_da_tu_mo() : m.gia_da_duoc_cap_quyen({ by: grant?.decidedByName || session.user?.displayName || '—' })}</span></div>
   {:else if canIssue && grant?.status === 'REJECTED'}
     <div class="banner error price-grant"><CircleAlert size={16} /><span>{m.gia_bi_tu_choi({ by: grant.decidedByName ?? '—', note: grant.decisionNote ?? '' })}</span><button type="button" class="link" onclick={() => (grant = null)}>{m.gia_xin_lai()}</button></div>
@@ -877,7 +940,10 @@
             </td>
             <td class="num stock" class:out={basis !== undefined && demand > Number(basis.available)}>{product && basis ? num(basis.available) : ''}</td>
             <td class="num">
-              <NumberInput class={lineError ? 'input qty invalid' : 'input qty'} decimals={4} bind:value={line.quantity} onkeydown={quantityKey} disabled={!product} aria-label={m.so_luong_dong({ p0: index + 1 })} aria-invalid={Boolean(lineError)} title={lineError ?? ''} />
+              <span class="fill-cell">
+                <NumberInput class={lineError ? 'input qty invalid' : 'input qty'} decimals={4} bind:value={line.quantity} onkeydown={quantityKey} disabled={!product} aria-label={m.so_luong_dong({ p0: index + 1 })} aria-invalid={Boolean(lineError)} title={lineError ?? ''} />
+                {#if product && hasLineBelow(index)}<button type="button" class="fill-btn" onclick={(event) => openCellMenu(event, index, 'quantity')} title={m.bh_fill_sao_chep_xuong()} aria-label={m.bh_fill_menu_so_luong({ row: index + 1 })} aria-haspopup="menu"><ChevronDown size={13} /></button>{/if}
+              </span>
             </td>
             <td class="num price">
               {#if computed && editingPrice === index}
@@ -889,6 +955,7 @@
                   title={grantApproved ? m.gia_bam_de_sua() : grant?.status === 'PENDING' ? m.gia_dang_cho_duyet_ngan() : selfGrant ? m.gia_bam_de_tu_cap() : m.gia_bam_de_xin_quyen()}>
                   {price2(computed.unitPrice)}{#if grantApproved}<Pencil size={11} />{:else}<Lock size={11} />{/if}
                 </button>
+                {#if grantApproved && hasPriceBelow(index)}<button type="button" class="fill-btn" onclick={(event) => openCellMenu(event, index, 'price')} title={m.bh_fill_sao_chep_xuong()} aria-label={m.bh_fill_menu_don_gia({ row: index + 1 })} aria-haspopup="menu"><ChevronDown size={13} /></button>{/if}
                 {#if computed.overridden}<small class="orig">{m.gia_bang_gia({ price: price2(computed.originalUnitPrice) })}<button type="button" class="reset" onclick={() => resetPrice(index)} title={m.gia_ve_bang_gia()} aria-label={m.gia_ve_bang_gia()}><RotateCcw size={11} /></button></small>{/if}
               {:else if computed}
                 <span title={line.gift ? m.bh_hang_khac_gia_0() : m.gia_niem_yet_1({ p0: price2(computed.listPrice), p1: sheet?.pricesIncludeTax ? m.da_gom_thue() : '', discountRate: computed.discountRate, p3: sheet?.pricesIncludeTax && Number(vatPercent(computed.vatRate)) ? ` ÷ ${divisorOf(computed.vatRate)}` : '', p4: price2(computed.unitPrice) })}>{price2(computed.unitPrice)}</span>
@@ -1049,6 +1116,12 @@
   .price span[title] { cursor: help; }
   .price-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px dashed transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
   .price-btn:hover { border-color: var(--line); background: var(--surface-2); }
+  /* SAL-FILL-01: mũi tên chép xuống các dòng dưới — hiện khi rê chuột / đang nhập ở ô (màn cảm ứng luôn hiện). */
+  .fill-cell { display: inline-flex; align-items: center; gap: 2px; }
+  .fill-btn { display: inline-grid; place-items: center; width: 20px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--muted); cursor: pointer; opacity: 0; transition: opacity 0.12s; vertical-align: middle; }
+  .fill-btn:hover { color: var(--navy); border-color: var(--navy-2); }
+  td:hover .fill-btn, td:focus-within .fill-btn { opacity: 1; }
+  @media (hover: none) { .fill-btn { opacity: 1; } }
   .price-btn :global(svg) { color: var(--subtle); }
   .price-btn.overridden { border-color: var(--orange); background: var(--orange-soft); color: var(--orange); font-weight: 600; }
   .price small.orig { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--subtle); font-size: 11px; }
@@ -1110,7 +1183,4 @@
   @media (max-width: 1200px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .buyer { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 1000px) { .bottom { grid-template-columns: 1fr; } .block-head { flex-wrap: wrap; } .scan { width: 100%; margin-left: 0; } }
   @media (max-width: 640px) { .grid, .buyer { grid-template-columns: 1fr; } .wide { grid-column: auto; } .vat-select { width: 160px; } }
-  .request-reason { align-items: flex-start; }
-  .request-reason .field { flex: 1; margin: 0; }
-  .request-reason textarea { width: 100%; }
 </style>

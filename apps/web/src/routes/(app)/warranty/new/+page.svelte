@@ -5,11 +5,12 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-svelte';
   import { api } from '$lib/api';
+  import CustomerPicker from '$lib/components/CustomerPicker.svelte';
   import { date, dateTime, todayIso } from '$lib/format';
-  import { channelText } from '$lib/warranty';
+  import { channelText, productPickOptions } from '$lib/warranty';
   import { addDays, daysBetween, slaState, WARRANTY_CHANNELS, WARRANTY_DEFAULTS, type WarrantyChannel } from '$shared/warranty';
 
-  type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; status: string };
+  type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; province?: string; taxCode?: string; status: string };
   type Technician = { id: string; displayName: string };
   type Coverage = {
     coverage: string; exclusion?: string; startsOn?: string; expiresOn?: string; months: number; priorServiceCount: number; extensionDays: number;
@@ -18,6 +19,9 @@
 
   let dealers = $state<Dealer[]>([]);
   let products = $state<Product[]>([]);
+  let loaded = $state(false);
+  const productOptions = $derived(productPickOptions(products));
+  let productMissing = $state(false);
   let technicians = $state<Technician[]>([]);
   let settings = $state({ warrantyMonths: WARRANTY_DEFAULTS.warrantyMonths, turnaroundDays: WARRANTY_DEFAULTS.turnaroundDays, warningRatio: WARRANTY_DEFAULTS.warningRatio });
   let error = $state('');
@@ -70,6 +74,8 @@
       if (!promisedTouched) promisedDate = addDays(receivedDate, settings.turnaroundDays);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.wr_load_error();
+    } finally {
+      loaded = true;
     }
   });
 
@@ -111,6 +117,12 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     error = '';
+    // Ô sản phẩm là ô gõ-tìm (không phải <select required>) nên tự kiểm tra.
+    if (!productId) {
+      productMissing = true;
+      document.getElementById('product')?.focus();
+      return;
+    }
     saving = true;
     const optional = (value: string) => value.trim() || undefined;
     try {
@@ -174,10 +186,8 @@
       </div>
       <div class="field wide">
         <label for="dealer">{m.wr_dealer()}</label>
-        <select id="dealer" value={customerId} onchange={(event) => chooseDealer(event.currentTarget.value)}>
-          <option value="">{m.wr_retail_customer()}</option>
-          {#each dealers as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}
-        </select>
+        <CustomerPicker id="dealer" options={dealers} value={customerId} onchoose={chooseDealer} loading={!loaded} noneLabel={m.wr_retail_customer()}
+          placeholder={m.wr_tim_dai_ly()} emptyText={m.wr_khong_tim_thay_dai_ly()} toggleLabel={m.wr_mo_ds_dai_ly()} />
       </div>
       <div class="field"><label for="customer-name">{m.wr_customer_name()} <span class="req">*</span></label><input id="customer-name" bind:value={customerName} required minlength="2" maxlength="240" /></div>
       <div class="field"><label for="customer-phone">{m.dien_thoai()}</label><input id="customer-phone" type="tel" bind:value={customerPhone} maxlength="30" /></div>
@@ -190,10 +200,9 @@
     <div class="grid">
       <div class="field wide">
         <label for="product">{m.wr_product()} <span class="req">*</span></label>
-        <select id="product" bind:value={productId} required>
-          <option value="">{m.wr_choose_product()}</option>
-          {#each products as row}<option value={row.id}>{row.sku} — {row.name}</option>{/each}
-        </select>
+        <CustomerPicker id="product" options={productOptions} value={productId} onchoose={(id) => { productId = id; productMissing = false; }} loading={!loaded} invalid={productMissing}
+          placeholder={m.wr_tim_san_pham()} emptyText={m.wr_khong_tim_thay_san_pham()} toggleLabel={m.wr_mo_ds_san_pham()} describe={() => ''} />
+        {#if productMissing}<small class="error">{m.wr_thieu_san_pham()}</small>{/if}
       </div>
       <div class="field"><label for="serial">{m.wr_serial()}</label><input id="serial" bind:value={serial} maxlength="80" placeholder={m.khong_bat_buoc()} /><small class="hint">{m.wr_serial_hint()}</small></div>
       {#if !noInvoice}

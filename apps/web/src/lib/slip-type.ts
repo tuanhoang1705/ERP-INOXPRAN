@@ -11,6 +11,8 @@ export { isLoanPurpose, isNonSalePurpose, slipTypeOf };
 export type { SalesSlipType };
 
 export const SLIP_TYPE_OPTIONS: readonly SalesSlipType[] = ['B2B', 'B2C', 'SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'];
+/** Loại lập được trên form phiếu BH — phiếu đổi bảo hành chỉ do phiếu bảo hành lập khi trả khách (04/11/2026). */
+export const FORM_SLIP_TYPE_OPTIONS: readonly SalesSlipType[] = SLIP_TYPE_OPTIONS.filter((type) => type !== 'WARRANTY');
 
 export function slipTypeLabel(type: SalesSlipType): string {
   return { B2B: m.lp_ban_b2b, B2C: m.lp_ban_b2c, SAMPLE: m.lp_hang_mau, INSPECTION: m.lp_kiem_dinh, GIFT: m.lp_xuat_tang, WARRANTY: m.lp_doi_bao_hanh }[type]();

@@ -6,20 +6,28 @@
   import { CircleAlert } from 'lucide-svelte';
   import SalesIssueForm from '$lib/components/SalesIssueForm.svelte';
   import { api } from '$lib/api';
-  import { can } from '$lib/session.svelte';
+  import { can, session } from '$lib/session.svelte';
+  import { salesEditStage } from '$shared/sales-steps';
+  import type { ChangeRequest } from '$lib/change-requests';
 
   let order = $state<SalesOrder | null>(null);
   let error = $state('');
-  /** Không có quyền sửa trực tiếp nhưng có quyền gửi đề nghị (SAL-CHG-01): form gửi đề nghị sửa thay vì lưu. */
-  const requestMode = $derived(page.url.searchParams.get('request') === '1' && !can('sales.edit_issued') && can('sales.change_request'));
+  /** Sửa bằng quyền đã được duyệt (SAL-EDIT-GRANT-01, 06/11/2026): `?grant=<id>` — máy chủ kiểm lại khi lưu. */
+  const grantId = $derived(page.url.searchParams.get('grant') ?? '');
 
   onMount(async () => {
     try {
       const loaded = await api<SalesOrder>(`/sales-orders/${page.params.id}`);
-      // Sau khi phát hành (trừ phiếu đã hủy): sửa trực tiếp nếu có quyền sales.edit_issued, hoặc soạn đề nghị sửa.
-      // Phiếu nháp: người được phân công bước 1 hoặc 2 (SAL-STEP-01).
-      if ((loaded.status === 'DRAFT' && (can('sales.step.create') || can('sales.step.issue'))) || (loaded.status !== 'CANCELLED' && loaded.status !== 'DRAFT' && (can('sales.edit_issued') || requestMode))) order = loaded;
-      else error = m.chi_sua_duoc_phieu_o_trang();
+      const stage = salesEditStage(loaded);
+      // Phiếu nháp: người được phân công bước 1 hoặc 2 (SAL-STEP-01). Đã đối chiếu trở đi: người sửa trực tiếp (`sales.edit_issued`)
+      // hoặc người có quyền sửa đã được duyệt cho phiếu này. Đã phát hành chưa đối chiếu: không sửa — hoàn tác phiếu (SAL-UNDO-01).
+      if (stage === 'DRAFT' && (can('sales.step.create') || can('sales.step.issue'))) order = loaded;
+      else if (stage === 'EDIT' && can('sales.edit_issued')) order = loaded;
+      else if (stage === 'EDIT' && grantId && can('sales.change_request')) {
+        const grant = await api<ChangeRequest>(`/sales-change-requests/${grantId}`).catch(() => null);
+        if (grant && grant.kind === 'EDIT_GRANT' && grant.status === 'GRANTED' && grant.orderId === loaded.id && grant.requestedById === session.user?.sub) order = loaded;
+        else error = m.yc_quyen_khong_hieu_luc();
+      } else error = stage === 'UNDO' ? m.yc_dung_hoan_tac() : m.chi_sua_duoc_phieu_o_trang();
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_phieu();
     }
@@ -29,4 +37,4 @@
 <svelte:head><title>{m.sua_phieu_xuat_kho_ban_hang_2()}</title></svelte:head>
 
 {#if error}<div class="banner error"><CircleAlert size={17} />{error} <a class="link" href={`/sales/orders/${page.params.id}`}>{m.quay_lai_phieu()}</a></div>{/if}
-{#if order}<SalesIssueForm existing={order} {requestMode} />{/if}
+{#if order}<SalesIssueForm existing={order} {grantId} />{/if}

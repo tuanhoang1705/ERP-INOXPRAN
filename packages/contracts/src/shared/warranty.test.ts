@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonths, coverageFor, serviceDays, slaState, warrantyExpiry, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_STATUSES } from './warranty';
+import { addMonths, coverageFor, defaultPlanFor, plansForCoverage, serviceDays, slaState, warrantyEditableStages, warrantyExpiry, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_STATUSES } from './warranty';
 
 describe('hạn bảo hành', () => {
   it('12 tháng kết thúc vào ngày tương ứng của tháng cuối (BLDS 2015 Điều 147–148)', () => {
@@ -71,5 +71,31 @@ describe('luồng trạng thái', () => {
 
   it('số ngày giữ máy', () => {
     expect(serviceDays('2026-09-01T09:00:00+07:00', '2026-09-06T16:00:00+07:00')).toBe(5);
+  });
+});
+
+describe('hướng xử lý theo diện bảo hành', () => {
+  it('sửa chữa bảo hành miễn phí chọn được ở mọi diện / lý do sửa chữa (05/11/2026)', () => {
+    expect(plansForCoverage('IN_WARRANTY')).toEqual(['REPAIR', 'EXCHANGE', 'REFUND']);
+    expect(plansForCoverage('OUT_OF_WARRANTY')).toEqual(['REPAIR', 'QUOTE']);
+    expect(plansForCoverage('NOT_COVERED')).toEqual(['REPAIR', 'QUOTE', 'REJECT']);
+  });
+
+  it('chọn sẵn: còn bảo hành thì sửa miễn phí, còn lại báo giá', () => {
+    expect(defaultPlanFor('IN_WARRANTY')).toBe('REPAIR');
+    expect(defaultPlanFor('OUT_OF_WARRANTY')).toBe('QUOTE');
+    expect(defaultPlanFor('NOT_COVERED')).toBe('QUOTE');
+  });
+});
+
+describe('giai đoạn sửa được của phiếu bảo hành (WAR-EDIT-01, 06/11/2026)', () => {
+  it('chỉ giai đoạn phiếu đã đi qua; phiếu hủy không sửa', () => {
+    expect(warrantyEditableStages({ status: 'RECEIVED' })).toEqual(['INTAKE']);
+    expect(warrantyEditableStages({ status: 'REPAIRING', plan: 'REPAIR' })).toEqual(['INTAKE', 'DIAGNOSE']);
+    expect(warrantyEditableStages({ status: 'TESTING', plan: 'REPAIR', result: { resolution: 'PART_REPLACED' } })).toEqual(['INTAKE', 'DIAGNOSE', 'REPAIR']);
+    expect(warrantyEditableStages({ status: 'RETURNED', plan: 'REPAIR', result: { resolution: 'REPAIRED' }, test: { functional: true } })).toEqual(['INTAKE', 'DIAGNOSE', 'REPAIR', 'TEST', 'RETURN']);
+    // Đổi mới / từ chối: không có giai đoạn sửa chữa, kiểm tra.
+    expect(warrantyEditableStages({ status: 'RETURNED', plan: 'EXCHANGE', result: { resolution: 'EXCHANGED' } })).toEqual(['INTAKE', 'DIAGNOSE', 'RETURN']);
+    expect(warrantyEditableStages({ status: 'CANCELLED', plan: 'REPAIR' })).toEqual([]);
   });
 });

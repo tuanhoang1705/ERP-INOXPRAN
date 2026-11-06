@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { salesEditStage, type SalesChangePreview, type UndoIssue } from '@inoxpran/contracts';
 import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, LoanClose, LoanPurpose, LoanReturn, NotificationTemplate, PermissionKey, SalesPriceSheet, SalesQuote, SalesQuoteRequest, SalesStepOwners, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
-import { CANCELLABLE_SALES_STATUSES, cancelledCode, DEFAULT_SALES_ISSUE_TEMPLATE, hasKeeperRole,expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderYearPattern, salesOrderYearSequence, warehouseSlipNumber } from '@inoxpran/contracts';
+import { CANCELLABLE_SALES_STATUSES, cancelledCode, paymentTermChoices, DEFAULT_SALES_ISSUE_TEMPLATE, hasKeeperRole,expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderYearPattern, salesOrderYearSequence, warehouseSlipNumber } from '@inoxpran/contracts';
 import { isZeroPriceLine, otherLinesLast, zeroPricedSaleLine, type ZeroPriceLine } from '@inoxpran/contracts';
 import { defaultReturnDate, isLoanPurpose, isNonSale, isNonSalePurpose, loanInCategory, nonSaleOutCategory, orderParty, PURPOSE_LABEL_VI, purposeOf, SALES_SLIP_TYPES, slipTypeFilter, vnDate, type SalesSlipType } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
@@ -25,6 +26,7 @@ import type { AuthenticatedRequest, RequestUser } from '../../common/request-con
 import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
+import { resolveStaff, staffFields, staffUnsetKey, type PickedStaff } from '../../common/staff';
 import { territoryOwner } from '../../common/territories';
 import { InventoryService } from '../inventory/inventory.service';
 import { evaluateApproval } from './approval.engine';
@@ -36,6 +38,7 @@ const EVIDENCE_PURPOSE = 'CONFIRMATION_EVIDENCE';
 const PENDING_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_PENDING_EVIDENCE = 20;
 import { PricingService } from './pricing.service';
+import { HistoryEditService } from '../receivables/history-edit.service';
 
 /** Trường chỉ phiếu bán có (khách, kênh, điều khoản, quyền sửa giá) — gỡ khi phiếu chuyển thành hàng mẫu / kiểm định. */
 const SALE_ONLY_FIELDS = [
@@ -48,6 +51,23 @@ export interface SalesChangeVia { code: string; requestedBy: string; requestedBy
 
 /** Hồ sơ khách lẻ chung: khách vãng lai không có hồ sơ (phí dịch vụ / phiếu đổi bảo hành ghi vào đây, kèm tên / SĐT người nhận). */
 export const WALK_IN_PARTNER_CODE = 'KH000';
+
+/**
+ * Thời điểm tính giá khi sửa phiếu đã phát hành (SAL-EDIT-GRANT-01, 06/11/2026): giữ ngày chứng từ → lúc phiếu được phát hành
+ * (giá / CTKM như khi lập), đổi ngày chứng từ → cuối ngày mới (không quá hiện tại). Dòng không sửa giữ đúng giá đã phát hành.
+ */
+/** CK bậc doanh số đã áp trên phiếu (dòng bán theo bảng giá đầu tiên) — giữ nguyên khi sửa phiếu đã phát hành. */
+export function storedSalesTierRate(existing: Document): string | undefined {
+  const line = ((existing.lines as Document[] | undefined) ?? []).find((row) => !row.gift && row.pricingSource !== 'MANUAL_PRICE' && row.pricingSource !== 'CUSTOMER_PRICE' && row.salesTierDiscountRate !== undefined);
+  return line ? decimalString(line.salesTierDiscountRate) : undefined;
+}
+
+export function pricingMoment(existing: Document, orderDate: Date, now: Date): Date {
+  const before = (existing.orderDate as Date | undefined) ?? (existing.createdAt as Date);
+  if (vnDate(before) === vnDate(orderDate)) return (existing.issuedAt as Date | undefined) ?? (existing.createdAt as Date | undefined) ?? orderDate;
+  const endOfDay = new Date(vnDayStart(orderDate).getTime() + 86_400_000 - 1);
+  return endOfDay < now ? endOfDay : now;
+}
 
 /** Admin / quản trị gốc được đặt NVKD của phiếu khác NVKD phụ trách vùng của khách (PV-01). */
 const canOverrideRep = (user: Pick<RequestUser, 'roles' | 'root'>) => Boolean(user.root) || user.roles.includes('ADMIN');
@@ -64,11 +84,33 @@ export class SalesService {
     private readonly outbox: OutboxService,
     private readonly evidence: EvidenceIntakeService,
     private readonly priceOverrides: PriceOverridesService,
+    /** Xếp lại tiền đã thu của khách khi sửa phiếu làm tổng nhỏ hơn số đã thu (SAL-EDIT-GRANT-01). */
+    private readonly ledger: HistoryEditService,
   ) {}
 
   /** Có dòng (không phải hàng tặng) mang đơn giá sửa tay → cần quyền sửa giá đã duyệt cho phiếu này. */
   private hasPriceOverride(input: CreateSalesOrder): boolean {
     return input.lines.some((line) => Boolean(line.overrideUnitPrice) && !isZeroPriceLine(line));
+  }
+
+  /**
+   * SEC-UI-01 (06/11/2026): chỉ người được phân bước 2 (phát hành — người xin / được cấp sửa giá) mới đặt / đổi đơn giá sửa tay.
+   * Người chỉ có bước 1 (NVKD) sửa phiếu nháp vẫn lưu được dòng giữ nguyên giá đã duyệt (cùng mã, đơn vị, đơn giá), nhưng không thêm
+   * giá sửa tay mới — trước đây máy chủ dùng lại quyền sửa giá của phiếu cho mọi người, mọi dòng.
+   */
+  private assertOverrideAuthor(input: CreateSalesOrder, before: Document, request: AuthenticatedRequest) {
+    if (can(request.user, 'sales.step.issue')) return;
+    const approved = new Set(
+      ((before.lines as Document[] | undefined) ?? [])
+        .filter((line) => line.pricingSource === 'MANUAL_PRICE' && !line.gift)
+        .map((line) => `${String(line.productId)}|${String(line.unit)}|${new Decimal(decimalString(line.unitPrice)).toFixed(2)}`),
+    );
+    for (const line of input.lines) {
+      if (!line.overrideUnitPrice || isZeroPriceLine(line)) continue;
+      if (!approved.has(`${line.productId}|${line.unit}|${new Decimal(line.overrideUnitPrice).toFixed(2)}`)) {
+        throw new ForbiddenException({ code: 'PRICE_OVERRIDE_FORBIDDEN', message: 'Chỉ người phát hành phiếu (bước 2) được sửa đơn giá', details: [{ path: ['lines'] }] });
+      }
+    }
   }
 
   private priceOverrideFields(grant: Document | null) {
@@ -133,9 +175,12 @@ export class SalesService {
       const payNow = row.paymentTermDays === 0 && row.status === 'DELIVERED'
         ? await this.db.collection('payments').findOne({ salesOrderId: row._id, autoPayNow: true, status: 'POSTED' })
         : null;
+      // Phiếu đã xuất / đã giao: giới hạn khi sửa (SAL-EDIT-GRANT-01) để form báo trước khi lưu.
+      const shippedSale = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(row.status)) && row.purpose !== 'WARRANTY';
       return {
         ...serializeDocument(row),
         ...(payNow ? { payNowReceipt: { id: (payNow._id as ObjectId).toHexString(), code: String(payNow.code), amount: decimalString(payNow.amount), method: String(payNow.method), receivedAt: (payNow.receivedAt as Date).toISOString() } } : {}),
+        ...(shippedSale ? { editLimits: await this.editLimits(row) } : {}),
       };
     }
     // Phiếu hàng mẫu / kiểm định đã xuất: số đã xuất / đã về / còn ở ngoài theo mã (đơn vị cơ bản) và các lần nhập lại.
@@ -160,12 +205,30 @@ export class SalesService {
     return { ...serializeDocument(row), loanLines, loanReturns };
   }
 
-  private async loadCustomer(customerId: ObjectId, session?: ClientSession) {
+  /**
+   * Giới hạn khi sửa phiếu đã xuất / đã giao (SAL-EDIT-GRANT-01): số đã thu (phần thu theo đúng chứng từ không tự chuyển thành trả trước
+   * được) và số khách đã trả lại theo mã (đơn vị cơ bản) — form báo trước khi lưu, máy chủ vẫn kiểm lại.
+   */
+  private async editLimits(row: Document) {
+    const receivable = await this.db.collection('receivables').findOne({ salesOrderId: row._id, sourceType: { $ne: 'SALES_VOID_CREDIT' }, status: { $ne: 'VOIDED' } }, { projection: { paidAmount: 1 } });
+    const returns = await this.db.collection('stock_returns').find({ kind: { $in: ['CUSTOMER', 'SAMPLE'] }, salesOrderCode: row.code, status: { $ne: 'VOIDED' } }, { projection: { lines: 1 } }).toArray();
+    const returned = this.quantitiesOf(returns.flatMap((item) => (item.lines as Array<{ productId: unknown; quantity: unknown }>).map((line) => ({ productId: line.productId, baseQuantity: line.quantity }))));
+    const fixed = receivable ? await this.ledger.fixedPaidOn(receivable._id as ObjectId) : { total: new Decimal(0), codes: [] as string[] };
+    return {
+      paid: decimalString(receivable?.paidAmount ?? '0'),
+      fixedPaid: fixed.total.toFixed(2),
+      fixedPaymentCodes: fixed.codes,
+      returned: Object.fromEntries([...returned].map(([productId, quantity]) => [productId, quantity.toString()])),
+    };
+  }
+
+  /** `allowInactive`: sửa phiếu đã phát hành của chính khách đó — khách đã ngừng giao dịch vẫn giữ được (SAL-EDIT-GRANT-01). */
+  private async loadCustomer(customerId: ObjectId, session?: ClientSession, allowInactive = false) {
     const customer = await this.db.collection('partners').findOne(
       { _id: customerId, kind: { $in: ['CUSTOMER', 'BOTH'] } },
       session ? { session } : {},
     );
-    if (!customer || customer.status === 'INACTIVE') {
+    if (!customer || (customer.status === 'INACTIVE' && !allowInactive)) {
       throw new NotFoundException({ code: 'CUSTOMER_NOT_FOUND', message: 'Không tìm thấy khách hàng đang hoạt động' });
     }
     return customer;
@@ -263,17 +326,25 @@ export class SalesService {
    * cho toàn bộ mã đang kinh doanh. Form tải một lần khi chọn khách rồi tự tính tiền tức thời bằng priceLine() dùng chung;
    * khi lưu, máy chủ tính lại bằng đúng hàm đó nên con số trên form và trên chứng từ luôn trùng nhau.
    */
-  async priceSheet(customerId: string | undefined, warehouseId: string): Promise<SalesPriceSheet> {
+  async priceSheet(customerId: string | undefined, warehouseId: string, orderId?: string): Promise<SalesPriceSheet> {
     if (!customerId) return this.loanSheet(warehouseId);
-    const customer = await this.loadCustomer(toObjectId(customerId, 'customerId'));
+    // Sửa phiếu đã phát hành: bảng giá theo thời điểm phát hành, giữ mã / khách đã ngừng đang có trên phiếu (SAL-EDIT-GRANT-01).
+    const order = orderId ? await this.db.collection('sales_orders').findOne({ _id: toObjectId(orderId, 'orderId'), status: { $nin: ['DRAFT', 'CANCELLED'] } }) : null;
+    const pricing = order
+      ? { at: pricingMoment(order, (order.orderDate as Date | undefined) ?? (order.createdAt as Date), new Date()), keepProductIds: ((order.lines as Document[] | undefined) ?? []).map((line) => line.productId as ObjectId) }
+      : {};
+    const customer = await this.loadCustomer(toObjectId(customerId, 'customerId'), undefined, Boolean(order) && String(order?.customerId ?? '') === customerId);
     const settings = await this.pricing.settings();
-    const [context, balances, exposure, approval] = await Promise.all([
+    const [computedContext, balances, exposure, approval] = await Promise.all([
       this.pricing.customerContext(customer, settings),
       this.db.collection('inventory_balances').find({ warehouseId: toObjectId(warehouseId, 'warehouseId') }).toArray(),
       this.exposure(customer._id as ObjectId),
       this.db.collection<{ _id: string } & Document>('settings').findOne({ _id: 'approval' }),
     ]);
-    const basis = await this.pricing.basis(customer, settings, context);
+    // Sửa phiếu đã phát hành: CK bậc doanh số như lúc phát hành (khớp máy chủ khi lưu).
+    const storedTier = order && String(order.customerId ?? '') === customerId ? storedSalesTierRate(order) : undefined;
+    const context = storedTier !== undefined ? { ...computedContext, salesTierRate: storedTier } : computedContext;
+    const basis = await this.pricing.basis(customer, settings, context, undefined, undefined, pricing);
     const availableByProduct = new Map(balances.map((row) => [
       (row.productId as ObjectId).toHexString(),
       new Decimal(decimalString(row.onHand)).minus(decimalString(row.reserved)).toString(),
@@ -395,13 +466,19 @@ export class SalesService {
   }
 
   /** Dựng nội dung phiếu xuất kho bán hàng từ dữ liệu nhập: thông tin người mua, nhân viên, giá và tổng tiền. */
-  private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean; assignableKeeper?: boolean; allowRepOverride?: boolean } = {}) {
+  /**
+   * `existing`: phiếu đang sửa — giữ mẫu chứng từ của phiếu, cho phép giữ hạn thanh toán đang lưu (SEC-UI-01, 06/11/2026).
+   */
+  private async composeOrder(input: CreateSalesOrder, session: ClientSession, options: { allowBlockedCustomer?: boolean; assignableKeeper?: boolean; allowRepOverride?: boolean; existing?: Document | null } = {}) {
     // Phiếu xuất hàng mẫu / kiểm định / xuất tặng (SAL-TYPE-01): không khách hàng, người nhận = nhân viên phụ trách, đơn giá 0.
     const nonSale = isNonSalePurpose(input.purpose);
     const loan = isLoanPurpose(input.purpose);
     const warehouseId = toObjectId(input.warehouseId, 'warehouseId');
+    // Sửa phiếu đã phát hành (SAL-EDIT-GRANT-01, 06/11/2026): giữ được khách / mã hàng đã ngừng đang có trên phiếu.
+    const issuedEdit = Boolean(options.existing && options.existing.status !== 'DRAFT');
+    const sameCustomer = issuedEdit && String(options.existing?.customerId ?? '') === String(input.customerId ?? '');
     const [customer, warehouse] = await Promise.all([
-      nonSale ? null : this.loadCustomer(toObjectId(input.customerId ?? '', 'customerId'), session),
+      nonSale ? null : this.loadCustomer(toObjectId(input.customerId ?? '', 'customerId'), session, sameCustomer),
       this.db.collection('warehouses').findOne({ _id: warehouseId, active: true, purpose: { $ne: 'DEFECTIVE' } }, { session }),
     ]);
     if (customer && !options.allowBlockedCustomer) this.assertCustomerCanOrder(customer);
@@ -416,6 +493,15 @@ export class SalesService {
     }
     // PXK-001: một thuế suất cho cả phiếu (phiếu cũ, gọi API không ghi mẫu); PXK-002: thuế suất từng dòng (27/10/2026).
     const template = salesIssueTemplate(input.templateCode);
+    // Mẫu chứng từ cố định theo phiếu (web không cho đổi; đổi mẫu là đổi cách tính thuế) — SEC-UI-01.
+    if (options.existing && salesIssueTemplate(options.existing.templateCode as string | undefined).code !== template.code) {
+      throw new BadRequestException({ code: 'SALES_TEMPLATE_LOCKED', message: 'Không đổi được mẫu chứng từ của phiếu đã lập — lập phiếu mới theo mẫu khác', details: [{ path: ['templateCode'] }] });
+    }
+    // Hạn thanh toán: chỉ các hạn chọn được trên phiếu (web), hạn mặc định của khách, hoặc hạn đang lưu — SEC-UI-01.
+    if (customer && input.paymentTermDays !== undefined
+      && !paymentTermChoices(customer.paymentTermDays as number | undefined, options.existing?.paymentTermDays as number | undefined).includes(input.paymentTermDays)) {
+      throw new BadRequestException({ code: 'PAYMENT_TERM_NOT_ALLOWED', message: `Hạn thanh toán ${input.paymentTermDays} ngày không có trong danh sách chọn`, details: [{ path: ['paymentTermDays'] }] });
+    }
     // Hàng khác (tặng / đổi / bù) luôn ở cuối phiếu (03/11/2026) — số dòng trong thông báo lỗi khớp thứ tự trên form.
     const lines = otherLinesLast(input.lines);
     if (!nonSale && !lines.some((line) => !isZeroPriceLine(line))) {
@@ -426,12 +512,22 @@ export class SalesService {
     if (input.salesRepId && !salesRep) {
       throw new NotFoundException({ code: 'SALES_REP_NOT_FOUND', message: 'Không tìm thấy nhân viên kinh doanh' });
     }
+    // SEC-UI-01 (06/11/2026): NVKD đã ngừng chỉ được giữ khi là NVKD đang lưu trên phiếu hoặc NVKD phụ trách khách (danh sách chọn
+    // trên web chỉ có người đang hoạt động).
+    if (input.salesRepId && salesRep?.status === 'INACTIVE'
+      && String(options.existing?.salesRepId ?? '') !== input.salesRepId && String(customer?.salesRepId ?? '') !== input.salesRepId) {
+      throw new BadRequestException({ code: 'STAFF_INACTIVE', message: `${String(salesRep.name)} đã ngừng làm việc — chọn người khác`, details: [{ path: ['salesRepId'] }] });
+    }
     // Phân vùng NVKD (PV-01): khách ở vùng đã giao thì NVKD của phiếu là NVKD của khách — Admin / quản trị gốc được đổi.
     if (customer && salesRep && customer.salesRepId && !(customer.salesRepId as ObjectId).equals(salesRep._id) && !options.allowRepOverride
       && await territoryOwner(this.db, customer.provinceOldCode as string | undefined, customer.territoryChannel as string | undefined, session)) {
       throw new BadRequestException({ code: 'TERRITORY_MISMATCH', message: `Khách ${String(customer.code)} do ${String(customer.salesRepName)} phụ trách theo phân vùng — NVKD của phiếu phải là ${String(customer.salesRepName)}`, details: [{ path: ['salesRepId'] }] });
     }
-    if (nonSale && !salesRep) {
+    // Phiếu không bán: người mượn / phụ trách là NVKD hoặc tài khoản không phải Admin (STAFF-PICK-01); phiếu bán chỉ NVKD (schema chặn).
+    const person: PickedStaff | null = salesRep
+      ? { kind: 'EMPLOYEE', id: salesRep._id as ObjectId, name: String(salesRep.name) }
+      : nonSale ? await resolveStaff(this.db, { staffUserId: input.staffUserId }, session, options.existing) : null;
+    if (nonSale && !person) {
       throw new BadRequestException({ code: 'SALES_REP_REQUIRED', message: input.purpose === 'GIFT' ? 'Chọn nhân viên phụ trách' : 'Chọn nhân viên mượn hàng', details: [{ path: ['salesRepId'] }] });
     }
     if (!loan && input.expectedReturnDate) {
@@ -443,7 +539,11 @@ export class SalesService {
       throw new BadRequestException({ code: 'RETURN_BEFORE_ORDER', message: 'Ngày hẹn trả phải lớn hơn hoặc bằng ngày chứng từ', details: [{ path: ['expectedReturnDate'] }] });
     }
     const keeper = input.warehouseKeeperId ? await this.loadKeeper(input.warehouseKeeperId, warehouseId, session, options.assignableKeeper) : null;
-    const priced = customer ? await this.pricing.priceLines(lines, customer, session, input.taxRate, template.vatMode) : await this.pricing.zeroLines(lines, session, input.taxRate, template.vatMode);
+    const keepProductIds = issuedEdit ? ((options.existing?.lines as Document[] | undefined) ?? []).map((line) => line.productId as ObjectId) : undefined;
+    const pricingAt = issuedEdit && options.existing ? pricingMoment(options.existing, orderDate, now) : undefined;
+    const priced = customer
+      ? await this.pricing.priceLines(lines, customer, session, input.taxRate, template.vatMode, { at: pricingAt, keepProductIds, ...(issuedEdit && options.existing && sameCustomer ? { salesTierRate: storedSalesTierRate(options.existing) } : {}) })
+      : await this.pricing.zeroLines(lines, session, input.taxRate, template.vatMode, keepProductIds);
     if (!nonSale) this.assertSalePriced(priced.lines, priced.grandTotal);
     const purpose = nonSale ? input.purpose : 'SALE';
     // Phần riêng của từng loại; khi đổi loại phiếu, các trường của loại kia bị gỡ ($unset).
@@ -468,10 +568,10 @@ export class SalesService {
     // = chưa thu, ghi công nợ hạn = ngày giao — hạn 0 ngày là mặc định trên hồ sơ phần lớn khách, không có nghĩa là khách đã trả.
     const payNowFields = customer && input.payNowMethod && (input.paymentTermDays ?? Number(customer.paymentTermDays ?? 0)) === 0 ? { payNowMethod: input.payNowMethod } : {};
     const unsetKeys = customer ? [...loanKeys, ...('payNowMethod' in payNowFields ? [] : ['payNowMethod'])] : [...SALE_ONLY_FIELDS, ...loanKeys.filter((key) => !(key in partyFields))];
-    const unset: Record<string, ''> = Object.fromEntries(unsetKeys.map((key) => [key, '']));
+    const unset: Record<string, ''> = Object.fromEntries([...unsetKeys, staffUnsetKey(person)].map((key) => [key, '']));
     const defaultDescription = customer
       ? `Bán hàng ${String(customer.name)}`
-      : `${PURPOSE_LABEL_VI[purpose]} — ${String(salesRep?.name ?? '')}${input.destination ? ` (${purpose === 'GIFT' ? 'tặng' : 'gửi'} ${input.destination})` : ''}`;
+      : `${PURPOSE_LABEL_VI[purpose]} — ${person?.name ?? ''}${input.destination ? ` (${purpose === 'GIFT' ? 'tặng' : 'gửi'} ${input.destination})` : ''}`;
     return {
       customer,
       orderDate,
@@ -486,7 +586,7 @@ export class SalesService {
         deliveryLocation: input.deliveryLocation,
         warehouseId,
         ...(keeper ? { warehouseKeeperId: keeper._id as ObjectId, warehouseKeeperName: String(keeper.displayName) } : {}),
-        ...(salesRep ? { salesRepId: salesRep._id, salesRepName: salesRep.name } : {}),
+        ...(person ? staffFields(person) : {}),
         orderDate,
         requestedDeliveryDate: input.requestedDeliveryDate,
         note: input.note,
@@ -665,7 +765,7 @@ export class SalesService {
    * Kho đã trừ ở phiếu bảo hành (thẻ kho "Xuất đổi bảo hành") — phiếu này không ghi kho lần nữa; gắn số BH vào thẻ kho đó.
    */
   async issueWarrantyExchange(
-    input: { ticket: Document; warehouse: Document; at: Date; receiverName?: string },
+    input: { ticket: Document; warehouse: Document; at: Date; receiverName?: string; staff?: PickedStaff | null },
     request: AuthenticatedRequest,
     session: ClientSession,
   ): Promise<{ id: ObjectId; code: string; warehouseSlipNo: string }> {
@@ -707,7 +807,8 @@ export class SalesService {
         ...(customer.partnerId && partner.taxCode ? { taxCode: String(partner.taxCode) } : {}),
       },
       channel: partner.customerTier === 'RETAIL' || !customer.partnerId ? 'B2C' : 'B2B',
-      ...(partner.salesRepId ? { salesRepId: partner.salesRepId, ...(partner.salesRepName ? { salesRepName: partner.salesRepName } : {}) } : {}),
+      // Người phụ trách chọn khi trả khách (STAFF-PICK-01); không chọn = NVKD của khách như trước.
+      ...(input.staff ? staffFields(input.staff) : partner.salesRepId ? { salesRepId: partner.salesRepId, ...(partner.salesRepName ? { salesRepName: partner.salesRepName } : {}) } : {}),
       contactName: customer.name,
       description: `Đổi sản phẩm mới theo phiếu bảo hành ${ticketCode}`,
       warehouseId: warehouse._id,
@@ -896,11 +997,14 @@ export class SalesService {
         const orderId = toObjectId(id);
         const before = await this.db.collection('sales_orders').findOne({ _id: orderId, version: input.version, status: 'DRAFT' }, { session });
         if (!before) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật hoặc không còn ở trạng thái nháp' });
+        // SEC-UI-01: kho cũ của phiếu cũng phải trong phạm vi (controller chỉ kiểm kho mới gửi lên).
+        assertWarehouseAccess(request, String(before.warehouseId));
         const { version: _version, codeMode: _codeMode, ...payload } = input;
+        this.assertOverrideAuthor(input, before, request);
         const grant = this.hasPriceOverride(input)
           ? await this.priceOverrides.assertUsable(input.priceOverrideRequestId ?? (before.priceOverrideRequestId as string | undefined), input.formSessionId, orderId, request, session)
           : null;
-        const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { assignableKeeper: true, allowRepOverride: canOverrideRep(request.user) });
+        const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { assignableKeeper: true, allowRepOverride: canOverrideRep(request.user), existing: before });
         // Số phiếu khi sửa: bỏ trống = giữ số cũ; nhập số khác = đổi sang số tự nhập (kiểm tra trùng);
         // chọn lại "Tự sinh" trên phiếu đang mang số tự nhập = cấp số tự sinh mới.
         let codeChange: { code?: string; codeMode?: 'AUTO' | 'MANUAL' } = {};
@@ -1025,7 +1129,7 @@ export class SalesService {
   /** Người cần biết khi phiếu bị bỏ: NVKD đề nghị, NVKD phụ trách (tài khoản liên kết), thủ kho được giao — trừ chính người thao tác. */
   private async discardAudience(order: Document, request: AuthenticatedRequest, session: ClientSession): Promise<string[]> {
     const salesRep = order.salesRepId ? await this.db.collection('employees').findOne({ _id: order.salesRepId as ObjectId }, { session, projection: { userId: 1 } }) : null;
-    const ids = [order.requestedBy, salesRep?.userId, order.warehouseKeeperId]
+    const ids = [order.requestedBy, salesRep?.userId, order.staffUserId, order.warehouseKeeperId]
       .filter((value): value is ObjectId => value instanceof ObjectId)
       .map((value) => value.toHexString())
       .filter((value) => value !== request.user.sub);
@@ -1201,6 +1305,7 @@ export class SalesService {
     const before = await this.db.collection('sales_orders').findOne({ _id: orderId }, { session });
     if (!before) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
     this.assertNotWarrantyExchange(before);
+    assertWarehouseAccess(request, String(before.warehouseId));
     if (!['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status))) {
       throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu chưa xuất kho — dùng "Hủy phiếu" / "Xóa phiếu" thông thường' });
     }
@@ -1320,11 +1425,18 @@ export class SalesService {
     const before = await this.db.collection('sales_orders').findOne({ _id: orderId, version: input.version }, { session });
     if (!before) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
     this.assertNotWarrantyExchange(before);
+    // SEC-UI-01 (06/11/2026): sửa phiếu đã phát hành cũng theo phạm vi kho (kho cũ và kho mới).
+    assertWarehouseAccess(request, String(before.warehouseId));
+    assertWarehouseAccess(request, input.warehouseId);
     if (before.status === 'DRAFT') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu nháp sửa theo cách thông thường' });
     if (before.status === 'CANCELLED') throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã hủy không sửa được' });
+    // SAL-UNDO-01 (06/11/2026): phiếu đã phát hành nhưng chưa đối chiếu với khách không sửa trực tiếp — hoàn tác về Lập phiếu rồi sửa.
+    if (salesEditStage(before as never) === 'UNDO') {
+      throw new ConflictException({ code: 'SALES_EDIT_USE_UNDO', message: 'Phiếu chưa đối chiếu với khách — dùng "Hoàn tác phiếu" để quay về bước Lập phiếu rồi sửa' });
+    }
     const shipped = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(before.status));
     const { version: _version, codeMode: _codeMode, ...payload } = input;
-    const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { allowBlockedCustomer: true, allowRepOverride: true });
+    const { fields, keeper, orderDate, unset } = await this.composeOrder(payload, session, { allowBlockedCustomer: true, allowRepOverride: true, existing: before });
     const warehouseChanged = String(fields.warehouseId) !== String(before.warehouseId);
     const customerChanged = String(fields.customerId ?? '') !== String(before.customerId ?? '');
     if (shipped && warehouseChanged) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã xuất kho: không đổi kho xuất (hủy phiếu rồi lập lại)' });
@@ -1386,9 +1498,11 @@ export class SalesService {
         direction,
         category: direction === 'IN' ? 'SALES_REVERSAL_IN' : 'SALES_EXTRA_OUT',
         lines: lines.map((line) => ({ productId: line.productId, quantity: line.delta.abs().toString() })),
-        reason: `Sửa phiếu ${code} sau phát hành${via ? ` (đề nghị ${via.code})` : ''}`,
+        reason: `Sửa phiếu ${code} sau phát hành${via ? ` (${via.code})` : ''}`,
         actorId: request.user.sub,
         extra: { salesOrderCode: code },
+        // Mã đã ngừng kinh doanh đang có trên phiếu vẫn nhập lại / xuất bổ sung được (SAL-EDIT-GRANT-01).
+        anyProductStatus: true,
       }, session);
       const backIn = deltas.filter((line) => line.delta.lt(0));
       const extraOut = deltas.filter((line) => line.delta.gt(0));
@@ -1433,14 +1547,27 @@ export class SalesService {
       } else if (receivable) {
         const paid = new Decimal(decimalString(receivable.paidAmount));
         const amount = new Decimal(decimalString(fields.grandTotal));
-        if (paid.gt(amount)) throw new ConflictException({ code: 'ORDER_PAID_EXCEEDS_TOTAL', message: `Đã thu ${paid.toFixed(0)} đ, lớn hơn tổng mới ${amount.toFixed(0)} đ — xử lý phiếu thu trước` });
-        if (customerChanged && paid.gt(0)) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã thu tiền: không đổi khách hàng' });
-        const status = paid.eq(amount) ? 'PAID' : paid.gt(0) ? 'PARTIALLY_PAID' : receivable.status === 'OVERDUE' ? 'OVERDUE' : 'OPEN';
+        if (customerChanged && paid.gt(0)) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã thu tiền: không đổi khách hàng (tiền đã thu là của khách cũ)' });
+        // SAL-EDIT-GRANT-01 (06/11/2026): tổng mới nhỏ hơn số đã thu → phần thu theo khách / sổ cũ được xếp lại, thu thừa thành
+        // khoản khách trả trước (trước đây chặn). Chỉ phần thu bằng phiếu thu theo đúng chứng từ / bù trừ / giảm nợ trả hàng là cố
+        // định — vượt tổng mới thì phải sửa phiếu đó trên sổ công nợ trước.
+        const overpaid = paid.gt(amount);
+        if (overpaid) {
+          const fixed = await this.ledger.fixedPaidOn(receivable._id as ObjectId, session);
+          if (fixed.total.gt(amount)) {
+            throw new ConflictException({
+              code: 'ORDER_PAID_EXCEEDS_TOTAL',
+              message: `Phiếu đã thu ${fixed.total.toFixed(0)} đ bằng phiếu thu theo chứng từ (${fixed.codes.join(', ')}), lớn hơn tổng mới ${amount.toFixed(0)} đ — sửa số tiền phiếu thu đó trên sổ công nợ khách trước`,
+            });
+          }
+        }
+        const status = overpaid || paid.eq(amount) ? 'PAID' : paid.gt(0) ? 'PARTIALLY_PAID' : receivable.status === 'OVERDUE' ? 'OVERDUE' : 'OPEN';
         await this.db.collection('receivables').updateOne(
           { _id: receivable._id },
           { $set: { amount: decimal(amount.toString()), status, partnerId: fields.customerId, salesOrderCode: code, updatedAt: now }, $inc: { version: 1 } },
           { session },
         );
+        if (overpaid) await this.ledger.rebuildPartner(fields.customerId as ObjectId, session, now);
         if (payNowVoided.length && Number(fields.paymentTermDays ?? -1) === 0 && 'payNowMethod' in fields && !before.payNowUndone) {
           const current = await this.db.collection('receivables').findOne({ _id: receivable._id }, { session });
           if (current) await postPayNowReceipt(this.db, this.sequences, { receivable: current, order: { ...before, ...fields, code }, receivedAt: payNowVoided[0]!.receivedAt as Date, actor: PAY_NOW_ACTOR }, session, now);
@@ -1488,6 +1615,67 @@ export class SalesService {
       ...(via || purposeChanged ? { metadata: { ...(via ? { changeRequest: via } : {}), ...(purposeChanged ? { purpose: { from: beforePurpose, to: afterPurpose } } : {}) } } : {}),
     }, session);
     return serializeDocument(updated);
+  }
+
+  /** Tóm tắt phiếu để so trước → sau (đề nghị / quyền sửa phiếu — SAL-CHG-01, SAL-EDIT-GRANT-01). */
+  previewOf(doc: Document): SalesChangePreview {
+    return {
+      customerName: orderParty(doc),
+      grandTotal: decimalString(doc.grandTotal),
+      lines: ((doc.lines as Document[] | undefined) ?? []).map((line) => ({
+        sku: String(line.sku),
+        productName: String(line.productName),
+        unit: String(line.unit),
+        quantity: decimalString(line.quantity),
+        gift: Boolean(line.gift),
+        ...(line.zeroPriceKind ? { zeroPriceKind: String(line.zeroPriceKind) } : {}),
+        unitPrice: decimalString(line.unitPrice),
+        lineTotal: decimalString(line.lineTotal),
+      })),
+    };
+  }
+
+  /**
+   * Sửa phiếu bằng quyền đã được duyệt (SAL-EDIT-GRANT-01, 06/11/2026 — duyệt trước rồi mới sửa): đúng người xin, đúng phiếu, quyền
+   * còn hạn và chưa dùng. Sửa được toàn bộ phiếu (kể cả đơn giá, không cần xin sửa giá riêng) như người có quyền sửa trực tiếp; tồn kho /
+   * công nợ điều chỉnh theo chênh lệch. Quyền chuyển "Đã sửa" kèm nội dung trước → sau; báo người đã duyệt.
+   */
+  async grantedEdit(id: string, grantId: string, input: UpdateSalesOrder, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`sales-order-granted-edit:${id}`, idempotencyKey, { grantId, ...input }, async (session) => {
+      const grant = await this.db.collection('sales_change_requests').findOne({ _id: toObjectId(grantId, 'grantId'), kind: 'EDIT_GRANT' }, { session });
+      if (!grant || String(grant.orderId) !== id) throw new NotFoundException({ code: 'SALES_EDIT_GRANT_NOT_FOUND', message: 'Không tìm thấy quyền sửa của phiếu này' });
+      if (String(grant.requestedBy) !== request.user.sub) throw new ForbiddenException({ code: 'SALES_EDIT_GRANT_NOT_OWNER', message: `Quyền sửa ${String(grant.code)} được cấp cho ${String(grant.requestedByName)}` });
+      if (grant.status !== 'GRANTED') {
+        const message = grant.status === 'APPLIED' ? 'Quyền sửa đã dùng — xin phép lại nếu cần sửa tiếp' : grant.status === 'PENDING' ? 'Yêu cầu sửa đang chờ duyệt' : 'Quyền sửa không còn hiệu lực';
+        throw new ConflictException({ code: 'SALES_EDIT_GRANT_STATE', message });
+      }
+      const now = new Date();
+      if (!(grant.expiresAt instanceof Date) || grant.expiresAt < now) {
+        throw new ConflictException({ code: 'SALES_EDIT_GRANT_EXPIRED', message: `Quyền sửa ${String(grant.code)} đã hết hạn — xin phép lại` });
+      }
+      const before = await this.db.collection('sales_orders').findOne({ _id: toObjectId(id) }, { session });
+      const via: SalesChangeVia = { code: String(grant.code), requestedBy: String(grant.requestedBy), requestedByName: String(grant.requestedByName) };
+      const updated = await this.editIssuedInSession(id, input, request, session, via);
+      const after = await this.db.collection('sales_orders').findOne({ _id: toObjectId(id) }, { session });
+      const applied = await this.db.collection('sales_change_requests').updateOne(
+        { _id: grant._id, status: 'GRANTED' },
+        { $set: { status: 'APPLIED', appliedAt: now, updatedAt: now, result: { before: this.previewOf(before ?? {}), after: this.previewOf(after ?? {}) } } },
+        { session },
+      );
+      if (applied.modifiedCount !== 1) throw new ConflictException({ code: 'SALES_EDIT_GRANT_STATE', message: 'Quyền sửa vừa được dùng hoặc rút — tải lại' });
+      if (grant.decidedBy) {
+        await this.notify(session, id, {
+          targetUserIds: [String(grant.decidedBy)].filter((userId) => userId !== request.user.sub),
+          level: 'INFO',
+          title: `${request.user.displayName} đã sửa phiếu ${String(after?.code ?? '')} theo quyền ${String(grant.code)}`,
+          message: `Tổng: ${Number(decimalString(before?.grandTotal)).toLocaleString('vi-VN')} → ${Number(decimalString(after?.grandTotal)).toLocaleString('vi-VN')} đ.`,
+          href: '/sales/change-requests',
+          template: 'SALES_ORDER_ROOT_EDITED',
+          params: { code: String(after?.code ?? ''), customer: orderParty(after ?? {}), actor: request.user.displayName },
+        });
+      }
+      return updated;
+    });
   }
 
   /** Tình trạng hàng mẫu theo số đã xuất và số đã về (đơn vị cơ bản). */
@@ -1559,6 +1747,7 @@ export class SalesService {
       salesOrderId: order._id,
       partnerName: orderParty(order),
       ...(order.salesRepId ? { salesRepId: order.salesRepId } : {}),
+      ...(order.staffUserId ? { staffUserId: order.staffUserId } : {}),
       warehouseId: order.warehouseId,
       warehouseName: String(warehouse?.name ?? ''),
       note,
@@ -2019,6 +2208,63 @@ export class SalesService {
    * Bước 2: nhân viên kinh doanh đối chiếu phiếu BH với khách (mã hàng, số lượng, giá).
    * Khách đồng ý → chuyển kho lập phiếu SWK. Cần sửa → nhả hàng đã giữ, trả phiếu về kế toán ở trạng thái nháp.
    */
+  /**
+   * Hoàn tác phiếu (SAL-UNDO-01, 06/11/2026 — thay "Yêu cầu sửa"): phiếu KT đã phát hành nhưng KD chưa đối chiếu với khách (chờ duyệt
+   * ngoại lệ / chờ đối chiếu) quay về bước Lập phiếu để sửa như phiếu nháp; nhả hàng đang giữ, hủy yêu cầu duyệt ngoại lệ đang chờ.
+   * Người được phân bước 2 (phát hành) hoặc bước 3 (đối chiếu); bắt buộc lý do. Phiếu đã đối chiếu trở đi dùng "Sửa phiếu".
+   */
+  async undoIssue(id: string, input: UndoIssue, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`sales-order-undo:${id}`, idempotencyKey, input, async (session) => {
+      const orderId = toObjectId(id);
+      const order = await this.db.collection('sales_orders').findOne({ _id: orderId, ...salesOrderScope(request.user) }, { session });
+      if (!order) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+      if (order.version !== input.version) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      if (salesEditStage(order as never) !== 'UNDO') {
+        throw new ConflictException({
+          code: 'SALES_UNDO_NOT_ALLOWED',
+          message: order.status === 'DRAFT' ? 'Phiếu đang ở bước Lập phiếu — sửa trực tiếp' : 'Chỉ hoàn tác phiếu đã phát hành, chưa đối chiếu với khách — phiếu đã đối chiếu thì dùng "Sửa phiếu"',
+        });
+      }
+      assertWarehouseAccess(request, String(order.warehouseId));
+      const now = new Date();
+      if (order.status === 'RESERVED') await this.inventory.release(orderId, session);
+      const updated = await this.db.collection('sales_orders').updateOne(
+        { _id: orderId, version: input.version },
+        {
+          $set: {
+            status: 'DRAFT', approvalStatus: 'NOT_REQUIRED', confirmationStatus: 'REVISION_REQUESTED', confirmationNote: input.reason,
+            revisionRequestedAt: now, revisionRequestedBy: toObjectId(request.user.sub), revisionRequestedByName: request.user.displayName,
+            issueUndone: true, updatedAt: now, updatedByName: request.user.displayName,
+          },
+          $unset: { issuedAt: '', issuedBy: '', issuedByName: '' },
+          $inc: { version: 1 },
+        },
+        { session },
+      );
+      if (updated.modifiedCount !== 1) throw new ConflictException({ code: 'ORDER_STATE_CONFLICT', message: 'Phiếu đã được người khác cập nhật — tải lại rồi thử lại' });
+      await this.db.collection('approval_requests').updateMany(
+        { entityType: 'SalesOrder', entityId: orderId, status: 'PENDING' },
+        { $set: { status: 'CANCELLED', decidedAt: now, decidedBy: toObjectId(request.user.sub) } },
+        { session },
+      );
+      await this.notify(session, id, {
+        targetUserIds: await this.stepAudience('sales.step.issue', session, { exclude: [request.user.sub] }),
+        level: 'WARNING',
+        title: `Phiếu ${String(order.code)} đã hoàn tác về bước Lập phiếu`,
+        message: `${request.user.displayName}: ${input.reason}`,
+        href: `/sales/orders/${id}`,
+        template: 'SALES_REVISION_REQUESTED',
+        params: { code: String(order.code), actor: request.user.displayName, note: input.reason },
+      });
+      await this.audit.record({
+        actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+        action: 'SALES_ORDER_ISSUE_UNDONE', entityType: 'SalesOrder', entityId: id,
+        metadata: { reason: input.reason, fromStatus: String(order.status) },
+      }, session);
+      return { id, status: 'DRAFT' };
+    });
+  }
+
   async confirmCustomer(id: string, input: CustomerConfirmation, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(
       `sales-order-confirm:${id}`,

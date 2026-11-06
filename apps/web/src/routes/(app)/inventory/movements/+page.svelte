@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import type { Product } from '@inoxpran/contracts';
+  import type { Product, Warehouse } from '@inoxpran/contracts';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -20,6 +20,9 @@
   };
   let products = $state<Product[]>([]);
   let productId = $state('');
+  /** Thẻ kho của một kho (vd mở từ danh sách kho hàng lỗi — INV-DEF-LIST-01); trống = mọi kho. */
+  let warehouses = $state<Warehouse[]>([]);
+  let warehouseId = $state('');
   let rows = $state<Movement[]>([]);
   let loading = $state(false);
   let error = $state('');
@@ -49,7 +52,7 @@
     loading = true;
     error = '';
     try {
-      const result = await api<Paged<Movement> & { onHand: string; topBalance: string }>(`/inventory/movements?productId=${productId}&page=${pageNo}&pageSize=${pageSize}`);
+      const result = await api<Paged<Movement> & { onHand: string; topBalance: string }>(`/inventory/movements?productId=${productId}${warehouseId ? `&warehouseId=${warehouseId}` : ''}&page=${pageNo}&pageSize=${pageSize}`);
       rows = result.rows;
       total = result.total;
       onHand = Number(result.onHand);
@@ -61,8 +64,9 @@
     }
   }
   onMount(async () => {
-    products = await api<Product[]>('/products').catch(() => []);
+    [products, warehouses] = await Promise.all([api<Product[]>('/products').catch(() => []), api<Warehouse[]>('/warehouses').catch(() => [])]);
     productId = page.url.searchParams.get('productId') ?? products[0]?.id ?? '';
+    warehouseId = page.url.searchParams.get('warehouseId') ?? '';
     await load();
   });
   function changePage(next: number, size: number) {
@@ -71,10 +75,11 @@
     pageSize = size;
     void load();
   }
-  function choose(value: string) {
+  function choose(value: string, warehouse = warehouseId) {
     productId = value;
+    warehouseId = warehouse;
     pageNo = 1;
-    goto(`/inventory/movements?productId=${value}`, { replaceState: true, keepFocus: true, noScroll: true });
+    goto(`/inventory/movements?productId=${value}${warehouse ? `&warehouseId=${warehouse}` : ''}`, { replaceState: true, keepFocus: true, noScroll: true });
     load();
   }
 </script>
@@ -93,6 +98,12 @@
   <div class="field"><label for="product">{m.san_pham()}</label>
     <select id="product" value={productId} onchange={(event) => choose(event.currentTarget.value)}>
       {#each products as item}<option value={item.id}>{item.sku} — {item.name}</option>{/each}
+    </select>
+  </div>
+  <div class="field"><label for="movement-warehouse">{m.kho()}</label>
+    <select id="movement-warehouse" value={warehouseId} onchange={(event) => choose(productId, event.currentTarget.value)}>
+      <option value="">{m.tat_ca_kho()}</option>
+      {#each warehouses as item}<option value={item.id}>{item.name}</option>{/each}
     </select>
   </div>
   {#if product}<div class="meta"><span>{m.don_vi_tinh()}</span><b>{product.baseUnit}</b></div><div class="meta"><span>{m.ton_cuoi_hien_tai()}</span><b>{num(onHand)} {product.baseUnit.toLowerCase()}</b></div>{/if}
@@ -126,7 +137,7 @@
 </section>
 
 <style>
-  .filters { grid-template-columns: minmax(280px, 2fr) 1fr 1fr; }
+  .filters { grid-template-columns: minmax(280px, 2fr) minmax(160px, 1fr) 1fr 1fr; }
   .meta { display: grid; gap: 4px; padding-bottom: 8px; }
   .meta span { color: var(--subtle); font-size: 12px; }
   .line-note { display: block; color: var(--muted); font-size: 12px; }

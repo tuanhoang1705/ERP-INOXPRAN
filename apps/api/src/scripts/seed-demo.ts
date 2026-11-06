@@ -5,6 +5,7 @@ import Decimal from 'decimal.js';
 import { Decimal128, type Db, type Document, MongoClient, ObjectId } from 'mongodb';
 import { OLD_PROVINCES } from '@inoxpran/contracts';
 import { vnDayStart, vnMonthStart, vnParts } from '../common/domain';
+import { documentCode } from '../common/sequence.service';
 import { hashPassword } from '../modules/auth/password';
 import { ObjectStorage } from '../common/object-storage';
 import { evaluateApproval } from '../modules/sales/approval.engine';
@@ -540,16 +541,14 @@ async function seedDemo(): Promise<void> {
     const receivables: Document[] = [];
     const payments: Document[] = [];
     const counters = new Map<string, number>();
-    const nextCode = (prefix: string, at: Date, width = 5, compact = false) => {
-      const key = `${prefix}:${period(at)}`;
+    // Mọi chứng từ đánh số như phiếu BH (NUM-01): tiền tố + năm + tháng + 4 số đếm tiếp cả năm; bộ đếm năm `PREFIX:Y2026`.
+    const nextCode = (prefix: string, at: Date) => {
+      const key = `${prefix}:Y${vnParts(at).year}`;
       const value = (counters.get(key) ?? 0) + 1;
       counters.set(key, value);
-      const parts = vnParts(at);
-      return compact
-        ? `${prefix}${parts.year}${String(parts.month).padStart(2, '0')}${String(value).padStart(width, '0')}`
-        : `${prefix}${period(at)}-${String(value).padStart(width, '0')}`;
+      return documentCode(prefix, at, value);
     };
-    for (const order of orders) order.code = nextCode('BH', order.orderDate, 4, true);
+    for (const order of [...orders].sort((a, b) => a.orderDate.getTime() - b.orderDate.getTime())) order.code = nextCode('BH', order.orderDate);
 
     const shippedOrders = orders.filter((order) => order.shippedAt).sort((a, b) => (a.shippedAt as Date).getTime() - (b.shippedAt as Date).getTime());
     for (const order of shippedOrders) {
@@ -810,14 +809,14 @@ async function seedDemo(): Promise<void> {
       if (slowItem) {
         const when = at(4, 14);
         const customer = await partnerOf('KH005');
-        const code = nextCode('NK', when, 4, true);
+        const code = nextCode('NK', when);
         move(slowItem, { movementType: 'CUSTOMER_RETURN', direction: 'IN', category: 'SLOW_RETURN_IN', referenceType: 'StockReturn', referenceId: code, partnerId: customer._id, reason: 'Hàng bán chậm khách trả lại', occurredAt: when }, 3);
         stockReturns.push(returnDoc(code, 'CUSTOMER', 'SLOW_RETURN_IN', customer, warehouseId, slowItem, 3, 'Hàng bán chậm khách trả lại', when));
       }
       if (defectItem) {
         const when = at(3, 11);
         const customer = await partnerOf('KH007');
-        const code = nextCode('NK', when, 4, true);
+        const code = nextCode('NK', when);
         move(defectItem, { movementType: 'CUSTOMER_RETURN', direction: 'IN', category: 'IMPORT_DEFECT_IN', referenceType: 'StockReturn', referenceId: code, partnerId: customer._id, reason: 'Khách nhận hàng bị móp nắp — lỗi từ nhà máy', occurredAt: when }, 1, defectiveWarehouseId);
         stockReturns.push(returnDoc(code, 'CUSTOMER', 'IMPORT_DEFECT_IN', customer, defectiveWarehouseId, defectItem, 1, 'Khách nhận hàng bị móp nắp — lỗi từ nhà máy', when));
         defectBalances.push({ _id: new ObjectId(), warehouseId: defectiveWarehouseId, productId: productOf(defectItem), onHand: D(1), reserved: D(0), locationCode: 'HL-01', createdAt: when, updatedAt: when, demoData: true });
@@ -825,7 +824,7 @@ async function seedDemo(): Promise<void> {
       if (factoryItem && suppliers[0]) {
         const when = at(1, 10);
         const supplier = suppliers[0] as Document;
-        const code = nextCode('XT', when, 4, true);
+        const code = nextCode('XT', when);
         move(factoryItem, { movementType: 'SUPPLIER_RETURN', direction: 'OUT', category: 'FACTORY_RETURN_OUT', referenceType: 'StockReturn', referenceId: code, partnerId: supplier._id, reason: 'Trả nhà máy hàng tồn lâu theo thỏa thuận', occurredAt: when }, 2);
         stockReturns.push(returnDoc(code, 'SUPPLIER', 'FACTORY_RETURN_OUT', supplier, warehouseId, factoryItem, 2, 'Trả nhà máy hàng tồn lâu theo thỏa thuận', when));
       }

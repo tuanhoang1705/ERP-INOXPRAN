@@ -5,7 +5,7 @@ import type { SequenceService } from '../../common/sequence.service';
 
 /**
  * Mã phiếu nhập trả hàng (NK-01, 31/10/2026): theo quy trình kho cũ, phiếu khách trả hàng / hàng mẫu nhập lại đánh số NK
- * (NK + yyyy + mm + 4 số, đếm lại mỗi tháng) thay cho TH. Phiếu trả nhà máy vẫn là XT.
+ * (NK + yyyy + mm + 4 số) thay cho TH; từ 06/11/2026 4 số cuối đếm tiếp cả năm như phiếu BH (NUM-01). Trả nhà máy vẫn là XT.
  * Kho có thể đã ghi số NK giấy trước khi vào ERP (ghi chú phiếu, công nợ nhập từ sổ cũ) → bỏ qua số đã có.
  */
 export const RETURN_IN_PREFIX = 'NK';
@@ -21,7 +21,7 @@ export function nkCodesIn(text: unknown): string[] {
 /** Số NK kế tiếp chưa dùng (không trùng phiếu trả hàng nào và số NK của công nợ nhập từ sổ cũ). */
 export async function nextReturnInCode(db: Db, sequences: SequenceService, session: ClientSession, at = new Date()): Promise<string> {
   for (let attempt = 0; attempt < 200; attempt += 1) {
-    const code = await sequences.next(RETURN_IN_PREFIX, session, 4, at, 'compact');
+    const code = await sequences.next(RETURN_IN_PREFIX, session, at);
     const [returns, history] = await Promise.all([
       db.collection('stock_returns').countDocuments({ $or: [{ code }, { legacyCode: code }] }, { session, limit: 1 }),
       db.collection('payments').countDocuments({ reference: code, mode: 'HISTORY' }, { session, limit: 1 }),

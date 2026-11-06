@@ -100,10 +100,11 @@
 {#if error}<div class="banner error"><CircleAlert size={17} />{error}</div>{/if}
 {#if notice}<div class="banner success">{notice}</div>{/if}
 
-<!-- DB-REV-03 (03/11/2026): một chỉ số doanh số gồm VAT (bỏ số trước thuế); card "Công nợ đã thu tháng". -->
+<!-- DB-REV-03 (03/11/2026): một chỉ số doanh số gồm VAT (bỏ số trước thuế); card "Công nợ đã thu tháng".
+     DB-REV-04 (05/11/2026): mọi số doanh số gồm VAT nên không ghi chữ "gồm VAT" nữa. -->
 <section class="kpis five">
   <article class="card kpi top green">
-    <p class="label">{m.doanh_so_thang()} {monthLabel} · <span class="basis">{m.ds_gom_vat()}</span></p>
+    <p class="label">{m.doanh_so_thang()} {monthLabel}</p>
     <p class="value">{summary ? vnd(summary.revenueThisMonthGross) : '—'}</p>
     <p class="note">
       {#if summary?.revenueGrossChangePercent !== null && summary?.revenueGrossChangePercent !== undefined}
@@ -233,7 +234,6 @@
   /* Card doanh thu rộng hơn: số trước thuế + dòng sau thuế không bị cắt. */
   .kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .kpis.five .value { font-size: clamp(17px, 1.3vw, 23px); }
-  .kpi .basis { color: var(--green); font-weight: 600; }
   @media (max-width: 1360px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 1100px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 640px) { .kpis.five { grid-template-columns: 1fr; } }

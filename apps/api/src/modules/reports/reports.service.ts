@@ -47,22 +47,42 @@ function periodLabel(from: Date, toExclusive: Date): string {
 export class ReportsService {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
 
+  /**
+   * Doanh số theo khách, gồm VAT (DB-REV-04, 05/11/2026): cả phiếu = tổng thanh toán của phiếu (khớp bảng điều khiển);
+   * lọc nhóm hàng = cộng thành tiền gồm thuế của các dòng thuộc nhóm. `revenueNet` (chưa VAT) chỉ để tính tỷ lệ chiết khấu.
+   */
   private async revenueByCustomer(filter: SalesReportFilter, from: Date, toExclusive: Date) {
     const match: Document = { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: from, $lt: toExclusive } };
     // Lọc tỉnh / NVKD làm sau khi gom theo khách (theo tỉnh hiện tại của khách — PV-01).
     if (filter.regionCode === 'B2C') match.channel = 'B2C';
     if (filter.tier) match.customerTier = filter.tier;
+    const lineNet = { $ifNull: ['$lines.netAmount', '$lines.pricingSnapshot.netAmount'] };
+    const lineGross = { $ifNull: ['$lines.lineTotal', { $ifNull: ['$lines.pricingSnapshot.grossAmount', lineNet] }] };
     const pipeline: Document[] = [{ $match: match }, { $unwind: '$lines' }];
     if (filter.categoryId) pipeline.push({ $match: { 'lines.categoryId': toObjectId(filter.categoryId, 'categoryId') } });
-    pipeline.push({
-      $group: {
-        _id: '$customerId',
-        revenue: { $sum: { $ifNull: ['$lines.netAmount', '$lines.pricingSnapshot.netAmount'] } },
-        discount: { $sum: { $ifNull: ['$lines.pricingSnapshot.discountAmount', 0] } },
-        orderIds: { $addToSet: '$_id' },
-        b2c: { $max: { $cond: [{ $eq: ['$channel', 'B2C'] }, 1, 0] } },
+    pipeline.push(
+      {
+        $group: {
+          _id: '$_id',
+          customerId: { $first: '$customerId' },
+          channel: { $first: '$channel' },
+          grandTotal: { $first: '$grandTotal' },
+          net: { $sum: lineNet },
+          gross: { $sum: lineGross },
+          discount: { $sum: { $ifNull: ['$lines.pricingSnapshot.discountAmount', 0] } },
+        },
       },
-    });
+      {
+        $group: {
+          _id: '$customerId',
+          revenue: { $sum: filter.categoryId ? '$gross' : { $ifNull: ['$grandTotal', '$gross'] } },
+          revenueNet: { $sum: '$net' },
+          discount: { $sum: '$discount' },
+          orderIds: { $addToSet: '$_id' },
+          b2c: { $max: { $cond: [{ $eq: ['$channel', 'B2C'] }, 1, 0] } },
+        },
+      },
+    );
     return this.db.collection('sales_orders').aggregate(pipeline).toArray();
   }
 
@@ -144,6 +164,7 @@ export class ReportsService {
     const totalDealers = filter.regionCode ? dealers.filter((row) => customerProvince(row).newCode === filter.regionCode).length : dealers.length;
 
     const totalRevenue = current.reduce<Decimal>((sum, row) => sum.add(decimalString(row.revenue)), new Decimal(0));
+    const totalRevenueNet = current.reduce<Decimal>((sum, row) => sum.add(decimalString(row.revenueNet)), new Decimal(0));
     const totalDiscount = current.reduce<Decimal>((sum, row) => sum.add(decimalString(row.discount)), new Decimal(0));
     const previousRevenue = previous.reduce<Decimal>((sum, row) => sum.add(decimalString(row.revenue)), new Decimal(0));
     const orderCount = new Set(current.flatMap((row) => (row.orderIds as ObjectId[]).map((id) => id.toHexString()))).size;
@@ -211,8 +232,9 @@ export class ReportsService {
         averageOrderValue: orderCount ? totalRevenue.div(orderCount).toFixed(2) : '0.00',
         activeDealers: dealerRows.length,
         totalDealers,
-        averageDiscountRate: totalRevenue.add(totalDiscount).gt(0)
-          ? totalDiscount.div(totalRevenue.add(totalDiscount)).mul(100).toDecimalPlaces(1).toNumber()
+        // Chiết khấu tính trên giá chưa thuế nên tỷ lệ so với tiền hàng chưa VAT.
+        averageDiscountRate: totalRevenueNet.add(totalDiscount).gt(0)
+          ? totalDiscount.div(totalRevenueNet.add(totalDiscount)).mul(100).toDecimalPlaces(1).toNumber()
           : 0,
         discountCapRate: String(settings?.discountCapRate ?? '15'),
       },
@@ -262,7 +284,7 @@ export class ReportsService {
     ].filter(Boolean).join(' · ');
     const meta = [
       `Kỳ báo cáo: ${report.period.label}${filters ? ` · ${filters}` : ''}`,
-      `Người lập: ${preparedBy} · Xuất lúc ${exportedAt()} · Doanh số sau chiết khấu, chưa VAT, tính theo ngày giao thành công`,
+      `Người lập: ${preparedBy} · Xuất lúc ${exportedAt()} · Doanh số sau chiết khấu, tính theo ngày giao thành công`,
     ];
     const kpis: Kpi[] = [
       { label: 'TỔNG DOANH SỐ (Đ)', value: Number(report.summary.revenue), format: FORMATS.money },

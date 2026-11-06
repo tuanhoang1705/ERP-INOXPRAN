@@ -44,7 +44,9 @@ export class InventoryService {
    * Tồn kho theo kho / mã. `asOf` (YYYY-MM-DD, LIST-DATE-01): tồn cuối ngày đó theo giờ Việt Nam = tồn hiện tại trừ các phát sinh
    * thẻ kho sau thời điểm đó; xem ngày cũ thì không có số giữ chỗ và bỏ lọc "dưới định mức".
    * INV-ALL-01 (31/10/2026): không chọn kho = mỗi mã một dòng, cộng mọi kho; khả dụng / dưới định mức chỉ tính kho bán được, phần ở
-   * kho hàng lỗi ghi riêng (defectiveOnHand). Xem kho hàng lỗi thì bỏ các mã đã hết (tồn 0).
+   * kho hàng lỗi ghi riêng (defectiveOnHand).
+   * INV-DEF-LIST-01 (06/11/2026): xem riêng kho hàng lỗi thì liệt kê **mọi mã** (đang hoạt động + mã ngừng từng có tồn ở kho đó), kể cả
+   * tồn 0 / chưa từng có, để mở thẻ kho tra lịch sử — trước đây bỏ các mã tồn 0.
    */
   async listBalances(warehouseId?: string, search?: string, lowOnly = false, paging: PageRequest | null = null, asOf?: string) {
     const asOfEnd = asOf ? dateBounds(asOf, asOf)?.$lt ?? null : null;
@@ -53,12 +55,39 @@ export class InventoryService {
     const defective = await defectiveWarehouseIds(this.db);
     const grouped = !warehouseId;
     const match: Document = {};
-    if (warehouseId) {
-      match.warehouseId = toObjectId(warehouseId, 'warehouseId');
-      if (defective.some((id) => id.equals(match.warehouseId as ObjectId))) match.onHand = { $ne: 0 };
-    }
+    if (warehouseId) match.warehouseId = toObjectId(warehouseId, 'warehouseId');
+    const defectiveView = !grouped && defective.some((id) => id.equals(match.warehouseId as ObjectId));
     const isDefective = { $in: ['$warehouseId', defective] };
-    const pipeline: Document[] = [
+    // Kho hàng lỗi: dòng lấy từ danh mục sản phẩm, ghép tồn của kho đó (không có thì 0).
+    const defectiveHead = async (): Promise<Document[]> => {
+      const wid = match.warehouseId as ObjectId;
+      const stocked = await this.db.collection('inventory_balances').distinct('productId', { warehouseId: wid });
+      return [
+        { $match: { $or: [{ status: 'ACTIVE' }, { _id: { $in: stocked } }] } },
+        {
+          $lookup: {
+            from: 'inventory_balances',
+            let: { productId: '$_id' },
+            pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$productId', '$$productId'] }, { $eq: ['$warehouseId', wid] }] } } }],
+            as: 'balance',
+          },
+        },
+        { $set: { balance: { $arrayElemAt: ['$balance', 0] } } },
+        {
+          $project: {
+            _id: 0,
+            productId: '$_id',
+            warehouseId: { $literal: wid },
+            onHand: { $ifNull: ['$balance.onHand', 0] },
+            reserved: { $ifNull: ['$balance.reserved', 0] },
+            locationCode: '$balance.locationCode',
+            updatedAt: '$balance.updatedAt',
+            product: { sku: '$sku', name: '$name', baseUnit: '$baseUnit', minimumStock: '$minimumStock' },
+          },
+        },
+      ];
+    };
+    const pipeline: Document[] = defectiveView ? await defectiveHead() : [
       { $match: match },
       ...(grouped
         ? [
@@ -86,6 +115,7 @@ export class InventoryService {
       },
       { $unwind: '$product' },
     ];
+    const source = defectiveView ? 'products' : 'inventory_balances';
     if (search) {
       pipeline.push({
         $match: {
@@ -106,14 +136,14 @@ export class InventoryService {
     let documents: Document[];
     let counts = { total: 0, low: 0 };
     if (paging) {
-      const [facet] = await this.db.collection('inventory_balances').aggregate([
+      const [facet] = await this.db.collection(source).aggregate([
         ...pipeline,
         { $facet: { rows: [{ $skip: paging.skip }, { $limit: paging.pageSize }], total: [{ $count: 'value' }], low: [{ $match: lowMatch }, { $count: 'value' }] } },
       ]).toArray();
       documents = (facet?.rows as Document[] | undefined) ?? [];
       counts = { total: Number((facet?.total as Document[] | undefined)?.[0]?.value ?? 0), low: Number((facet?.low as Document[] | undefined)?.[0]?.value ?? 0) };
     } else {
-      documents = await this.db.collection('inventory_balances').aggregate([...pipeline, { $limit: 500 }]).toArray();
+      documents = await this.db.collection(source).aggregate([...pipeline, { $limit: 500 }]).toArray();
     }
     // Phát sinh sau cuối ngày xem (chỉ cho các dòng đang hiển thị): nhập cộng, xuất trừ. Gộp mã: cộng mọi kho, phần kho lỗi riêng.
     const after = new Map<string, number>();
@@ -161,7 +191,7 @@ export class InventoryService {
         minimumStock: String(minimum),
         locationCode: (document.locationCode as string | null | undefined) ?? null,
         belowMinimum: minimum > 0 && available <= minimum && !isDefectiveRow,
-        updatedAt: (document.updatedAt as Date).toISOString(),
+        updatedAt: document.updatedAt instanceof Date ? document.updatedAt.toISOString() : null,
       };
     });
     return paging ? pageOf(rows, counts.total, paging, { lowCount: counts.low }) : rows;

@@ -47,7 +47,7 @@ export async function postPayNowReceipt(
   if (amount.lte(0)) return null;
   const payment = {
     _id: new ObjectId(),
-    code: await sequences.next('PAY', session),
+    code: await sequences.next('PAY', session, input.receivedAt),
     partnerId: input.receivable.partnerId as ObjectId,
     amount: decimal(amount.toFixed(2)),
     kind: 'RECEIPT',

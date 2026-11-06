@@ -21,8 +21,12 @@ function actor(request: AuthenticatedRequest) {
 }
 
 const isDuplicate = (error: unknown) => (error as { code?: number }).code === 11000;
-/** Trường người có quyền công nợ (kế toán) được sửa trên hồ sơ khách dù không quản lý hồ sơ. */
-const CREDIT_ONLY_KEYS = new Set(['version', 'creditLimit', 'paymentTermDays', 'status', 'holdReason']);
+/**
+ * Trường người có quyền công nợ (kế toán) được sửa trên hồ sơ khách dù không quản lý hồ sơ: hạn mức + số ngày nợ.
+ * SEC-UI-01 (06/11/2026): bỏ `status` / `holdReason` — web không cho kế toán đổi trạng thái khách (khóa đặt hàng do hệ thống tự
+ * khóa / mở theo nợ quá hạn); trước đây gọi API thẳng thì kế toán ngừng giao dịch / khóa được khách.
+ */
+const CREDIT_ONLY_KEYS = new Set(['version', 'creditLimit', 'paymentTermDays']);
 
 /** Tên trường cần $unset (danh sách `clear` của PATCH); trường vừa gửi giá trị mới thì không xóa. */
 function unsetOf(clear: readonly string[] | undefined, set: Document): Document {

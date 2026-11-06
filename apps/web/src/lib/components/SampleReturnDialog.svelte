@@ -12,13 +12,14 @@
   import { api } from '$lib/api';
   import { date, num } from '$lib/format';
   import { loanAge, slipTypeShort } from '$lib/slip-type';
+  import { loadStaff, staffPick, type StaffOption } from '$lib/staff';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import StaffSelect from './StaffSelect.svelte';
 
   type LoanRow = { id: string; code: string; purpose?: string; salesRepName?: string; destination?: string; shippedAt?: string; expectedReturnDate?: string; loanStatus?: string };
   type LoanLine = { productId: string; sku: string; productName: string; unit: string; shipped: string; returned: string; remaining: string };
   type LoanOrder = { id: string; code: string; version: number; loanLines?: LoanLine[] };
-  type Employee = { id: string; code: string; name: string };
   type ProductOption = { id: string; sku: string; name: string; baseUnit: string };
 
   let { open = $bindable(false), warehouses = [], onsaved }: { open?: boolean; warehouses?: Warehouse[]; onsaved?: (code: string) => void } = $props();
@@ -29,7 +30,8 @@
   let chosen = $state<LoanOrder | null>(null);
   let quantities = $state<Record<string, string>>({});
   let note = $state('');
-  let employees = $state<Employee[]>([]);
+  /** Người mượn: NVKD hoặc tài khoản không phải Admin (STAFF-PICK-01). */
+  let staff = $state<StaffOption[]>([]);
   let products = $state<ProductOption[]>([]);
   let free = $state({ borrowerId: '', warehouseId: '', note: '' });
   let lines = $state<Array<{ productId: string; quantity: string }>>([]);
@@ -55,10 +57,16 @@
         .then((result) => (loans = result.rows))
         .catch(() => (loans = []))
         .finally(() => (loansLoading = false));
-      if (!employees.length) void api<Employee[]>('/employees').then((rows) => (employees = rows)).catch(() => undefined);
+      void loadStaff().then((rows) => (staff = rows)).catch(() => undefined);
       if (!products.length) void api<ProductOption[]>('/products?status=ACTIVE').then((rows) => (products = rows)).catch(() => undefined);
     });
   });
+
+  /** API nhập lại không phiếu: NVKD ở `borrowerId`, tài khoản ở `borrowerUserId`. */
+  function borrowerOf(id: string) {
+    const pick = staffPick(staff, id);
+    return pick.staffUserId ? { borrowerUserId: pick.staffUserId } : { borrowerId: pick.salesRepId };
+  }
 
   async function choose(id: string) {
     error = '';
@@ -91,7 +99,7 @@
         }
         const result = await api<{ code: string }>('/inventory/returns/samples', {
           method: 'POST', idempotentCommand: true,
-          body: JSON.stringify({ borrowerId: free.borrowerId, warehouseId: free.warehouseId, note: free.note.trim(), lines: filled }),
+          body: JSON.stringify({ ...borrowerOf(free.borrowerId), warehouseId: free.warehouseId, note: free.note.trim(), lines: filled }),
         });
         open = false;
         onsaved?.(result.code);
@@ -157,7 +165,7 @@
       <p class="note">{m.smp_giai_thich_khong_phieu()}</p>
       <div class="grid">
         <div class="field"><label for="smp-borrower">{m.smp_nguoi_muon()} <span class="req">*</span></label>
-          <select id="smp-borrower" bind:value={free.borrowerId}><option value="">—</option>{#each employees as row (row.id)}<option value={row.id}>{row.name} ({row.code})</option>{/each}</select>
+          <StaffSelect id="smp-borrower" bind:value={free.borrowerId} options={staff} />
         </div>
         <div class="field"><label for="smp-warehouse">{m.inv_nhap_vao_kho()} <span class="req">*</span></label>
           <select id="smp-warehouse" bind:value={free.warehouseId}>{#each active as row (row.id)}<option value={row.id}>{row.name}</option>{/each}</select>

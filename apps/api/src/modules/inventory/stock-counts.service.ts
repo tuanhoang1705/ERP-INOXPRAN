@@ -204,7 +204,7 @@ export class StockCountsService {
       }
       const now = new Date();
       const { year, month } = vnParts(now);
-      const code = await this.sequences.next('KK', session, 4, now, 'compact');
+      const code = await this.sequences.next('KK', session, now);
       const document = {
         _id: new ObjectId(),
         code,

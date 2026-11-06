@@ -6,6 +6,7 @@ import { ObjectId } from 'mongodb';
 import { dateBounds, dateRangeFilter } from '../../common/date-range';
 import { seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { AuditService } from '../../common/audit.service';
+import { assertNotFutureDay } from '../../common/future-date';
 import { decimal, decimalString, serializeDocument, toObjectId, vnMonthStart, vnParts } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
@@ -191,6 +192,7 @@ export class ReceivablesService {
       key,
       input,
       async (session) => {
+          assertNotFutureDay(input.receivedAt, 'receivedAt', 'Ngày thu');
           const allocationTotal = input.allocations.reduce((sum, allocation) => sum.add(allocation.amount), new Decimal(0));
           if (!allocationTotal.eq(input.amount)) {
             throw new ConflictException({ code: 'PAYMENT_ALLOCATION_MISMATCH', message: 'Tổng phân bổ phải bằng số tiền thu' });
@@ -205,6 +207,11 @@ export class ReceivablesService {
             const receivableId = toObjectId(allocation.receivableId, 'receivableId');
             const receivable = await this.db.collection('receivables').findOne({ _id: receivableId, partnerId }, { session });
             if (!receivable) throw new NotFoundException({ code: 'RECEIVABLE_NOT_FOUND', message: 'Không tìm thấy khoản phải thu' });
+            // SEC-UI-01 (06/11/2026): chỉ thu vào chứng từ còn nợ — trước đây gọi API thẳng thu được vào công nợ đã hủy / đã thu đủ /
+            // khoản khách trả trước, làm công nợ đã hủy "sống lại".
+            if (!(OPEN_RECEIVABLE_STATUSES as readonly string[]).includes(String(receivable.status)) || new Decimal(decimalString(receivable.amount)).lte(0)) {
+              throw new ConflictException({ code: 'RECEIVABLE_NOT_OPEN', message: `Chứng từ ${String(receivable.code)} không còn nợ để thu (đã thu đủ, đã hủy hoặc là khoản khách trả trước)` });
+            }
             const outstanding = new Decimal(decimalString(receivable.amount)).minus(decimalString(receivable.paidAmount));
             if (new Decimal(allocation.amount).gt(outstanding)) {
               throw new ConflictException({ code: 'PAYMENT_EXCEEDS_OUTSTANDING', message: 'Số tiền phân bổ vượt dư nợ chứng từ' });
@@ -217,7 +224,7 @@ export class ReceivablesService {
           const now = new Date();
           const payment = {
             _id: new ObjectId(),
-            code: await this.sequences.next('PAY', session),
+            code: await this.sequences.next('PAY', session, new Date(input.receivedAt)),
             partnerId,
             amount: decimal(input.amount),
             method: input.method,
@@ -788,6 +795,7 @@ export class ReceivablesService {
    */
   async recordCustomerPayment(input: CreateCustomerPayment, request: AuthenticatedRequest, key: string | undefined) {
     return this.idempotency.execute(`customer-payment:${request.user.sub}`, key, input, async (session) => {
+      assertNotFutureDay(input.receivedAt, 'receivedAt', 'Ngày thu');
       const partnerId = toObjectId(input.partnerId, 'partnerId');
       const partner = await this.customer(partnerId, session);
       const now = new Date();
@@ -796,7 +804,7 @@ export class ReceivablesService {
       const open = await this.openItems(partnerId, session);
       const plan = planPartsAllocation(ReceivablesService.partsOf(open), input.amount, input.segment || null);
       const paymentId = new ObjectId();
-      const code = await this.sequences.next('PAY', session);
+      const code = await this.sequences.next('PAY', session, receivedAt);
       let prepaymentId: ObjectId | undefined;
       if (new Decimal(plan.leftover).gt(0)) {
         prepaymentId = new ObjectId();

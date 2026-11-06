@@ -20,6 +20,7 @@
   import ReturnAccountingDialog from '$lib/components/ReturnAccountingDialog.svelte';
   import ReturnCreditTargetDialog from '$lib/components/ReturnCreditTargetDialog.svelte';
   import SampleReturnDialog from '$lib/components/SampleReturnDialog.svelte';
+  import { Printer } from 'lucide-svelte';
 
   let rows = $state<StockReturn[]>([]);
   let total = $state(0);
@@ -170,6 +171,7 @@
             <tr class:voided={row.status === 'VOIDED'}>
               <td class="slip">
                 <span class="code">{row.code}</span>
+                <a class="link-btn" href={`/print/stock-return/${row.id}`} target="_blank" rel="noopener" aria-label={`${m.in_phieu()} ${row.code}`}><Printer size={13} />{m.in_phieu()}</a>
                 {#if row.legacyCode}<small class="legacy">{m.inv_ma_cu({ code: row.legacyCode })}</small>{/if}
                 <span class={`pill ${row.kind === 'CUSTOMER' ? 'success' : row.kind === 'SAMPLE' ? 'neutral' : 'orange'}`}>{categoryLabel(row.category)}</span>
                 <!-- Phiếu đã hủy coi như đã xóa (27/10/2026): API chỉ trả về cho quản trị gốc. -->
@@ -182,7 +184,7 @@
                 {#if row.partnerCode}<span class="code">{row.partnerCode}</span>{/if}
                 <small class="partner">{row.partnerName}</small>
                 <small class="where"><WarehouseIcon size={12} />{row.warehouseName}</small>
-                {#if row.salesOrderCode ?? row.purchaseOrderCode}<small>{m.inv_phieu_goc()}: <b class="code">{row.salesOrderCode ?? row.purchaseOrderCode}</b></small>{/if}
+                {#if row.salesOrderCode ?? row.purchaseOrderCode}<small>{m.inv_phieu_goc()}: <b class="code">{row.salesOrderCode ?? row.purchaseOrderCode}</b></small>{:else if row.preErpSalesCode}<small>{m.inv_phieu_goc()}: <b class="code">{row.preErpSalesCode}</b> {m.inv_truoc_erp()}</small>{/if}
               </td>
               <td>
                 <div class="lines">

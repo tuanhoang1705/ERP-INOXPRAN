@@ -8,6 +8,7 @@ import {
   LoanReturnSchema,
   SalesPriceSheetRequestSchema,
   SalesQuoteRequestSchema,
+  UndoIssueSchema,
   UpdateSalesOrderSchema,
   WarehouseIssueSchema,
 } from '@inoxpran/contracts';
@@ -62,7 +63,7 @@ export class SalesController {
   priceSheet(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     const input = SalesPriceSheetRequestSchema.parse(query);
     assertWarehouseAccess(request, input.warehouseId);
-    return this.sales.priceSheet(input.customerId, input.warehouseId);
+    return this.sales.priceSheet(input.customerId, input.warehouseId, input.orderId);
   }
 
   /** Tài khoản thủ kho có phạm vi kho xuất, để kế toán chọn người tiếp nhận phiếu. */
@@ -282,7 +283,41 @@ export class SalesController {
     @Headers('idempotency-key') key: string | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.sales.confirmCustomer(id, CustomerConfirmationSchema.parse(body), request, key);
+    const input = CustomerConfirmationSchema.parse(body);
+    // "Yêu cầu sửa" cũ = Hoàn tác phiếu (SAL-UNDO-01): cùng một đường xử lý.
+    if (input.decision === 'REVISION_REQUESTED') return this.sales.undoIssue(id, UndoIssueSchema.parse({ version: input.version, reason: input.note }), request, key);
+    return this.sales.confirmCustomer(id, input, request, key);
+  }
+
+  /**
+   * Hoàn tác phiếu (SAL-UNDO-01, 06/11/2026): phiếu đã phát hành, chưa đối chiếu với khách → về bước Lập phiếu, nhả hàng giữ.
+   * Người được phân bước 2 (phát hành) hoặc bước 3 (đối chiếu).
+   */
+  @RequirePermission('sales.step.issue', 'sales.step.confirm')
+  @Post(':id/undo-issue')
+  undoIssue(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.undoIssue(id, UndoIssueSchema.parse(body), request, key);
+  }
+
+  /**
+   * Sửa phiếu bằng quyền đã được duyệt (SAL-EDIT-GRANT-01, 06/11/2026): người đã gửi "Xin sửa phiếu" và được duyệt — sửa toàn bộ
+   * phiếu một lần trong hạn; máy chủ kiểm quyền (đúng người, đúng phiếu, còn hạn, chưa dùng) và giai đoạn phiếu.
+   */
+  @RequirePermission('sales.change_request')
+  @Patch(':id/granted-edit/:grantId')
+  grantedEdit(
+    @Param('id') id: string,
+    @Param('grantId') grantId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.sales.grantedEdit(id, grantId, UpdateSalesOrderSchema.parse(body), request, key);
   }
 
   /**

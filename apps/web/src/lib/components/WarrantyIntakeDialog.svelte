@@ -3,6 +3,8 @@
    * Sửa thông tin tiếp nhận phiếu bảo hành (PATCH /warranty/tickets/:id — 20/10/2026): phiếu chưa trả / chưa hủy, bắt buộc lý do,
    * lịch sử ghi trường cũ → mới. Sản phẩm, hóa đơn, ngày tiếp nhận (quyết định diện bảo hành) chỉ sửa khi phiếu còn "Đã tiếp nhận".
    * Ngày hẹn trả sửa bằng "Dời hẹn".
+   * WAR-EDIT-01 (06/11/2026): `unlocked` — sửa giai đoạn Tiếp nhận theo yêu cầu đã duyệt (`requestId`) hoặc người duyệt sửa thẳng:
+   * mở cả sản phẩm / hóa đơn / ngày tiếp nhận sau chẩn đoán và phiếu đã trả khách.
    */
   import type { Product, WarrantyTicket } from '@inoxpran/contracts';
   import { untrack } from 'svelte';
@@ -10,15 +12,16 @@
   import { m } from '$lib/paraglide/messages';
   import { api } from '$lib/api';
   import { todayIso } from '$lib/format';
-  import { channelText } from '$lib/warranty';
+  import { channelText, productPickOptions } from '$lib/warranty';
   import { WARRANTY_CHANNELS, type WarrantyChannel } from '$shared/warranty';
+  import CustomerPicker from './CustomerPicker.svelte';
   import Dialog from './Dialog.svelte';
 
-  type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; status: string };
+  type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; province?: string; taxCode?: string; status: string };
   type Technician = { id: string; displayName: string };
   type Ticket = WarrantyTicket;
 
-  let { open = $bindable(false), ticket, onsaved }: { open?: boolean; ticket: Ticket; onsaved?: (next: Ticket) => void } = $props();
+  let { open = $bindable(false), ticket, onsaved, unlocked = false, requestId = '' }: { open?: boolean; ticket: Ticket; onsaved?: (next: Ticket) => void; unlocked?: boolean; requestId?: string } = $props();
 
   let dealers = $state<Dealer[]>([]);
   let products = $state<Product[]>([]);
@@ -30,8 +33,9 @@
     noInvoice: false, noInvoiceDecision: '' as '' | 'WARRANTY' | 'PAID', declaredPurchaseDate: '', invoiceNumber: '', invoiceDate: '', receivedDate: '', technicianId: '', accessories: '', condition: '', loaner: '', symptom: '', reason: '',
   });
   /** Đã chẩn đoán: không đổi sản phẩm / hóa đơn / ngày tiếp nhận. */
-  const locked = $derived(ticket.status !== 'RECEIVED');
-  const productOptions = $derived(products.some((row) => row.id === ticket.product.productId) ? products : [{ id: ticket.product.productId, sku: ticket.product.sku, name: ticket.product.name } as Product, ...products]);
+  const locked = $derived(ticket.status !== 'RECEIVED' && !unlocked);
+  const productOptions = $derived(productPickOptions(products.some((row) => row.id === ticket.product.productId) ? products : [{ id: ticket.product.productId, sku: ticket.product.sku, name: ticket.product.name } as Product, ...products]));
+  let loaded = $state(false);
 
   $effect(() => {
     if (!open) return;
@@ -65,7 +69,8 @@
             products = productRows;
             technicians = technicianRows;
           })
-          .catch((caught) => (error = caught instanceof Error ? caught.message : m.wr_load_error()));
+          .catch((caught) => (error = caught instanceof Error ? caught.message : m.wr_load_error()))
+          .finally(() => (loaded = true));
       }
     });
   });
@@ -95,6 +100,7 @@
         body: JSON.stringify({
           version: ticket.version,
           reason: form.reason.trim(),
+          ...(requestId ? { requestId } : {}),
           channel: form.channel,
           customerId: form.customerId || undefined,
           customerName: form.customerName.trim(),
@@ -134,19 +140,16 @@
     </div>
     <div class="field wide">
       <label for="we-dealer">{m.wr_dealer()}</label>
-      <select id="we-dealer" value={form.customerId} onchange={(event) => chooseDealer(event.currentTarget.value)}>
-        <option value="">{m.wr_retail_customer()}</option>
-        {#each dealers as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}
-      </select>
+      <CustomerPicker id="we-dealer" options={dealers} value={form.customerId} onchoose={chooseDealer} loading={!loaded} noneLabel={m.wr_retail_customer()}
+        placeholder={m.wr_tim_dai_ly()} emptyText={m.wr_khong_tim_thay_dai_ly()} toggleLabel={m.wr_mo_ds_dai_ly()} />
     </div>
     <div class="field"><label for="we-name">{m.wr_customer_name()} <span class="req">*</span></label><input id="we-name" bind:value={form.customerName} required minlength="2" maxlength="240" /></div>
     <div class="field"><label for="we-phone">{m.dien_thoai()}</label><input id="we-phone" type="tel" bind:value={form.customerPhone} maxlength="30" /></div>
     <div class="field"><label for="we-address">{m.dia_chi()}</label><input id="we-address" bind:value={form.customerAddress} maxlength="500" /></div>
     <div class="field wide">
       <label for="we-product">{m.wr_product()} <span class="req">*</span></label>
-      <select id="we-product" bind:value={form.productId} required disabled={locked}>
-        {#each productOptions as row}<option value={row.id}>{row.sku} — {row.name}</option>{/each}
-      </select>
+      <CustomerPicker id="we-product" options={productOptions} value={form.productId} onchoose={(id) => (form.productId = id)} disabled={locked} loading={!loaded}
+        placeholder={m.wr_tim_san_pham()} emptyText={m.wr_khong_tim_thay_san_pham()} toggleLabel={m.wr_mo_ds_san_pham()} describe={() => ''} />
     </div>
     <div class="field"><label for="we-serial">{m.wr_serial()}</label><input id="we-serial" bind:value={form.serial} maxlength="80" /></div>
     {#if !form.noInvoice}

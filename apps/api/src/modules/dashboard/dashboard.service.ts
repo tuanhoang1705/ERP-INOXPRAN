@@ -123,25 +123,27 @@ export class DashboardService {
     ]);
 
     const revenueByMonth = new Map(monthlyRows.map((row) => [String(row._id), decimalString(row.revenue)]));
+    const grossByMonth = new Map(monthlyRows.map((row) => [String(row._id), decimalString(row.revenueGross)]));
     const thisMonthKey = `${year}-${String(month).padStart(2, '0')}`;
-    const revenueThisMonthGross = new Decimal(decimalString(monthlyRows.find((row) => String(row._id) === thisMonthKey)?.revenueGross ?? '0'));
+    const revenueThisMonthGross = new Decimal(grossByMonth.get(thisMonthKey) ?? '0');
     const collected = collectedRows[0];
-    const monthlyRevenue = monthStarts.slice(0, 6).map((start, index) => {
+    const monthKeys = monthStarts.slice(0, 6).map((start) => {
       const parts = vnParts(start);
-      const key = `${parts.year}-${String(parts.month).padStart(2, '0')}`;
-      return {
-        month: key,
-        label: `T${parts.month}/${String(parts.year).slice(-2)}`,
-        revenue: new Decimal(revenueByMonth.get(key) ?? '0').toFixed(2),
-        current: index === 5,
-      };
+      return { key: `${parts.year}-${String(parts.month).padStart(2, '0')}`, label: `T${parts.month}/${String(parts.year).slice(-2)}` };
     });
-    const revenueThisMonth = new Decimal(monthlyRevenue[5]?.revenue ?? '0');
-    const revenuePreviousMonth = new Decimal(monthlyRevenue[4]?.revenue ?? '0');
+    // Biểu đồ 6 tháng tính doanh số gồm VAT như card doanh số tháng (DB-REV-04, 05/11/2026).
+    const monthlyRevenue = monthKeys.map(({ key, label }, index) => ({
+      month: key,
+      label,
+      revenue: new Decimal(grossByMonth.get(key) ?? '0').toFixed(2),
+      current: index === 5,
+    }));
+    const revenueThisMonth = new Decimal(revenueByMonth.get(monthKeys[5]?.key ?? '') ?? '0');
+    const revenuePreviousMonth = new Decimal(revenueByMonth.get(monthKeys[4]?.key ?? '') ?? '0');
     const revenuePreviousToDate = new Decimal(decimalString(previousToDateRows[0]?.revenue ?? '0'));
     // Doanh số gồm VAT (03/11/2026): ô chính của bảng điều khiển.
     const previousKey = `${vnParts(previousMonthStart).year}-${String(vnParts(previousMonthStart).month).padStart(2, '0')}`;
-    const revenuePreviousMonthGross = new Decimal(decimalString(monthlyRows.find((row) => String(row._id) === previousKey)?.revenueGross ?? '0'));
+    const revenuePreviousMonthGross = new Decimal(grossByMonth.get(previousKey) ?? '0');
     const revenuePreviousToDateGross = new Decimal(decimalString(previousToDateRows[0]?.revenueGross ?? '0'));
     const previousMonthNumber = vnParts(previousMonthStart).month;
     const overdue = new Decimal(decimalString(overdueRows[0]?.total ?? '0'));

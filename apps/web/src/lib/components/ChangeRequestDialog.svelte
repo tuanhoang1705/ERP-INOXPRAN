@@ -2,7 +2,10 @@
   /**
    * Xem / duyệt / từ chối một đề nghị sửa / hủy / xóa phiếu BH (SAL-CHG-01). Đề nghị sửa hiện bảng so sánh
    * dòng hàng hiện tại với dòng theo đề nghị. Duyệt: hệ thống thực hiện ngay bằng tài khoản người duyệt.
+   * Xin sửa phiếu (EDIT_GRANT — SAL-EDIT-GRANT-01, 06/11/2026): duyệt = cho phép người xin sửa một lần trong 24 giờ; đã sửa thì
+   * hiện bảng trước → sau.
    */
+  import { SALES_EDIT_GRANT_HOURS } from '$shared/sales-steps';
   import { CircleAlert } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { api } from '$lib/api';
@@ -36,7 +39,17 @@
     }
   });
 
-  const rows = $derived(request?.preview && current ? compareLines(current.lines, request.preview.lines) : []);
+  /** Bảng so sánh: đề nghị sửa cũ (hiện tại → theo đề nghị) hoặc quyền sửa đã dùng (trước → sau khi sửa). */
+  const comparison = $derived.by(() => {
+    if (request?.kind === 'EDIT_GRANT' && request.result) {
+      const { before, after } = request.result;
+      return { rows: compareLines(before.lines, after.lines), before: before.grandTotal, after: after.grandTotal, left: m.yc_truoc_khi_sua(), right: m.yc_sau_khi_sua() };
+    }
+    if (request?.kind === 'EDIT' && request.preview) {
+      return { rows: current ? compareLines(current.lines, request.preview.lines) : [], before: current?.grandTotal ?? null, after: request.preview.grandTotal, left: m.yc_hien_tai(), right: m.yc_theo_de_nghi() };
+    }
+    return null;
+  });
   const title = $derived(!request ? '' : action === 'approve' ? m.yc_duyet_tieu_de({ code: request.code }) : action === 'reject' ? m.yc_tu_choi_tieu_de({ code: request.code }) : m.yc_xem_tieu_de({ code: request.code }));
 
   async function submit() {
@@ -61,16 +74,18 @@
       <div><dt>{m.yc_cot_loai()}</dt><dd><b>{changeKindLabel(request.kind)}</b> · <a class="link" href={`/sales/orders/${request.orderId}`}>{request.orderCode}</a>{request.customerName ? ` — ${request.customerName}` : ''}</dd></div>
       <div><dt>{m.yc_cot_nguoi()}</dt><dd>{request.requestedByName} · {dateTime(request.requestedAt)}</dd></div>
       <div><dt>{m.bh_ly_do()}</dt><dd class="reason">{request.reason}</dd></div>
+      {#if request.kind === 'EDIT_GRANT' && request.decidedByName && request.status !== 'PENDING'}<div><dt>{m.yc_nguoi_duyet()}</dt><dd>{request.decidedByName}{request.decidedAt ? ` · ${dateTime(request.decidedAt)}` : ''}{request.expiresAt && request.status === 'GRANTED' ? ` — ${m.yc_han_sua({ at: dateTime(request.expiresAt) })}` : ''}</dd></div>{/if}
+      {#if request.appliedAt}<div><dt>{m.yc_da_sua_luc()}</dt><dd>{dateTime(request.appliedAt)}</dd></div>{/if}
     </dl>
-    {#if request.kind === 'EDIT' && request.preview}
+    {#if comparison}
       <div class="table-wrap">
         <table class="table compare">
           <thead>
-            <tr><th rowspan="2">{m.ma_sp()}</th><th colspan="2" class="num">{m.yc_hien_tai()}</th><th colspan="2" class="num">{m.yc_theo_de_nghi()}</th></tr>
+            <tr><th rowspan="2">{m.ma_sp()}</th><th colspan="2" class="num">{comparison.left}</th><th colspan="2" class="num">{comparison.right}</th></tr>
             <tr><th class="num">SL × {m.don_gia()}</th><th class="num">{m.thanh_tien()}</th><th class="num">SL × {m.don_gia()}</th><th class="num">{m.thanh_tien()}</th></tr>
           </thead>
           <tbody>
-            {#each rows as row (row.sku + (row.zeroPriceKind ?? 'SALE'))}
+            {#each comparison.rows as row (row.sku + (row.zeroPriceKind ?? 'SALE'))}
               <tr class:changed={row.changed}>
                 <td><b class="code">{row.sku}</b>{#if row.gift}<LineKindPill kind={row.zeroPriceKind ?? 'GIFT'} />{/if}<small>{row.productName}</small></td>
                 <td class="num">{row.before ? `${num(row.before.quantity)} × ${row.before.unitPrice === '' ? m.yc_nhieu_gia() : vnd(row.before.unitPrice)}` : '—'}</td>
@@ -80,11 +95,11 @@
               </tr>
             {/each}
           </tbody>
-          <tfoot><tr><td>{m.yc_tong()}</td><td></td><td class="num">{current ? vnd(current.grandTotal) : '…'}</td><td></td><td class="num"><b>{vnd(request.preview.grandTotal)}</b></td></tr></tfoot>
+          <tfoot><tr><td>{m.yc_tong()}</td><td></td><td class="num">{comparison.before !== null ? vnd(comparison.before) : '…'}</td><td></td><td class="num"><b>{vnd(comparison.after)}</b></td></tr></tfoot>
         </table>
       </div>
     {/if}
-    {#if action === 'approve'}<p class="lead">{m.yc_duyet_giai_thich()}</p>{/if}
+    {#if action === 'approve'}<p class="lead">{request.kind === 'EDIT_GRANT' ? m.yc_duyet_xin_sua_giai_thich({ who: request.requestedByName, hours: SALES_EDIT_GRANT_HOURS }) : m.yc_duyet_giai_thich()}</p>{/if}
     {#if action !== 'view'}
       <div class="field">
         <label for="change-note">{action === 'reject' ? m.yc_ly_do_tu_choi() : m.yc_ghi_chu()}{#if action === 'reject'} <span class="req">*</span>{/if}</label>
