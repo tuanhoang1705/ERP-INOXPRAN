@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import { type ClientSession, type Db, type Document, ObjectId } from 'mongodb';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString } from '../../common/domain';
 import type { SequenceService } from '../../common/sequence.service';
 import { applyAllocations } from './allocation-store';
@@ -87,6 +88,8 @@ export async function voidPayNowReceipts(db: Db, salesOrderId: ObjectId, reason:
       { $set: { status: 'VOIDED', voidReason: reason, voidedAt: now, ...(actor.id ? { voidedBy: actor.id } : {}), voidedByName: actor.name } },
       { session },
     );
+    // NUM-02: phiếu thu hủy nhả số (PAY… → PAY…-H1).
+    await releaseDocumentNumber(db, 'PAY', payment, session);
   }
   return payments;
 }

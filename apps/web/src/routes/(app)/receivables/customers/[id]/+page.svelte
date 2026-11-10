@@ -9,7 +9,7 @@
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
-  import { CircleAlert, CircleCheck, Download, HandCoins, Pencil, Plus, Shuffle, Tags, Trash2, Truck } from 'lucide-svelte';
+  import { CircleAlert, CircleCheck, Download, HandCoins, Image, Pencil, Plus, Shuffle, Tags, Trash2, Truck } from 'lucide-svelte';
   import { api, download } from '$lib/api';
   import { date, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
@@ -17,6 +17,7 @@
   import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
   import CustomerPaymentDrawer, { type PostedPayment } from '$lib/components/CustomerPaymentDrawer.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
+  import DebtShareImage, { type DebtShareRow } from '$lib/components/DebtShareImage.svelte';
   import SegmentItemsDialog, { type SegmentHolder } from '$lib/components/SegmentItemsDialog.svelte';
   import HistoryRowDialog, { type HistoryRowInfo, type HistoryRowResult } from '$lib/components/HistoryRowDialog.svelte';
 
@@ -43,6 +44,7 @@
 
   const id = $derived(page.params.id ?? '');
   let data = $state<Statement | null>(null);
+  let shareOpen = $state(false);
   let from = $state('');
   let to = $state('');
   let loading = $state(true);
@@ -56,6 +58,27 @@
   const isAdmin = $derived(Boolean(roles?.includes('ADMIN')) || Boolean(session.user?.root));
   const segmentName = (code: string) => data?.segments.find((segment) => segment.code === code)?.name ?? code;
   const openSegments = $derived(data?.segments.filter((segment) => Number(segment.outstanding) > 0) ?? []);
+  /**
+   * Ảnh công nợ gửi khách (CN-SHARE-01): đúng các dòng của bảng Excel kế toán — Tổng công nợ, Đã thanh toán, Phí vận chuyển,
+   * Hàng trả lại, Công nợ <nhóm tách riêng>, Còn lại, Còn lại công nợ (trừ <nhóm>) chữ đỏ. Dòng 0 đ (phí VC, trả hàng) thì bỏ.
+   */
+  const shareGroups = $derived(openSegments.map((segment) => segment.name.toLowerCase()).join(' + '));
+  const shareRows = $derived.by<DebtShareRow[]>(() => {
+    if (!data) return [];
+    const rows: DebtShareRow[] = [];
+    if (from) rows.push({ label: m.cn_so_du_dau_ky(), value: data.opening });
+    rows.push({ label: m.cn_anh_tong_cong_no(), value: data.totals.debit });
+    rows.push({ label: m.cn_anh_da_thanh_toan(), value: data.totals.receipt });
+    if (Number(data.totals.freight)) rows.push({ label: m.cn_anh_phi_vc(), value: data.totals.freight });
+    if (Number(data.totals.returns)) rows.push({ label: m.cn_anh_tra_hang(), value: data.totals.returns });
+    if (shareGroups) {
+      rows.push({ label: m.cn_anh_cong_no_nhom({ groups: shareGroups }), value: openSegments.reduce((sum, segment) => sum + Number(segment.outstanding), 0).toFixed(2) });
+      rows.push({ label: m.cn_anh_con_lai(), value: data.closing });
+      rows.push({ label: m.cn_anh_con_lai_tru_nhom({ groups: shareGroups }), value: data.current.normal, emphasis: true });
+    } else rows.push({ label: m.cn_anh_con_lai(), value: data.closing, emphasis: true });
+    return rows;
+  });
+  const shareDate = $derived.by(() => { const day = to || new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10); return `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`; });
   // Gắn tay chứng từ vào nhóm (CN-SEG-01).
   let tagOpen = $state(false);
   // Hàng khách đang nợ của một nhóm (mã + số lượng).
@@ -198,6 +221,8 @@
 
 <svelte:head><title>{data ? `${data.partner.code} · ` : ''}{m.cn_so_khach_title()} · INOXPRAN ERP</title></svelte:head>
 
+{#if data}<DebtShareImage bind:open={shareOpen} customer={data.partner.name} code={data.partner.code} asOf={shareDate} rows={shareRows} />{/if}
+
 <section class="page-head">
   <div>
     <nav class="crumbs" aria-label={m.duong_dan()}><a href="/receivables">{m.cong_no()}</a><a href="/receivables/customers">{m.cn_theo_khach_title()}</a><span>{data?.partner.code ?? '…'}</span></nav>
@@ -213,6 +238,7 @@
   <div class="actions">
     <a class="btn" href={`/catalog/dealers/${id}`}>{m.cn_ho_so_khach()}</a>
     <button class="btn" onclick={exportExcel} disabled={!data}><Download size={16} />{m.xuat_excel()}</button>
+    <button class="btn" id="debt-share" onclick={() => (shareOpen = true)} disabled={!data}><Image size={16} />{m.cn_anh_gui_khach()}</button>
     {#if canCollect}
       {#if data && Number(data.prepayment) > 0 && Number(data.openDebt) > 0}<button class="btn" onclick={offset} disabled={working}><Shuffle size={16} />{m.cn_bu_tru_tra_truoc()}</button>{/if}
       <button class="btn" onclick={() => openHistory(null, 'create')}><Plus size={16} />{m.hx_them_dong()}</button>

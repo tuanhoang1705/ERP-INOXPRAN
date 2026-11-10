@@ -297,7 +297,7 @@
   <section class="page-head">
     <div>
       <nav class="crumbs" aria-label={m.duong_dan()}><a href="/warranty">{m.wr_nav_list()}</a><span>{ticket.code}</span></nav>
-      <h1 class="page-title">{ticket.code}</h1>
+      <h1 class="page-title">{ticket.code}{#if ticket.legacyCode}<small class="legacy-code">{m.wr_ma_cu({ code: ticket.legacyCode })}</small>{/if}</h1>
       <p class="pills">
         <span class={`pill ${statusTone[ticket.status]}`}>{statusText(ticket.status)}</span>
         <span class={`pill ${coverageTone[ticket.coverage]}`}>{ticketCoverageText(ticket)}{ticket.exclusion ? ` · ${exclusionText(ticket.exclusion)}` : ''}</span>
@@ -579,7 +579,7 @@
   </section>
 
   <WarrantyIntakeDialog bind:open={editOpen} {ticket} unlocked={intakeUnlocked} requestId={intakeRequestId} onsaved={(next) => { prepare({ ...(next as Ticket), photos: ticket?.photos }); notice = 'edited'; }} />
-  <WarrantyStageEditDialog bind:open={stageEditOpen} {ticket} stage={stageEditStage} requestId={stageRequestId} {faultCodes} onsaved={(next) => stageSaved(next as Ticket)} />
+  <WarrantyStageEditDialog bind:open={stageEditOpen} {ticket} stage={stageEditStage} requestId={stageRequestId} {faultCodes} approver={isApprover} onsaved={(next) => stageSaved(next as Ticket)} />
 
   <Dialog bind:open={stagePickOpen} title={isApprover ? m.wr_sua_theo_giai_doan() : m.wr_yc_sua_tieu_de({ code: ticket.code })}>
     <p class="lead">{isApprover ? m.wr_sua_truc_tiep_giai_thich() : m.wr_yc_sua_giai_thich({ hours: WARRANTY_EDIT_GRANT_HOURS })}</p>
@@ -628,6 +628,7 @@
 {/if}
 
 <style>
+  .legacy-code { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; font-weight: 500; }
   /* WAR-EDIT-01: banner yêu cầu sửa, hộp chọn giai đoạn. */
   .edit-request { flex-wrap: wrap; }
   .edit-request > span:first-of-type { flex: 1 1 320px; min-width: 0; }

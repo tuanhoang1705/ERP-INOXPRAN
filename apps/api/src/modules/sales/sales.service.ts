@@ -10,6 +10,7 @@ import { Decimal128, ObjectId } from 'mongodb';
 import { assertWarehouseAccess } from '../../common/access';
 import { AuditService } from '../../common/audit.service';
 import { dateRangeFilter } from '../../common/date-range';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString, serializeDocument, toObjectId, vnDayStart, vnParts } from '../../common/domain';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { PriceOverridesService } from './price-overrides.service';
@@ -1355,6 +1356,8 @@ export class SalesService {
         { $set: { status: 'VOIDED', statusBeforeVoid: receivable.status, voidedAt: now, voidReason: input.reason, updatedAt: now }, $inc: { version: 1 } },
         { session },
       );
+      // NUM-02: công nợ hủy nhả số (AR… → AR…-H1).
+      await releaseDocumentNumber(this.db, 'AR', receivable, session);
       if (paid.gt(0)) {
         credited = credited.add(paid);
         const farFuture = new Date(now);
@@ -1544,6 +1547,7 @@ export class SalesService {
           { $set: { status: 'VOIDED', statusBeforeVoid: receivable.status, voidedAt: now, voidReason: `Chuyển thành phiếu ${PURPOSE_LABEL_VI[afterPurpose].toLowerCase()}`, updatedAt: now }, $inc: { version: 1 } },
           { session },
         );
+        await releaseDocumentNumber(this.db, 'AR', receivable, session);
       } else if (receivable) {
         const paid = new Decimal(decimalString(receivable.paidAmount));
         const amount = new Decimal(decimalString(fields.grandTotal));

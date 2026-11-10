@@ -19,6 +19,7 @@ import { ObjectId } from 'mongodb';
 import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { assertNotFutureDay } from '../../common/future-date';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -349,8 +350,10 @@ export class ProcurementService {
         { returnDocument: 'after', session },
       );
       await this.db.collection('approval_requests').updateMany({ entityType: 'PurchaseOrder', entityId: orderId, status: 'PENDING' }, { $set: { status: 'CANCELLED', decidedAt: new Date() } }, { session });
-      await this.audit.record({ ...this.actor(request), action: 'PURCHASE_ORDER_CANCELLED', entityType: 'PurchaseOrder', entityId: id }, session);
-      return serializeDocument(result as Document);
+      // NUM-02: đơn hủy nhả số (PO… → PO…-H1).
+      const released = await releaseDocumentNumber(this.db, 'PO', result, session);
+      await this.audit.record({ ...this.actor(request), action: 'PURCHASE_ORDER_CANCELLED', entityType: 'PurchaseOrder', entityId: id, metadata: { code: order.code, releasedTo: released?.code ?? null } }, session);
+      return serializeDocument(released as Document);
     });
   }
 

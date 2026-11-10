@@ -13,6 +13,7 @@
   import { notificationText } from '$lib/server-text';
   import { activeSection, allowed, sections, type NavItem } from '$lib/nav';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
+  import NotificationToasts from '$lib/components/NotificationToasts.svelte';
   import { can, session, savedWorkspace, type SessionUser } from '$lib/session.svelte';
 
 
@@ -27,6 +28,10 @@
   let clearAsk = $state(false);
   let clearing = $state(false);
   let warehouseName = $state('');
+  // Thông báo hiện ngay (NOTI-RT-01): hỏi thông báo mới mỗi 6 giây khi tab đang mở; thông báo chưa thấy nổi lên góc màn hình.
+  let toasts = $state<AppNotification[]>([]);
+  const seenNotifications = new Set<string>();
+  const POLL_MS = 6_000;
 
   const user = $derived(session.user);
   const current = $derived(activeSection(page.url.pathname));
@@ -59,14 +64,56 @@
         pendingApprovals = approvals.length;
         pendingChanges = changes.pending;
         notifications = unread;
+        for (const row of unread) seenNotifications.add(row.id);
         warehouseName = savedWorkspace()?.name ?? warehouses[0]?.name ?? '';
       })
       .catch(() => goto('/login'));
+    const timer = setInterval(() => void pollNotifications(), POLL_MS);
+    const handleVisible = () => { if (document.visibilityState === 'visible') void pollNotifications(); };
+    document.addEventListener('visibilitychange', handleVisible);
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisible);
+      clearInterval(timer);
     };
   });
+
+  let polling = false;
+  /** Tải thông báo chưa đọc; cái mới (chưa thấy) nổi lên góc màn hình, chuông và số chờ duyệt cập nhật theo. */
+  async function pollNotifications() {
+    const value = session.user;
+    if (!value || polling || !online || document.visibilityState !== 'visible') return;
+    polling = true;
+    try {
+      const unread = await api<AppNotification[]>('/notifications?unreadOnly=true');
+      const fresh = unread.filter((row) => !seenNotifications.has(row.id));
+      for (const row of unread) seenNotifications.add(row.id);
+      notifications = unread;
+      if (!fresh.length) return;
+      // Mới nhất ở dưới cùng (gần mắt nhất), giữ tối đa 3 thẻ.
+      toasts = [...toasts, ...fresh.reverse()].slice(-3);
+      const [approvals, changes] = await Promise.all([
+        allowed(value.roles, ['SALES_MANAGER', 'PROCUREMENT_MANAGER', 'DIRECTOR']) ? api<unknown[]>('/approval-requests?status=PENDING').catch(() => null) : Promise.resolve(null),
+        can('sales.change_approve') || can('sales.change_request') ? api<{ pending: number }>('/sales-change-requests/count').catch(() => null) : Promise.resolve(null),
+      ]);
+      if (approvals) pendingApprovals = approvals.length;
+      if (changes) pendingChanges = changes.pending;
+    } catch {
+      // Mất mạng / hết phiên: lần sau thử lại; hết phiên thì các trang tự chuyển về đăng nhập.
+    } finally {
+      polling = false;
+    }
+  }
+
+  function dismissToast(id: string) {
+    toasts = toasts.filter((item) => item.id !== id);
+  }
+
+  async function openToast(notification: AppNotification) {
+    dismissToast(notification.id);
+    await openNotification(notification);
+  }
 
   /** Mục con khớp nhất với URL hiện tại (đường dẫn + tham số truy vấn). */
   function activeHref(items: NavItem[]): string | null {
@@ -234,6 +281,7 @@
     <main id="main">
       {#if user}<WorkspaceTabs />{@render children()}{:else}<div class="auth-loading">{m.dang_xac_thuc_phien_lam_viec()}</div>{/if}
     </main>
+    <NotificationToasts {toasts} onopen={(notification) => void openToast(notification)} ondismiss={dismissToast} />
   </div>
 </div>
 

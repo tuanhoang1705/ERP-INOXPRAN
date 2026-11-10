@@ -1,7 +1,8 @@
 import { ConflictException } from '@nestjs/common';
-import type { ClientSession, Db } from 'mongodb';
+import { cancelledCode } from '@inoxpran/contracts';
+import type { ClientSession, Db, Document, ObjectId } from 'mongodb';
 import { vnParts } from '../../common/domain';
-import type { SequenceService } from '../../common/sequence.service';
+import { documentCode, type SequenceService } from '../../common/sequence.service';
 
 /**
  * Mã phiếu nhập trả hàng (NK-01, 31/10/2026): theo quy trình kho cũ, phiếu khách trả hàng / hàng mẫu nhập lại đánh số NK
@@ -18,17 +19,62 @@ export function nkCodesIn(text: unknown): string[] {
   return [...new Set(found)];
 }
 
-/** Số NK kế tiếp chưa dùng (không trùng phiếu trả hàng nào và số NK của công nợ nhập từ sổ cũ). */
-export async function nextReturnInCode(db: Db, sequences: SequenceService, session: ClientSession, at = new Date()): Promise<string> {
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    const code = await sequences.next(RETURN_IN_PREFIX, session, at);
-    const [returns, history] = await Promise.all([
-      db.collection('stock_returns').countDocuments({ $or: [{ code }, { legacyCode: code }] }, { session, limit: 1 }),
-      db.collection('payments').countDocuments({ reference: code, mode: 'HISTORY' }, { session, limit: 1 }),
+/** Mã chuẩn của phiếu trả hàng (NK / XT + năm + tháng + 4 số) — chỉ mã này được nhả số khi hủy. */
+const STANDARD_RETURN_CODE = /^(NK|XT)20\d{2}(0[1-9]|1[0-2])\d{4,5}$/;
+
+/**
+ * Phiếu trả hàng hủy nhả số cho phiếu mới, như phiếu BH (09/11/2026 — người dùng: "phiếu đã hủy 43 thì phiếu mới phải là 43"):
+ * NK2026110043 → NK2026110043-H1 (giữ `originalCode`). Đổi theo thẻ kho, phiếu giảm nợ, liên kết phiếu bảo hành.
+ */
+export async function releaseReturnNumber(db: Db, row: Document, session: ClientSession): Promise<Document> {
+  const oldCode = String(row.code);
+  if (!STANDARD_RETURN_CODE.test(oldCode)) return row;
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const taken = await db.collection('stock_returns').find({ code: { $regex: `^${escape(oldCode)}-H\\d+$` } }, { session, projection: { code: 1 } }).toArray();
+  const newCode = cancelledCode(oldCode, new Set(taken.map((item) => String(item.code))));
+  const id = row._id as ObjectId;
+  const updated = await db.collection('stock_returns').findOneAndUpdate({ _id: id }, { $set: { code: newCode, originalCode: oldCode } }, { session, returnDocument: 'after' });
+  await db.collection('inventory_movements').updateMany({ referenceType: 'StockReturn', referenceId: oldCode }, { $set: { referenceId: newCode } }, { session });
+  await db.collection('payments').updateMany({ stockReturnId: id }, { $set: { stockReturnCode: newCode } }, { session });
+  await db.collection('payments').updateMany({ stockReturnId: id, reference: oldCode }, { $set: { reference: newCode } }, { session });
+  await db.collection('warranty_tickets').updateMany({ 'stock.returnSlip.code': oldCode }, { $set: { 'stock.returnSlip.code': newCode } }, { session });
+  return updated ?? row;
+}
+
+/**
+ * Số phiếu trả hàng kế tiếp (NK khách trả / hàng mẫu, XT trả nhà máy) theo cách phiếu BH (NUM-01): số lớn nhất **đang dùng** trong
+ * năm + 1 — phiếu hủy đã nhả số nên số của phiếu cuối bị hủy được dùng lại; số trống ở giữa bỏ qua. Bỏ qua số đã có ở phiếu khác
+ * (kể cả mã cũ) và số NK của công nợ nhập từ sổ cũ. Phiếu hủy từ trước khi có quy tắc nhả số mà đang giữ số này → nhả rồi dùng.
+ */
+export async function nextReturnCode(db: Db, sequences: SequenceService, session: ClientSession, prefix: 'NK' | 'XT', at = new Date()): Promise<string> {
+  const { year } = vnParts(at);
+  const pattern = `^${prefix}${year}(0[1-9]|1[0-2])\\d{4,5}$`;
+  const [highest] = await db.collection('stock_returns')
+    .aggregate<{ value: number }>([
+      { $match: { code: { $regex: pattern }, status: { $ne: 'VOIDED' } } },
+      { $group: { _id: null, value: { $max: { $toInt: { $substrCP: ['$code', prefix.length + 6, 5] } } } } },
+    ], { session })
+    .toArray();
+  let sequence = (highest?.value ?? 0) + 1;
+  for (let attempt = 0; attempt < 200; attempt += 1, sequence += 1) {
+    const code = documentCode(prefix, at, sequence);
+    const [holder, legacy, history] = await Promise.all([
+      db.collection('stock_returns').findOne({ code }, { session }),
+      db.collection('stock_returns').countDocuments({ legacyCode: code }, { session, limit: 1 }),
+      prefix === RETURN_IN_PREFIX ? db.collection('payments').countDocuments({ reference: code, mode: 'HISTORY' }, { session, limit: 1 }) : Promise.resolve(0),
     ]);
-    if (!returns && !history) return code;
+    if (legacy || history) continue;
+    if (holder && holder.status !== 'VOIDED') continue;
+    if (holder) await releaseReturnNumber(db, holder, session);
+    await sequences.claim(prefix, at, sequence, session);
+    return code;
   }
-  throw new ConflictException({ code: 'RETURN_CODE_EXHAUSTED', message: 'Không cấp được số NK mới — báo quản trị hệ thống' });
+  throw new ConflictException({ code: 'RETURN_CODE_EXHAUSTED', message: `Không cấp được số ${prefix} mới — báo quản trị hệ thống` });
+}
+
+/** Số NK kế tiếp (khách trả hàng / hàng mẫu nhập lại). */
+export function nextReturnInCode(db: Db, sequences: SequenceService, session: ClientSession, at = new Date()): Promise<string> {
+  return nextReturnCode(db, sequences, session, RETURN_IN_PREFIX, at);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

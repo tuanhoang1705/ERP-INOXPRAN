@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import { type ClientSession, type Db, type Document, ObjectId } from 'mongodb';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString } from '../../common/domain';
 import type { SequenceService } from '../../common/sequence.service';
 import { applyAllocations } from './allocation-store';
@@ -234,6 +235,7 @@ export async function voidReturnCredit(db: Db, paymentId: ObjectId, reason: stri
         { $set: { status: 'VOIDED', statusBeforeVoid: credit.status, voidedAt: now, voidReason: reason, updatedAt: now }, $inc: { version: 1 } },
         { session },
       );
+      await releaseDocumentNumber(db, 'AR', credit, session);
     }
   }
   const reverse = ((payment.allocations as Document[] | undefined) ?? []).map((allocation) => ({
@@ -248,6 +250,8 @@ export async function voidReturnCredit(db: Db, paymentId: ObjectId, reason: stri
     { session },
   );
   if (updated.matchedCount !== 1) throw new ConflictException({ code: 'PAYMENT_CHANGED', message: `Phiếu ${String(payment.code)} vừa được cập nhật — tải lại rồi thử lại` });
+  // NUM-02: phiếu giảm nợ hủy nhả số (PAY… → PAY…-H1); trả về phiếu với số cũ để thông báo / ghi chú đúng phiếu người dùng đã thấy.
+  await releaseDocumentNumber(db, 'PAY', payment, session);
   return payment;
 }
 

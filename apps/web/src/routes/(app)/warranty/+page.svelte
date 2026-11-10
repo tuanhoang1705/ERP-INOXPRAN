@@ -129,7 +129,7 @@
         {:else if result?.rows.length}
           {#each result.rows as row (row.id)}
             <tr class={`tone-${row.sla.tone}`}>
-              <td><a class="code" href={`/warranty/${row.id}`}>{row.code}</a></td>
+              <td><a class="code" href={`/warranty/${row.id}`}>{row.code}</a>{#if row.legacyCode}<small class="legacy">{m.wr_ma_cu({ code: row.legacyCode })}</small>{/if}</td>
               <td class="customer">{row.customer.name}<small>{row.customer.phone ?? row.customer.code ?? ''}</small></td>
               <td class="product"><span class="code">{row.product.sku}</span><small title={row.product.name}>{row.product.name}</small><span class={`pill ${coverageTone[row.coverage]}`}>{ticketCoverageText(row)}</span></td>
               <td class="dates"><span class="muted">{date(row.receivedAt)}</span><b>→ {date(row.promisedDate)}</b>{#if row.reschedules.length}<small>{m.wr_rescheduled()}</small>{/if}</td>
@@ -149,6 +149,7 @@
 <p class="legend"><span class="swatch warning"></span><span class="swatch overdue"></span>{m.wr_legend()}</p>
 
 <style>
+  .legacy { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .tones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   .tone { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-left-width: 5px; border-radius: var(--radius-sm); background: var(--surface); color: var(--text); text-align: left; }
   .tone span { font-size: 13px; font-weight: 600; }

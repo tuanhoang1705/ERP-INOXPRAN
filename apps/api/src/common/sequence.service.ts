@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { type ClientSession, type Db } from 'mongodb';
+import { highestActiveSequence, NUMBERED_DOCUMENTS, releaseDocumentNumber } from './document-numbers';
 import { vnParts } from './domain';
 import { MONGO_DATABASE } from './tokens';
 
@@ -48,6 +49,19 @@ export class SequenceService {
     );
   }
 
+  /**
+   * Ghi nhận số vừa cấp theo số lớn nhất đang dùng (phiếu trả hàng NK / XT — số của phiếu hủy được dùng lại như phiếu BH):
+   * luôn ghi vào bộ đếm năm trong giao dịch → hai người lập cùng lúc xung đột ghi và được chạy lại, không trùng số.
+   */
+  async claim(prefix: string, at: Date, value: number, session: ClientSession): Promise<void> {
+    const { year } = vnParts(at);
+    await this.db.collection<CounterDocument & { claims?: number }>('counters').updateOne(
+      { _id: `${prefix}:Y${year}` },
+      { $max: { value }, $inc: { claims: 1 }, $setOnInsert: { createdAt: new Date() } },
+      { upsert: true, session },
+    );
+  }
+
   /** Số đầu tiên đã ghi nhận trong năm — nhỏ nhất trong các tháng (null nếu chưa có); số phiếu BH đếm tiếp cả năm. */
   async yearFloor(prefix: string, at: Date, session?: ClientSession): Promise<number | null> {
     const { year } = vnParts(at);
@@ -71,11 +85,38 @@ export class SequenceService {
       .find({ _id: { $regex: `^${prefix}:${String(year).slice(-2)}(0[1-9]|1[0-2])$` } }, { projection: { value: 1 }, ...(session ? { session } : {}) })
       .toArray();
     const base = Math.max(0, ...monthly.map((row) => Number(row.value) || 0));
+    if (session && NUMBERED_DOCUMENTS[prefix]) return this.nextActive(prefix, session, at, base);
     const counter = await this.db.collection<CounterDocument>('counters').findOneAndUpdate(
       { _id: `${prefix}:Y${year}` },
       [{ $set: { value: { $add: [{ $max: [{ $ifNull: ['$value', 0] }, base] }, 1] }, createdAt: { $ifNull: ['$createdAt', '$$NOW'] } } }],
       { upsert: true, returnDocument: 'after', ...(session ? { session } : {}) },
     );
     return documentCode(prefix, at, Number(counter?.value ?? base + 1));
+  }
+
+  /** Số đã cấp trong giao dịch (chưa ghi phiếu) theo loại + năm — cấp nhiều số liền trong một giao dịch không trùng. */
+  private readonly issued = new WeakMap<ClientSession, Map<string, number>>();
+
+  /**
+   * NUM-02 (09/11/2026): số lớn nhất đang dùng (chưa hủy) trong năm + 1, như phiếu BH — hủy / xóa phiếu cuối thì phiếu mới lấy lại
+   * số đó. Năm đổi cách đếm dở dang: không thấp hơn bộ đếm tháng cũ. Phiếu hủy kiểu cũ (chưa đổi -H) đang giữ số → nhả rồi dùng.
+   */
+  private async nextActive(prefix: string, session: ClientSession, at: Date, base: number): Promise<string> {
+    const source = NUMBERED_DOCUMENTS[prefix]!;
+    const { year } = vnParts(at);
+    const key = `${prefix}:${year}`;
+    const issued = this.issued.get(session) ?? new Map<string, number>();
+    this.issued.set(session, issued);
+    let sequence = Math.max((await highestActiveSequence(this.db, prefix, year, session)) ?? 0, base, issued.get(key) ?? 0) + 1;
+    for (let attempt = 0; attempt < 200; attempt += 1, sequence += 1) {
+      const code = documentCode(prefix, at, sequence);
+      const holder = await this.db.collection(source.collection).findOne({ code }, { session });
+      if (holder && !source.inactive.includes(String(holder.status))) continue;
+      if (holder) await releaseDocumentNumber(this.db, prefix, holder, session);
+      await this.claim(prefix, at, sequence, session);
+      issued.set(key, sequence);
+      return code;
+    }
+    throw new Error(`Không cấp được số ${prefix} mới`);
   }
 }

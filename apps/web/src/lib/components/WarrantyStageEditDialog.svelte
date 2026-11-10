@@ -2,7 +2,9 @@
   /**
    * Sửa dữ liệu một giai đoạn đã qua của phiếu bảo hành (WAR-EDIT-01, 06/11/2026): Chẩn đoán / Sửa chữa / Kiểm tra / Trả khách —
    * cả phiếu đã trả khách. Người duyệt (Quản lý kho / Admin) sửa thẳng; nhân viên bảo hành sửa theo yêu cầu đã được duyệt
-   * (`requestId`, một lần). Giai đoạn Tiếp nhận dùng hộp "Sửa thông tin tiếp nhận". Hướng xử lý không đổi ở đây.
+   * (`requestId`, một lần). Giai đoạn Tiếp nhận dùng hộp "Sửa thông tin tiếp nhận".
+   * Chẩn đoán đổi được hướng xử lý (WAR-EDIT-02, 09/11/2026): phiếu chuyển về bước của hướng mới; đổi mới → chờ trả khách,
+   * bấm Trả khách thì hệ thống xuất 1 sản phẩm mới và lập phiếu BH & SWK đổi bảo hành cho thủ kho.
    */
   import type { WarrantyFaultCode, WarrantyFaultLine, WarrantyReturnSlipOption, WarrantyTicket } from '@inoxpran/contracts';
   import { untrack } from 'svelte';
@@ -11,7 +13,7 @@
   import { api } from '$lib/api';
   import { date, todayIso, vnd } from '$lib/format';
   import { exclusionText, planText, resolutionText, stageText } from '$lib/warranty';
-  import { WARRANTY_EXCLUSIONS, type WarrantyExclusion } from '$shared/warranty';
+  import { plansForCoverage, WARRANTY_EXCLUSIONS, WARRANTY_PLANS, type WarrantyCoverage, type WarrantyExclusion, type WarrantyPlan } from '$shared/warranty';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
   import SuggestInput, { type Suggestion } from './SuggestInput.svelte';
@@ -19,8 +21,10 @@
   type Stage = 'DIAGNOSE' | 'REPAIR' | 'TEST' | 'RETURN';
   type EditableLine = { faultCode: string; receivedDate: string; symptom: string; rootCause: string; action: string; partCode: string; note: string };
 
-  let { open = $bindable(false), ticket, stage, requestId = '', faultCodes = [], onsaved }: {
+  let { open = $bindable(false), ticket, stage, requestId = '', faultCodes = [], approver = false, onsaved }: {
     open?: boolean;
+    /** Quản lý kho / Admin: đổi sang đổi mới / hoàn tiền / từ chối coi như đã duyệt; nhân viên → chờ Quản lý kho duyệt. */
+    approver?: boolean;
     ticket: WarrantyTicket;
     stage: Stage;
     requestId?: string;
@@ -34,6 +38,7 @@
   let lines = $state<EditableLine[]>([]);
   let exclusion = $state<WarrantyExclusion | ''>('');
   let quoteAmount = $state('');
+  let plan = $state<WarrantyPlan>('REPAIR');
   let resolution = $state<'REPAIRED' | 'PART_REPLACED'>('REPAIRED');
   let replacedParts = $state('');
   let cost = $state('0');
@@ -48,6 +53,11 @@
   let returnSlipsLoading = $state(false);
 
   const noInvoiceExclusion = $derived(ticket.exclusion === 'NO_INVOICE');
+  // Diện bảo hành theo lý do sửa chữa đang chọn; bỏ lý do đang có thì diện gốc do máy chủ tính → hiện mọi hướng, máy chủ kiểm.
+  const coverageNow = $derived<WarrantyCoverage | null>(exclusion ? 'NOT_COVERED' : ticket.exclusion && ticket.exclusion !== 'NO_INVOICE' ? null : ticket.coverage);
+  const planOptions = $derived([...new Set<WarrantyPlan>([...(coverageNow ? plansForCoverage(coverageNow) : WARRANTY_PLANS), ...(ticket.plan ? [ticket.plan] : [])])]);
+  const planLocked = $derived(Boolean(ticket.exchangeOrder || ticket.stock?.exchange));
+  const planChanged = $derived(Boolean(ticket.plan) && plan !== ticket.plan);
   const productFaultCodes = $derived(faultCodes.filter((row) => row.active && (!row.categoryIds.length || row.categoryNames.includes(ticket.product.categoryName ?? ''))));
   const resolutionNow = $derived(ticket.result?.resolution);
   const linksReturnSlip = $derived(resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED');
@@ -62,6 +72,7 @@
       lines = ticket.lines.map((line) => ({ faultCode: line.faultCode ?? '', receivedDate: line.receivedDate, symptom: line.symptom, rootCause: line.rootCause ?? '', action: line.action ?? '', partCode: line.partCode ?? '', note: line.note ?? '' }));
       exclusion = ticket.exclusion && ticket.exclusion !== 'NO_INVOICE' ? ticket.exclusion : '';
       quoteAmount = ticket.quoteAmount ? String(Math.round(Number(ticket.quoteAmount))) : '';
+      plan = ticket.plan ?? 'REPAIR';
       resolution = ticket.result?.resolution === 'PART_REPLACED' ? 'PART_REPLACED' : 'REPAIRED';
       replacedParts = ticket.result?.replacedParts ?? '';
       cost = ticket.result ? String(Math.round(Number(ticket.result.cost))) : '0';
@@ -95,7 +106,7 @@
         partCode: optional(line.partCode),
         note: optional(line.note),
       })) as WarrantyFaultLine[];
-      return { lines: filled, exclusion: exclusion || undefined, ...(ticket.plan === 'QUOTE' ? { quoteAmount } : {}) };
+      return { lines: filled, exclusion: exclusion || undefined, ...(planChanged ? { plan } : {}), ...(plan === 'QUOTE' ? { quoteAmount } : {}) };
     }
     if (stage === 'REPAIR') return { resolution, replacedParts: optional(replacedParts), cost: cost || '0', chargedTo, note: optional(note) };
     if (stage === 'TEST') return { ...checks, note: optional(note) };
@@ -162,7 +173,13 @@
           {#each WARRANTY_EXCLUSIONS.filter((item) => item !== 'NO_INVOICE') as item}<option value={item}>{exclusionText(item)}</option>{/each}
         </select>
       </div>
-      {#if ticket.plan === 'QUOTE'}<div class="field"><label for="se-quote">{m.wr_quote_amount()}</label><NumberInput id="se-quote" bind:value={quoteAmount} required /><small class="field-hint">{vnd(quoteAmount || 0)}</small></div>{/if}
+      <fieldset class="plan span" disabled={planLocked}>
+        <legend>{m.wr_plan()}</legend>
+        {#each planOptions as item}<label><input type="radio" name="se-plan" value={item} bind:group={plan} />{planText(item)}</label>{/each}
+      </fieldset>
+      {#if planLocked}<p class="hint span"><Info size={15} />{m.wr_doi_huong_khoa({ code: ticket.exchangeOrder?.code ?? '' })}</p>
+      {:else if planChanged}<p class="hint warn span"><Info size={15} />{plan === 'REPAIR' ? m.wr_doi_huong_repair() : plan === 'QUOTE' ? m.wr_doi_huong_quote() : !approver ? m.wr_doi_huong_cho_duyet() : plan === 'EXCHANGE' ? m.wr_doi_huong_exchange() : m.wr_doi_huong_ready()}{ticket.status === 'RETURNED' ? ` ${m.wr_doi_huong_mo_lai()}` : ''}</p>{/if}
+      {#if plan === 'QUOTE'}<div class="field"><label for="se-quote">{m.wr_quote_amount()}</label><NumberInput id="se-quote" bind:value={quoteAmount} required /><small class="field-hint">{vnd(quoteAmount || 0)}</small></div>{/if}
     {:else if stage === 'REPAIR'}
       {#if ticket.status === 'RETURNED'}<p class="hint span"><Info size={15} />{m.wr_sua_sua_chua_da_tra()}</p>{/if}
       <div class="field"><label for="se-resolution">{m.wr_resolution()}</label><select id="se-resolution" bind:value={resolution}><option value="PART_REPLACED">{resolutionText('PART_REPLACED')}</option><option value="REPAIRED">{resolutionText('REPAIRED')}</option></select></div>
@@ -206,6 +223,10 @@
   .wide { grid-column: span 2; }
   .req { color: var(--red); }
   .hint { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--muted); font-size: 13px; }
+  .hint.warn { background: var(--amber-soft); color: var(--text); }
+  .plan { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 10px 14px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
+  .plan legend { padding: 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .plan label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   .line { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
   .line legend { padding: 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
   .line label { display: grid; gap: 4px; min-width: 0; font-size: 12.5px; color: var(--muted); }

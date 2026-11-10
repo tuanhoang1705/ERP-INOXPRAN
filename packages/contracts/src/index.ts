@@ -1704,6 +1704,8 @@ export const WarrantyStageEditSchema = z.discriminatedUnion('stage', [
     lines: z.array(WarrantyFaultLineSchema).min(1).max(5),
     exclusion: z.enum(WARRANTY_EXCLUSIONS).exclude(['NO_INVOICE']).optional(),
     quoteAmount: MoneySchema.optional(),
+    /** Đổi hướng xử lý (09/11/2026, WAR-EDIT-02): phiếu chuyển về bước của hướng mới; đổi mới → chờ trả khách để xuất hàng đổi. */
+    plan: z.enum(WARRANTY_PLANS).optional(),
   }),
   z.object({
     stage: z.literal('REPAIR'),
@@ -1800,6 +1802,8 @@ export interface WarrantyReport {
 export interface WarrantyTicket {
   id: string;
   code: string;
+  /** Số cũ trước khi đánh lại theo năm (10/11/2026 — phiếu tháng 11 đánh từ 0001 theo cách đếm cũ); vẫn tra được. */
+  legacyCode?: string;
   status: WarrantyStatus;
   version: number;
   channel: WarrantyChannel;

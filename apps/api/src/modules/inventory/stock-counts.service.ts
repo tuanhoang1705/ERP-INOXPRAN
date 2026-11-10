@@ -18,6 +18,7 @@ import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { assertWarehouseAccess } from '../../common/access';
 import { AuditService } from '../../common/audit.service';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString, toObjectId, vnParts } from '../../common/domain';
 import { hideStatus, seesCancelled } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -484,8 +485,10 @@ export class StockCountsService {
   async cancel(id: string, input: { version: number }, request: AuthenticatedRequest) {
     const row = await this.editable(id, input.version, request, OPEN);
     if (!request.user.roles.some((role) => ['ADMIN', 'WAREHOUSE_MANAGER', 'WAREHOUSE'].includes(role))) throw new ForbiddenException({ code: 'ROLE_FORBIDDEN', message: 'Không có quyền hủy phiếu kiểm kê' });
-    const after = await this.save(row, { $set: { status: 'CANCELLED', cancelledAt: new Date(), cancelledByName: request.user.displayName, updatedAt: new Date() }, $unset: { open: '' } });
-    await this.audit.record({ ...this.actor(request), action: 'STOCK_COUNT_CANCELLED', entityType: 'StockCount', entityId: id, metadata: { code: row.code } });
+    const saved = await this.save(row, { $set: { status: 'CANCELLED', cancelledAt: new Date(), cancelledByName: request.user.displayName, updatedAt: new Date() }, $unset: { open: '' } });
+    // NUM-02: phiếu hủy nhả số (KK… → KK…-H1).
+    const after = (await releaseDocumentNumber(this.db, 'KK', saved)) ?? saved;
+    await this.audit.record({ ...this.actor(request), action: 'STOCK_COUNT_CANCELLED', entityType: 'StockCount', entityId: id, metadata: { code: row.code, ...(after.code !== row.code ? { releasedTo: after.code } : {}) } });
     return this.view(after);
   }
 }

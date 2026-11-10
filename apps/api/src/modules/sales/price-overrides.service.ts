@@ -4,6 +4,7 @@ import { can, userIdsWithPermission } from '../../common/permissions';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
+import { releaseDocumentNumber } from '../../common/document-numbers';
 import { toObjectId } from '../../common/domain';
 import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
@@ -178,7 +179,8 @@ export class PriceOverridesService {
       { returnDocument: 'after' },
     );
     if (!updated) throw new ConflictException({ code: 'PRICE_OVERRIDE_STATE_CONFLICT', message: 'Yêu cầu đã được xử lý hoặc không phải của bạn' });
-    return this.view(updated);
+    // NUM-02: yêu cầu hủy nhả số (SG… → SG…-H1).
+    return this.view((await releaseDocumentNumber(this.db, 'SG', updated)) ?? updated);
   }
 
   /**

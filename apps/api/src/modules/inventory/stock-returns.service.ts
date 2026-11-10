@@ -26,7 +26,7 @@ import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
-import { nextReturnInCode } from './return-codes';
+import { nextReturnCode, nextReturnInCode, releaseReturnNumber } from './return-codes';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
@@ -492,7 +492,9 @@ export class StockReturnsService {
     const note = row.creditNote as Document | undefined;
     if (!note?.paymentId) return null;
     await voidReturnCredit(this.db, note.paymentId as ObjectId, reason, { id: toObjectId(request.user.sub), name: request.user.displayName }, session, now);
-    return { note: String(row.accountingNote ?? ''), byName: String(row.accountingByName ?? ''), at: row.accountingAt, creditCode: String(note.code), creditAmount: note.amount };
+    // NUM-02: phiếu giảm nợ hủy đã đổi số …-H1 (số cũ trả lại cho phiếu mới) → ghi chú / thông báo dùng số mới để không nhầm.
+    const voided = await this.db.collection('payments').findOne({ _id: note.paymentId as ObjectId }, { session, projection: { code: 1 } });
+    return { note: String(row.accountingNote ?? ''), byName: String(row.accountingByName ?? ''), at: row.accountingAt, creditCode: String(voided?.code ?? note.code), creditAmount: note.amount };
   }
 
   /**
@@ -719,7 +721,7 @@ export class StockReturnsService {
       const receivedAt = input.kind === 'CUSTOMER' ? this.receivedAtOf(input.receivedAt, now) : undefined;
       const ready = await this.prepare(input, session);
       // Khách trả hàng: số NK theo tháng nhận hàng (NK-01); trả nhà máy: XT. Cả hai đếm tiếp cả năm như phiếu BH (NUM-01).
-      const code = ready.customer ? await nextReturnInCode(this.db, this.sequences, session, receivedAt ?? now) : await this.sequences.next('XT', session, now);
+      const code = ready.customer ? await nextReturnInCode(this.db, this.sequences, session, receivedAt ?? now) : await nextReturnCode(this.db, this.sequences, session, 'XT', now);
       await this.post(code, ready, input.note, receivedAt, request.user.sub, session);
       const { value, needsAccounting } = this.money(ready);
       const document = {
@@ -1038,6 +1040,8 @@ export class StockReturnsService {
         { session, returnDocument: 'after' },
       );
       if (!after) throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu ${String(row.code)} vừa được người khác sửa, vui lòng tải lại` });
+      // Phiếu hủy nhả số cho phiếu mới như phiếu BH: NK2026110043 → NK2026110043-H1.
+      const released = await releaseReturnNumber(this.db, after, session);
       if (notify && row.kind === 'CUSTOMER') {
         await this.notifyAccountant(after, 'CUSTOMER_RETURN_CHANGED', {
           title: `Phiếu khách trả ${String(row.code)} đã hủy${creditVoided ? ` — phiếu giảm nợ ${creditVoided} đã tự hủy` : row.accountingStatus === 'DONE' || row.previousAccounting ? ' — hủy điều chỉnh công nợ đã ghi' : ''}`,
@@ -1049,11 +1053,11 @@ export class StockReturnsService {
         {
           actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
           action: row.kind === 'CUSTOMER' ? 'CUSTOMER_RETURN_VOIDED' : row.kind === 'SAMPLE' ? 'SAMPLE_RETURN_VOIDED' : 'SUPPLIER_RETURN_VOIDED', entityType: 'StockReturn', entityId: id,
-          before: serializeDocument(row), after: serializeDocument(after), metadata: { reason: input.reason, accountingWas: row.accountingStatus ?? null },
+          before: serializeDocument(row), after: serializeDocument(released), metadata: { reason: input.reason, accountingWas: row.accountingStatus ?? null, ...(released.code !== row.code ? { releasedCode: String(row.code), code: String(released.code) } : {}) },
         },
         session,
       );
-      return this.view(after);
+      return this.view(released);
     });
   }
 }

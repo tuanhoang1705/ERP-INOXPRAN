@@ -11,6 +11,12 @@
   let error = $state('');
   let debitAccount = $state('');
   let creditAccount = $state('');
+  // Giá trên bản in (09/11/2026): chỉ hàng bán chậm trả lại hiện giá mặc định; loại khác bật khi cần. Kế toán / kho nhập giá tay
+  // cho trường hợp ngoại lệ — chỉ dùng trên bản in, không lưu vào phiếu.
+  let showPrices = $state(false);
+  let manual = $state(false);
+  let manualPrices = $state<string[]>([]);
+  let manualRate = $state('10');
   const supplier = $derived(data?.slip.kind === 'SUPPLIER');
   const sample = $derived(data?.slip.kind === 'SAMPLE');
   const title = $derived(supplier ? 'PHIẾU XUẤT KHO' : 'PHIẾU NHẬP KHO');
@@ -20,9 +26,34 @@
   const quantity = (value: string) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(value));
   const price = (value: string | null | undefined) => value == null ? '' : new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(value));
   const rate = (value: string | null | undefined) => value == null ? '' : value === 'MIXED' ? 'Theo từng dòng' : value === 'KCT' ? 'KCT' : `${value} %`;
+  const amount = (value: string) => { const parsed = Number(String(value).replace(/[^\d.]/g, '')); return Number.isFinite(parsed) && String(value).trim() ? parsed : null; };
+  type Pricing = StockReturnPrint['pricing'];
+  const blank = (count: number): Pricing => ({ lines: Array.from({ length: count }, () => ({ unitPrice: null, net: null, tax: null, rate: null })), net: null, tax: null, total: null, rate: null, status: 'UNPRICED' });
+  /** Giá hiện trên bản in: ẩn → để trống; nhập tay → tính từ đơn giá (chưa VAT) × số lượng và thuế suất chung. */
+  const shown = $derived.by<Pricing | null>(() => {
+    if (!data) return null;
+    if (!showPrices) return blank(data.slip.lines.length);
+    if (!manual) return data.pricing;
+    const percent = manualRate === 'KCT' ? 0 : Number(manualRate);
+    const lines = data.slip.lines.map((line, index) => {
+      const unit = amount(manualPrices[index] ?? '');
+      if (unit === null) return { unitPrice: null, net: null, tax: null, rate: manualRate };
+      const net = Math.round(unit * Number(line.quantity));
+      return { unitPrice: String(unit), net: String(net), tax: String(Math.round((net * percent) / 100)), rate: manualRate };
+    });
+    if (lines.some((line) => line.net === null)) return { lines, net: null, tax: null, total: null, rate: manualRate, status: 'UNPRICED' };
+    const net = lines.reduce((sum, line) => sum + Number(line.net), 0);
+    const tax = Math.round((net * percent) / 100);
+    return { lines, net: String(net), tax: String(tax), total: String(net + tax), rate: manualRate, status: 'VALUED' };
+  });
 
   onMount(async () => {
-    try { data = await api<StockReturnPrint>(`/inventory/returns/${page.params.id}/print`); }
+    try {
+      data = await api<StockReturnPrint>(`/inventory/returns/${page.params.id}/print`);
+      showPrices = data.slip.category === 'SLOW_RETURN_IN';
+      manualPrices = data.pricing.lines.map((line) => (line.unitPrice == null ? '' : String(Math.round(Number(line.unitPrice)))));
+      manualRate = data.pricing.rate && data.pricing.rate !== 'MIXED' ? data.pricing.rate : '10';
+    }
     catch (caught) { error = caught instanceof Error ? caught.message : 'Không tải được phiếu trả hàng.'; }
   });
 </script>
@@ -40,8 +71,19 @@
     <label>Nợ <input aria-label="Tài khoản nợ trên bản in" bind:value={debitAccount} maxlength="20" placeholder="Tài khoản" /></label>
     <label>Có <input aria-label="Tài khoản có trên bản in" bind:value={creditAccount} maxlength="20" placeholder="Tài khoản" /></label>
     <small>{m.ban_in_luon_tieng_viet()} · A4 · Chọn “Lưu dưới dạng PDF” trong hộp thoại in.</small>
+    <label class="check"><input id="print-show-prices" type="checkbox" bind:checked={showPrices} />{m.in_tra_hien_gia()}</label>
+    {#if showPrices}<label class="check"><input id="print-manual-prices" type="checkbox" bind:checked={manual} />{m.in_tra_nhap_gia()}</label>{/if}
+    <small class="price-hint">{m.in_tra_gia_goi_y()}</small>
+    {#if showPrices && manual}
+      <div class="manual">
+        {#each data.slip.lines as line, index}
+          <label><span>{line.sku} × {quantity(line.quantity)}</span><input class="manual-price" inputmode="numeric" bind:value={manualPrices[index]} placeholder={m.in_tra_don_gia()} /></label>
+        {/each}
+        <label><span>{m.in_tra_thue_suat()}</span><select id="print-manual-rate" bind:value={manualRate}>{#each ['0', '5', '8', '10', 'KCT'] as item}<option value={item}>{rate(item)}</option>{/each}</select></label>
+      </div>
+    {/if}
   </div>
-  {#if data.pricing.status !== 'VALUED'}<p class="notice">{data.pricing.status === 'UNPRICED' ? 'Giá trị hàng trả chưa được xác nhận. Các ô tiền để trống.' : 'Tổng tiền theo giá trị đã lưu; đơn giá chưa đủ thông tin xác nhận được để trống.'}</p>{/if}
+  {#if showPrices && !manual && data.pricing.status !== 'VALUED'}<p class="notice">{data.pricing.status === 'UNPRICED' ? 'Giá trị hàng trả chưa được xác nhận. Các ô tiền để trống.' : 'Tổng tiền theo giá trị đã lưu; đơn giá chưa đủ thông tin xác nhận được để trống.'}</p>{/if}
 {/if}
 
 {#if error}
@@ -74,19 +116,19 @@
       <thead><tr><th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
       <tbody>
         {#each data.slip.lines as line, index}
-          <tr><td class="center">{index + 1}</td><td class="sku">{line.sku}</td><td>{line.productName}{#if line.note}<small>{line.note}</small>{/if}{#if data.pricing.rate === 'MIXED'}<small>VAT: {rate(data.pricing.lines[index]?.rate)}</small>{/if}</td><td>{line.unit}</td><td class="numeric">{quantity(line.quantity)}</td><td class="numeric">{price(data.pricing.lines[index]?.unitPrice)}</td><td class="numeric">{money(data.pricing.lines[index]?.net)}</td></tr>
+          <tr><td class="center">{index + 1}</td><td class="sku">{line.sku}</td><td>{line.productName}{#if line.note}<small>{line.note}</small>{/if}{#if shown?.rate === 'MIXED'}<small>VAT: {rate(shown?.lines[index]?.rate)}</small>{/if}</td><td>{line.unit}</td><td class="numeric">{quantity(line.quantity)}</td><td class="numeric">{price(shown?.lines[index]?.unitPrice)}</td><td class="numeric">{money(shown?.lines[index]?.net)}</td></tr>
         {/each}
-        {#each Array(Math.max(0, 6 - data.slip.lines.length)) as _}<tr class="blank" aria-hidden="true"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="numeric">{sample ? '0' : ''}</td></tr>{/each}
+        {#each Array(Math.max(0, 6 - data.slip.lines.length)) as _}<tr class="blank" aria-hidden="true"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="numeric">{sample && showPrices && !manual ? '0' : ''}</td></tr>{/each}
       </tbody>
       <tfoot>
-        <tr><td colspan="6"><b>Cộng</b></td><td class="numeric">{money(data.pricing.net)}</td></tr>
-        <tr><td colspan="4"></td><td colspan="2">Cộng tiền hàng</td><td class="numeric">{money(data.pricing.net)}</td></tr>
-        <tr><td colspan="3">Thuế suất thuế GTGT:</td><td class="numeric">{rate(data.pricing.rate)}</td><td colspan="2">Tiền thuế GTGT:</td><td class="numeric">{money(data.pricing.tax)}</td></tr>
-        <tr><td colspan="4"></td><td colspan="2">Tổng tiền thanh toán</td><td class="numeric">{money(data.pricing.total)}</td></tr>
+        <tr><td colspan="6"><b>Cộng</b></td><td class="numeric">{money(shown?.net)}</td></tr>
+        <tr><td colspan="4"></td><td colspan="2">Cộng tiền hàng</td><td class="numeric">{money(shown?.net)}</td></tr>
+        <tr><td colspan="3">Thuế suất thuế GTGT:</td><td class="numeric">{rate(shown?.rate)}</td><td colspan="2">Tiền thuế GTGT:</td><td class="numeric">{money(shown?.tax)}</td></tr>
+        <tr><td colspan="4"></td><td colspan="2">Tổng tiền thanh toán</td><td class="numeric">{money(shown?.total)}</td></tr>
       </tfoot>
     </table>
-    {#if data.pricing.status === 'UNPRICED'}<p class="pending-value">Giá trị hàng trả: chờ xác nhận.</p>{/if}
-    {#if data.pricing.total != null && !sample}<p class="words">Số tiền bằng chữ: {vndInWords(data.pricing.total)}</p>{/if}
+    {#if showPrices && shown?.status === 'UNPRICED'}<p class="pending-value">Giá trị hàng trả: chờ xác nhận.</p>{/if}
+    {#if showPrices && shown?.total != null && !sample}<p class="words">Số tiền bằng chữ: {vndInWords(shown.total)}</p>{/if}
     <div class="closing">
       <p class="sign-date">{slipDate}</p>
       <section class="signatures" aria-label="Chữ ký">
@@ -114,6 +156,13 @@
   .options label { display: flex; align-items: center; gap: 6px; }
   .options input { width: 95px; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font: inherit; }
   .options small { flex: 1; color: #64748b; }
+  .options .check { gap: 6px; cursor: pointer; }
+  .options .check input { width: auto; }
+  .options .price-hint { flex-basis: 100%; }
+  .manual { display: flex; flex-wrap: wrap; gap: 8px 14px; flex-basis: 100%; padding-top: 8px; border-top: 1px dashed #cbd5e1; }
+  .manual label { flex-direction: column; align-items: flex-start; gap: 3px; font-size: 12px; color: #334155; }
+  .manual input { width: 130px; text-align: right; }
+  .manual select { padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font: inherit; }
   .error, .loading, .notice { max-width: 210mm; box-sizing: border-box; margin: 16px auto; padding: 12px 16px; background: white; border-radius: 8px; }
   .error { color: #b42318; }
   .notice { color: #854d0e; background: #fffbeb; font-size: 13px; }
