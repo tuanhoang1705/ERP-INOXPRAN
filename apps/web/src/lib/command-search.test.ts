@@ -18,15 +18,19 @@ const sections: NavSection[] = [
       { label: 'Nhật ký hệ thống', href: '/admin/audit', rootOnly: true },
     ] }],
   },
-  { key: 'warranty', label: 'Bảo hành', href: '/warranty', match: ['/warranty'], roles: ['WARRANTY', 'DIRECTOR'], groups: [{ title: 'Bảo hành', items: [{ label: 'Danh sách phiếu', href: '/warranty' }] }] },
+  { key: 'warranty', label: 'Bảo hành', href: '/warranty', match: ['/warranty'], groups: [{ title: 'Bảo hành', items: [{ label: 'Danh sách phiếu', href: '/warranty' }] }] },
 ];
 const extra: CommandItem[] = [{ label: 'Lập phiếu BH', href: '/sales/orders/new', path: 'Thao tác nhanh', keywords: 'bh lap phieu de nghi xuat ban', roleGates: [['ACCOUNTANT', 'SALES']] }];
 const all = buildCommands(sections, extra);
 
 describe('ô tìm chức năng', () => {
-  it('lọc theo vai trò giống menu: NVKD không thấy kiểm kê / bảo hành, thấy Lập phiếu BH', () => {
+  it('lọc theo vai trò giống menu: NVKD không thấy thẻ kho / kiểm kê / bảo hành, thấy Lập phiếu BH', () => {
     const hrefs = visibleCommands(all, { roles: ['SALES'] }).map((item) => item.href);
-    expect(hrefs).toEqual(['/inventory', '/inventory/movements', '/sales/orders/new']);
+    expect(hrefs).toEqual(['/inventory', '/sales/orders/new']);
+  });
+  it('lọc theo vùng hiển thị (VIS-ROLE-01): bảo hành chỉ thấy bảo hành; thủ kho không có Lập phiếu BH', () => {
+    expect(visibleCommands(all, { roles: ['WARRANTY'] }).map((item) => item.href)).toEqual(['/warranty']);
+    expect(visibleCommands(all, { roles: ['WAREHOUSE'] }).map((item) => item.href)).toEqual(['/inventory', '/inventory/movements', '/inventory/counts']);
   });
   it('mục chỉ dành cho quản trị gốc; ADMIN qua mọi vai trò nhưng không thấy mục root', () => {
     expect(visibleCommands(all, { roles: ['ADMIN'] }).map((item) => item.href)).not.toContain('/admin/audit');

@@ -20,14 +20,18 @@
   import { hasRole, partnerStatus, tierLabel } from '$lib/labels';
   import { periodText } from '$lib/server-text';
   import { session } from '$lib/session.svelte';
+  import { canSee } from '$lib/visibility';
 
   type Dealer = {
     id: string; code: string; name: string; customerTier?: string; regionCode?: string; regionName?: string; province?: string; salesRepName?: string;
     phone?: string; taxCode?: string; address?: string; email?: string; salesRepId?: string; creditLimit: string; paymentTermDays: number; status: 'ACTIVE' | 'ON_HOLD' | 'INACTIVE'; holdReason?: string;
-    outstanding: string; overdue: string; periodRevenue: string; version: number;
+    /** Không có khi tài khoản không xem Công nợ khách (VIS-ROLE-01, 13/11/2026). */
+    outstanding?: string; overdue?: string; periodRevenue?: string; version: number;
     stage?: 'PROSPECT' | 'CUSTOMER'; grade?: string; nextFollowUp?: { on: string; note?: string } | null;
   };
   let rows = $state<Dealer[]>([]);
+  /** Cột dư nợ / doanh số và bộ lọc kỳ doanh số: chỉ người xem Công nợ khách. */
+  const money = $derived(canSee('receivables'));
   let periodLabel = $state('');
   let region = $state('');
   let tier = $state('');
@@ -54,6 +58,7 @@
   let pageSize = $state(initialPageSize());
   const canCreate = $derived(hasRole(session.user?.roles, CUSTOMER_CREATE_ROLES) || can.createProspects());
   const editable = $derived(can.editCustomers());
+  const columns = $derived((money ? 9 : 7) - (editable ? 0 : 1));
 
   async function load() {
     loading = true;
@@ -138,7 +143,7 @@
 
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_ten_dai_ly_tinh_thanh()} /></div>
-  <DateRangeFilter bind:from bind:to label={m.dr_ky_doanh_so()} id="dealer-period" onchange={refilter} />
+  {#if money}<DateRangeFilter bind:from bind:to label={m.dr_ky_doanh_so()} id="dealer-period" onchange={refilter} />{/if}
   <div class="field"><label for="region">{m.khu_vuc()}</label><select id="region" bind:value={region} onchange={refilter}><option value="">{m.tat_ca_khu_vuc()}</option>{#each NEW_PROVINCES as item}<option value={item.code}>{item.name}</option>{/each}</select></div>
   <div class="field"><label for="tier">{m.cap()}</label><select id="tier" bind:value={tier} onchange={refilter}><option value="">{m.tat_ca_cac_cap()}</option><option value="TIER_1">{m.cap_1_nha_phan_phoi()}</option><option value="TIER_2">{m.cap_2_dai_ly()}</option><option value="RETAIL">{m.khach_le()}</option></select></div>
   <div class="field"><label for="stage">{m.crm_loai_khach()}</label><select id="stage" bind:value={stage} onchange={refilter}><option value="">{m.tat_ca()}</option><option value="CUSTOMER">{m.crm_khach_chinh_thuc()}</option><option value="PROSPECT">{m.crm_khach_co_hoi()}</option></select></div>
@@ -153,9 +158,9 @@
 <section class="card">
   <div class="table-wrap">
     <table class="table compact">
-      <thead><tr><th>{m.ma()}</th><th>{m.ten_dai_ly_khach_hang()} · {m.cap()}</th><th>{m.crm_hen_cham_soc()}</th><th>{m.khu_vuc()} · {m.nv_phu_trach()}</th><th class="num">{m.han_muc()} · {m.dieu_khoan()}</th><th class="num">{m.du_no()} · {m.qua_han()}</th><th class="num">{m.doanh_so()} {periodText(periodLabel)}</th><th>{m.trang_thai()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
+      <thead><tr><th>{m.ma()}</th><th>{m.ten_dai_ly_khach_hang()} · {m.cap()}</th><th>{m.crm_hen_cham_soc()}</th><th>{m.khu_vuc()} · {m.nv_phu_trach()}</th><th class="num">{m.han_muc()} · {m.dieu_khoan()}</th>{#if money}<th class="num">{m.du_no()} · {m.qua_han()}</th><th class="num">{m.doanh_so()} {periodText(periodLabel)}</th>{/if}<th>{m.trang_thai()}</th>{#if editable}<th class="actions-col"><span class="sr-only">{m.crud_thao_tac()}</span></th>{/if}</tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="9">{m.dang_tai()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan={columns}>{m.dang_tai()}</td></tr>
         {:else if rows.length}
           {#each rows as row (row.id)}
             {@const info = partnerStatus[row.status] ?? { label: row.status, tone: '' }}
@@ -166,8 +171,10 @@
               <td>{#if row.nextFollowUp}<span class:late={row.nextFollowUp.on < today} class:due={row.nextFollowUp.on === today}>{date(row.nextFollowUp.on)}</span>{#if row.nextFollowUp.note}<small>{row.nextFollowUp.note}</small>{/if}{:else}<span class="muted">—</span>{/if}</td>
               <td class="muted">{row.regionName ?? m.toan_quoc()}<small>{row.salesRepName ?? '—'}</small></td>
               <td class="num">{Number(row.creditLimit) ? num(row.creditLimit) : '—'}<small>{row.paymentTermDays ? m.ngay_2({ paymentTermDays: row.paymentTermDays }) : m.tra_ngay_2()}</small></td>
-              <td class="num"><b>{num(row.outstanding)}</b>{#if usage !== null}<small class:over={usage > 100}>{percent(usage, 0)} {m.han_muc_2()}</small>{/if}{#if Number(row.overdue) > 0}<small class="red">{m.qua_han()} {num(row.overdue)}</small>{/if}</td>
-              <td class="num">{num(row.periodRevenue)}</td>
+              {#if money}
+              <td class="num"><b>{num(row.outstanding ?? '0')}</b>{#if usage !== null}<small class:over={usage > 100}>{percent(usage, 0)} {m.han_muc_2()}</small>{/if}{#if Number(row.overdue) > 0}<small class="red">{m.qua_han()} {num(row.overdue ?? '0')}</small>{/if}</td>
+              <td class="num">{num(row.periodRevenue ?? '0')}</td>
+              {/if}
               <td><span class={`pill ${info.tone}`}>{info.label}</span>{#if row.holdReason === 'OVERDUE_60'}<small>{m.no_qua_han_60_ngay()}</small>{/if}</td>
               {#if editable}
                 <td class="row-actions">
@@ -177,7 +184,7 @@
               {/if}
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="9">{m.khong_co_dai_ly_phu_hop()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan={columns}>{m.khong_co_dai_ly_phu_hop()}</td></tr>{/if}
       </tbody>
     </table>
   </div>

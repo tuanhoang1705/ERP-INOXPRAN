@@ -11,6 +11,7 @@
   import { dateTime, num, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
   import { session } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import Dialog from '$lib/components/Dialog.svelte';
   import { categoryLabel } from '$lib/inventory';
   import { initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
@@ -20,6 +21,7 @@
   import ReturnAccountingDialog from '$lib/components/ReturnAccountingDialog.svelte';
   import ReturnCreditTargetDialog from '$lib/components/ReturnCreditTargetDialog.svelte';
   import SampleReturnDialog from '$lib/components/SampleReturnDialog.svelte';
+  import SampleReturnEditDialog from '$lib/components/SampleReturnEditDialog.svelte';
   import { Printer } from 'lucide-svelte';
 
   let rows = $state<StockReturn[]>([]);
@@ -36,11 +38,15 @@
   let sampleOpen = $state(false);
   const canSample = $derived(hasRole(session.user?.roles, ['WAREHOUSE', 'WAREHOUSE_MANAGER']));
   let dialogKind = $state<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
-  /** Sửa / hủy phiếu đã lưu (20/10/2026): người ghi kho; phiếu hàng mẫu nhập lại và phiếu đã hủy không sửa. */
+  /**
+   * Sửa / hủy phiếu đã lưu (20/10/2026): người ghi kho; phiếu đã hủy không sửa. Từ 12/11/2026 (INV-RET-SAMPLE-EDIT-01) phiếu hàng
+   * mẫu nhập lại cũng sửa / hủy được, trừ phiếu hệ thống tự lập khi chốt "Đại lý mua luôn".
+   */
   let editing = $state<StockReturn | null>(null);
-  const revisable = (row: StockReturn) => editable && row.status !== 'VOIDED' && row.kind !== 'SAMPLE';
-  /** Hủy được: phiếu sửa được, và hàng mẫu nhập lại không có phiếu xuất mẫu (nhập nhầm cả phiếu — 27/10/2026). */
-  const voidable = (row: StockReturn) => editable && row.status !== 'VOIDED' && (row.kind !== 'SAMPLE' || (row.noSlip === true && !row.salesOrderCode));
+  const revisable = (row: StockReturn) => editable && row.status !== 'VOIDED' && !(row.kind === 'SAMPLE' && row.soldConversion);
+  const voidable = revisable;
+  let sampleEditing = $state<StockReturn | null>(null);
+  let sampleEditOpen = $state(false);
   let voidTarget = $state<StockReturn | null>(null);
   let voidOpen = $state(false);
   let voidReason = $state('');
@@ -51,9 +57,14 @@
   /** Ngày nhận khác lúc lập phiếu (nhập bù / sửa ngày) thì ghi thêm giờ lập. */
   const backdated = (row: StockReturn) => Boolean(row.receivedAt) && Math.abs(new Date(row.receivedAt as string).getTime() - new Date(row.createdAt).getTime()) > 60_000;
   const changeLabel = (field: string) =>
-    ({ partner: m.inv_doi_tac(), category: m.inv_loai_phat_sinh(), warehouse: m.kho(), source: m.inv_phieu_goc(), receivedAt: m.inv_ngay_nhan_hang(), note: m.ghi_chu(), lines: m.inv_hang_tra() } as Record<string, string>)[field] ?? field;
+    ({ partner: m.inv_doi_tac(), borrower: m.smp_nguoi_muon(), category: m.inv_loai_phat_sinh(), warehouse: m.kho(), source: m.inv_phieu_goc(), receivedAt: m.inv_ngay_nhan_hang(), note: m.ghi_chu(), lines: m.inv_hang_tra() } as Record<string, string>)[field] ?? field;
   const changeValue = (field: string, value: string) => (!value ? '—' : field === 'category' ? categoryLabel(value) : field === 'receivedAt' ? dateTime(value) : value);
   function openEdit(row: StockReturn) {
+    if (row.kind === 'SAMPLE') {
+      sampleEditing = row;
+      sampleEditOpen = true;
+      return;
+    }
     editing = row;
     dialogKind = row.kind === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER';
     dialogOpen = true;
@@ -198,7 +209,7 @@
                   {#if accountant}<button class="btn small acct" onclick={() => { accountingTarget = row; accountingOpen = true; }}><FileCheck size={14} />{m.rac_nut_mo()}</button>{/if}
                 {:else if row.accountingStatus === 'DONE' && row.creditNote}
                   <span class="pill success">{m.rac_da_giam_no({ amount: vnd(row.creditNote.amount) })}</span>
-                  <small>{#if row.partnerId}<a class="code" href={`/receivables/customers/${row.partnerId}`}>{row.creditNote.code}</a>{:else}{row.creditNote.code}{/if} · {row.accountingNote} · {row.accountingByName}</small>
+                  <small>{#if row.partnerId && canOpen('/receivables/customers')}<a class="code" href={`/receivables/customers/${row.partnerId}`}>{row.creditNote.code}</a>{:else}{row.creditNote.code}{/if} · {row.accountingNote} · {row.accountingByName}</small>
                   {#if Number(row.creditNote.credit) > 0}<small>{m.rac_khach_tra_truoc({ amount: vnd(row.creditNote.credit) })}</small>{/if}
                   {#if row.creditNote.segment}<small>{m.rac_tru_nhom({ name: row.creditNote.segment })}</small>{/if}
                   {#if accountant}<button class="btn small acct" onclick={() => { retargetTarget = row; retargetOpen = true; }}><ArrowLeftRight size={14} />{m.rct_nut_mo()}</button>{/if}
@@ -226,7 +237,7 @@
   </div>
   <Pagination {page} {pageSize} {total} {loading} onchange={changePage} />
 </section>
-<p class="hint">{m.inv_tra_hang_cong_no()}</p>
+<p class="hint">{m.inv_tra_hang_cong_no()}{#if editable} {m.inv_tra_hang_mau_sua_huy()}{/if}</p>
 
 <ReturnAccountingDialog bind:open={accountingOpen} target={accountingTarget} onsaved={accounted} />
 <ReturnCreditTargetDialog bind:open={retargetOpen} target={retargetTarget} onsaved={retargeted} />
@@ -235,6 +246,7 @@
   <form id="void-form" class="acct-form" onsubmit={saveVoid}>
     {#if voidError}<div class="banner error"><CircleAlert size={17} /><span>{voidError}</span></div>{/if}
     <p class="hint">{m.inv_huy_phieu_ghi_chu()}</p>
+    {#if voidTarget?.kind === 'SAMPLE' && voidTarget.salesOrderCode}<p class="hint">{m.inv_huy_phieu_mau({ code: voidTarget.salesOrderCode })}</p>{/if}
     <div class="field">
       <label for="void-reason">{m.inv_ly_do_huy()} <span class="req">*</span></label>
       <input id="void-reason" bind:value={voidReason} maxlength="300" />
@@ -265,6 +277,7 @@
 
 <StockReturnDialog bind:open={dialogOpen} kind={dialogKind} {warehouses} {editing}
   onsaved={(code) => { success = editing ? m.inv_da_sua_phieu({ code }) : m.inv_da_ghi_phieu({ code }); if (!editing) page = 1; editing = null; void load(); }} />
+{#if editable}<SampleReturnEditDialog bind:open={sampleEditOpen} target={sampleEditing} {warehouses} onsaved={(code) => { success = m.inv_da_sua_phieu({ code }); void load(); }} />{/if}
 {#if canSample}<SampleReturnDialog bind:open={sampleOpen} {warehouses} onsaved={(code) => { success = m.smp_da_nhap({ code }); page = 1; void load(); }} />{/if}
 
 <style>

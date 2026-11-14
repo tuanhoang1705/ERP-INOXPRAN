@@ -11,7 +11,9 @@
   import { api, download } from '$lib/api';
   import { billions, date, num, percent, time, vnd, vnToday, isoFromParts, lastDayOfMonth } from '$lib/format';
   import { hasRole, orderStage } from '$lib/labels';
+  import { visibleSectionsFor } from '$lib/nav';
   import { can, session } from '$lib/session.svelte';
+  import { canSeeArea, canSeePath, type Area } from '$shared/visibility';
 
   const PAGE_SIZE = 5;
   let summary = $state<DashboardSummary | null>(null);
@@ -28,8 +30,33 @@
   const canIssue = $derived(can('sales.step.create') && can('sales.step.issue'));
   const canRequest = $derived(can('sales.step.create'));
   const canExport = $derived(hasRole(roles, ['DIRECTOR', 'SALES_MANAGER', 'ACCOUNTANT', 'AUDITOR']));
+  // VIS-ROLE-01 (13/11/2026): thẻ nào hiện theo vùng hiển thị của tài khoản — cùng quy tắc máy chủ dùng để tính `summary.visible`.
+  const see = (area: Area) => canSeeArea(session.user, area);
+  const show = $derived({
+    revenue: see('dashboard.revenue'),
+    receivables: see('dashboard.receivables'),
+    inventoryValue: see('dashboard.inventoryValue'),
+    approvals: see('dashboard.approvals'),
+    recentOrders: see('sales.orderDetail'),
+    orderList: canSeePath(session.user, '/sales/orders'),
+  });
+  const cardCount = $derived([show.revenue, show.receivables, show.approvals, show.inventoryValue, show.receivables].filter(Boolean).length);
+  /** Vai trò không có thẻ số liệu nào (bảo hành, mua hàng, quản lý danh mục, thủ kho): lối tắt tới đúng phần việc. */
+  const shortcuts = $derived(visibleSectionsFor(session.user).filter((section) => section.key !== 'overview'));
   const totalPages = $derived(summary ? Math.max(1, Math.ceil(summary.recentOrdersTotal / PAGE_SIZE)) : 1);
   const monthLabel = $derived(summary ? summary.period.label.slice(0, 2) : '');
+  /** Số tháng trước (lấy từ biểu đồ 6 tháng, phần tử áp chót) — dùng trong dòng "tháng 10 đạt …" (DB-CMP-01). */
+  const previousMonthNo = $derived(String(Number(summary?.monthlyRevenue[4]?.month.slice(5) ?? 0)));
+  /** Di chuột vào dòng % so cùng kỳ: hai vế đem so (theo ngày chứng từ của phiếu bán đã giao — DB-CMP-01). */
+  const comparisonDetail = $derived(summary && summary.revenueGrossChangePercent !== null && summary.revenueComparisonCurrentGross && summary.revenueComparisonPreviousGross
+    ? m.db_so_cung_ky_chi_tiet({
+      day: /–(\d{1,2})\//.exec(summary.revenueComparisonLabel)?.[1] ?? '',
+      month: String(Number(summary.period.month.slice(5))),
+      current: vnd(summary.revenueComparisonCurrentGross),
+      period: periodText(summary.revenueComparisonLabel),
+      previous: vnd(summary.revenueComparisonPreviousGross),
+    })
+    : undefined);
 
   async function load(target = pageNumber) {
     loading = true;
@@ -92,7 +119,7 @@
     <p class="page-sub">{m.tong_quan_hoat_dong_ban_hang()}{#if summary}{m.cap_nhat_luc({  })} {time(summary.generatedAt)} {m.ngay()} {date(summary.generatedAt)}{/if}</p>
   </div>
   <div class="actions">
-    {#if canExport}<button class="btn" onclick={exportMonth}>{m.xuat_excel()}</button>{/if}
+    {#if canExport && show.revenue}<button class="btn" onclick={exportMonth}>{m.xuat_excel()}</button>{/if}
     {#if canIssue}<a class="btn primary" href="/sales/orders/new"><Plus size={17} />{m.lap_phieu_bh()}</a>{:else if canRequest}<a class="btn primary" href="/sales/orders/new"><Plus size={17} />{m.de_nghi_xuat_ban()}</a>{/if}
   </div>
 </section>
@@ -102,39 +129,60 @@
 
 <!-- DB-REV-03 (03/11/2026): một chỉ số doanh số gồm VAT (bỏ số trước thuế); card "Công nợ đã thu tháng".
      DB-REV-04 (05/11/2026): mọi số doanh số gồm VAT nên không ghi chữ "gồm VAT" nữa. -->
-<section class="kpis five">
+{#if cardCount === 0}
+  <section class="card shortcuts" aria-label={m.vis_loi_tat()}>
+    <header class="card-head"><div><h2>{m.vis_loi_tat()}</h2><p>{m.vis_loi_tat_mo_ta()}</p></div></header>
+    <nav class="card-body">
+      {#each shortcuts as section (section.key)}<a class="btn" href={section.href}>{section.label}</a>{/each}
+    </nav>
+  </section>
+{:else}
+<section class="kpis" class:five={cardCount === 5} class:auto={cardCount < 5}>
+  {#if show.revenue}
   <article class="card kpi top green">
     <p class="label">{m.doanh_so_thang()} {monthLabel}</p>
     <p class="value">{summary ? vnd(summary.revenueThisMonthGross) : '—'}</p>
-    <p class="note">
+    <p class="note" title={comparisonDetail}>
       {#if summary?.revenueGrossChangePercent !== null && summary?.revenueGrossChangePercent !== undefined}
-        <span class="dot" class:red={summary.revenueGrossChangePercent < 0}></span>{summary.revenueGrossChangePercent >= 0 ? '+' : ''}{percent(summary.revenueGrossChangePercent)} {m.so_voi()} {periodText(summary.revenueComparisonLabel)}
+        <span class="dot" class:red={summary.revenueGrossChangePercent < 0}></span>{summary.revenueGrossChangePercent >= 0 ? '+' : ''}{percent(summary.revenueGrossChangePercent)} {m.so_voi()} {m.ky_cung_ky_thang({ month: previousMonthNo })}
+      {:else if summary?.revenueComparisonNote === 'PREVIOUS_INCOMPLETE' || summary?.revenueComparisonNote === 'NO_PREVIOUS'}<span class="dot"></span>{m.db_thang_truoc_ca_thang({ month: previousMonthNo })} {vnd(summary.revenuePreviousMonthGross)}
       {:else if summary}<span class="dot"></span>{m.dau_thang_thang_truoc_dat()} {vnd(summary.revenuePreviousMonthGross)}{/if}
     </p>
   </article>
+  {/if}
+  {#if show.receivables}
   <article class="card kpi top blue">
     <p class="label">{m.cong_no_da_thu_thang()} {monthLabel}</p>
     <p class="value">{summary ? vnd(summary.collectedThisMonth) : '—'}</p>
     <p class="note"><span class="dot blue"></span>{m.so_phieu_thu({ count: summary?.collectedCount ?? 0 })}{#if summary && Number(summary.collectedPayNow) > 0}{' · '}{m.gom_thanh_toan_ngay({ amount: vnd(summary.collectedPayNow) })}{/if}</p>
   </article>
+  {/if}
+  {#if show.approvals}
   <article class="card kpi top amber">
     <p class="label">{m.don_hang_cho_duyet()}</p>
     <p class="value">{summary ? m.don({ p0: num(summary.pendingApprovalOrders) }) : '—'}</p>
     <p class="note"><span class="dot amber"></span>{summary?.pendingOver24h ?? 0} {m.don_qua_24_gio()}</p>
   </article>
+  {/if}
+  {#if show.inventoryValue}
   <article class="card kpi top amber">
     <p class="label">{m.gia_tri_ton_kho_npp()}</p>
     <p class="value">{summary ? vnd(summary.inventoryValue) : '—'}</p>
     <p class="note"><span class="dot amber"></span>{summary?.lowStockSkuCount ?? 0} {m.sku_duoi_dinh_muc()}{#if summary?.inventoryValueFallbackSkus} · {m.ton_chua_co_gia_npp({ count: summary.inventoryValueFallbackSkus })}{/if}</p>
   </article>
+  {/if}
+  {#if show.receivables}
   <article class="card kpi top red">
     <p class="label">{m.cong_no_qua_han()}</p>
     <p class="value">{summary ? vnd(summary.overdueReceivables) : '—'}</p>
     <p class="note"><span class="dot red"></span>{summary?.dealersOverdue30 ?? 0} {m.dai_ly_qua_30_ngay()}</p>
   </article>
+  {/if}
 </section>
+{/if}
 
-<section class="middle">
+<section class="middle" class:solo={!show.revenue}>
+  {#if show.revenue}
   <article class="card">
     <header class="card-head">
       <div><h2>{m.doanh_so_6_thang_gan_nhat()}</h2><p>{m.don_vi_ty_dong_sau_chiet()}</p></div>
@@ -152,6 +200,7 @@
       {:else}<div class="skeleton" style="height:236px"></div>{/if}
     </div>
   </article>
+  {/if}
 
   <article class="card alerts">
     <header class="card-head"><h2>{m.canh_bao_can_xu_ly()}</h2></header>
@@ -173,13 +222,16 @@
   </article>
 </section>
 
+{#if show.recentOrders}
 <section class="card orders">
   <header class="card-head">
     <h2>{m.don_hang_moi_nhat()}</h2>
+    {#if show.orderList}
     <form class="tools" onsubmit={submitSearch}>
       <label class="search"><Search size={15} /><input bind:value={search} placeholder={m.tim_ma_don_dai_ly()} aria-label={m.tim_ma_don_dai_ly_2()} /></label>
       <a class="btn small" href="/sales/orders">{m.bo_loc()}</a>
     </form>
+    {/if}
   </header>
   <div class="table-wrap">
     <table class="table">
@@ -223,6 +275,7 @@
     </footer>
   {/if}
 </section>
+{/if}
 
 <style>
   .tag.loan { background: var(--orange-soft); color: #b4501f; }
@@ -237,6 +290,11 @@
   @media (max-width: 1360px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 1100px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 640px) { .kpis.five { grid-template-columns: 1fr; } }
+  /* Ít thẻ hơn (VIS-ROLE-01): thẻ giữ bề rộng vừa phải, không kéo giãn hết hàng. */
+  .kpis.auto { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  .middle.solo { grid-template-columns: minmax(0, 1fr); }
+  .shortcuts { margin-bottom: 18px; }
+  .shortcuts nav { display: flex; flex-wrap: wrap; gap: 10px; }
   .middle { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(320px, 1fr); gap: 18px; margin-bottom: 18px; }
   .chip { padding: 6px 14px; border-radius: 7px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
   .legend { display: flex; gap: 22px; margin: 6px 0 0 34px; color: var(--muted); font-size: 12.5px; }

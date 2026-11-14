@@ -15,11 +15,12 @@
   import { loadStaff, staffPick, type StaffOption } from '$lib/staff';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import ProductPicker from './ProductPicker.svelte';
   import StaffSelect from './StaffSelect.svelte';
 
   type LoanRow = { id: string; code: string; purpose?: string; salesRepName?: string; destination?: string; shippedAt?: string; expectedReturnDate?: string; loanStatus?: string };
   type LoanLine = { productId: string; sku: string; productName: string; unit: string; shipped: string; returned: string; remaining: string };
-  type LoanOrder = { id: string; code: string; version: number; loanLines?: LoanLine[] };
+  type LoanOrder = { id: string; code: string; version: number; warehouseIssued?: boolean; loanLines?: LoanLine[] };
   type ProductOption = { id: string; sku: string; name: string; baseUnit: string };
 
   let { open = $bindable(false), warehouses = [], onsaved }: { open?: boolean; warehouses?: Warehouse[]; onsaved?: (code: string) => void } = $props();
@@ -37,7 +38,8 @@
   let lines = $state<Array<{ productId: string; quantity: string }>>([]);
   let error = $state('');
   let saving = $state(false);
-  const active = $derived(warehouses.filter((row) => row.active && row.purpose !== 'DEFECTIVE'));
+  // WH-SAMPLE-02 (12/11/2026): hàng mẫu nhập lại vào kho nào cũng được (trừ kho hàng lỗi); có kho mẫu thì đứng đầu danh sách.
+  const active = $derived(warehouses.filter((row) => row.active && row.purpose !== 'DEFECTIVE').sort((a, b) => Number(b.purpose === 'SAMPLE') - Number(a.purpose === 'SAMPLE')));
   const loanLines = $derived(chosen?.loanLines?.filter((line) => Number(line.remaining) > 0) ?? []);
   const returnLines = $derived(loanLines.filter((line) => Number(quantities[line.productId] || 0) > 0).map((line) => ({ productId: line.productId, quantity: String(Number(quantities[line.productId])) })));
   const overLimit = $derived(loanLines.some((line) => Number(quantities[line.productId] || 0) > Number(line.remaining)));
@@ -143,7 +145,7 @@
           </table>
         </div>
       {:else}
-        <div class="chosen"><b class="code">{chosen.code}</b><button type="button" class="link-btn" onclick={() => (chosen = null)}>{m.smp_doi_phieu()}</button><a class="link" href={`/sales/orders/${chosen.id}`}>{m.smp_xem_phieu()}</a></div>
+        <div class="chosen"><b class="code">{chosen.code}</b><button type="button" class="link-btn" onclick={() => (chosen = null)}>{m.smp_doi_phieu()}</button><a class="link" href={chosen.warehouseIssued ? `/inventory/sample-issues/${chosen.id}` : `/sales/orders/${chosen.id}`}>{m.smp_xem_phieu()}</a></div>
         <div class="table-wrap">
           <table class="table compact">
             <thead><tr><th>{m.ten_san_pham()}</th><th class="num">{m.smp_con_ngoai()}</th><th class="qty">{m.smp_so_ve()}</th></tr></thead>
@@ -178,11 +180,8 @@
           <tbody>
             {#each lines as line, index}
               <tr>
-                <td>
-                  <select class="input" aria-label={`${m.ten_san_pham()} ${index + 1}`} bind:value={line.productId}>
-                    <option value="">—</option>
-                    {#each products as product (product.id)}<option value={product.id}>{product.sku} — {product.name}</option>{/each}
-                  </select>
+                <td class="product">
+                  <ProductPicker id={`smp-product-${index + 1}`} label={`${m.ten_san_pham()} ${index + 1}`} {products} value={line.productId} onchoose={(id) => (line.productId = id)} loading={!products.length} />
                 </td>
                 <td class="qty"><span class="qty-box"><NumberInput class="input" decimals={4} aria-label={`${m.so_luong()} ${index + 1}`} bind:value={line.quantity} /><small>{unitOf(line.productId)}</small></span></td>
                 <td><button type="button" class="icon-btn danger" aria-label={m.crud_xoa()} disabled={lines.length === 1} onclick={() => lines.splice(index, 1)}><X size={15} /></button></td>
@@ -218,7 +217,8 @@
   .lines { display: grid; gap: 10px; justify-items: start; }
   .lines table { width: 100%; }
   .lines td { padding: 6px 8px; }
+  .product { min-width: 220px; }
   .qty { width: 170px; }
   .qty-box { display: flex; align-items: center; gap: 6px; }
-  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .product { min-width: 140px; } }
 </style>

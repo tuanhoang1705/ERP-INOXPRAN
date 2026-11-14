@@ -14,6 +14,7 @@ export const statusText = (status: WarrantyStatus, o: Options = {}): string =>
     RECEIVED: m.wr_st_received({}, o),
     QUOTE_PENDING: m.wr_st_quote_pending({}, o),
     PENDING_APPROVAL: m.wr_st_pending_approval({}, o),
+    AWAITING_ISSUE: m.wr_st_awaiting_issue({}, o),
     REPAIRING: m.wr_st_repairing({}, o),
     WAITING_PARTS: m.wr_st_waiting_parts({}, o),
     TESTING: m.wr_st_testing({}, o),
@@ -26,6 +27,7 @@ export const statusTone: Record<WarrantyStatus, Tone> = {
   RECEIVED: '',
   QUOTE_PENDING: 'orange',
   PENDING_APPROVAL: 'warning',
+  AWAITING_ISSUE: 'orange',
   REPAIRING: '',
   WAITING_PARTS: 'warning',
   TESTING: '',
@@ -90,6 +92,8 @@ export const actionText = (action: string): string =>
     TEST: m.wr_act_test(),
     RESCHEDULE: m.wr_act_reschedule(),
     RETURN: m.wr_act_return(),
+    ISSUE_EXCHANGE: m.wr_act_issue_exchange(),
+    STATUS_MIGRATED: m.wr_act_status_migrated(),
     EXCHANGE_ORDER: m.bhx_act_lap_phieu(),
     EDIT_REQUEST: m.wr_act_edit_request(),
     EDIT_GRANTED: m.wr_act_edit_granted(),
@@ -113,11 +117,6 @@ export function slaText(sla: SlaView): string {
   if (sla.tone === 'closed') return sla.lateDays > 0 ? m.wr_late_on_return({ days: sla.lateDays }) : m.wr_on_time();
   if (sla.tone === 'overdue') return m.wr_days_late({ days: sla.lateDays });
   return m.wr_days_left({ days: sla.daysLeft });
-}
-
-/** Sản phẩm cho ô gõ-tìm ở form bảo hành (05/11/2026): mã hàng làm "mã", gõ mã hoặc tên (có dấu hay không) đều ra. */
-export function productPickOptions(products: ReadonlyArray<{ id: string; sku: string; name: string }>): Array<{ id: string; code: string; name: string }> {
-  return products.map((product) => ({ id: product.id, code: product.sku, name: product.name }));
 }
 
 /** Vai trò được tiếp nhận / cập nhật phiếu (khớp WARRANTY_STAFF_ROLES của API; ADMIN luôn được). */

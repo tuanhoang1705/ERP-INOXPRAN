@@ -29,8 +29,9 @@
   type Detail = Product & { categoryName?: string; onHand?: string; available?: string; priceNeedsReview?: boolean; priceReviewNote?: string };
   type Overview = {
     stock: Array<{ warehouseId: string; warehouseCode?: string; warehouseName?: string; locationCode: string | null; onHand: string; reserved: string; available: string }>;
-    purchases: { recent: Array<{ id: string; code: string; supplierName: string; status: string; date: string; currency: string; unit: string; quantity: string; unitCost: string }>; last12Months: { quantity: string; amount: string; orders: number } };
-    sales: { recent: Array<{ id: string; code: string; customerName: string; status: string; date: string; unit: string; quantity: string; unitPrice: string }>; last12Months: { quantity: string; amount: string; orders: number } };
+    /** null: tài khoản không xem đơn mua / Đơn hàng (VIS-ROLE-01). */
+    purchases: null | { recent: Array<{ id: string; code: string; supplierName: string; status: string; date: string; currency: string; unit: string; quantity: string; unitCost: string }>; last12Months: { quantity: string; amount: string; orders: number } };
+    sales: null | { recent: Array<{ id: string; code: string; customerName: string; status: string; date: string; unit: string; quantity: string; unitPrice: string }>; last12Months: { quantity: string; amount: string; orders: number } };
   };
   type Option = { id: string; code: string; name: string; status?: string };
 
@@ -214,7 +215,8 @@
     { id: 'description', label: m.sp_mo_ta() },
     { id: 'attachments', label: m.sp_anh_tai_lieu(), badge: attachmentCount },
     { id: 'stock', label: m.sp_ton_kho(), badge: overview?.stock.length },
-    { id: 'trade', label: m.sp_mua_ban() },
+    // Tab mua / bán chỉ hiện khi tài khoản xem được đơn mua hoặc Đơn hàng (VIS-ROLE-01).
+    ...(overview?.purchases || overview?.sales ? [{ id: 'trade', label: m.sp_mua_ban() }] : []),
     { id: 'history', label: m.rw_lich_su() },
   ]);
   const fieldLabels = $derived<Record<string, string>>({
@@ -386,9 +388,10 @@
         </section>
       {:else if active === 'trade' && overview}
         <div class="kpis two">
-          <div class="card kpi"><p class="label">{m.sp_mua_12_thang()}</p><p class="value">{num(overview.purchases.last12Months.quantity)} {product.baseUnit}</p><p class="note">{m.sp_so_don({ count: overview.purchases.last12Months.orders })} · {vnd(overview.purchases.last12Months.amount)}</p></div>
-          <div class="card kpi"><p class="label">{m.sp_ban_12_thang()}</p><p class="value">{num(overview.sales.last12Months.quantity)} {product.baseUnit}</p><p class="note">{m.sp_so_don({ count: overview.sales.last12Months.orders })} · {vnd(overview.sales.last12Months.amount)}</p></div>
+          {#if overview.purchases}<div class="card kpi"><p class="label">{m.sp_mua_12_thang()}</p><p class="value">{num(overview.purchases.last12Months.quantity)} {product.baseUnit}</p><p class="note">{m.sp_so_don({ count: overview.purchases.last12Months.orders })} · {vnd(overview.purchases.last12Months.amount)}</p></div>{/if}
+          {#if overview.sales}<div class="card kpi"><p class="label">{m.sp_ban_12_thang()}</p><p class="value">{num(overview.sales.last12Months.quantity)} {product.baseUnit}</p><p class="note">{m.sp_so_don({ count: overview.sales.last12Months.orders })} · {vnd(overview.sales.last12Months.amount)}</p></div>{/if}
         </div>
+        {#if overview.purchases}
         <RecordSection id="product-purchases" title={m.sp_lan_mua_gan_day()}>
           <div class="table-wrap">
             <table class="table">
@@ -401,6 +404,8 @@
             </table>
           </div>
         </RecordSection>
+        {/if}
+        {#if overview.sales}
         <RecordSection id="product-sales" title={m.sp_lan_ban_gan_day()}>
           <div class="table-wrap">
             <table class="table">
@@ -413,6 +418,7 @@
             </table>
           </div>
         </RecordSection>
+        {/if}
       {:else if active === 'history'}
         <HistoryPanel type="products" id={product.id} {fieldLabels} {actionLabels} reload={historyReload} />
       {/if}

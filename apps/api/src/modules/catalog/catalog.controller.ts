@@ -62,8 +62,8 @@ export class CatalogController {
   }
 
   @Get('products/:id/overview')
-  productOverview(@Param('id') id: string) {
-    return this.catalog.productOverview(id);
+  productOverview(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.catalog.productOverview(id, request.user);
   }
 
   @Roles(...PRODUCT_CREATE_ROLES)
@@ -142,8 +142,8 @@ export class CatalogController {
   }
 
   @Get('partners/:id')
-  partner(@Param('id') id: string) {
-    return this.catalog.getPartner(id);
+  partner(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.catalog.getPartner(id, request.user);
   }
 
   /** Khách "cơ hội" → khách chính thức (gán cấp giá); quyền kiểm tra trong service. */

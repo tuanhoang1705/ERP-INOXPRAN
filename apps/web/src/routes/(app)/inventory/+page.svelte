@@ -5,6 +5,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, ClipboardCheck, SlidersHorizontal } from 'lucide-svelte';
   import { api } from '$lib/api';
+  import { canOpen } from '$lib/visibility';
   import { date, dateTime, num, todayIso } from '$lib/format';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import { can } from '$lib/permissions';
@@ -91,7 +92,7 @@
   </div>
   <div class="actions">
     {#if editable}<a class="btn" href="/inventory/counts"><ClipboardCheck size={16} />{m.kk_nut()}</a>{/if}
-    <a class="btn" href="/inventory/movements">{m.the_kho()}</a>
+    {#if canOpen('/inventory/movements')}<a class="btn" href="/inventory/movements">{m.the_kho()}</a>{/if}
     {#if editable}<button class="btn" onclick={() => adjust()}><SlidersHorizontal size={16} />{m.crud_dieu_chinh_ton()}</button>{/if}
     {#if can.createPurchaseOrders()}<a class="btn primary" href="/procurement/new">{m.lap_don_nhap_hang()}</a>{/if}
   </div>
@@ -120,11 +121,11 @@
           {#each rows as row (`${row.warehouseId}-${row.productId}`)}
             {@const low = row.belowMinimum && Number(row.minimumStock) > 0}
             <tr class:low class:nil={defectiveView && Number(row.onHand) === 0}>
-              <td><a class="code" href={`/inventory/movements?productId=${row.productId}${warehouseId ? `&warehouseId=${warehouseId}` : ''}`}>{row.sku}</a></td>
+              <td>{#if canOpen('/inventory/movements')}<a class="code" href={`/inventory/movements?productId=${row.productId}${warehouseId ? `&warehouseId=${warehouseId}` : ''}`}>{row.sku}</a>{:else}<span class="code">{row.sku}</span>{/if}</td>
               <td>{row.productName}</td>
               <td>{row.unit}</td>
               <td class="muted">{row.locationCode ?? '—'}</td>
-              <td class="num">{num(row.onHand)}{#if Number(row.defectiveOnHand ?? 0) > 0}<small class="defect">{m.inv_gom_hang_loi({ count: num(row.defectiveOnHand) })}</small>{/if}</td>
+              <td class="num">{num(row.onHand)}{#if Number(row.defectiveOnHand ?? 0) > 0}<small class="defect">{m.inv_gom_hang_loi({ count: num(row.defectiveOnHand) })}</small>{/if}{#if Number(row.sampleOnHand ?? 0) > 0}<small class="defect">{m.inv_gom_hang_mau({ count: num(row.sampleOnHand) })}</small>{/if}</td>
               {#if !defectiveView}
                 <td class="num muted">{num(row.reserved)}</td>
                 <td class="num"><b class:warn={low} class:zero={!row.defective && Number(row.available) <= 0}>{num(row.available)}</b></td>

@@ -91,7 +91,11 @@ export async function seedWarrantyDemo(db: Db, now: Date, counters: Map<string, 
     ticket.returnedAt = at(hours);
     ticket.returnedTo = receiver;
     ticket.serviceDays = serviceDays(ticket.receivedAt as Date, ticket.returnedAt as Date);
-    ticket.history.push({ at: at(hours), byName: staff.receiver.name, action: 'RETURN', from: 'READY', to: 'RETURNED' });
+    // Đổi sản phẩm mới (WAR-EXCH-02): kế toán xuất phiếu BH & SWK là đóng phiếu.
+    const exchanged = (ticket.result as Document | undefined)?.resolution === 'EXCHANGED';
+    ticket.history.push(exchanged
+      ? { at: at(hours), byName: 'Ngô Thanh Hà', action: 'ISSUE_EXCHANGE', from: 'AWAITING_ISSUE', to: 'RETURNED' }
+      : { at: at(hours), byName: staff.receiver.name, action: 'RETURN', from: 'READY', to: 'RETURNED' });
   };
   const line = (symptom: string, rootCause?: string, action?: string, partCode?: string, faultCode?: string) =>
     ({ symptom, ...(rootCause ? { rootCause } : {}), ...(action ? { action } : {}), ...(partCode ? { partCode } : {}), ...(faultCode ? { faultCode } : {}) });
@@ -274,7 +278,7 @@ export async function seedWarrantyDemo(db: Db, now: Date, counters: Map<string, 
         ticket.result = { resolution: kind === 'reject' ? 'REJECTED' : kind === 'exchange' ? 'EXCHANGED' : 'REFUNDED', cost: money(cost), chargedTo: kind === 'reject' ? 'CUSTOMER' : 'COMPANY', completedAt: at(26) };
         if (kind === 'refund') ticket.refund = { amount: money(cost) };
       });
-      steps.push(event(26, 'APPROVE', 'PENDING_APPROVAL', 'READY', 'Đồng ý', director));
+      steps.push(event(26, 'APPROVE', 'PENDING_APPROVAL', kind === 'exchange' ? 'AWAITING_ISSUE' : 'READY', 'Đồng ý', director));
     }
     steps.push(returned(returnHours, pick(receivers)));
     specs.push({

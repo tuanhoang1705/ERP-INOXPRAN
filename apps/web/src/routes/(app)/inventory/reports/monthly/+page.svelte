@@ -9,6 +9,7 @@
   import { onMount } from 'svelte';
   import { AlertTriangle, CircleAlert, CircleCheck, Download } from 'lucide-svelte';
   import { api, download } from '$lib/api';
+  import { canOpen } from '$lib/visibility';
   import { dateTime, num, rate } from '$lib/format';
   import { categoryHeading } from '$lib/inventory';
   import { categoryInfo } from '$shared/inventory-categories';
@@ -144,7 +145,7 @@
         {:else if report && rows.length}
           {#each rows as row (row.productId)}
             <tr>
-              <td class="sticky c1"><a class="code" href={`/inventory/movements?productId=${row.productId}`}>{row.sku}</a></td>
+              <td class="sticky c1">{#if canOpen('/inventory/movements')}<a class="code" href={`/inventory/movements?productId=${row.productId}`}>{row.sku}</a>{:else}<span class="code">{row.sku}</span>{/if}</td>
               <td class="sticky c2 name">{row.productName}</td>
               <td class="num muted">{row.initialQuantity === null ? '—' : num(row.initialQuantity)}</td>
               <td class="num">{#if row.remainingPercent !== null}<span class={`pct ${tone(row.remainingPercent)}`}>{rate(row.remainingPercent)}</span>{:else}—{/if}</td>

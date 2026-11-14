@@ -10,6 +10,7 @@
   import { api } from '$lib/api';
   import { dateTime } from '$lib/format';
   import { can, session } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import { changeKindLabel, changeStatus, type ChangeRequest } from '$lib/change-requests';
 
   let tab = $state<'PENDING' | 'DONE'>('PENDING');
@@ -74,7 +75,7 @@
 
 <section class="page-head">
   <div>
-    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span>{m.yc_menu()}</span></nav>
+    <nav class="crumbs" aria-label={m.duong_dan()}>{#if canOpen('/sales/orders')}<a href="/sales/orders">{m.don_hang()}</a>{:else}<a href="/">{m.tong_quan()}</a>{/if}<span>{m.yc_menu()}</span></nav>
     <h1 class="page-title">{m.yc_menu()}</h1>
     <p class="page-sub">{m.yc_mo_ta()}</p>
   </div>

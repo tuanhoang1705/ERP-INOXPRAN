@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert } from 'lucide-svelte';
   import { api } from '$lib/api';
+  import { canOpen } from '$lib/visibility';
   import { date, vnd } from '$lib/format';
   import { debounce } from '$lib/paging';
   import { money } from '$lib/purchase';
@@ -37,7 +38,7 @@
 
 <section class="page-head">
   <div>
-    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/receivables">{m.cong_no()}</a><span>{m.apb_title()}</span></nav>
+    <nav class="crumbs" aria-label={m.duong_dan()}>{#if canOpen('/receivables')}<a href="/receivables">{m.cong_no()}</a>{:else}<span>{m.cong_no()}</span>{/if}<span>{m.apb_title()}</span></nav>
     <h1 class="page-title">{m.apb_title()}</h1>
     <p class="page-sub">{m.apb_sub()}</p>
   </div>

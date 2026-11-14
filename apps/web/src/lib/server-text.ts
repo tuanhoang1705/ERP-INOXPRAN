@@ -55,6 +55,12 @@ export function notificationText(notification: AppNotification): { title: string
   const code = text(p, 'code');
   const customer = text(p, 'customer');
   switch (notification.template) {
+    case 'SAMPLE_SALE_REQUESTED':
+      return { title: m.tb_mau_yeu_cau_ban({ code }), message: m.tb_mau_yeu_cau_ban_chi_tiet({ requester: text(p, 'requester'), customer, lines: text(p, 'lines') }) };
+    case 'SAMPLE_SALE_CANCELLED':
+      return { title: m.tb_mau_rut_yeu_cau({ code }), message: m.tb_mau_rut_yeu_cau_chi_tiet({ requester: text(p, 'requester'), customer, reason: text(p, 'reason') }) };
+    case 'SAMPLE_SALE_DONE':
+      return { title: m.tb_mau_da_ban({ code, order: text(p, 'order') }), message: m.tb_mau_da_ban_chi_tiet({ slip: text(p, 'slip'), customer }) };
     case 'SALES_ISSUE_REQUESTED':
       return { title: m.tb_de_nghi_lap_phieu({ code }), message: m.tb_de_nghi_lap_phieu_chi_tiet({ requester: text(p, 'requester'), customer }) };
     case 'SALES_APPROVAL_REQUESTED':
@@ -117,6 +123,12 @@ export function notificationText(notification: AppNotification): { title: string
       };
     case 'WARRANTY_APPROVAL_DECIDED':
       return { title: text(p, 'approved') === 'yes' ? m.tb_bh_da_duyet({ code }) : m.tb_bh_khong_duyet({ code }), message: notification.message };
+    case 'WARRANTY_EXCHANGE_ISSUE_PENDING':
+      return { title: m.tb_bh_cho_xuat_phieu({ code }), message: m.tb_bh_cho_xuat_phieu_chi_tiet({ customer, product: text(p, 'product') }) };
+    case 'WARRANTY_EXCHANGE_ISSUED':
+      return text(p, 'audience') === 'keeper'
+        ? { title: m.tb_bh_in_swk({ slip: text(p, 'slip'), product: text(p, 'product') }), message: m.tb_bh_in_swk_chi_tiet({ customer, code, order: text(p, 'order') }) }
+        : { title: m.tb_bh_da_xuat_phieu({ code, order: text(p, 'order') }), message: m.tb_bh_da_xuat_phieu_chi_tiet({ customer, product: text(p, 'product'), keeper: text(p, 'keeper'), slip: text(p, 'slip'), warehouse: text(p, 'warehouse') }) };
     case 'WARRANTY_DUE_SOON':
       return { title: m.tb_bh_sap_den_hen({ code }), message: m.tb_bh_sap_den_hen_chi_tiet({ customer, product: text(p, 'product'), date: date(text(p, 'promisedDate')), days: count(p, 'daysLeft') }) };
     case 'WARRANTY_OVERDUE':
@@ -190,6 +202,9 @@ export function periodText(label: string | null | undefined): string {
   if (match) return m.ky_thang_nam({ month: match[1]!, year: match[2]! });
   match = /^cùng kỳ tháng (\d{1,2})$/.exec(label);
   if (match) return m.ky_cung_ky_thang({ month: match[1]! });
+  // DB-CMP-01 (14/11/2026): nhãn ghi rõ khoảng ngày của tháng trước, VD "cùng kỳ 1–14/10".
+  match = /^cùng kỳ (\d{1,2})–(\d{1,2})\/(\d{1,2})$/.exec(label);
+  if (match) return m.ky_cung_ky_ngay({ from: match[1]!, to: match[2]!, month: match[3]! });
   match = /^(\d{2})\/(\d{2})\/(\d{4}) – (\d{2})\/(\d{2})\/(\d{4})$/.exec(label);
   if (match) return `${date(isoDay(match[1]!, match[2]!, match[3]!))} – ${date(isoDay(match[4]!, match[5]!, match[6]!))}`;
   return label;

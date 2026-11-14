@@ -8,11 +8,11 @@
    * Mọi con số được tính ngay trên trình duyệt (không chờ máy chủ) từ bảng giá riêng của khách, bằng đúng hàm
    * máy chủ dùng khi lưu chứng từ — xem $lib/sales-issue và $shared/sales-math.
    */
-  import type { Product, SalesOrder, SalesPriceSheet, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
+  import type { Product, SalesOrder, SalesPriceSheet, SampleSaleRequest, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
   import { paymentTermChoices } from '$shared/payment-terms';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { flip } from 'svelte/animate';
   import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, CircleAlert, CircleCheck, Clock, Copy, Gift, Info, ListPlus, Lock, Pencil, Plus, RotateCcw, ScanLine, Trash2, X } from 'lucide-svelte';
   import Dialog from './Dialog.svelte';
@@ -35,7 +35,8 @@
   import { FORM_SLIP_TYPE_OPTIONS, slipTypeLabel, slipTypeOf, type SalesSlipType } from '$lib/slip-type';
   import { loadStaff, staffPick, withCurrent, type StaffOption } from '$lib/staff';
   import StaffSelect from './StaffSelect.svelte';
-  import { defaultReturnDate } from '$shared/sales-purpose';
+  import { defaultReturnDate, recipientAddressOf, warehouseFitsSlip } from '$shared/sales-purpose';
+  import SuggestInput, { type Suggestion } from './SuggestInput.svelte';
   import { otherLinesLast, ZERO_PRICE_KINDS, zeroPriceKindOf, zeroPricedSaleLine, type ZeroPriceKind } from '$shared/sales-line-kind';
   import { vnDate } from '$shared/warranty';
 
@@ -113,6 +114,18 @@
   /** Loại phiếu (SAL-TYPE-01): bán B2B / bán lẻ B2C / xuất hàng mẫu / xuất kiểm định. Hàng mẫu / kiểm định: không khách, giá 0. */
   let slipType = $state<SalesSlipType>('B2B');
   const nonSale = $derived(slipType === 'SAMPLE' || slipType === 'INSPECTION' || slipType === 'GIFT');
+  /**
+   * Kho chọn được (WH-SAMPLE-02, 12/11/2026): mọi kho đang hoạt động trừ kho hàng lỗi, cho mọi loại phiếu — bỏ ràng buộc kho mẫu của
+   * WH-SAMPLE-01. Phiếu đang sửa giữ được kho của phiếu.
+   */
+  const warehouseChoices = $derived(warehouses.filter((row) => (existing && row.id === existing.warehouseId) || warehouseFitsSlip(row.purpose)));
+  /** Kho đang chọn không còn trong danh sách thì chuyển sang kho mặc định. */
+  function fitWarehouse() {
+    if (!warehouses.length || warehouseChoices.some((row) => row.id === warehouseId)) return;
+    const preferred = warehouseChoices.find((row) => row.id === defaultWarehouseId()) ?? warehouseChoices[0];
+    warehouseId = preferred?.id ?? '';
+    changeWarehouse();
+  }
   /** Hàng mẫu / kiểm định: có hẹn trả (mặc định hôm nay + 15 ngày) và theo dõi hàng mang về; xuất tặng thì không. */
   const loanType = $derived(slipType === 'SAMPLE' || slipType === 'INSPECTION');
   const gift = $derived(slipType === 'GIFT');
@@ -121,9 +134,41 @@
   const employees = $derived(allEmployees.filter((row) => row.role === 'SALES' || row.role === 'SALES_MANAGER' || row.id === salesRepId));
   let staff = $state<StaffOption[]>([]);
   let destination = $state('');
+  /**
+   * Phiếu xuất tặng (GIFT-FORM-01, 12/11/2026): ô "Tặng cho" vừa gõ tự do vừa chọn khách; chọn khách thì ghi liên kết và tự điền
+   * địa chỉ (ô Địa chỉ thay ô Diễn giải). Gõ tên khác đi thì bỏ liên kết.
+   */
+  let recipientAddress = $state('');
+  let autoAddress = '';
+  const recipientOptions = $derived.by(() => {
+    const seen = new Set<string>();
+    const options: Suggestion[] = [];
+    for (const row of dealers) {
+      if (seen.has(row.name)) continue;
+      seen.add(row.name);
+      options.push({ value: row.name, detail: [row.code, row.phone].filter(Boolean).join(' · ') });
+    }
+    return options;
+  });
+  const recipient = $derived(destination.trim() ? dealers.find((row) => row.name === destination.trim()) : undefined);
+  $effect(() => {
+    const address = recipient?.address ?? '';
+    untrack(() => {
+      // Chỉ tự điền khi ô địa chỉ đang trống hoặc đang là địa chỉ tự điền của khách chọn trước đó.
+      if (address && (!recipientAddress.trim() || recipientAddress === autoAddress)) recipientAddress = address;
+      autoAddress = address;
+    });
+  });
   let expectedReturnDate = $state('');
   /** Lập phiếu bán từ phần hàng mẫu đại lý mua luôn (chốt "Đại lý mua luôn"). */
   let loanSource = $state<{ id: string; code: string } | null>(null);
+  /**
+   * SAMPLE-ISSUE-01 (12/11/2026): phiếu xuất hàng mẫu do thủ kho lập ở Kho & Giao hàng → Xuất hàng mẫu — form phiếu BH không còn nút
+   * "Xuất hàng mẫu" khi lập mới / sửa nháp (phiếu mẫu cũ, và phiếu đã phát hành lỡ lập nhầm loại cần Admin sửa, vẫn có).
+   * SAMPLE-SALE-01: phiếu bán lập theo yêu cầu "khách mua luôn hàng mẫu" của thủ kho — điền sẵn khách, mã hàng, số lượng.
+   */
+  const slipTypeChoices = $derived(FORM_SLIP_TYPE_OPTIONS.filter((type) => type !== 'SAMPLE' || (existing && (slipTypeOf(existing) === 'SAMPLE' || existing.status !== 'DRAFT'))));
+  let sampleRequest = $state<{ slipId: string; requestId: string; code: string } | null>(null);
   let orderDate = $state(todayIso());
   let salesRepId = $state('');
   let warehouseId = $state('');
@@ -276,6 +321,7 @@
         customerId = existing.customerId ?? '';
         slipType = slipTypeOf(existing);
         destination = existing.destination ?? '';
+        recipientAddress = recipientAddressOf(existing);
         expectedReturnDate = existing.expectedReturnDate ?? '';
         orderDate = vnDate(new Date(existing.orderDate ?? existing.createdAt));
         salesRepId = existing.staffUserId ?? existing.salesRepId ?? '';
@@ -301,22 +347,45 @@
         }));
         await Promise.all([loadSheet(), loadKeepers()]);
       } else {
-        warehouseId = warehouses.find((row) => row.id === defaultWarehouseId())?.id ?? warehouses[0]?.id ?? '';
+        warehouseId = warehouseChoices.find((row) => row.id === defaultWarehouseId())?.id ?? warehouseChoices[0]?.id ?? '';
         loadKeepers();
         // Đã chọn "Xuất hàng mẫu / kiểm định" trước khi danh sách kho tải xong: tải bảng giá 0 của kho vừa chọn.
         if (nonSale) loadSheet();
         const presetType = page.url.searchParams.get('type');
-        if (presetType === 'SAMPLE' || presetType === 'INSPECTION' || presetType === 'GIFT') chooseSlipType(presetType);
+        if (presetType === 'INSPECTION' || presetType === 'GIFT') chooseSlipType(presetType);
         const preset = page.url.searchParams.get('customer');
         const presetDealer = dealers.find((row) => row.code === preset || row.id === preset);
         if (presetDealer) chooseCustomer(presetDealer.id);
         const fromLoan = page.url.searchParams.get('fromLoan');
         if (fromLoan) await prefillFromLoan(fromLoan);
+        const fromRequest = page.url.searchParams.get('sampleRequest');
+        if (fromRequest) await prefillFromSampleRequest(fromRequest);
       }
     } catch (caught) {
       loadError = caught instanceof Error ? caught.message : m.khong_tai_duoc_du_lieu_danh();
     }
   });
+
+  /** Yêu cầu "khách mua luôn hàng mẫu" của thủ kho (`<id phiếu SWK-M>.<id yêu cầu>`): điền sẵn khách, mã hàng, số lượng, ghi chú. */
+  async function prefillFromSampleRequest(reference: string) {
+    const [slipId, requestId] = reference.split('.');
+    if (!slipId || !requestId) return;
+    try {
+      const slip = await api<SalesOrder & { saleRequests?: SampleSaleRequest[] }>(`/sales-orders/${slipId}`);
+      const item = slip.saleRequests?.find((row) => row.id === requestId);
+      if (!item) return;
+      if (item.status !== 'PENDING') {
+        error = item.status === 'CANCELLED' ? m.xm_bh_yc_da_rut({ code: slip.code }) : m.xm_bh_yc_da_co({ code: slip.code, order: item.salesOrderCode ?? '' });
+        return;
+      }
+      sampleRequest = { slipId, requestId, code: slip.code };
+      chooseCustomer(item.customerId);
+      lines = item.lines.map((line) => ({ key: ++lineKey, productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? line.unit, quantity: String(Number(line.quantity)), gift: false, name: line.productName }));
+      note = m.xm_bh_ghi_chu({ code: slip.code });
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : m.khong_tai_duoc_du_lieu_danh();
+    }
+  }
 
   /** Phần hàng mẫu đại lý mua luôn: điền sẵn các dòng, NVKD và ghi chú; kế toán chọn khách rồi phát hành như phiếu bán thường. */
   async function prefillFromLoan(id: string) {
@@ -325,6 +394,11 @@
       const remainder = source.loanRemainder ?? [];
       if (!remainder.length) return;
       loanSource = { id: source.id, code: source.code };
+      // Khách mua luôn hàng mẫu theo luồng cũ (phiếu mẫu trong Đơn hàng): phiếu bán xuất từ đúng kho đã cho mượn.
+      if (source.warehouseId && warehouses.some((row) => row.id === source.warehouseId) && source.warehouseId !== warehouseId) {
+        warehouseId = source.warehouseId;
+        changeWarehouse();
+      }
       lines = remainder.map((line) => ({ key: ++lineKey, productId: line.productId, skuInput: line.sku, unit: productById.get(line.productId)?.baseUnit ?? '', quantity: String(Number(line.quantity)), gift: false, name: line.productName }));
       if (source.salesRepId) salesRepId = source.salesRepId;
       note = m.lp_lap_phieu_ban_tu_mau({ code: source.code });
@@ -354,6 +428,7 @@
     } else if (wasNonSale && dealer) {
       description = `Bán hàng ${dealer.name}`;
     }
+    fitWarehouse();
     if (nowNonSale !== wasNonSale) {
       sheet = null;
       loadSheet();
@@ -662,14 +737,20 @@
       formSessionId,
       ...(!nonSale && grantApproved && grant && calc.lines.some((line) => line?.overridden) ? { priceOverrideRequestId: grant.id } : {}),
       templateCode: template.code, warehouseId, orderDate, taxRate: vatRate,
+      ...(loanSource ? { soldLoanId: loanSource.id } : {}),
+      ...(sampleRequest && !nonSale && !existing ? { sampleRequest: { slipId: sampleRequest.slipId, requestId: sampleRequest.requestId } } : {}),
       ...(nonSale
-        ? { purpose: slipType, ...(destination.trim() ? { destination: destination.trim() } : {}), ...(loanType && expectedReturnDate ? { expectedReturnDate } : {}) }
+        ? {
+            purpose: slipType, ...(destination.trim() ? { destination: destination.trim() } : {}), ...(loanType && expectedReturnDate ? { expectedReturnDate } : {}),
+            ...(gift && recipientAddress.trim() ? { recipientAddress: recipientAddress.trim() } : {}),
+            ...(gift && recipient ? { recipientCustomerId: recipient.id } : {}),
+          }
         : { purpose: 'SALE', customerId, channel, paymentTermDays, ...(Number(paymentTermDays) === 0 && payNowMethod ? { payNowMethod } : {}) }),
       ...(warehouseKeeperId ? { warehouseKeeperId } : {}),
       ...(nonSale ? staffPick(staff, salesRepId) : salesRepId ? { salesRepId } : {}),
       ...(requestedDeliveryDate ? { requestedDeliveryDate } : {}),
       ...(contactName.trim() ? { contactName: contactName.trim() } : {}),
-      ...(description.trim() ? { description: description.trim() } : {}),
+      ...(!gift && description.trim() ? { description: description.trim() } : {}),
       ...(deliveryLocation.trim() ? { deliveryLocation: deliveryLocation.trim() } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
       lines: calc.lines.flatMap((computed) => {
@@ -805,6 +886,7 @@
 {/if}
 {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span><button class="close" onclick={() => (error = '')} aria-label={m.dong()}><X size={15} /></button></div>{/if}
 {#if loanSource}<div class="banner info"><Info size={17} /><span>{m.lp_dien_san_tu_mau({ code: loanSource.code })}</span></div>{/if}
+{#if sampleRequest || existing?.sampleSale}<div class="banner info"><Info size={17} /><span>{m.xm_bh_theo_yeu_cau({ code: sampleRequest?.code ?? existing?.sampleSale?.slipCode ?? '' })}</span></div>{/if}
 {#if nonSale}<div class="banner info"><Info size={17} /><span>{gift ? m.lp_khong_tinh_tien_tang() : m.lp_khong_tinh_tien()}</span></div>{/if}
 {#if blocked && !nonSale}<div class="banner error"><CircleAlert size={17} /><span><b>{dealer?.name}</b> {m.dang_tam_khoa_dat_hang()}{dealer?.holdReason === 'OVERDUE_60' ? m.do_co_cong_no_qua_han() : ''}{m.can_thu_hoi_cong_no_truoc()}</span></div>{/if}
 
@@ -812,9 +894,9 @@
   <header class="block-head"><span class="step">1</span><h2>{gift ? m.lp_thong_tin_xuat_tang() : nonSale ? m.lp_thong_tin_nguoi_muon() : m.thong_tin_nguoi_mua()}</h2><small>(<span class="req">*</span>{m.truong_bat_buoc()}</small></header>
   <div class="slip-types" role="radiogroup" aria-label={m.lp_loai_phieu()}>
     <span class="slip-label">{m.lp_loai_phieu()}</span>
-    {#each FORM_SLIP_TYPE_OPTIONS as type}
+    {#each slipTypeChoices as type}
       <button type="button" role="radio" aria-checked={slipType === type} class:on={slipType === type} class:loan={type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT'}
-        disabled={Boolean(loanSource) && (type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT')} onclick={() => chooseSlipType(type)}>{slipTypeLabel(type)}</button>
+        disabled={Boolean(loanSource || sampleRequest) && (type === 'SAMPLE' || type === 'INSPECTION' || type === 'GIFT')} onclick={() => chooseSlipType(type)}>{slipTypeLabel(type)}</button>
     {/each}
   </div>
   <div class="grid">
@@ -839,7 +921,14 @@
         <label for="borrower">{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()} <span class="req">*</span></label>
         <StaffSelect id="borrower" bind:value={salesRepId} options={staff} missing={!salesRepId} placeholder={gift ? m.lp_chon_nguoi_phu_trach() : m.lp_chon_nguoi_muon()} />
       </div>
-      <div class="field"><label for="destination">{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</label><input id="destination" bind:value={destination} maxlength="200" placeholder={gift ? m.lp_tang_cho_goi_y() : m.lp_gui_toi_goi_y()} /></div>
+      <div class="field">
+        <label for="destination">{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</label>
+        {#if gift}
+          <SuggestInput id="destination" bind:value={destination} options={recipientOptions} maxlength={200} placeholder={m.lp_tang_cho_goi_y()} toggleLabel={m.kh_mo_danh_sach()} loading={!dealersLoaded && !loadError} />
+        {:else}
+          <input id="destination" bind:value={destination} maxlength="200" placeholder={m.lp_gui_toi_goi_y()} />
+        {/if}
+      </div>
     {:else}
       <div class="field wide">
         <label for="customer">{m.nguoi_mua_ma_khach_hang()} <span class="req">*</span></label>
@@ -861,7 +950,11 @@
   {/if}
   <div class="grid second">
     {#if !nonSale}<div class="field"><label for="contact">{m.ten_khach_hang_nguoi_nhan_lien()}</label><input id="contact" bind:value={contactName} maxlength="120" placeholder={m.khong_bat_buoc()} /></div>{/if}
-    <div class="field wide"><label for="description">{m.dien_giai()}</label><input id="description" bind:value={description} maxlength="300" /></div>
+    {#if gift}
+      <div class="field wide"><label for="recipient-address">{m.dia_chi()}</label><input id="recipient-address" bind:value={recipientAddress} maxlength="300" placeholder={m.lp_dia_chi_goi_y()} /></div>
+    {:else}
+      <div class="field wide"><label for="description">{m.dien_giai()}</label><input id="description" bind:value={description} maxlength="300" /></div>
+    {/if}
     {#if !nonSale}
       <div class="field">
         <label for="rep">{m.nhan_vien_ban_hang()} <span class="req">*</span></label>
@@ -871,7 +964,7 @@
     {/if}
     <div class="field">
       <label for="warehouse">{m.kho_xuat()} <span class="req">*</span></label>
-      <select id="warehouse" bind:value={warehouseId} onchange={changeWarehouse} disabled={shippedOrder} title={shippedOrder ? m.root_khong_doi_kho() : ''}>{#each warehouses as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}</select>
+      <select id="warehouse" bind:value={warehouseId} onchange={changeWarehouse} disabled={shippedOrder} title={shippedOrder ? m.root_khong_doi_kho() : ''}>{#each warehouseChoices as row}<option value={row.id}>{row.code} — {row.name}</option>{/each}</select>
     </div>
     <div class="field">
       <label for="keeper">{m.thu_kho_xuat_hang()} {#if canIssue}<span class="req">*</span>{/if}</label>

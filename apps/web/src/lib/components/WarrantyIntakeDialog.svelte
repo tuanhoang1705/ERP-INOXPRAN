@@ -12,7 +12,8 @@
   import { m } from '$lib/paraglide/messages';
   import { api } from '$lib/api';
   import { todayIso } from '$lib/format';
-  import { channelText, productPickOptions } from '$lib/warranty';
+  import { channelText } from '$lib/warranty';
+  import { productPickOptions } from '$lib/product';
   import { WARRANTY_CHANNELS, type WarrantyChannel } from '$shared/warranty';
   import CustomerPicker from './CustomerPicker.svelte';
   import Dialog from './Dialog.svelte';

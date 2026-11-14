@@ -7,7 +7,8 @@
   import { api } from '$lib/api';
   import CustomerPicker from '$lib/components/CustomerPicker.svelte';
   import { date, dateTime, todayIso } from '$lib/format';
-  import { channelText, productPickOptions } from '$lib/warranty';
+  import { channelText } from '$lib/warranty';
+  import { productPickOptions } from '$lib/product';
   import { addDays, daysBetween, slaState, WARRANTY_CHANNELS, WARRANTY_DEFAULTS, type WarrantyChannel } from '$shared/warranty';
 
   type Dealer = { id: string; code: string; name: string; phone?: string; address?: string; province?: string; taxCode?: string; status: string };

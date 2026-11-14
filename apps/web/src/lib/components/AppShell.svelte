@@ -6,12 +6,13 @@
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { onMount, type Snippet } from 'svelte';
-  import { Bell, ChevronDown, LogOut, Menu, UserCog, WifiOff, X } from 'lucide-svelte';
+  import { Bell, ChevronDown, LogOut, Menu, ShieldAlert, UserCog, WifiOff, X } from 'lucide-svelte';
   import { api } from '$lib/api';
   import { initials, vnToday } from '$lib/format';
   import { roleLabel } from '$lib/labels';
   import { notificationText } from '$lib/server-text';
-  import { activeSection, allowed, sections, type NavItem } from '$lib/nav';
+  import { activeSection, allowed, itemVisible, visibleSectionsFor, type NavItem } from '$lib/nav';
+  import { canSeePath } from '$shared/visibility';
   import CommandPalette from '$lib/components/CommandPalette.svelte';
   import NotificationToasts from '$lib/components/NotificationToasts.svelte';
   import { can, session, savedWorkspace, type SessionUser } from '$lib/session.svelte';
@@ -35,7 +36,11 @@
 
   const user = $derived(session.user);
   const current = $derived(activeSection(page.url.pathname));
-  const visibleSections = $derived(sections.filter((section) => allowed(user?.roles, section.roles)));
+  // VIS-ROLE-01 (13/11/2026): tab / mục menu theo vùng hiển thị; mở thẳng đường dẫn không thuộc phần việc → khung "không có quyền".
+  const visibleSections = $derived(visibleSectionsFor(user));
+  const blocked = $derived(Boolean(user) && !canSeePath(user, page.url.pathname));
+  /** Tab tô sáng + thanh bên: tab của trang; tab đó bị ẩn (VD thủ kho mở phiếu BH được giao) thì dùng Kho & Giao hàng. */
+  const shown = $derived(visibleSections.find((section) => section.key === current.key) ?? visibleSections.find((section) => section.key === 'inventory') ?? visibleSections[0] ?? current);
   const today = vnToday();
 
   onMount(() => {
@@ -126,7 +131,8 @@
       if (target.pathname === page.url.pathname) {
         score = params.every(([key, value]) => page.url.searchParams.get(key) === value) ? 1 + params.length : -1;
       } else if (target.pathname !== '/' && page.url.pathname.startsWith(`${target.pathname}/`) && params.length === 0) {
-        score = 0.5;
+        // Trang con: mục có đường dẫn dài hơn khớp sát hơn (VD /inventory/sample-issues/<id> → "Xuất hàng mẫu", không phải "Tồn kho").
+        score = 0.5 + target.pathname.length / 10000;
       }
       if (score > bestScore) {
         bestScore = score;
@@ -135,7 +141,7 @@
     }
     return best;
   }
-  const sideItems = $derived(current.groups.flatMap((group) => group.items));
+  const sideItems = $derived(shown.groups.flatMap((group) => group.items));
   const selectedHref = $derived(activeHref(sideItems));
 
   async function logout() {
@@ -191,7 +197,7 @@
     </a>
     <nav class="tabs" aria-label={m.phan_he()}>
       {#each visibleSections as section}
-        <a href={section.href} class:active={section.key === current.key} aria-current={section.key === current.key ? 'page' : undefined}>{section.label}</a>
+        <a href={section.href} class:active={section.key === shown.key} aria-current={section.key === shown.key ? 'page' : undefined}>{section.label}</a>
       {/each}
     </nav>
     <div class="right">
@@ -253,11 +259,11 @@
       </div>
       <nav class="mobile-sections" aria-label={m.phan_he()}>
         {#each visibleSections as section}
-          <a href={section.href} class:active={section.key === current.key} onclick={() => (drawerOpen = false)}>{section.label}</a>
+          <a href={section.href} class:active={section.key === shown.key} onclick={() => (drawerOpen = false)}>{section.label}</a>
         {/each}
       </nav>
-      {#each current.groups as group}
-        {@const items = group.items.filter((item) => (!item.rootOnly || user?.root) && allowed(user?.roles, item.roles) && (!item.permissions || item.permissions.some((key) => can(key))))}
+      {#each shown.groups as group}
+        {@const items = group.items.filter((item) => itemVisible(user, item))}
         {#if items.length}
           <p class="group-title">{group.title}</p>
           <nav class="side-nav">
@@ -279,7 +285,17 @@
     </aside>
 
     <main id="main">
-      {#if user}<WorkspaceTabs />{@render children()}{:else}<div class="auth-loading">{m.dang_xac_thuc_phien_lam_viec()}</div>{/if}
+      {#if user}
+        <WorkspaceTabs />
+        {#if blocked}
+          <section class="card no-access" role="alert">
+            <ShieldAlert size={30} />
+            <h1>{m.vis_khong_co_quyen()}</h1>
+            <p>{m.vis_khong_co_quyen_mo_ta()}</p>
+            <a class="btn primary" href="/">{m.vis_ve_tong_quan()}</a>
+          </section>
+        {:else}{@render children()}{/if}
+      {:else}<div class="auth-loading">{m.dang_xac_thuc_phien_lam_viec()}</div>{/if}
     </main>
     <NotificationToasts {toasts} onopen={(notification) => void openToast(notification)} ondismiss={dismissToast} />
   </div>
@@ -360,6 +376,10 @@
   .period small { color: var(--muted); font-size: 11.5px; }
   main { min-width: 0; padding: 26px 28px 48px; }
   .auth-loading { padding: 60px; color: var(--muted); text-align: center; }
+  .no-access { display: grid; justify-items: center; gap: 10px; max-width: 520px; margin: 48px auto; padding: 32px 24px; color: var(--muted); text-align: center; }
+  .no-access :global(svg) { color: var(--amber); }
+  .no-access h1 { margin: 4px 0 0; color: var(--text); font-size: 19px; }
+  .no-access p { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; }
   .scrim { display: none; }
 
   @media (max-width: 1180px) {

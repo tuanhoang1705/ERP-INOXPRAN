@@ -13,6 +13,7 @@
   import { ADJUSTMENT_CATEGORIES, type AdjustmentCategory } from '$shared/inventory-categories';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import ProductPicker from './ProductPicker.svelte';
 
   type ProductOption = { id: string; sku: string; name: string; baseUnit: string };
   type Line = { productId: string; quantity: string; locationCode: string };
@@ -111,11 +112,8 @@
         <tbody>
           {#each lines as line, index}
             <tr>
-              <td>
-                <select class="input" aria-label={m.ten_san_pham()} bind:value={line.productId}>
-                  <option value="">—</option>
-                  {#each products as product}<option value={product.id}>{product.sku} — {product.name}</option>{/each}
-                </select>
+              <td class="product">
+                <ProductPicker id={`adj-product-${index + 1}`} label={`${m.ten_san_pham()} ${index + 1}`} {products} value={line.productId} onchoose={(id) => (line.productId = id)} loading={!products.length} />
               </td>
               <td class="qty"><span class="qty-box"><NumberInput class="input" decimals={4} aria-label={m.so_luong()} bind:value={line.quantity} /><small>{unitOf(line.productId)}</small></span></td>
               <td>
@@ -149,8 +147,9 @@
   .lines { display: grid; gap: 10px; justify-items: start; }
   .lines table { width: 100%; }
   .lines td { padding: 6px 8px; }
+  .product { min-width: 240px; }
   .qty { width: 150px; }
   .qty-box { display: flex; align-items: center; gap: 6px; }
   .note { margin: 0; color: var(--muted); font-size: 12.5px; }
-  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .product { min-width: 150px; } }
 </style>

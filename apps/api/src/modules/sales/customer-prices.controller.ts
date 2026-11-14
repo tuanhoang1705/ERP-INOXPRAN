@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Put, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PRICING_EDITOR_ROLES, UpdateCustomerPricesSchema } from '@inoxpran/contracts';
-import { Roles } from '../../common/roles.decorator';
+import { Area, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { CustomerPricesService } from './customer-prices.service';
 
@@ -11,6 +11,7 @@ import { CustomerPricesService } from './customer-prices.service';
 export class CustomerPricesController {
   constructor(private readonly prices: CustomerPricesService) {}
 
+  @Area('pricing.priceList')
   @Get(':id/prices')
   list(@Param('id') id: string) {
     return this.prices.list(id);

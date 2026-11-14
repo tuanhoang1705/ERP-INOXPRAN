@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Db, Document } from 'mongodb';
 import { toObjectId } from '../../common/domain';
 import type { AuthenticatedRequest } from '../../common/request-context';
+import { Area } from '../../common/roles.decorator';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { StockReturnsService } from './stock-returns.service';
 import { returnPrintPricing } from './stock-return-print-pricing';
@@ -13,6 +14,7 @@ import { returnPrintPricing } from './stock-return-print-pricing';
 export class StockReturnPrintController {
   constructor(@Inject(MONGO_DATABASE) private readonly db: Db, private readonly returns: StockReturnsService) {}
 
+  @Area('inventory.returns')
   @Get(':id/print')
   async get(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     // Reuse the source document's access checks, including hidden cancelled documents.

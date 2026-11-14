@@ -8,6 +8,7 @@ import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
+import { sessionCache } from '../../common/session-cache';
 import { canChangeCreditTerms, canConvertProspect, canManagePartnerKind } from './partner-access';
 import { enforceTerritory, normalizeProvinces } from '../../common/territories';
 
@@ -505,6 +506,23 @@ export class MasterDataService {
   /** Người tạo kho được gán quyền kho mới (có hiệu lực từ lần đăng nhập sau). */
   async grantWarehouse(userId: string, warehouseId: ObjectId) {
     await this.db.collection('users').updateOne({ _id: toObjectId(userId) }, { $addToSet: { warehouseScopes: warehouseId.toHexString() } });
+    // Phạm vi kho có hiệu lực ngay (bộ nhớ đệm phiên giữ tối đa 15 giây).
+    sessionCache.invalidate(userId);
+  }
+
+  /**
+   * Kho hàng mẫu (WH-SAMPLE-01, 11/11/2026): mọi tài khoản đang hoạt động có phạm vi một kho bán hàng được thêm kho mẫu — NVKD / kế
+   * toán lập phiếu mẫu, thủ kho xuất / nhập lại hàng mẫu từ kho mẫu mà không phải chờ Admin phân quyền từng người.
+   */
+  async grantSampleWarehouse(warehouseId: ObjectId) {
+    const sellable = (await this.db.collection('warehouses').find({ purpose: { $nin: ['DEFECTIVE', 'SAMPLE'] } }, { projection: { _id: 1 } }).toArray())
+      .map((row) => (row._id as ObjectId).toHexString());
+    if (!sellable.length) return;
+    await this.db.collection('users').updateMany(
+      { status: 'ACTIVE', warehouseScopes: { $in: sellable } },
+      { $addToSet: { warehouseScopes: warehouseId.toHexString() } },
+    );
+    sessionCache.clear();
   }
 
   private async warehouseStock(warehouseId: ObjectId) {
@@ -539,7 +557,7 @@ export class MasterDataService {
         stockedProducts: Number(summary?.stockedProducts ?? 0),
         units: decimalString(summary?.units ?? '0'),
         reserved: decimalString(summary?.reserved ?? '0'),
-        lowCount: row.purpose === 'DEFECTIVE' ? 0 : Number(summary?.low ?? 0),
+        lowCount: row.purpose === 'DEFECTIVE' || row.purpose === 'SAMPLE' ? 0 : Number(summary?.low ?? 0),
       };
     });
   }
@@ -559,6 +577,7 @@ export class MasterDataService {
       { returnDocument: 'after' },
     );
     if (!result) throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Kho đã được người khác cập nhật, hãy tải lại rồi sửa' });
+    if (result.purpose === 'SAMPLE' && before.purpose !== 'SAMPLE') await this.grantSampleWarehouse(before._id as ObjectId);
     await this.record(request, 'WAREHOUSE_UPDATED', 'Warehouse', id, before, result);
     return serializeDocument(result);
   }

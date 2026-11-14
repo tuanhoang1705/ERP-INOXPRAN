@@ -6,12 +6,16 @@
  * chọn "Vẫn bảo hành" (công ty chịu chi phí) hoặc "Sửa có tính phí"; ngày mua khách khai chỉ để tham khảo.
  */
 
+import type { PermissionKey } from './permissions';
+
 export const WARRANTY_DEFAULTS = { warrantyMonths: 12, turnaroundDays: 7, warningRatio: 0.7 } as const;
 
 export const WARRANTY_STATUSES = [
   'RECEIVED',
   'QUOTE_PENDING',
   'PENDING_APPROVAL',
+  /** Đổi sản phẩm mới đã được Quản lý kho duyệt → chờ kế toán xuất phiếu BH & SWK (WAR-EXCH-02, 11/11/2026). */
+  'AWAITING_ISSUE',
   'REPAIRING',
   'WAITING_PARTS',
   'TESTING',
@@ -61,6 +65,8 @@ export const WARRANTY_ACTIONS_BY_STATUS: Record<WarrantyStatus, readonly string[
   RECEIVED: ['DIAGNOSE', 'RESCHEDULE', 'CANCEL'],
   QUOTE_PENDING: ['QUOTE_DECISION', 'RESCHEDULE', 'CANCEL'],
   PENDING_APPROVAL: ['APPROVE', 'RESCHEDULE'],
+  // Kế toán xuất phiếu BH & SWK → trừ kho, đóng phiếu. RETURN chỉ còn cho Quản lý kho / Admin ghi "hàng đổi đã giao trước".
+  AWAITING_ISSUE: ['ISSUE_EXCHANGE', 'RETURN', 'RESCHEDULE'],
   REPAIRING: ['WAIT_PARTS', 'REPAIR_DONE', 'RESCHEDULE'],
   WAITING_PARTS: ['PARTS_ARRIVED', 'RESCHEDULE'],
   TESTING: ['TEST', 'RESCHEDULE'],
@@ -95,6 +101,13 @@ export function warrantyEditableStages(ticket: {
   if (ticket.status === 'RETURNED') stages.push('RETURN');
   return stages;
 }
+
+/**
+ * Xuất phiếu đổi bảo hành (WAR-EXCH-02, 11/11/2026 — yêu cầu của Giám đốc): phiếu đổi sản phẩm mới Quản lý kho đã duyệt chờ
+ * **kế toán** (người được phân bước 2 "KT phát hành" của phiếu BH) xác nhận và bấm "Xuất phiếu BH & SWK" → hệ thống xuất 1 sản phẩm
+ * mới từ kho, lập phiếu BH + SWK đổi bảo hành (0 đ), giao thủ kho được chọn để in SWK, và đóng phiếu bảo hành (Đã trả khách).
+ */
+export const WARRANTY_EXCHANGE_ISSUE_PERMISSION: PermissionKey = 'sales.step.issue';
 
 /** Từ lần bảo hành thứ 3 trong thời hạn mà vẫn lỗi: đề xuất đổi mới / hoàn tiền (Luật 19/2023, Điều 30 khoản 2 điểm đ). */
 export const REPEAT_REPAIR_THRESHOLD = 3;

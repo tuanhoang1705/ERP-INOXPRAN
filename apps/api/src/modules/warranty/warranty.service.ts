@@ -9,6 +9,7 @@ import {
   vnDate,
   WARRANTY_ACTIONS_BY_STATUS,
   WARRANTY_EDIT_GRANT_HOURS,
+  WARRANTY_EXCHANGE_ISSUE_PERMISSION,
   warrantyEditableStages,
   type WarrantyEditDecision,
   type WarrantyEditRequestInput,
@@ -28,6 +29,7 @@ import {
   type TextParams,
   type WarrantyAction,
   type WarrantyCoverage,
+  type WarrantyExchangeIssueInfo,
   type WarrantyExchangeOrder,
   type WarrantyStatus,
 } from '@inoxpran/contracts';
@@ -37,6 +39,7 @@ import { dateRangeFilter } from '../../common/date-range';
 import { AuditService } from '../../common/audit.service';
 import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
+import { can, stepHolders } from '../../common/permissions';
 import { hideStatus, seesCancelled, type Viewer } from '../../common/hidden-documents';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
@@ -63,7 +66,8 @@ import { buildWarrantyReport, shiftMonth } from './warranty-report';
  */
 export const WARRANTY_STAFF_ROLES = ['ADMIN', 'WARRANTY', 'WAREHOUSE_MANAGER'];
 export const WARRANTY_APPROVER_ROLES = ['ADMIN', 'WAREHOUSE_MANAGER'];
-export const WARRANTY_VIEWER_ROLES = ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUSE_MANAGER'];
+// Kế toán xem phiếu bảo hành (11/11/2026, WAR-EXCH-02): xuất phiếu BH & SWK đổi bảo hành, theo dõi phí dịch vụ.
+export const WARRANTY_VIEWER_ROLES = ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUSE_MANAGER', 'ACCOUNTANT'];
 
 const RESOLUTION_BY_PROPOSAL = { REJECT: 'REJECTED', EXCHANGE: 'EXCHANGED', REFUND: 'REFUNDED' } as const;
 const PHOTO_PURPOSE = 'WARRANTY_PHOTO';
@@ -248,7 +252,7 @@ export class WarrantyService {
     const productId = product.productId.toHexString();
     let exchange: Document | null = null;
     if (resolution === 'EXCHANGED' && !options.exchangeDelivered) {
-      exchange = await this.db.collection('warehouses').findOne({ active: true, purpose: { $ne: 'DEFECTIVE' } }, { session, sort: { code: 1 } });
+      exchange = await this.exchangeWarehouse(session);
       if (!exchange) throw new ConflictException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không có kho bán hàng đang hoạt động để xuất hàng đổi' });
       try {
         await this.inventory.applyPhysicalMovement({
@@ -685,23 +689,36 @@ export class WarrantyService {
       if (ticket.version !== action.version) {
         throw new ConflictException({ code: 'VERSION_CONFLICT', message: 'Phiếu bảo hành đã được người khác cập nhật, vui lòng tải lại' });
       }
-      const status = ticket.status as WarrantyStatus;
+      // Phiếu đổi mới duyệt trước WAR-EXCH-02 (11/11/2026) còn ở "Chờ trả khách", chưa xuất hàng đổi: coi như chờ kế toán xuất phiếu.
+      const legacyAwaiting = ticket.status === 'READY' && (ticket.result as { resolution?: string } | undefined)?.resolution === 'EXCHANGED' && !ticket.stock;
+      const status = (legacyAwaiting ? 'AWAITING_ISSUE' : ticket.status) as WarrantyStatus;
       if (!WARRANTY_ACTIONS_BY_STATUS[status].includes(action.type)) {
         throw new ConflictException({ code: 'WARRANTY_ACTION_NOT_ALLOWED', message: `Phiếu đang ở bước ${status}, không thực hiện được thao tác này` });
       }
-      const allowedRoles = action.type === 'APPROVE' ? WARRANTY_APPROVER_ROLES : WARRANTY_STAFF_ROLES;
-      if (!request.user.roles.some((role) => allowedRoles.includes(role))) {
-        throw new ForbiddenException({
-          code: action.type === 'APPROVE' ? 'WARRANTY_APPROVER_ONLY' : 'WARRANTY_STAFF_ONLY',
-          message: action.type === 'APPROVE' ? 'Chỉ Quản lý kho được duyệt từ chối / đổi mới / hoàn tiền' : 'Chỉ nhân viên bảo hành / Quản lý kho được cập nhật phiếu',
-        });
+      if (action.type === 'ISSUE_EXCHANGE') {
+        // Kế toán được phân bước 2 "KT phát hành" phiếu BH (WAR-EXCH-02) — người khác (kể cả nhân viên bảo hành, thủ kho) không xuất được.
+        if (!can(request.user, WARRANTY_EXCHANGE_ISSUE_PERMISSION)) {
+          throw new ForbiddenException({ code: 'WARRANTY_ISSUE_ACCOUNTANT_ONLY', message: 'Chỉ kế toán được phân bước "KT phát hành" mới xuất phiếu BH & SWK đổi bảo hành' });
+        }
+      } else {
+        const allowedRoles = action.type === 'APPROVE' ? WARRANTY_APPROVER_ROLES : WARRANTY_STAFF_ROLES;
+        if (!request.user.roles.some((role) => allowedRoles.includes(role))) {
+          throw new ForbiddenException({
+            code: action.type === 'APPROVE' ? 'WARRANTY_APPROVER_ONLY' : 'WARRANTY_STAFF_ONLY',
+            message: action.type === 'APPROVE' ? 'Chỉ Quản lý kho được duyệt từ chối / đổi mới / hoàn tiền' : 'Chỉ nhân viên bảo hành / Quản lý kho được cập nhật phiếu',
+          });
+        }
+      }
+      // Chờ kế toán xuất phiếu: chỉ Quản lý kho / Admin còn "Trả khách" được, và chỉ để ghi hàng đổi đã giao trước khi có ERP (không xuất kho).
+      if (status === 'AWAITING_ISSUE' && action.type === 'RETURN' && !(action.exchangeDelivered && this.isWarrantyApprover(request.user))) {
+        throw new ConflictException({ code: 'WARRANTY_EXCHANGE_NEEDS_ISSUE', message: 'Phiếu đổi sản phẩm mới chờ kế toán xuất phiếu BH & SWK — kế toán xuất phiếu xong phiếu bảo hành tự đóng' });
       }
 
       const now = new Date();
       const set: Document = { updatedAt: now };
       let next: WarrantyStatus = status;
       let historyNote = action.note;
-      const notifications: Array<{ roles: string[]; template: NotificationTemplate; params: TextParams; title: string; message: string; level: string }> = [];
+      const notifications: Array<{ roles?: string[]; userIds?: string[]; href?: string; template: NotificationTemplate; params: TextParams; title: string; message: string; level: string }> = [];
       const code = String(ticket.code);
       const customer = String((ticket.customer as Document).name);
       const product = String((ticket.product as Document).sku);
@@ -759,8 +776,10 @@ export class WarrantyService {
           const approval = ticket.approval as Document;
           const proposal = approval.proposal as keyof typeof RESOLUTION_BY_PROPOSAL;
           set.approval = { ...approval, decidedAt: now, decidedByName: request.user.displayName, approved: action.approved, ...(action.note ? { note: action.note } : {}) };
+          const exchangeApproved = action.approved && proposal === 'EXCHANGE';
           if (action.approved) {
-            next = 'READY';
+            // Đổi sản phẩm mới (WAR-EXCH-02, 11/11/2026): duyệt xong chờ kế toán xuất phiếu BH & SWK; từ chối / hoàn tiền chờ trả khách như cũ.
+            next = exchangeApproved ? 'AWAITING_ISSUE' : 'READY';
             set.result = { resolution: RESOLUTION_BY_PROPOSAL[proposal], cost: decimal('0'), chargedTo: proposal === 'REJECT' ? 'CUSTOMER' : 'COMPANY', completedAt: now };
           } else {
             next = 'RECEIVED';
@@ -771,8 +790,9 @@ export class WarrantyService {
             template: 'WARRANTY_APPROVAL_DECIDED',
             params: { code, customer, product, approved: action.approved ? 'yes' : 'no' },
             title: `Đề nghị trên phiếu ${code} ${action.approved ? 'đã được duyệt' : 'không được duyệt'}`,
-            message: action.note ?? `${customer} — ${product}`,
+            message: action.note ?? (exchangeApproved ? `${customer} — ${product}: chờ kế toán xuất phiếu BH & SWK đổi bảo hành` : `${customer} — ${product}`),
           });
+          if (exchangeApproved) notifications.push(await this.issuePendingNotice(code, customer, product, session));
           break;
         }
         case 'WAIT_PARTS':
@@ -878,6 +898,44 @@ export class WarrantyService {
           }
           break;
         }
+        case 'ISSUE_EXCHANGE': {
+          // WAR-EXCH-02 (11/11/2026): kế toán xác nhận → xuất 1 sản phẩm mới từ kho + phiếu BH & SWK đổi bảo hành → đóng phiếu bảo hành.
+          next = 'RETURNED';
+          const receiverName = action.receiverName ?? customer;
+          set.returnedAt = now;
+          set.returnedTo = receiverName;
+          set.serviceDays = serviceDays(ticket.receivedAt as Date, now);
+          const staff = await resolveStaff(this.db, { salesRepId: action.salesRepId, staffUserId: action.staffUserId }, session);
+          const returnSlip = action.returnSlipCode ? await this.returnSlipFor(ticket, action.returnSlipCode, session) : null;
+          const stock = await this.moveStock(ticket, 'EXCHANGED', { exchangeDelivered: false, returnSlip }, request.user.sub, session, now);
+          set.stock = stock;
+          const exchangeWarehouse = stock.exchange as { warehouseCode: string; warehouseName: string };
+          const order = await this.issueExchangeOrderIn(ticket, exchangeWarehouse.warehouseCode, now, receiverName, staff, request, session, action.warehouseKeeperId);
+          set.exchangeOrder = order;
+          // Chi phí đổi mới = giá vốn tham chiếu của sản phẩm mới.
+          const catalog = await this.db.collection('products').findOne({ _id: (ticket.product as { productId: ObjectId }).productId }, { session, projection: { standardCost: 1 } });
+          set['result.cost'] = decimal(decimalString(catalog?.standardCost ?? '0'));
+          historyNote = `${action.note ? `${action.note} · ` : ''}Phiếu BH ${order.code} · SWK ${order.warehouseSlipNo} (đổi bảo hành) · thủ kho ${order.warehouseKeeperName ?? ''}`;
+          const params = { code, customer, product, order: order.code, slip: order.warehouseSlipNo, keeper: order.warehouseKeeperName ?? '', warehouse: exchangeWarehouse.warehouseName };
+          notifications.push({
+            userIds: [action.warehouseKeeperId],
+            href: `/sales/orders/${order.id}`,
+            level: 'WARNING',
+            template: 'WARRANTY_EXCHANGE_ISSUED',
+            params: { ...params, audience: 'keeper' },
+            title: `In SWK ${order.warehouseSlipNo}: xuất 1 ${product} đổi bảo hành cho khách`,
+            message: `${customer} — phiếu bảo hành ${code}, phiếu BH ${order.code}. Kế toán đã xuất phiếu, kho đã trừ — chỉ cần in SWK và giao hàng.`,
+          });
+          notifications.push({
+            roles: ['WARRANTY', 'WAREHOUSE_MANAGER'],
+            level: 'INFO',
+            template: 'WARRANTY_EXCHANGE_ISSUED',
+            params: { ...params, audience: 'warranty' },
+            title: `Phiếu bảo hành ${code}: kế toán đã xuất phiếu BH ${order.code} & SWK — phiếu đã đóng`,
+            message: `${customer} — ${product}: thủ kho ${order.warehouseKeeperName ?? ''} in SWK ${order.warehouseSlipNo}, xuất 1 sản phẩm mới từ ${exchangeWarehouse.warehouseName}. Hàng lỗi khách trả nhập kho qua Phiếu trả hàng → Hàng lỗi do sử dụng (nếu chưa lập).`,
+          });
+          break;
+        }
         case 'CANCEL':
           next = 'CANCELLED';
           set.cancelReason = action.reason;
@@ -898,12 +956,18 @@ export class WarrantyService {
       const result = action.type === 'CANCEL' ? ((await releaseDocumentNumber(this.db, 'SC', saved, session)) ?? saved) : saved;
 
       for (const notification of notifications) {
+        if (!notification.roles?.length && !notification.userIds?.length) continue;
         await this.outbox.enqueue(
           {
             eventType: 'NOTIFICATION_REQUESTED',
             aggregateType: 'WarrantyTicket',
             aggregateId: id,
-            payload: { category: 'WARRANTY', targetRoles: notification.roles, level: notification.level, title: notification.title, message: notification.message, href: `/warranty/${id}`, template: notification.template, params: notification.params },
+            payload: {
+              category: 'WARRANTY',
+              ...(notification.roles ? { targetRoles: notification.roles } : {}),
+              ...(notification.userIds ? { targetUserIds: notification.userIds } : {}),
+              level: notification.level, title: notification.title, message: notification.message, href: notification.href ?? `/warranty/${id}`, template: notification.template, params: notification.params,
+            },
           },
           session,
         );
@@ -926,12 +990,53 @@ export class WarrantyService {
     });
   }
 
-  /** Lập phiếu BH & SWK đổi bảo hành cho phiếu bảo hành (kho xuất hàng đổi = kho đã ghi trên phiếu bảo hành). */
-  private async issueExchangeOrderIn(ticket: Document, warehouseCode: string, at: Date, receiverName: string | undefined, staff: PickedStaff | null, request: AuthenticatedRequest, session: ClientSession) {
+  /**
+   * Lập phiếu BH & SWK đổi bảo hành cho phiếu bảo hành (kho xuất hàng đổi = kho đã ghi trên phiếu bảo hành). `keeperId`: thủ kho in SWK
+   * (WAR-EXCH-02 — kế toán chọn; phiếu hiện trong "Phiếu xuất & giao" của thủ kho đó).
+   */
+  private async issueExchangeOrderIn(ticket: Document, warehouseCode: string, at: Date, receiverName: string | undefined, staff: PickedStaff | null, request: AuthenticatedRequest, session: ClientSession, keeperId?: string) {
     const warehouse = await this.db.collection('warehouses').findOne({ code: warehouseCode }, { session });
     if (!warehouse) throw new ConflictException({ code: 'WAREHOUSE_NOT_FOUND', message: `Không tìm thấy kho ${warehouseCode} đã xuất hàng đổi` });
-    const order = await this.sales.issueWarrantyExchange({ ticket, warehouse, at, ...(receiverName ? { receiverName } : {}), staff }, request, session);
-    return { id: order.id, code: order.code, warehouseSlipNo: order.warehouseSlipNo };
+    const order = await this.sales.issueWarrantyExchange({ ticket, warehouse, at, ...(receiverName ? { receiverName } : {}), staff, ...(keeperId ? { keeperId } : {}) }, request, session);
+    return {
+      id: order.id, code: order.code, warehouseSlipNo: order.warehouseSlipNo, issuedByName: request.user.displayName,
+      ...(order.warehouseKeeperName ? { warehouseKeeperName: order.warehouseKeeperName } : {}),
+    };
+  }
+
+  /** Kho bán hàng xuất hàng đổi: kho đang hoạt động đầu tiên theo mã, không phải kho hàng lỗi / kho hàng mẫu (WH-SAMPLE-01). */
+  private exchangeWarehouse(session?: ClientSession) {
+    return this.db.collection('warehouses').findOne({ active: true, purpose: { $nin: ['DEFECTIVE', 'SAMPLE'] } }, { ...(session ? { session } : {}), sort: { code: 1 } });
+  }
+
+  /** Thông báo kế toán (người được phân bước 2) có phiếu đổi bảo hành chờ xuất phiếu BH & SWK (WAR-EXCH-02). */
+  private async issuePendingNotice(code: string, customer: string, product: string, session: ClientSession) {
+    const accountants = (await stepHolders(this.db, WARRANTY_EXCHANGE_ISSUE_PERMISSION, { session })).map((user) => user.id);
+    return {
+      userIds: accountants,
+      level: 'WARNING',
+      template: 'WARRANTY_EXCHANGE_ISSUE_PENDING' as NotificationTemplate,
+      params: { code, customer, product },
+      title: `Phiếu bảo hành ${code} đổi sản phẩm mới — chờ kế toán xuất phiếu BH & SWK`,
+      message: `${customer} — ${product}: Quản lý kho đã duyệt đổi mới. Mở phiếu, chọn thủ kho, bấm "Xuất phiếu BH & SWK".`,
+    };
+  }
+
+  /** Hộp "Xuất phiếu BH & SWK" của kế toán (WAR-EXCH-02): kho xuất, tồn khả dụng của sản phẩm, thủ kho chọn được (giữ bước 4). */
+  async exchangeIssueInfo(id: string): Promise<WarrantyExchangeIssueInfo> {
+    const ticket = await this.collection().findOne({ _id: toObjectId(id, 'id') }, { projection: { product: 1 } });
+    if (!ticket) throw new NotFoundException({ code: 'WARRANTY_NOT_FOUND', message: 'Không tìm thấy phiếu bảo hành' });
+    const warehouse = await this.exchangeWarehouse();
+    if (!warehouse) throw new ConflictException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không có kho bán hàng đang hoạt động để xuất hàng đổi' });
+    const productId = (ticket.product as { productId: ObjectId }).productId;
+    const balance = await this.db.collection('inventory_balances').findOne({ warehouseId: warehouse._id, productId });
+    const available = new Decimal(decimalString(balance?.onHand ?? '0')).sub(decimalString(balance?.reserved ?? '0'));
+    const warehouseId = (warehouse._id as ObjectId).toHexString();
+    return {
+      warehouse: { id: warehouseId, code: String(warehouse.code), name: String(warehouse.name) },
+      available: available.toString(),
+      keepers: await this.sales.warehouseKeepers(warehouseId),
+    };
   }
 
   /**
@@ -1284,19 +1389,23 @@ export class WarrantyService {
                 message: `${customer} — ${product}: sửa phiếu, đề nghị ${WARRANTY_PLAN_LABEL[nextPlan].toLowerCase()}. ${input.reason}`,
               });
             } else {
-              // Quản lý kho / Admin tự sửa → chính họ duyệt: phiếu chờ trả khách. Trả khách đổi mới → xuất 1 sản phẩm mới + phiếu BH & SWK.
+              // Quản lý kho / Admin tự sửa → chính họ duyệt: phiếu chờ trả khách; đổi mới chờ kế toán xuất phiếu BH & SWK (WAR-EXCH-02).
               const approver = request.user.displayName;
-              nextStatus = 'READY';
+              nextStatus = nextPlan === 'EXCHANGE' ? 'AWAITING_ISSUE' : 'READY';
               set.approval = { proposal: nextPlan, requestedAt: now, requestedByName: request.user.displayName, decidedAt: now, decidedByName: approver, approved: true, note: input.reason };
               set.result = { resolution: RESOLUTION_BY_PROPOSAL[nextPlan as keyof typeof RESOLUTION_BY_PROPOSAL], cost: decimal('0'), chargedTo: nextPlan === 'REJECT' ? 'CUSTOMER' : 'COMPANY', completedAt: now };
               const customer = String((ticket.customer as Document).name);
               const product = String((ticket.product as Document).sku);
               notifications.push({
-                targetRoles: nextPlan === 'EXCHANGE' ? ['WARRANTY', 'WAREHOUSE_MANAGER', 'WAREHOUSE'] : ['WARRANTY'], level: 'INFO', template: 'WARRANTY_APPROVAL_DECIDED',
+                targetRoles: ['WARRANTY'], level: 'INFO', template: 'WARRANTY_APPROVAL_DECIDED',
                 params: { code, customer, product, approved: 'yes' },
-                title: `Phiếu bảo hành ${code} đổi hướng xử lý: ${WARRANTY_PLAN_LABEL[nextPlan]} — chờ trả khách`,
-                message: nextPlan === 'EXCHANGE' ? `${customer} — ${product}: bấm Trả khách để xuất 1 sản phẩm mới và in phiếu BH & SWK đổi bảo hành` : `${customer} — ${product}`,
+                title: `Phiếu bảo hành ${code} đổi hướng xử lý: ${WARRANTY_PLAN_LABEL[nextPlan]} — ${nextPlan === 'EXCHANGE' ? 'chờ kế toán xuất phiếu' : 'chờ trả khách'}`,
+                message: nextPlan === 'EXCHANGE' ? `${customer} — ${product}: chờ kế toán xuất phiếu BH & SWK đổi bảo hành` : `${customer} — ${product}`,
               });
+              if (nextPlan === 'EXCHANGE') {
+                const notice = await this.issuePendingNotice(code, customer, product, session);
+                if (notice.userIds.length) notifications.push({ targetUserIds: notice.userIds, level: notice.level, template: notice.template, params: notice.params, title: notice.title, message: notice.message });
+              }
             }
             if (status === 'RETURNED') changes.push('Mở lại phiếu đã trả khách');
             set.status = nextStatus;

@@ -1,8 +1,15 @@
 import { m } from '$lib/paraglide/messages';
+import { canSeeArea, canSeePath, type Area, type VisibilityUser } from '$shared/visibility';
+
+/**
+ * Menu hai cấp. Mục nào hiện là theo vùng hiển thị của đường dẫn (VIS-ROLE-01, 13/11/2026 — `$shared/visibility`): mỗi tài khoản
+ * chỉ thấy phần liên quan đến công việc; tab chỉ hiện khi còn ít nhất một mục. `roles` / `permissions` của mục chỉ còn dùng cho
+ * mục thao tác hẹp hơn vùng (VD Tiếp nhận bảo hành, các bước phiếu BH).
+ */
 export interface NavItem {
   label: string;
   href: string;
-  /** Chỉ hiện với các vai trò này (ADMIN luôn thấy). Bỏ trống = mọi người dùng. */
+  /** Chỉ hiện với các vai trò này (ADMIN luôn thấy) — thêm vào điều kiện vùng của đường dẫn. */
   roles?: string[];
   /** Chỉ tài khoản quản trị gốc (root) thấy — phần kỹ thuật / cấu hình hệ thống. */
   rootOnly?: boolean;
@@ -22,12 +29,10 @@ export interface NavSection {
   href: string;
   /** Tiền tố đường dẫn thuộc phân hệ; dùng để tô sáng tab đang mở. */
   match: string[];
-  roles?: string[];
+  /** Tab chỉ hiện khi thấy vùng này (VD Báo cáo — các mục bên trong trỏ sang vùng khác như Tồn kho dưới định mức). */
+  area?: Area;
   groups: NavGroup[];
 }
-
-const APPROVERS = ['SALES_MANAGER', 'PROCUREMENT_MANAGER', 'DIRECTOR'];
-const REPORT_VIEWERS = ['DIRECTOR', 'SALES_MANAGER', 'ACCOUNTANT', 'AUDITOR'];
 
 /** Hai cấp menu theo sơ đồ BFD của đồ án: 6 chức năng chính + Tổng quan. */
 export const sections: NavSection[] = [
@@ -43,9 +48,9 @@ export const sections: NavSection[] = [
           { label: m.bang_dieu_khien(), href: '/' },
           { label: m.phieu_xuat_kho_ban_hang(), href: '/sales/orders' },
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', permissions: ['sales.step.confirm'] },
-          { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
-          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
-          { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
+          { label: m.duyet_ngoai_le(), href: '/approvals', badge: 'approvals' },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals' },
+          { label: m.yc_menu(), href: '/sales/change-requests', badge: 'changes' },
           { label: m.canh_bao_cong_no(), href: '/receivables/overdue' },
         ],
       },
@@ -55,7 +60,7 @@ export const sections: NavSection[] = [
           { label: m.danh_muc_san_pham(), href: '/catalog/products' },
           { label: m.ho_so_dai_ly(), href: '/catalog/dealers' },
           { label: m.bang_gia_chiet_khau(), href: '/pricing' },
-          { label: m.nguoi_dung_phan_quyen(), href: '/admin/users', roles: ['DIRECTOR', 'AUDITOR'] },
+          { label: m.nguoi_dung_phan_quyen(), href: '/admin/users' },
           { label: m.sys_title(), href: '/admin/system', rootOnly: true },
           { label: m.aud_title(), href: '/admin/audit', rootOnly: true },
           { label: m.imp_title(), href: '/admin/import', rootOnly: true },
@@ -87,6 +92,8 @@ export const sections: NavSection[] = [
     label: m.don_hang(),
     href: '/sales/orders',
     match: ['/sales', '/approvals'],
+    // Thủ kho (đề nghị sửa / hủy) và TP mua hàng (duyệt ngoại lệ) dùng các mục này ở tab Tổng quan, không có tab Đơn hàng.
+    area: 'sales.menu',
     groups: [
       {
         title: m.phieu_xuat_kho_ban_hang(),
@@ -98,9 +105,9 @@ export const sections: NavSection[] = [
           { label: m.cho_doi_chieu_voi_khach(), href: '/sales/orders?stage=check', permissions: ['sales.step.confirm'] },
           { label: m.cho_kho_lap_phieu_swk(), href: '/sales/orders?stage=warehouse' },
           { label: m.sst_nav_cho_giao(), href: '/sales/orders?stage=shipping', permissions: ['sales.step.deliver'] },
-          { label: m.duyet_ngoai_le(), href: '/approvals', roles: APPROVERS, badge: 'approvals' },
-          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals', permissions: ['sales.price_override_approve'] },
-          { label: m.yc_menu(), href: '/sales/change-requests', permissions: ['sales.change_request', 'sales.change_approve'], badge: 'changes' },
+          { label: m.duyet_ngoai_le(), href: '/approvals', badge: 'approvals' },
+          { label: m.gia_duyet_tieu_de(), href: '/sales/price-approvals' },
+          { label: m.yc_menu(), href: '/sales/change-requests', badge: 'changes' },
         ],
       },
       {
@@ -130,8 +137,9 @@ export const sections: NavSection[] = [
           { label: m.nhap_kho_don_mua(), href: '/procurement' },
           { label: m.ls_lo_hang_nhap(), href: '/procurement/shipments' },
           { label: m.the_kho(), href: '/inventory/movements' },
+          { label: m.xm_tieu_de(), href: '/inventory/sample-issues' },
           { label: m.inv_phieu_tra_hang(), href: '/inventory/returns' },
-          { label: m.kk_title(), href: '/inventory/counts', roles: ['DIRECTOR', 'WAREHOUSE_MANAGER', 'WAREHOUSE', 'ACCOUNTANT', 'AUDITOR'] },
+          { label: m.kk_title(), href: '/inventory/counts' },
         ],
       },
       {
@@ -173,7 +181,7 @@ export const sections: NavSection[] = [
           { label: m.tuoi_no_canh_bao_qua_han(), href: '/receivables/overdue' },
           { label: m.seg_nav(), href: '/receivables/segments' },
           // Sổ phải trả nhà cung cấp (D2, 22/10/2026).
-          { label: m.apb_nav(), href: '/payables', roles: ['ACCOUNTANT', 'DIRECTOR', 'AUDITOR', 'PROCUREMENT', 'PROCUREMENT_MANAGER'] },
+          { label: m.apb_nav(), href: '/payables' },
         ],
       },
     ],
@@ -183,8 +191,8 @@ export const sections: NavSection[] = [
     label: m.wr_nav(),
     href: '/warranty',
     match: ['/warranty'],
-    // Quản lý kho có mọi quyền bảo hành và duyệt (WAR-ROLE-01, 28/10/2026); Giám đốc chỉ xem.
-    roles: ['WARRANTY', 'WAREHOUSE_MANAGER', 'DIRECTOR'],
+    // Quản lý kho có mọi quyền bảo hành và duyệt (WAR-ROLE-01, 28/10/2026); Giám đốc chỉ xem. Kế toán: xuất phiếu BH & SWK
+    // đổi bảo hành (WAR-EXCH-02, 11/11/2026) và xem phiếu. Ai thấy tab: vùng `warranty`.
     groups: [
       {
         title: m.wr_nav_group(),
@@ -193,6 +201,7 @@ export const sections: NavSection[] = [
           { label: m.wr_nav_new(), href: '/warranty/new', roles: ['WARRANTY', 'WAREHOUSE_MANAGER'] },
           { label: m.wr_nav_overdue(), href: '/warranty?tone=overdue' },
           { label: m.wr_nav_approval(), href: '/warranty?status=PENDING_APPROVAL', roles: ['WAREHOUSE_MANAGER'] },
+          { label: m.wr_nav_awaiting_issue(), href: '/warranty?status=AWAITING_ISSUE', roles: ['ACCOUNTANT', 'WAREHOUSE_MANAGER'] },
           { label: m.wr_nav_reports(), href: '/warranty/reports' },
           { label: m.wr_nav_fault_codes(), href: '/warranty/fault-codes' },
         ],
@@ -204,7 +213,7 @@ export const sections: NavSection[] = [
     label: m.bao_cao(),
     href: '/reports/sales',
     match: ['/reports'],
-    roles: REPORT_VIEWERS,
+    area: 'reports',
     groups: [
       {
         title: m.bao_cao_thong_ke(),
@@ -223,6 +232,33 @@ export const sections: NavSection[] = [
 export function allowed(roles: string[] | undefined, required: string[] | undefined): boolean {
   if (!required?.length) return true;
   return Boolean(roles?.some((role) => role === 'ADMIN' || required.includes(role)));
+}
+
+export interface NavUser extends VisibilityUser {
+  roles: string[];
+  permissions?: string[] | undefined;
+}
+
+/** Mục menu hiện cho tài khoản: vùng của đường dẫn + điều kiện riêng của mục (quản trị gốc, vai trò, quyền nghiệp vụ). */
+export function itemVisible(user: NavUser | null | undefined, item: NavItem): boolean {
+  if (!user) return false;
+  if (item.rootOnly && !user.root) return false;
+  if (!allowed(user.roles, item.roles)) return false;
+  if (item.permissions?.length && !user.root && !item.permissions.some((key) => user.permissions?.includes(key))) return false;
+  return canSeePath(user, item.href);
+}
+
+/** Tab hiện cho tài khoản (còn ít nhất một mục); bấm tab mở mục đầu tiên được thấy nếu trang mặc định của tab bị ẩn. */
+export function visibleSectionsFor(user: NavUser | null | undefined): NavSection[] {
+  const result: NavSection[] = [];
+  for (const section of sections) {
+    if (section.area && !canSeeArea(user, section.area)) continue;
+    const items = section.groups.flatMap((group) => group.items).filter((item) => itemVisible(user, item));
+    if (!items.length) continue;
+    const opensDefault = items.some((item) => item.href === section.href) || (section.href === '/' && Boolean(user));
+    result.push(opensDefault ? section : { ...section, href: items[0]?.href ?? section.href });
+  }
+  return result;
 }
 
 export function activeSection(pathname: string): NavSection {

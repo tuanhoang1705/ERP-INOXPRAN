@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck, MapPin, Pencil, Plus, Trash2 } from 'lucide-svelte';
   import { api } from '$lib/api';
+  import { canOpen } from '$lib/visibility';
   import { num } from '$lib/format';
   import { can } from '$lib/permissions';
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
@@ -52,13 +53,18 @@
     { key: 'name', label: m.crud_ten_kho(), required: true, maxlength: 160 },
     { key: 'address', label: m.dia_chi(), maxlength: 500, span: true },
     { key: 'active', label: m.crud_kho_dang_dung(), type: 'checkbox' as const },
-    { key: 'defective', label: m.crud_kho_hang_loi(), type: 'checkbox' as const },
+    // Loại kho (WH-SAMPLE-01, 11/11/2026): kho bán hàng / kho hàng lỗi / kho hàng mẫu.
+    { key: 'purpose', label: m.crud_loai_kho(), type: 'select' as const, required: true, span: true, options: [
+      { value: 'NORMAL', label: m.crud_kho_ban_hang() },
+      { value: 'DEFECTIVE', label: m.crud_kho_hang_loi() },
+      { value: 'SAMPLE', label: m.crud_kho_hang_mau() },
+    ] },
   ]);
   const warehouseValues = $derived<RecordValues>(editingWarehouse
-    ? { code: editingWarehouse.code, name: editingWarehouse.name, address: editingWarehouse.address, active: editingWarehouse.active, defective: editingWarehouse.purpose === 'DEFECTIVE' }
-    : { active: true, defective: false });
+    ? { code: editingWarehouse.code, name: editingWarehouse.name, address: editingWarehouse.address, active: editingWarehouse.active, purpose: editingWarehouse.purpose ?? 'NORMAL' }
+    : { active: true, purpose: 'NORMAL' });
   async function saveWarehouse(values: RecordValues) {
-    const body = { name: values.name, address: values.address ?? '', active: Boolean(values.active), purpose: values.defective ? 'DEFECTIVE' : 'NORMAL' };
+    const body = { name: values.name, address: values.address ?? '', active: Boolean(values.active), purpose: values.purpose || 'NORMAL' };
     const saved = await api<Warehouse>(editingWarehouse ? `/warehouses/${editingWarehouse.id}` : '/warehouses', {
       method: editingWarehouse ? 'PATCH' : 'POST',
       body: JSON.stringify(editingWarehouse ? { ...body, version: editingWarehouse.version } : { ...body, code: values.code }),
@@ -131,6 +137,7 @@
           <p class="wh-tags">
             <span class={`pill ${warehouse.active ? 'success' : 'neutral'}`}>{warehouse.active ? m.dang_hoat_dong() : m.ngung()}</span>
             {#if warehouse.purpose === 'DEFECTIVE'}<span class="pill orange">{m.crud_kho_hang_loi_ngan()}</span>{/if}
+            {#if warehouse.purpose === 'SAMPLE'}<span class="pill warning">{m.crud_kho_hang_mau_ngan()}</span>{/if}
           </p>
           <p>{warehouse.code} · {warehouse.address || '—'}</p>
         </div>
@@ -150,7 +157,7 @@
       <footer>
         <button class="link" onclick={() => { selectedId = warehouse.id; void loadLocations(); }}>{m.crud_vi_tri_luu_count({ count: warehouse.locationCount })}</button>
         <a class="link" href={`/inventory?warehouseId=${warehouse.id}`}>{m.xem_ton_kho()}</a>
-        <a class="link" href="/inventory/movements">{m.the_kho()}</a>
+        {#if canOpen('/inventory/movements')}<a class="link" href="/inventory/movements">{m.the_kho()}</a>{/if}
       </footer>
     </article>
   {:else}

@@ -1,9 +1,9 @@
 import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateSampleReturnSchema, CreateStockReturnSchema, isInventoryCategory, parseStockReturnAccounting, StockReturnCreditInputSchema, StockReturnCreditTargetSchema, UpdateStockReturnSchema, VoidStockReturnSchema } from '@inoxpran/contracts';
+import { ADJUSTMENT_CATEGORIES, CreateInventoryTransferSchema, CreateSampleReturnSchema, CreateStockReturnSchema, isInventoryCategory, parseStockReturnAccounting, StockReturnCreditInputSchema, StockReturnCreditTargetSchema, UpdateSampleReturnSchema, UpdateStockReturnSchema, VoidStockReturnSchema } from '@inoxpran/contracts';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
-import { Roles } from '../../common/roles.decorator';
+import { Area, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { WAREHOUSE_EDITOR_ROLES } from '../catalog/partner-access';
@@ -53,6 +53,7 @@ export class InventoryController {
     return this.inventory.listBalances(warehouseId, search, low === '1' || low === 'true', pageRequest(page, pageSize), asOf);
   }
 
+  @Area('inventory.movements')
   @Get('movements')
   movements(@Req() request: AuthenticatedRequest, @Query('productId') productId?: string, @Query('warehouseId') warehouseId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.inventory.listMovements(productId, warehouseId, pageRequest(page, pageSize), request.user);
@@ -85,11 +86,13 @@ export class InventoryController {
 
   // ---- Báo cáo kho theo mẫu công ty (月库存明细单 / 出库汇总) ----
 
+  @Area('inventory.reports')
   @Get('reports/monthly')
   monthly(@Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
     return this.reports.monthly(month, warehouseId || undefined);
   }
 
+  @Area('inventory.reports')
   @Get('reports/monthly/export')
   async monthlyExport(@Query('month') month: string, @Query('warehouseId') warehouseId: string | undefined) {
     const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined);
@@ -105,6 +108,7 @@ export class InventoryController {
   }
 
   /** Nhật ký xuất nhập theo tháng (`month`) hoặc khoảng ngày (`from` / `to`, LIST-DATE-01). */
+  @Area('inventory.reports')
   @Get('reports/journal')
   journal(
     @Req() request: AuthenticatedRequest,
@@ -120,6 +124,7 @@ export class InventoryController {
     return this.reports.journal({ month, from, to }, this.journalOptions(request, warehouseId, category, search), pageRequest(page ?? '1', pageSize, 50));
   }
 
+  @Area('inventory.reports')
   @Get('reports/journal/export')
   async journalExport(
     @Req() request: AuthenticatedRequest,
@@ -141,12 +146,14 @@ export class InventoryController {
 
   // ---- Phiếu trả hàng: khách trả (nhập) / trả nhà máy (xuất) ----
 
+  @Area('inventory.returns')
   @Get('returns')
   listReturns(@Req() request: AuthenticatedRequest, @Query('kind') kind?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.returns.list(kind, pageRequest(page ?? '1', pageSize, 20) ?? { page: 1, pageSize: 20, skip: 0 }, request.user);
   }
 
   /** Phiếu đã hủy: chỉ quản trị gốc mở được (người khác nhận "không tìm thấy"). */
+  @Area('inventory.returns')
   @Get('returns/:id')
   getReturn(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.returns.get(id, request.user);
@@ -225,6 +232,21 @@ export class InventoryController {
     assertWarehouseAccess(request, input.warehouseId);
     assertWarehouseAccess(request, await this.returns.warehouseOf(id));
     return this.returns.update(id, input, request, idempotencyKey);
+  }
+
+  /** Sửa phiếu hàng mẫu / hàng kiểm định nhập lại (INV-RET-SAMPLE-EDIT-01, 12/11/2026) — có hoặc không có phiếu xuất mẫu. */
+  @Roles(...WAREHOUSE_EDITOR_ROLES)
+  @Patch('returns/:id/sample')
+  async updateSampleReturn(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = UpdateSampleReturnSchema.parse(body);
+    if (input.warehouseId) assertWarehouseAccess(request, input.warehouseId);
+    assertWarehouseAccess(request, await this.returns.warehouseOf(id));
+    return this.returns.updateSample(id, input, request, idempotencyKey);
   }
 
   /** Hủy phiếu trả hàng nhập nhầm: đảo thẻ kho, phiếu giữ lại với trạng thái "Đã hủy". */

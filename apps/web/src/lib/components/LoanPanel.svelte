@@ -11,10 +11,11 @@
   import { api } from '$lib/api';
   import { dateTime, num } from '$lib/format';
 
-  export type LoanLine = { productId: string; sku: string; productName: string; unit: string; shipped: string; returned: string; remaining: string };
+  /** `remaining` = còn nhập lại / chốt được (đã trừ `onSale` — số đang chờ kế toán lập phiếu bán, SAMPLE-SALE-01). */
+  export type LoanLine = { productId: string; sku: string; productName: string; unit: string; shipped: string; returned: string; remaining: string; onSale?: string };
   export type LoanReturnRow = { code: string; createdAt: string; createdByName: string; note?: string; soldConversion?: boolean; lines: Array<{ sku: string; unit: string; quantity: string }> };
   type LoanOrder = {
-    id: string; code: string; version: number; purpose?: string | undefined; loanStatus?: string | undefined;
+    id: string; code: string; version: number; purpose?: string | undefined; loanStatus?: string | undefined; warehouseIssued?: boolean | undefined;
     loanCloseOutcome?: string | undefined; loanCloseReason?: string | undefined; loanClosedAt?: string | undefined; loanClosedByName?: string | undefined;
     loanLines?: LoanLine[] | undefined; loanReturns?: LoanReturnRow[] | undefined;
   };
@@ -23,6 +24,7 @@
 
   const open = $derived(order.loanStatus === 'OUT' || order.loanStatus === 'PARTIAL');
   const lines = $derived(order.loanLines ?? []);
+  const anyOnSale = $derived(lines.some((line) => Number(line.onSale ?? 0) > 0));
   let returnOpen = $state(false);
   let closeOpen = $state(false);
   let quantities = $state<Record<string, string>>({});
@@ -102,7 +104,7 @@
   {/if}
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.lp_da_xuat()}</th><th class="num">{m.lp_da_ve()}</th><th class="num">{m.lp_con_ngoai()}</th></tr></thead>
+      <thead><tr><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.lp_da_xuat()}</th><th class="num">{m.lp_da_ve()}</th>{#if anyOnSale}<th class="num">{m.xm_cot_cho_ban()}</th>{/if}<th class="num">{m.lp_con_ngoai()}</th></tr></thead>
       <tbody>
         {#each lines as line}
           <tr>
@@ -111,6 +113,7 @@
             <td>{line.unit}</td>
             <td class="num">{num(line.shipped)}</td>
             <td class="num">{num(line.returned)}</td>
+            {#if anyOnSale}<td class="num">{Number(line.onSale ?? 0) > 0 ? num(line.onSale ?? '0') : '—'}</td>{/if}
             <td class="num"><b class:out={Number(line.remaining) > 0 && order.loanStatus !== 'CLOSED'}>{num(line.remaining)}</b></td>
           </tr>
         {/each}
@@ -165,7 +168,7 @@
   {#if error}<div class="banner error"><CircleAlert size={16} /><span>{error}</span></div>{/if}
   <div class="outcomes" role="radiogroup">
     <label><input type="radio" name="loan-outcome" value="CONSUMED" bind:group={outcome} /> {m.lp_tieu_hao()}</label>
-    <label><input type="radio" name="loan-outcome" value="SOLD" bind:group={outcome} /> {m.lp_mua_luon()}</label>
+    {#if !order.warehouseIssued}<label><input type="radio" name="loan-outcome" value="SOLD" bind:group={outcome} /> {m.lp_mua_luon()}</label>{/if}
   </div>
   <div class="field">
     <label for="loan-close-reason">{m.bh_ly_do()} <span class="req">*</span></label>

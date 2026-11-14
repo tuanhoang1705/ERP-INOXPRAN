@@ -11,7 +11,7 @@ import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { SequenceService } from '../../common/sequence.service';
-import { defectiveWarehouseIds } from '../../common/warehouses';
+import { defectiveWarehouseIds, sampleWarehouseIds } from '../../common/warehouses';
 import { hiddenMovementFilter } from './hidden-movements';
 
 interface StockLine {
@@ -53,11 +53,14 @@ export class InventoryService {
     if (asOfEnd) lowOnly = false;
     // Kho hàng lỗi không cảnh báo dưới định mức và không tính vào khả dụng.
     const defective = await defectiveWarehouseIds(this.db);
+    // Kho hàng mẫu (WH-SAMPLE-01, 11/11/2026): như kho lỗi — không bán, không cảnh báo định mức; gộp mã ghi riêng phần hàng mẫu.
+    const sample = await sampleWarehouseIds(this.db);
     const grouped = !warehouseId;
     const match: Document = {};
     if (warehouseId) match.warehouseId = toObjectId(warehouseId, 'warehouseId');
     const defectiveView = !grouped && defective.some((id) => id.equals(match.warehouseId as ObjectId));
     const isDefective = { $in: ['$warehouseId', defective] };
+    const isSample = { $in: ['$warehouseId', sample] };
     // Kho hàng lỗi: dòng lấy từ danh mục sản phẩm, ghép tồn của kho đó (không có thì 0).
     const defectiveHead = async (): Promise<Document[]> => {
       const wid = match.warehouseId as ObjectId;
@@ -97,7 +100,9 @@ export class InventoryService {
                 onHand: { $sum: '$onHand' },
                 reserved: { $sum: '$reserved' },
                 defectiveOnHand: { $sum: { $cond: [isDefective, '$onHand', 0] } },
-                sellable: { $sum: { $cond: [isDefective, 0, { $subtract: ['$onHand', '$reserved'] }] } },
+                sampleOnHand: { $sum: { $cond: [isSample, '$onHand', 0] } },
+                sampleReserved: { $sum: { $cond: [isSample, '$reserved', 0] } },
+                sellable: { $sum: { $cond: [{ $or: [isDefective, isSample] }, 0, { $subtract: ['$onHand', '$reserved'] }] } },
                 locationCode: { $max: { $cond: [isDefective, null, '$locationCode'] } },
                 updatedAt: { $max: '$updatedAt' },
               },
@@ -129,7 +134,7 @@ export class InventoryService {
     // Dưới định mức: còn khả dụng (tồn − giữ, chỉ kho bán được) ≤ định mức tối thiểu > 0.
     const lowMatch = grouped
       ? { $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: ['$sellable', '$product.minimumStock'] }] } }
-      : { warehouseId: { $nin: defective }, $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: [{ $subtract: ['$onHand', '$reserved'] }, '$product.minimumStock'] }] } };
+      : { warehouseId: { $nin: [...defective, ...sample] }, $expr: { $and: [{ $gt: ['$product.minimumStock', 0] }, { $lte: [{ $subtract: ['$onHand', '$reserved'] }, '$product.minimumStock'] }] } };
     if (lowOnly) pipeline.push({ $match: lowMatch });
     // Cùng mã ở nhiều kho (xem một kho thì không có): sắp thêm theo kho để phân trang ổn định.
     pipeline.push({ $sort: grouped ? { 'product.sku': 1 } : { 'product.sku': 1, warehouseId: 1 } });
@@ -148,6 +153,7 @@ export class InventoryService {
     // Phát sinh sau cuối ngày xem (chỉ cho các dòng đang hiển thị): nhập cộng, xuất trừ. Gộp mã: cộng mọi kho, phần kho lỗi riêng.
     const after = new Map<string, number>();
     const defectiveAfter = new Map<string, number>();
+    const sampleAfter = new Map<string, number>();
     if (asOfEnd && documents.length) {
       const moved = await this.db.collection('inventory_movements').aggregate([
         {
@@ -164,6 +170,7 @@ export class InventoryService {
         const key = grouped ? String(row._id.productId) : `${String(row._id.warehouseId)}:${String(row._id.productId)}`;
         after.set(key, (after.get(key) ?? 0) + net);
         if (grouped && defective.some((id) => id.equals(row._id.warehouseId as ObjectId))) defectiveAfter.set(key, (defectiveAfter.get(key) ?? 0) + net);
+        if (grouped && sample.some((id) => id.equals(row._id.warehouseId as ObjectId))) sampleAfter.set(key, (sampleAfter.get(key) ?? 0) + net);
       }
     }
     const round4 = (value: number) => Math.round(value * 10_000) / 10_000;
@@ -174,9 +181,12 @@ export class InventoryService {
       const reserved = asOfEnd ? 0 : Number(decimalString(document.reserved));
       const minimum = Number(decimalString(document.product.minimumStock));
       const defectiveOnHand = grouped ? round4(Number(decimalString(document.defectiveOnHand)) - (asOfEnd ? defectiveAfter.get(key) ?? 0 : 0)) : 0;
+      const sampleOnHand = grouped ? round4(Number(decimalString(document.sampleOnHand ?? 0)) - (asOfEnd ? sampleAfter.get(key) ?? 0 : 0)) : 0;
+      const sampleReserved = grouped && !asOfEnd ? Number(decimalString(document.sampleReserved ?? 0)) : 0;
       const isDefectiveRow = !grouped && defective.some((id) => id.equals(document.warehouseId as ObjectId));
-      // Khả dụng: gộp mã = phần kho bán được (tồn − hàng lỗi − giữ chỗ); một kho = tồn − giữ chỗ.
-      const available = round4(onHand - reserved - defectiveOnHand);
+      const isSampleRow = !grouped && sample.some((id) => id.equals(document.warehouseId as ObjectId));
+      // Khả dụng: gộp mã = phần kho bán được (tồn − hàng lỗi − hàng ở kho mẫu − giữ chỗ kho bán); một kho = tồn − giữ chỗ.
+      const available = round4(onHand - reserved - defectiveOnHand - (sampleOnHand - sampleReserved));
       return {
         productId: (document.productId as ObjectId).toHexString(),
         warehouseId: grouped ? null : (document.warehouseId as ObjectId).toHexString(),
@@ -186,11 +196,12 @@ export class InventoryService {
         onHand: String(onHand),
         reserved: String(reserved),
         available: String(available),
-        ...(grouped ? { defectiveOnHand: String(defectiveOnHand) } : {}),
+        ...(grouped ? { defectiveOnHand: String(defectiveOnHand), sampleOnHand: String(sampleOnHand) } : {}),
         ...(isDefectiveRow ? { defective: true } : {}),
+        ...(isSampleRow ? { sample: true } : {}),
         minimumStock: String(minimum),
         locationCode: (document.locationCode as string | null | undefined) ?? null,
-        belowMinimum: minimum > 0 && available <= minimum && !isDefectiveRow,
+        belowMinimum: minimum > 0 && available <= minimum && !isDefectiveRow && !isSampleRow,
         updatedAt: document.updatedAt instanceof Date ? document.updatedAt.toISOString() : null,
       };
     });

@@ -22,9 +22,11 @@
   import { approvalReason, hasRole, orderStage, tierLabel, zeroPriceRowClass } from '$lib/labels';
   import LineKindPill from '$lib/components/LineKindPill.svelte';
   import { can, session, stepActor } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import { changeKindLabel, type ChangeKind, type ChangeRequest } from '$lib/change-requests';
   import LoanPanel, { type LoanLine, type LoanReturnRow } from '$lib/components/LoanPanel.svelte';
   import { isLoanPurpose, isNonSalePurpose, loanAge, partyName, slipTypeOf, slipTypeShort } from '$lib/slip-type';
+  import { recipientAddressOf } from '$shared/sales-purpose';
 
   type Line = SalesOrder['lines'][number] & {
     netAmount?: string; salesTierDiscountRate?: string; promotionDiscountRate?: string; promotionCode?: string; gift?: boolean;
@@ -230,6 +232,11 @@
     error = '';
     try {
       order = await api<Order>(`/sales-orders/${page.params.id}`);
+      // Phiếu xuất hàng mẫu do thủ kho lập (SWK-M) có trang riêng ở Kho & Giao hàng → Xuất hàng mẫu.
+      if (order.warehouseIssued) {
+        await goto(`/inventory/sample-issues/${order.id}`, { replaceState: true });
+        return;
+      }
       owners = await api<SalesStepOwners>(`/sales-orders/${page.params.id}/step-owners`).catch(() => null);
       pendingChange = canRequestChange || canApproveChange
         ? (await api<ChangeRequest[]>(`/sales-change-requests?orderId=${page.params.id}&status=PENDING`).catch(() => []))[0] ?? null
@@ -327,7 +334,7 @@
 
 <section class="page-head">
   <div>
-    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span><span>{order?.code ?? '…'}</span></nav>
+    <nav class="crumbs" aria-label={m.duong_dan()}>{#if canOpen('/sales/orders')}<a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span>{:else}<a href="/inventory/shipments">{m.kho_giao_hang()}</a>{/if}<span>{order?.code ?? '…'}</span></nav>
     <h1 class="page-title">{order ? `${order.code} — ${partyName(order)}` : m.phieu_xuat_kho_ban_hang()}</h1>
     {#if order && stage}
       <p class="page-sub">
@@ -356,7 +363,7 @@
       {#if order.status === 'SHIPPED' && canDeliverThis && !nonSale}<button class="btn navy" disabled={working} onclick={() => (deliverAsk = true)}>{m.xac_nhan_da_giao()}</button>{/if}
       {#if canDelete}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Trash2 size={15} />{m.bh_xoa_phieu()}</button>{/if}
       {#if canCancel}<button class="btn danger-soft" disabled={working} onclick={() => { discardReason = ''; discardOpen = true; }}><Ban size={15} />{m.bh_huy_phieu()}</button>{/if}
-      {#if warrantyExchange && order.warrantyTicketId}<a class="btn soft" href={`/warranty/${order.warrantyTicketId}`}>{m.bhx_mo_phieu_bao_hanh({ code: order.warrantyCode ?? '' })}</a>{/if}
+      {#if warrantyExchange && order.warrantyTicketId && canOpen('/warranty')}<a class="btn soft" href={`/warranty/${order.warrantyTicketId}`}>{m.bhx_mo_phieu_bao_hanh({ code: order.warrantyCode ?? '' })}</a>{/if}
       {#if canEditIssued && editStage === 'EDIT'}<a class="btn soft root" href={`/sales/orders/${order.id}/edit`}><Pencil size={15} />{m.root_sua_phieu()}</a>{/if}
       {#if !canEditIssued && canRequestChange && editStage === 'EDIT'}
         {#if myGrant}<a class="btn primary" href={`/sales/orders/${order.id}/edit?grant=${myGrant.id}`}><Pencil size={15} />{m.root_sua_phieu()}</a>
@@ -451,7 +458,8 @@
           <div class="wide2"><dt>{gift ? m.lp_nguoi_phu_trach() : m.lp_nguoi_muon()}</dt><dd>{order.salesRepName ?? '—'}</dd></div>
           <div class="wide2"><dt>{gift ? m.lp_tang_cho() : m.lp_gui_toi()}</dt><dd>{order.destination ?? '—'}</dd></div>
           {#if !gift}<div class="wide2"><dt>{m.lp_hen_tra()}</dt><dd>{order.expectedReturnDate ? date(order.expectedReturnDate) : '—'}{#if order.shippedAt && (order.loanStatus === 'OUT' || order.loanStatus === 'PARTIAL')} · <span class:overdue={age.overdue > 0}>{age.overdue > 0 ? m.lp_qua_hen({ days: age.overdue }) : m.lp_da_muon_ngay({ days: age.days })}</span>{/if}</dd></div>{/if}
-          <div class="wide2"><dt>{m.dien_giai()}</dt><dd>{order.description ?? '—'}</dd></div>
+          {#if gift}<div class="wide2"><dt>{m.dia_chi()}</dt><dd>{recipientAddressOf(order) || '—'}</dd></div>
+          {:else}<div class="wide2"><dt>{m.dien_giai()}</dt><dd>{order.description ?? '—'}</dd></div>{/if}
           <div><dt>{m.kho_xuat()}</dt><dd>{warehouses.find((item) => item.id === order?.warehouseId)?.name ?? '—'}</dd></div>
           <div><dt>{m.lp_loai_phieu()}</dt><dd>{slipTypeShort(slipTypeOf(order))} · {m.lp_khong_tinh_tien_ngan()}</dd></div>
           {:else}

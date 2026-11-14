@@ -26,6 +26,29 @@ export type LoanPurpose = (typeof LOAN_PURPOSES)[number];
 export const SALES_SLIP_TYPES = ['B2B', 'B2C', 'SAMPLE', 'INSPECTION', 'GIFT', 'WARRANTY'] as const;
 export type SalesSlipType = (typeof SALES_SLIP_TYPES)[number];
 
+/**
+ * Phiếu xuất hàng mẫu do thủ kho lập (SAMPLE-ISSUE-01, 12/11/2026): không qua phiếu BH / 5 bước, xuất kho ngay khi lưu, số phiếu
+ * SWK-M + năm + tháng + 4 số (đếm cả năm). Lưu chung bộ sưu tập phiếu xuất với cờ `warehouseIssued`.
+ */
+export const SAMPLE_ISSUE_PREFIX = 'SWK-M';
+export function sampleIssueCode(parts: { year: number; month: number }, sequence: number): string {
+  return `${SAMPLE_ISSUE_PREFIX}${parts.year}${String(parts.month).padStart(2, '0')}${String(sequence).padStart(4, '0')}`;
+}
+/** Số SWK-M của một năm (không khớp phiếu đã hủy mang đuôi -H). */
+export function sampleIssueYearPattern(year: number): string {
+  return `^${SAMPLE_ISSUE_PREFIX}${year}(0[1-9]|1[0-2])\\d{4,5}$`;
+}
+export function isWarehouseIssued(order: unknown): boolean {
+  return Boolean(order) && (order as { warehouseIssued?: unknown }).warehouseIssued === true;
+}
+/** Yêu cầu "khách mua luôn hàng mẫu" (SAMPLE-SALE-01): chờ kế toán lập BH → đã lập BH → BH đã xuất kho (bù kho mẫu) / đã rút. */
+export const SAMPLE_SALE_STATUSES = ['PENDING', 'ORDERED', 'DONE', 'CANCELLED'] as const;
+export type SampleSaleStatus = (typeof SAMPLE_SALE_STATUSES)[number];
+/** Yêu cầu còn giữ hàng của phiếu mẫu (số này không nhập lại / không chốt được). */
+export function sampleSaleActive(status: unknown): boolean {
+  return status === 'PENDING' || status === 'ORDERED';
+}
+
 /** Hẹn trả mặc định của hàng mẫu / kiểm định: hôm nay + 15 ngày. */
 export const LOAN_RETURN_DAYS = 15;
 
@@ -35,6 +58,18 @@ export type LoanStatus = (typeof LOAN_STATUSES)[number];
 /** Chốt phần chưa trả: CONSUMED = hỏng / tiêu hao khi kiểm định / tặng (không nhập lại); SOLD = đại lý giữ, chuyển thành bán. */
 export const LOAN_CLOSE_OUTCOMES = ['CONSUMED', 'SOLD'] as const;
 export type LoanCloseOutcome = (typeof LOAN_CLOSE_OUTCOMES)[number];
+
+/**
+ * Loại kho: NORMAL = kho bán hàng; DEFECTIVE = kho hàng lỗi; SAMPLE = kho hàng mẫu (WH-SAMPLE-01, 11/11/2026).
+ * WH-SAMPLE-02 (12/11/2026, họp với Ban Giám đốc + Quản lý kho): bỏ ràng buộc "hàng mẫu / kiểm định / tặng chỉ xuất từ kho mẫu" —
+ * mọi kho trong danh mục (trừ kho hàng lỗi) chọn được cho mọi loại phiếu. Kho mẫu chỉ còn là một loại kho để hiển thị / báo cáo.
+ */
+export const WAREHOUSE_PURPOSES = ['NORMAL', 'DEFECTIVE', 'SAMPLE'] as const;
+export type WarehousePurpose = (typeof WAREHOUSE_PURPOSES)[number];
+/** Kho lập được phiếu xuất: mọi kho trừ kho hàng lỗi (CAT-03). */
+export function warehouseFitsSlip(warehousePurpose: unknown): boolean {
+  return warehousePurpose !== 'DEFECTIVE';
+}
 
 /** Phiếu (bản ghi Mongo / dữ liệu API) — chỉ cần trường `purpose`. */
 type PurposeLike = { purpose?: unknown; [key: string]: unknown };
@@ -104,6 +139,17 @@ export const PURPOSE_TITLE_VI: Readonly<Record<SalesPurpose, string>> = {
   GIFT: 'PHIẾU XUẤT KHO HÀNG TẶNG',
   WARRANTY: 'PHIẾU XUẤT KHO ĐỔI HÀNG BẢO HÀNH',
 };
+
+/**
+ * Địa chỉ người nhận của phiếu xuất tặng / hàng mẫu (GIFT-FORM-01, 12/11/2026). Phiếu tặng lập trước đó không có trường này — kế toán
+ * gõ địa chỉ vào ô Diễn giải: lấy diễn giải nếu đó không phải câu máy chủ tự sinh ("Xuất tặng — …").
+ */
+export function recipientAddressOf(order: PurposeLike & { recipientAddress?: unknown; description?: unknown }): string {
+  if (order.recipientAddress) return String(order.recipientAddress);
+  if (order.purpose !== 'GIFT' || !order.description) return '';
+  const description = String(order.description);
+  return description.startsWith(`${PURPOSE_LABEL_VI.GIFT} —`) ? '' : description;
+}
 
 /** Bên nhận trên phiếu (thông báo / nhật ký phía máy chủ): tên khách, hoặc "Hàng mẫu — <NV> (gửi <nơi>)" / "Xuất tặng — <NV> (tặng <ai>)". */
 export function orderParty(order: PurposeLike & { customerName?: unknown; salesRepName?: unknown; destination?: unknown }): string {

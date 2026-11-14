@@ -13,6 +13,8 @@ export const EnvironmentSchema = z.object({
   MONGODB_DATABASE: z.string().min(1).default('inoxpran_erp'),
   JWT_SECRET: z.string().min(32),
   MFA_ENCRYPTION_KEY: z.string().min(32),
+  /** Khóa riêng cho app chỉ đọc bảng giá; không cấu hình thì API này bị tắt. */
+  PRICE_CATALOG_ACCESS_KEY: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
   COOKIE_SECURE: booleanString,
   MFA_ENFORCE_PRIVILEGED: booleanString,
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),

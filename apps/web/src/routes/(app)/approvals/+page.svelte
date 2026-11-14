@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { CircleAlert, CircleCheck } from 'lucide-svelte';
   import { api } from '$lib/api';
+  import { canOpen } from '$lib/visibility';
   import { dateTime, num } from '$lib/format';
   import { approvalReason } from '$lib/labels';
 
@@ -50,7 +51,7 @@
 
 <section class="page-head">
   <div>
-    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span>{m.duyet_xac_nhan_don()}</span></nav>
+    <nav class="crumbs" aria-label={m.duong_dan()}>{#if canOpen('/sales/orders')}<a href="/sales/orders">{m.don_hang()}</a>{:else}<a href="/">{m.tong_quan()}</a>{/if}<span>{m.duyet_xac_nhan_don()}</span></nav>
     <h1 class="page-title">{m.duyet_xac_nhan_don()}</h1>
     <p class="page-sub">{m.don_vuot_nguong_gia_tri_vuot()}</p>
   </div>

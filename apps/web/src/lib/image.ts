@@ -13,7 +13,7 @@
  * 6. Ảnh nén không nhỏ hơn ảnh gốc thì dùng ảnh gốc. Ảnh xuất từ canvas không còn EXIF (bỏ luôn tọa độ GPS).
  */
 
-export type ImageProfile = 'photo' | 'screenshot';
+export type ImageProfile = 'photo' | 'screenshot' | 'product';
 
 export interface ImageProfileSpec {
   /** Cạnh dài tối đa (px). */
@@ -32,6 +32,8 @@ export interface ImageProfileSpec {
   keepBelowBytes: number;
   /** Ảnh chụp màn hình: chỉ xét dung lượng, không xét kích thước. */
   keepIgnoresSize: boolean;
+  /** Luôn lưu JPEG (giữ nguyên chỉ khi ảnh gốc là JPEG / PNG): ảnh sản phẩm nhúng vào file Excel bảng báo giá — Excel không đọc WebP. */
+  jpegOnly?: boolean;
 }
 
 const KB = 1024;
@@ -42,7 +44,14 @@ export const IMAGE_PROFILES: Record<ImageProfile, ImageProfileSpec> = {
   photo: { maxSide: 1920, fallbackSide: 1600, maxPixels: 2_800_000, quality: 0.82, minQuality: 0.5, targetBytes: 500 * KB, capBytes: 1.5 * MB, keepBelowBytes: 400 * KB, keepIgnoresSize: false },
   // Ảnh chụp màn hình Zalo đối chiếu: chữ phải nét, chỉ nén ảnh lớn.
   screenshot: { maxSide: 2400, fallbackSide: 1920, maxPixels: 4_000_000, quality: 0.9, minQuality: 0.7, targetBytes: 2 * MB, capBytes: 4 * MB, keepBelowBytes: 2 * MB, keepIgnoresSize: true },
+  // Ảnh sản phẩm (PRICE-IMG-01, 11/11/2026): hiện trên bảng giá và nhúng vào file Excel bảng báo giá (~100 mã) — JPEG 1200 px, ~250 KB.
+  product: { maxSide: 1200, fallbackSide: 1000, maxPixels: 1_440_000, quality: 0.85, minQuality: 0.6, targetBytes: 250 * KB, capBytes: 600 * KB, keepBelowBytes: 300 * KB, keepIgnoresSize: false, jpegOnly: true },
 };
+
+/** Ảnh gốc giữ nguyên được với kiểu ảnh này (ảnh sản phẩm: chỉ JPEG / PNG). */
+function formatKept(file: File, spec: ImageProfileSpec): boolean {
+  return !spec.jpegOnly || file.type === 'image/jpeg' || file.type === 'image/png';
+}
 
 /** Safari trên iPhone không vẽ được canvas lớn hơn 16,7 triệu điểm ảnh. */
 export const MAX_CANVAS_PIXELS = 16_000_000;
@@ -186,7 +195,7 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promi
  */
 export async function prepareImage(file: File, profile: ImageProfile): Promise<File> {
   const spec = IMAGE_PROFILES[profile];
-  if (!file.type.startsWith('image/') || keepOriginal(file.size, null, spec)) return file;
+  if (!file.type.startsWith('image/') || (keepOriginal(file.size, null, spec) && formatKept(file, spec))) return file;
   let decoded: Decoded;
   try {
     decoded = await decode(file);
@@ -194,8 +203,8 @@ export async function prepareImage(file: File, profile: ImageProfile): Promise<F
     return file;
   }
   try {
-    if (keepOriginal(file.size, decoded.size, spec)) return file;
-    const type = await detectOutputType();
+    if (keepOriginal(file.size, decoded.size, spec) && formatKept(file, spec)) return file;
+    const type = spec.jpegOnly ? 'image/jpeg' : await detectOutputType();
     let best: Blob | null = null;
     for (const side of [spec.maxSide, spec.fallbackSide]) {
       const target = scaledSize(decoded.size.width, decoded.size.height, side, spec.maxPixels);
@@ -212,7 +221,7 @@ export async function prepareImage(file: File, profile: ImageProfile): Promise<F
       }
       if (best.size <= spec.capBytes) break;
     }
-    if (!best || best.size >= file.size) return file;
+    if (!best || (best.size >= file.size && formatKept(file, spec))) return file;
     const extension = best.type === 'image/webp' ? '.webp' : '.jpg';
     const base = file.name.replace(/\.[^.]+$/, '') || 'anh';
     return new File([best], `${base}${extension}`, { type: best.type, lastModified: Date.now() });

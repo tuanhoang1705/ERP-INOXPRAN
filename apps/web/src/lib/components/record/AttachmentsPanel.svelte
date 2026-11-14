@@ -73,7 +73,8 @@
     try {
       for (const original of [...files]) {
         // Ảnh nén trên trình duyệt trước khi tải (lib/image.ts); PDF giữ nguyên.
-        const file = await prepareImage(original, 'photo');
+        // Ảnh sản phẩm lưu JPEG để nhúng được vào file Excel bảng báo giá (PRICE-IMG-01).
+        const file = await prepareImage(original, type === 'products' ? 'product' : 'photo');
         const response = await fetch(`/api/v1/attachments/${type}/${id}?purpose=${purpose.purpose}`, {
           method: 'POST',
           credentials: 'include',

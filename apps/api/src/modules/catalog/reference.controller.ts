@@ -1,5 +1,5 @@
 import type { Workspace } from '@inoxpran/contracts';
-import { Controller, Get, Inject, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import Decimal from 'decimal.js';
 import type { Db, Document, ObjectId } from 'mongodb';
@@ -7,11 +7,13 @@ import { dateBounds } from '../../common/date-range';
 import { decimalString, salesTierWindow, serializeDocument, toObjectId } from '../../common/domain';
 import { pageOf, pageRequest } from '../../common/paging';
 import { Public } from '../../common/public.decorator';
-import { Roles } from '../../common/roles.decorator';
+import type { AuthenticatedRequest } from '../../common/request-context';
+import { Area, Roles } from '../../common/roles.decorator';
 import { staffOptions } from '../../common/staff';
 import { MONGO_DATABASE } from '../../common/tokens';
+import { PriceListService } from './price-list.service';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
-import { customerProvince, oldProvincesOf, provinceReportName, SALE_ONLY_FILTER } from '@inoxpran/contracts';
+import { canSeeArea, customerProvince, oldProvincesOf, provinceReportName, SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 
 function escapeRegex(value: string): string {
@@ -22,7 +24,10 @@ function escapeRegex(value: string): string {
 @ApiTags('Catalog')
 @Controller()
 export class ReferenceController {
-  constructor(@Inject(MONGO_DATABASE) private readonly db: Db) {}
+  constructor(
+    @Inject(MONGO_DATABASE) private readonly db: Db,
+    private readonly priceLists: PriceListService,
+  ) {}
 
   /**
    * Nơi làm việc cho ô "Chi nhánh / Kho làm việc" trên màn hình đăng nhập: văn phòng (không giữ hàng) và kho.
@@ -33,7 +38,8 @@ export class ReferenceController {
   async workspaces(): Promise<Workspace[]> {
     const [branches, warehouses] = await Promise.all([
       this.db.collection('branches').find({ active: true }, { projection: { code: 1, name: 1, defaultWarehouseId: 1 } }).sort({ code: 1 }).toArray(),
-      this.db.collection('warehouses').find({ active: true, purpose: { $ne: 'DEFECTIVE' } }, { projection: { code: 1, name: 1 } }).sort({ code: 1 }).toArray(),
+      // Kho hàng lỗi / kho hàng mẫu (WH-SAMPLE-01) không phải nơi làm việc — form mặc định theo kho bán hàng.
+      this.db.collection('warehouses').find({ active: true, purpose: { $nin: ['DEFECTIVE', 'SAMPLE'] } }, { projection: { code: 1, name: 1 } }).sort({ code: 1 }).toArray(),
     ]);
     const fallbackWarehouse = (warehouses[0]?._id as ObjectId | undefined)?.toHexString() ?? null;
     return [
@@ -85,67 +91,26 @@ export class ReferenceController {
     });
   }
 
-  /** Bảng giá hiện hành: giá Net NPP (cấp 1), giá đại lý (cấp 2) và giá bán lẻ cho từng mã hàng. */
+  /** Bảng giá hiện hành: giá Net NPP (cấp 1), giá đại lý (cấp 2), giá bán lẻ, tính năng và ảnh đại diện của từng mã hàng. */
+  @Area('pricing.priceList')
   @Get('price-list')
   async priceList(@Query('search') search?: string, @Query('categoryId') categoryId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('at') at?: string) {
-    const paging = pageRequest(page, pageSize);
-    // Bảng giá áp dụng tại cuối một ngày (LIST-DATE-01); bỏ trống = hiện tại. Giá bán lẻ lấy theo hồ sơ mã hàng hiện tại.
-    const bounds = at ? dateBounds(at, at) : null;
-    const now = bounds?.$lt ? new Date(bounds.$lt.getTime() - 1) : new Date();
-    const filter: Document = { status: 'ACTIVE' };
-    if (categoryId) filter.categoryId = toObjectId(categoryId, 'categoryId');
-    if (search) {
-      const pattern = new RegExp(escapeRegex(search), 'i');
-      filter.$or = [{ sku: pattern }, { name: pattern }];
-    }
-    const [products, categories, books] = await Promise.all([
-      paging ? this.db.collection('products').find(filter).sort({ sku: 1 }).skip(paging.skip).limit(paging.pageSize).toArray() : this.db.collection('products').find(filter).sort({ sku: 1 }).toArray(),
-      this.db.collection('product_categories').find({}).toArray(),
-      this.db.collection('price_books').find({
-        status: 'PUBLISHED',
-        validFrom: { $lte: now },
-        $or: [{ validTo: null }, { validTo: { $gte: now } }],
-      }).sort({ priority: -1, version: -1 }).toArray(),
-    ]);
-    const categoryById = new Map(categories.map((row) => [(row._id as ObjectId).toHexString(), row]));
-    const priceFor = (tier: string, productId: ObjectId): string | null => {
-      for (const book of books) {
-        if (book.customerTier !== tier && book.customerTier !== 'ALL') continue;
-        const line = (book.lines as Array<{ productId: ObjectId; baseUnitPrice: unknown }>).find((item) => item.productId.equals(productId));
-        if (line) return decimalString(line.baseUnitPrice);
-      }
-      return null;
-    };
-    const booksSummary = books.map((book) => ({
-      code: String(book.code),
-      name: String(book.name),
-      customerTier: String(book.customerTier),
-      version: Number(book.version),
-      validFrom: (book.validFrom as Date).toISOString(),
-      lineCount: (book.lines as unknown[]).length,
-    }));
-    const rows = products
-      .map((product) => {
-        const id = product._id as ObjectId;
-        const category = product.categoryId ? categoryById.get((product.categoryId as ObjectId).toHexString()) : undefined;
-        return {
-          productId: id.toHexString(),
-          sku: String(product.sku),
-          name: String(product.name),
-          categoryName: category ? String(category.name) : undefined,
-          baseUnit: String(product.baseUnit),
-          packSize: product.packSize as number | undefined,
-          distributorPrice: priceFor('TIER_1', id),
-          dealerPrice: priceFor('TIER_2', id),
-          retailPrice: decimalString(product.listPrice),
-          availability: String(product.availability ?? 'IN_STOCK'),
-          clearance: Boolean(product.clearance),
-        };
-      });
-    if (!paging) return { books: booksSummary, rows };
-    return { books: booksSummary, ...pageOf(rows, await this.db.collection('products').countDocuments(filter), paging) };
+    return this.priceLists.list({ search, categoryId, at }, pageRequest(page, pageSize));
   }
 
+  /** File Excel "Bảng báo giá" theo mẫu công ty, kèm ảnh sản phẩm (PRICE-IMG-01, 11/11/2026) — cùng bộ lọc với trang bảng giá. */
+  @Area('pricing.priceList')
+  @Get('price-list/export')
+  async priceListExport(@Query('search') search?: string, @Query('categoryId') categoryId?: string, @Query('at') at?: string) {
+    const file = await this.priceLists.export({ search: search || undefined, categoryId: categoryId || undefined, at: at || undefined });
+    return new StreamableFile(file.data, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      disposition: `attachment; filename="${file.fileName}"`,
+      length: file.data.length,
+    });
+  }
+
+  @Area('pricing.manage')
   @Get('promotions')
   async promotions() {
     const [rows, categories] = await Promise.all([
@@ -162,6 +127,7 @@ export class ReferenceController {
   }
 
   /** Cấu hình chiết khấu theo Giải thuật 2: chiết khấu theo cấp, bậc doanh số lũy kế quý và trần chiết khấu. */
+  @Area('pricing.manage')
   @Get('pricing/policy')
   async pricingPolicy() {
     const [pricing, approval] = await Promise.all([
@@ -214,9 +180,14 @@ export class ReferenceController {
     };
   }
 
-  /** Hồ sơ khách hàng kèm dư nợ hiện tại, doanh số lũy kế quý (D2 trong đồ án) và lần hẹn chăm sóc gần nhất (CRM). */
+  /**
+   * Hồ sơ khách hàng kèm dư nợ hiện tại, doanh số lũy kế quý (D2 trong đồ án) và lần hẹn chăm sóc gần nhất (CRM).
+   * Vẫn mở cho mọi tài khoản vì là danh sách chọn khách (form bảo hành, xuất hàng mẫu, khách mua luôn…), nhưng dư nợ / quá hạn /
+   * doanh số chỉ tính và trả cho người xem Công nợ khách (VIS-ROLE-01, 13/11/2026).
+   */
   @Get('dealers')
   async dealers(
+    @Req() request: AuthenticatedRequest,
     @Query('region') region?: string,
     @Query('tier') tier?: string,
     @Query('search') search?: string,
@@ -253,8 +224,9 @@ export class ReferenceController {
       paging ? this.db.collection('partners').countDocuments(filter) : Promise.resolve(0),
     ]);
     const ids = partners.map((partner) => partner._id as ObjectId);
+    const withMoney = canSeeArea(request.user, 'receivables');
     const [exposures, revenues, followUps] = await Promise.all([
-      this.db.collection('receivables').aggregate([
+      !withMoney ? Promise.resolve([] as Document[]) : this.db.collection('receivables').aggregate([
         { $match: { status: { $in: OPEN_RECEIVABLE_STATUSES }, partnerId: { $in: ids } } },
         {
           $group: {
@@ -264,7 +236,7 @@ export class ReferenceController {
           },
         },
       ]).toArray(),
-      this.db.collection('sales_orders').aggregate([
+      !withMoney ? Promise.resolve([] as Document[]) : this.db.collection('sales_orders').aggregate([
         // Doanh số gồm VAT (DB-REV-04, 05/11/2026).
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: revenueWindow ?? { $gte: quarter.start }, customerId: { $in: ids } } },
         { $group: { _id: '$customerId', revenue: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
@@ -286,9 +258,11 @@ export class ReferenceController {
           stage: partner.stage ?? 'CUSTOMER',
           nextFollowUp: followUpById.get(id) ?? null,
           regionName: provinceReportName(customerProvince(partner)) || undefined,
-          outstanding: new Decimal(decimalString(exposure?.outstanding ?? '0')).toFixed(2),
-          overdue: new Decimal(decimalString(exposure?.overdue ?? '0')).toFixed(2),
-          periodRevenue: new Decimal(revenueById.get(id) ?? '0').toFixed(2),
+          ...(withMoney ? {
+            outstanding: new Decimal(decimalString(exposure?.outstanding ?? '0')).toFixed(2),
+            overdue: new Decimal(decimalString(exposure?.overdue ?? '0')).toFixed(2),
+            periodRevenue: new Decimal(revenueById.get(id) ?? '0').toFixed(2),
+          } : {}),
         };
       });
     const periodLabel = revenueWindow ? `${from ? from.split('-').reverse().join('/') : '…'} – ${to ? to.split('-').reverse().join('/') : '…'}` : quarter.label;

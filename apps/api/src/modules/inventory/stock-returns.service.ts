@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   STOCK_BACKDATE_FROM,
+  sampleSaleActive,
   STOCK_OPENING_CUTOFF,
   isNonSalePurpose,
   isVatRate,
@@ -18,6 +19,7 @@ import {
   type StockReturnCreditPreview,
   type StockReturnCreditTarget,
   type StockReturnCreditTargetPreview,
+  type UpdateSampleReturn,
   type UpdateStockReturn,
   type VatRate,
   type VoidStockReturn,
@@ -786,22 +788,68 @@ export class StockReturnsService {
   }
 
   /**
-   * Phiếu được sửa / hủy: chưa hủy, đúng phiên bản đang xem. Hàng mẫu nhập lại theo phiếu xuất mẫu: sửa / hủy trên phiếu mượn mẫu.
-   * Hàng mẫu nhập lại KHÔNG có phiếu xuất mẫu (27/10/2026): hủy được (nhập nhầm cả phiếu), không sửa — nhập lại phiếu đúng.
+   * Phiếu được sửa / hủy: chưa hủy, đúng phiên bản đang xem. Từ 12/11/2026 (INV-RET-SAMPLE-EDIT-01) phiếu hàng mẫu nhập lại — có
+   * hay không có phiếu xuất mẫu — cũng sửa / hủy được ở đây; riêng phiếu hệ thống tự lập khi chốt "Đại lý mua luôn" thì không.
    */
-  private assertRevisable(row: Document, version: number, action: 'EDIT' | 'VOID' = 'EDIT') {
+  private assertRevisable(row: Document, version: number) {
     if (row.status === 'VOIDED') throw new ConflictException({ code: 'STOCK_RETURN_VOIDED', message: `Phiếu ${String(row.code)} đã hủy, không sửa được` });
-    if (row.kind === 'SAMPLE' && !(action === 'VOID' && row.noSlip === true && !row.salesOrderCode)) {
+    if (row.kind === 'SAMPLE' && row.soldConversion === true) {
       throw new ConflictException({
-        code: 'STOCK_RETURN_SAMPLE_LOCKED',
-        message: row.noSlip
-          ? 'Phiếu hàng mẫu nhập lại không có phiếu xuất mẫu không sửa được — hủy phiếu rồi nhập lại phiếu đúng'
-          : 'Phiếu hàng mẫu nhập lại theo phiếu xuất mẫu — sửa / hủy trên phiếu hàng mẫu gốc',
+        code: 'STOCK_RETURN_SOLD_CONVERSION',
+        message: `Phiếu ${String(row.code)} do hệ thống tự lập khi chốt "Đại lý mua luôn" trên phiếu ${String(row.salesOrderCode ?? '')} — không sửa / hủy riêng`,
       });
     }
     if (Number(row.version ?? 0) !== version) {
       throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu ${String(row.code)} vừa được người khác sửa, vui lòng tải lại` });
     }
+  }
+
+  /**
+   * Phiếu xuất mẫu / kiểm định gốc của phiếu hàng mẫu nhập lại (null = không có phiếu gốc). Phiếu gốc phải còn hiệu lực và chưa
+   * chốt phần chưa trả: sửa / hủy phiếu nhập lại làm số "còn ở ngoài" thay đổi, phiếu đã chốt thì không còn chỗ ghi nhận.
+   */
+  private async sampleLoan(row: Document, session: ClientSession) {
+    if (row.kind !== 'SAMPLE' || !row.salesOrderCode) return null;
+    const code = String(row.salesOrderCode);
+    const order = await this.db.collection('sales_orders').findOne(row.salesOrderId ? { _id: row.salesOrderId as ObjectId } : { code }, { session });
+    if (!order || !['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'].includes(String(order.status))) {
+      throw new ConflictException({ code: 'LOAN_NOT_ACTIVE', message: `Phiếu hàng mẫu gốc ${code} đã hủy — không sửa / hủy phiếu nhập lại ${String(row.code)}` });
+    }
+    if (order.loanStatus === 'CLOSED') {
+      throw new ConflictException({ code: 'LOAN_CLOSED', message: `Phiếu hàng mẫu gốc ${code} đã chốt phần chưa trả — không sửa / hủy phiếu nhập lại ${String(row.code)}` });
+    }
+    return order;
+  }
+
+  /** Số đã xuất theo mã của phiếu mẫu và số đã về ở các phiếu nhập lại chưa hủy (bỏ qua phiếu `excludeId` đang sửa). */
+  private async loanQuantities(order: Document, session: ClientSession, excludeId?: ObjectId) {
+    const shipped = new Map<string, Decimal>();
+    for (const line of order.lines as Document[]) {
+      const key = String(line.productId);
+      shipped.set(key, (shipped.get(key) ?? new Decimal(0)).add(decimalString(line.baseQuantity)));
+    }
+    const returns = await this.db
+      .collection('stock_returns')
+      .find({ kind: { $in: ['CUSTOMER', 'SAMPLE'] }, salesOrderCode: order.code, status: { $ne: 'VOIDED' }, ...(excludeId ? { _id: { $ne: excludeId } } : {}) }, { session })
+      .toArray();
+    const returned = new Map<string, Decimal>();
+    for (const item of returns) {
+      for (const line of item.lines as Document[]) {
+        const key = String(line.productId);
+        returned.set(key, (returned.get(key) ?? new Decimal(0)).add(decimalString(line.quantity)));
+      }
+    }
+    return { shipped, returned };
+  }
+
+  /** Tính lại tình trạng mượn của phiếu mẫu sau khi sửa / hủy phiếu nhập lại: đang mượn / về một phần / về đủ. */
+  private async syncLoanStatus(order: Document, session: ClientSession, now: Date) {
+    const { shipped, returned } = await this.loanQuantities(order, session);
+    const anyBack = [...returned.values()].some((quantity) => quantity.gt(0));
+    const allBack = [...shipped].every(([productId, quantity]) => (returned.get(productId) ?? new Decimal(0)).gte(quantity));
+    const loanStatus = allBack ? 'RETURNED' : anyBack ? 'PARTIAL' : 'OUT';
+    await this.db.collection('sales_orders').updateOne({ _id: order._id }, { $set: { loanStatus, updatedAt: now }, $inc: { version: 1 } }, { session });
+    return loanStatus;
   }
 
   /**
@@ -903,6 +951,7 @@ export class StockReturnsService {
     return this.idempotency.execute(`stock-return-edit:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
       const row = await this.load(id, session);
       this.assertRevisable(row, input.version);
+      if (row.kind === 'SAMPLE') throw new BadRequestException({ code: 'STOCK_RETURN_KIND_LOCKED', message: 'Phiếu hàng mẫu nhập lại sửa bằng form hàng mẫu' });
       if (row.kind !== input.kind) throw new BadRequestException({ code: 'STOCK_RETURN_KIND_LOCKED', message: 'Không đổi được phiếu khách trả thành phiếu trả nhà máy (và ngược lại) — hủy phiếu rồi lập phiếu mới' });
       const now = new Date();
       const currentAt = (row.receivedAt as Date | undefined) ?? (row.postedAt as Date | undefined) ?? (row.createdAt as Date);
@@ -1001,11 +1050,133 @@ export class StockReturnsService {
     });
   }
 
-  /** Hủy cả phiếu (nhập nhầm): đảo toàn bộ thẻ kho vào ngày của phiếu; phiếu chỉ còn quản trị gốc xem được, không tính vào số đã trả. */
+  /**
+   * Sửa phiếu hàng mẫu / hàng kiểm định nhập lại (INV-RET-SAMPLE-EDIT-01, 12/11/2026).
+   * - Theo phiếu xuất mẫu: mã phải thuộc phiếu mẫu, số lượng không quá số còn ở ngoài (không tính chính phiếu này); kho giữ theo
+   *   phiếu mẫu; phiếu mẫu tính lại tình trạng mượn.
+   * - Không có phiếu xuất mẫu: đổi được người mượn, kho, dòng hàng, ghi chú.
+   * Thẻ kho: ghi nhập mới trước rồi đảo dòng cũ, cùng ngày phát sinh cũ — báo cáo tháng không lệch. Chỉ đổi ghi chú / người mượn
+   * thì không động vào thẻ kho.
+   */
+  async updateSample(id: string, input: UpdateSampleReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
+    return this.idempotency.execute(`stock-return-edit:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
+      const row = await this.load(id, session);
+      if (row.kind !== 'SAMPLE') throw new BadRequestException({ code: 'STOCK_RETURN_KIND_LOCKED', message: 'Chỉ phiếu hàng mẫu nhập lại sửa bằng form này' });
+      this.assertRevisable(row, input.version);
+      const loan = await this.sampleLoan(row, session);
+      const now = new Date();
+      const merged = this.mergeLines(input.lines);
+      const productById = await this.products(merged, session);
+      let warehouse: Document = { _id: row.warehouseId, name: row.warehouseName };
+      const borrowerFields: Document = {};
+      let borrowerName = String(row.borrowerName ?? '');
+      const warehouseChanged = Boolean(input.warehouseId) && input.warehouseId !== (row.warehouseId as ObjectId).toHexString();
+      if (loan) {
+        if (warehouseChanged) {
+          throw new BadRequestException({ code: 'SAMPLE_RETURN_WAREHOUSE_LOCKED', message: `Hàng mẫu nhập lại theo phiếu ${String(loan.code)} về đúng kho đã xuất — không đổi kho`, details: [{ path: ['warehouseId'] }] });
+        }
+        const { shipped, returned } = await this.loanQuantities(loan, session, row._id as ObjectId);
+        // Số đang chờ bán (yêu cầu "khách mua luôn hàng mẫu" chưa xong — SAMPLE-SALE-01) không nhập lại được.
+        const held = new Map<string, Decimal>();
+        for (const item of (loan.saleRequests as Document[] | undefined) ?? []) {
+          if (!sampleSaleActive(item.status)) continue;
+          for (const sale of item.lines as Document[]) held.set(String(sale.productId), (held.get(String(sale.productId)) ?? new Decimal(0)).add(decimalString(sale.quantity)));
+        }
+        for (const [productId, line] of merged) {
+          const sku = String(productById.get(productId)?.sku ?? productId);
+          const out = shipped.get(productId);
+          if (!out) throw new BadRequestException({ code: 'RETURN_PRODUCT_NOT_IN_SOURCE', message: `Mã ${sku} không có trong ${String(loan.code)}`, details: [{ path: ['lines'] }] });
+          const left = out.sub(returned.get(productId) ?? 0).sub(held.get(productId) ?? 0);
+          if (line.quantity.gt(left)) {
+            throw new ConflictException({ code: 'LOAN_RETURN_EXCEEDS', message: `Mã ${sku} chỉ còn ${Decimal.max(left, 0).toString()} chưa về theo phiếu ${String(loan.code)}`, details: [{ path: ['lines'] }] });
+          }
+        }
+      } else {
+        if (warehouseChanged) {
+          const next = await this.db.collection('warehouses').findOne({ _id: toObjectId(input.warehouseId as string, 'warehouseId'), active: true }, { session });
+          if (!next) throw new NotFoundException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không tìm thấy kho hoạt động', details: [{ path: ['warehouseId'] }] });
+          warehouse = next;
+        }
+        if (input.borrowerId || input.borrowerUserId) {
+          const borrower = await resolveStaff(this.db, { salesRepId: input.borrowerId, staffUserId: input.borrowerUserId }, session, { salesRepId: row.salesRepId, staffUserId: row.staffUserId });
+          if (!borrower) throw new NotFoundException({ code: 'EMPLOYEE_NOT_FOUND', message: 'Không tìm thấy nhân viên mượn hàng', details: [{ path: ['borrowerId'] }] });
+          const same = String((borrower.kind === 'EMPLOYEE' ? row.salesRepId : row.staffUserId) ?? '') === String(borrower.id);
+          if (!same) {
+            borrowerName = String(borrower.name);
+            borrowerFields.borrowerName = borrower.name;
+            borrowerFields.partnerName = `Hàng mẫu — ${String(borrower.name)} (không có phiếu xuất mẫu)`;
+            borrowerFields[borrower.kind === 'EMPLOYEE' ? 'salesRepId' : 'staffUserId'] = borrower.id;
+            borrowerFields[borrower.kind === 'EMPLOYEE' ? 'staffUserId' : 'salesRepId'] = undefined;
+          }
+        }
+      }
+      const lines = this.documentLines(merged, productById);
+      const changes: StockReturnChange[] = [];
+      const add = (field: StockReturnChange['field'], from: string, to: string) => {
+        if (from !== to) changes.push({ field, from, to });
+      };
+      add('borrower', String(row.borrowerName ?? ''), borrowerName);
+      add('warehouse', String(row.warehouseName), String(warehouse.name));
+      add('note', String(row.note ?? ''), input.note);
+      add('lines', this.lineText(row.lines as Document[]), this.lineText(lines));
+      if (!changes.length) throw new BadRequestException({ code: 'STOCK_RETURN_UNCHANGED', message: 'Phiếu chưa có thay đổi nào' });
+      const restock = changes.some((change) => change.field === 'warehouse' || change.field === 'lines');
+      if (restock) {
+        const plan = await this.planReversal(row, session);
+        await this.inventory.applyPhysicalMovement(
+          {
+            warehouseId: (warehouse._id as ObjectId).toHexString(),
+            referenceType: 'StockReturn',
+            referenceId: String(row.code),
+            movementType: 'LOAN_RETURN',
+            direction: 'IN',
+            category: row.category as InventoryCategory,
+            lines: this.stockLines(merged),
+            reason: input.note,
+            actorId: request.user.sub,
+            extra: loan ? { salesOrderCode: String(loan.code) } : { borrowerName },
+            occurredAt: plan.postedAt,
+            anyProductStatus: true,
+          },
+          session,
+        );
+        await this.applyReversal(row, plan, `Sửa phiếu ${String(row.code)}: ${input.reason}`, request.user.sub, session);
+      }
+      const set: Document = { warehouseId: warehouse._id, warehouseName: String(warehouse.name), note: input.note, lines, status: 'POSTED', updatedAt: now, editedAt: now, editedByName: request.user.displayName };
+      const unset: Document = {};
+      for (const [key, value] of Object.entries(borrowerFields)) {
+        if (value === undefined) unset[key] = '';
+        else set[key] = value;
+      }
+      const revision = { action: 'EDIT', at: now, by: toObjectId(request.user.sub), byName: request.user.displayName, reason: input.reason, changes };
+      const after = await this.db.collection('stock_returns').findOneAndUpdate(
+        { _id: row._id, ...(row.version === undefined ? { version: { $exists: false } } : { version: row.version }) },
+        { $set: set, ...(Object.keys(unset).length ? { $unset: unset } : {}), $inc: { version: 1 }, $push: { revisions: revision } } as Document,
+        { session, returnDocument: 'after' },
+      );
+      if (!after) throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu ${String(row.code)} vừa được người khác sửa, vui lòng tải lại` });
+      const loanStatus = loan && restock ? await this.syncLoanStatus(loan, session, now) : undefined;
+      await this.audit.record(
+        {
+          actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
+          action: 'SAMPLE_RETURN_EDITED', entityType: 'StockReturn', entityId: id,
+          before: serializeDocument(row), after: serializeDocument(after), metadata: { reason: input.reason, restocked: restock, ...(loan ? { loanCode: String(loan.code), ...(loanStatus ? { loanStatus } : {}) } : {}) },
+        },
+        session,
+      );
+      return this.view(after);
+    });
+  }
+
+  /**
+   * Hủy cả phiếu (nhập nhầm): đảo toàn bộ thẻ kho vào ngày của phiếu; phiếu chỉ còn quản trị gốc xem được, không tính vào số đã trả.
+   * Hàng mẫu nhập lại theo phiếu xuất mẫu: phiếu mẫu gốc tính lại tình trạng mượn (hàng trở lại "còn ở ngoài").
+   */
   async void(id: string, input: VoidStockReturn, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
     return this.idempotency.execute(`stock-return-void:${id}:${request.user.sub}`, idempotencyKey, input, async (session) => {
       const row = await this.load(id, session);
-      this.assertRevisable(row, input.version, 'VOID');
+      this.assertRevisable(row, input.version);
+      const loan = await this.sampleLoan(row, session);
       const now = new Date();
       await this.reverse(row, `Hủy phiếu ${String(row.code)}: ${input.reason}`, request.user.sub, session);
       const set: Document = { status: 'VOIDED', voidReason: input.reason, voidedAt: now, voidedBy: toObjectId(request.user.sub), voidedByName: request.user.displayName, updatedAt: now };
@@ -1042,6 +1213,8 @@ export class StockReturnsService {
       if (!after) throw new ConflictException({ code: 'VERSION_CONFLICT', message: `Phiếu ${String(row.code)} vừa được người khác sửa, vui lòng tải lại` });
       // Phiếu hủy nhả số cho phiếu mới như phiếu BH: NK2026110043 → NK2026110043-H1.
       const released = await releaseReturnNumber(this.db, after, session);
+      // Hàng mẫu nhập lại theo phiếu: hàng trở lại "còn ở ngoài" trên phiếu mẫu gốc (nhập lại phiếu đúng trên phiếu đó).
+      const loanStatus = loan ? await this.syncLoanStatus(loan, session, now) : undefined;
       if (notify && row.kind === 'CUSTOMER') {
         await this.notifyAccountant(after, 'CUSTOMER_RETURN_CHANGED', {
           title: `Phiếu khách trả ${String(row.code)} đã hủy${creditVoided ? ` — phiếu giảm nợ ${creditVoided} đã tự hủy` : row.accountingStatus === 'DONE' || row.previousAccounting ? ' — hủy điều chỉnh công nợ đã ghi' : ''}`,
@@ -1053,7 +1226,7 @@ export class StockReturnsService {
         {
           actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
           action: row.kind === 'CUSTOMER' ? 'CUSTOMER_RETURN_VOIDED' : row.kind === 'SAMPLE' ? 'SAMPLE_RETURN_VOIDED' : 'SUPPLIER_RETURN_VOIDED', entityType: 'StockReturn', entityId: id,
-          before: serializeDocument(row), after: serializeDocument(released), metadata: { reason: input.reason, accountingWas: row.accountingStatus ?? null, ...(released.code !== row.code ? { releasedCode: String(row.code), code: String(released.code) } : {}) },
+          before: serializeDocument(row), after: serializeDocument(released), metadata: { reason: input.reason, accountingWas: row.accountingStatus ?? null, ...(released.code !== row.code ? { releasedCode: String(row.code), code: String(released.code) } : {}), ...(loan ? { loanCode: String(loan.code), loanStatus } : {}) },
         },
         session,
       );

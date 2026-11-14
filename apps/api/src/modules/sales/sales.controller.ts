@@ -15,7 +15,7 @@ import {
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
-import { AllowReadOnly, RequirePermission, Roles } from '../../common/roles.decorator';
+import { AllowReadOnly, Area, RequirePermission, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { SalesService } from './sales.service';
@@ -29,6 +29,7 @@ export class SalesController {
   constructor(private readonly sales: SalesService) {}
 
   /** Thủ kho chỉ thấy phiếu kế toán đã chọn mình; các vai trò khác thấy toàn bộ. */
+  @Area('sales.orderDetail')
   @Get()
   list(
     @Req() request: AuthenticatedRequest,
@@ -75,12 +76,14 @@ export class SalesController {
     return this.sales.warehouseKeepers(warehouseId);
   }
 
+  @Area('sales.orderDetail')
   @Get(':id')
   get(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.sales.get(id, request.user);
   }
 
   /** Bước đang chờ của phiếu và người được phân công (SAL-STEP-01) — hiện trên dòng thời gian của phiếu. */
+  @Area('sales.orderDetail')
   @Get(':id/step-owners')
   stepOwners(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.sales.stepOwners(id, request.user);
@@ -98,6 +101,7 @@ export class SalesController {
     return this.sales.uploadEvidence(id, body, fileName, request);
   }
 
+  @Area('sales.orderDetail')
   @Get(':id/attachments/:attachmentId')
   async readEvidence(
     @Param('id') id: string,
@@ -261,7 +265,7 @@ export class SalesController {
   }
 
   /** Chốt phần hàng mẫu / kiểm định chưa về: hỏng / tiêu hao / tặng, hoặc đại lý mua luôn (SAL-TYPE-01) — kế toán, quản lý kho. */
-  @Roles('ADMIN', 'ACCOUNTANT', 'WAREHOUSE_MANAGER')
+  @Roles('ADMIN', 'ACCOUNTANT', 'WAREHOUSE_MANAGER', 'WAREHOUSE')
   @Post(':id/loan-close')
   loanClose(
     @Param('id') id: string,

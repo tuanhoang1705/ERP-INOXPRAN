@@ -97,6 +97,9 @@ export class SalesChangeRequestsService {
       const orderId = toObjectId(orderIdValue);
       const order = await this.db.collection('sales_orders').findOne({ _id: orderId, ...salesOrderScope(request.user) }, { session });
       if (!order) throw new NotFoundException({ code: 'SALES_ORDER_NOT_FOUND', message: 'Không tìm thấy phiếu' });
+      if (order.warehouseIssued === true) {
+        throw new ConflictException({ code: 'SAMPLE_ISSUE_BY_WAREHOUSE', message: `Phiếu xuất hàng mẫu ${String(order.code)} do thủ kho lập — sửa / hủy ở Kho & Giao hàng → Xuất hàng mẫu` });
+      }
       if (order.purpose === 'WARRANTY') {
         throw new ConflictException({ code: 'WARRANTY_EXCHANGE_LOCKED', message: `Phiếu đổi bảo hành (theo phiếu bảo hành ${String(order.warrantyCode ?? '')}) — không sửa / hủy trên phiếu BH` });
       }

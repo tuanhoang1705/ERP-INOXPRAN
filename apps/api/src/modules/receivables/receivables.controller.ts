@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateCustomerPaymentSchema, CreatePaymentSchema, HistoryDocumentCreateSchema, HistoryDocumentEditSchema, HistoryPaymentCreateSchema, HistoryPaymentEditSchema, HistoryRowDeleteSchema, SetAutoHoldExemptSchema } from '@inoxpran/contracts';
-import { Roles } from '../../common/roles.decorator';
+import { Area, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { HistoryEditService } from './history-edit.service';
@@ -15,6 +15,7 @@ export class ReceivablesController {
     private readonly history: HistoryEditService,
   ) {}
 
+  @Area('receivables')
   @Get('receivables')
   list(
     @Req() request: AuthenticatedRequest,
@@ -31,12 +32,14 @@ export class ReceivablesController {
   }
 
   /** Công nợ theo khách hàng (CN-KH-01). */
+  @Area('receivables')
   @Get('receivables/customers')
   customers(@Query('search') search?: string, @Query('onlyOpen') onlyOpen?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.receivables.customers(search, onlyOpen === 'true', pageRequest(page, pageSize));
   }
 
   /** Bảng tổng hợp công nợ theo tháng giống mẫu 收付明细汇总表 (AR-XLS-02): chọn tháng và khách (bỏ trống = tất cả). */
+  @Area('receivables')
   @Get('receivables/customers/export')
   async summaryExport(@Query('fromMonth') fromMonth = '', @Query('toMonth') toMonth = '', @Query('customerIds') customerIds = '') {
     const ids = customerIds.split(',').map((id) => id.trim()).filter(Boolean);
@@ -48,11 +51,13 @@ export class ReceivablesController {
     });
   }
 
+  @Area('receivables')
   @Get('receivables/customers/:id/statement')
   statement(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('from') from?: string, @Query('to') to?: string) {
     return this.receivables.statement(id, from || undefined, to || undefined, request.user);
   }
 
+  @Area('receivables')
   @Get('receivables/customers/:id/statement/export')
   async statementExport(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('from') from?: string, @Query('to') to?: string) {
     const { buffer, fileName } = await this.receivables.statementWorkbook(id, from || undefined, to || undefined, request.user.displayName || request.user.email, request.user);
@@ -89,6 +94,7 @@ export class ReceivablesController {
     return this.receivables.setAutoHoldExempt(id, SetAutoHoldExemptSchema.parse(body).exempt, request);
   }
 
+  @Area('receivables')
   @Get('receivables/aging')
   aging() {
     return this.receivables.aging();

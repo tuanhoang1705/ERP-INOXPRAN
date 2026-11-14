@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { DebtSegmentInputSchema, SetSegmentPartnerSchema, SetSegmentTagSchema, SkuAliasSchema, UpdateDebtSegmentSchema } from '@inoxpran/contracts';
-import { Roles } from '../../common/roles.decorator';
+import { Area, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { ReceivablesService } from './receivables.service';
 import { SegmentsService } from './segments.service';
@@ -15,6 +15,7 @@ export class SegmentsController {
     private readonly receivables: ReceivablesService,
   ) {}
 
+  @Area('receivables')
   @Get('receivables/segments')
   list() {
     return this.segments.list();

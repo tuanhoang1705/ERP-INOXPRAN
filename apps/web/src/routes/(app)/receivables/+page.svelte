@@ -7,6 +7,7 @@
   import { date, num, todayIso, vnd } from '$lib/format';
   import { hasRole, overdueLevel, receivableStatus } from '$lib/labels';
   import { session } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import { debounce, initialPageSize, pageQuery, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
   import DateRangeFilter from '$lib/components/DateRangeFilter.svelte';
@@ -138,7 +139,7 @@
             {@const level = row.overdueLevel ? overdueLevel[row.overdueLevel] : null}
             {@const credit = row.sourceType === 'SALES_VOID_CREDIT' || row.sourceType === 'CUSTOMER_PREPAYMENT'}
             <tr>
-              <td><span class="code">{row.code}</span>{#if row.sourceType === 'CUSTOMER_PREPAYMENT'}<small class="credit">{m.cn_khach_tra_truoc_dong()}</small>{:else if row.sourceType === 'HISTORY_IMPORT'}<small>{m.cn_lich_su_ct({ no: row.historyInvoiceNo ?? row.historyDocumentNo ?? '' })}</small>{:else if row.sourceType === 'SALES_VOID_CREDIT'}<small class="credit">{m.cn_khach_tra_truoc({ code: row.salesOrderCode ?? '' })}</small>{:else if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small><a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a></small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
+              <td><span class="code">{row.code}</span>{#if row.sourceType === 'CUSTOMER_PREPAYMENT'}<small class="credit">{m.cn_khach_tra_truoc_dong()}</small>{:else if row.sourceType === 'HISTORY_IMPORT'}<small>{m.cn_lich_su_ct({ no: row.historyInvoiceNo ?? row.historyDocumentNo ?? '' })}</small>{:else if row.sourceType === 'SALES_VOID_CREDIT'}<small class="credit">{m.cn_khach_tra_truoc({ code: row.salesOrderCode ?? '' })}</small>{:else if row.salesOrderCode}<small><a class="link" href={`/sales/orders/${row.salesOrderId}`}>{row.salesOrderCode}</a></small>{:else if row.warrantyCode}<small>{#if canOpen('/warranty')}<a class="link" href={`/warranty/${row.warrantyTicketId}`}>{m.wr_service_fee_of({ code: row.warrantyCode })}</a>{:else}{m.wr_service_fee_of({ code: row.warrantyCode })}{/if}</small>{:else if row.openingDocumentNo}<small>{m.imp_chung_tu_dau_ky({ no: row.openingDocumentNo })}</small>{/if}</td>
               <td>{row.partnerName}<small>{row.partnerCode}{row.province ? ` · ${row.province}` : ''}{row.payerName ? ` · ${row.payerName}${row.payerPhone ? ` (${row.payerPhone})` : ''}` : ''}</small></td>
               <td class="muted">{date(row.createdAt)}</td>
               <td>{credit ? '—' : date(row.dueDate)}{#if level && !credit}<small class={`late ${level.tone}`}>{m.qua_han()} {row.daysOverdue} {m.ngay()}</small>{/if}</td>

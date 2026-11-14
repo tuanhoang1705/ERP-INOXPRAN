@@ -66,6 +66,9 @@ describe('luồng trạng thái', () => {
   it('mọi trạng thái đều khai báo thao tác; phiếu đã đóng không còn thao tác', () => {
     for (const status of WARRANTY_STATUSES) expect(WARRANTY_ACTIONS_BY_STATUS[status]).toBeDefined();
     expect(WARRANTY_ACTIONS_BY_STATUS.RETURNED).toEqual([]);
+    // WAR-EXCH-02 (11/11/2026): đổi mới đã duyệt chờ kế toán xuất phiếu BH & SWK; không hủy được như lúc chờ duyệt.
+    expect(WARRANTY_ACTIONS_BY_STATUS.AWAITING_ISSUE).toEqual(['ISSUE_EXCHANGE', 'RETURN', 'RESCHEDULE']);
+    expect(WARRANTY_ACTIONS_BY_STATUS.READY).toEqual(['RETURN']);
     expect(WARRANTY_ACTIONS_BY_STATUS.CANCELLED).toEqual([]);
   });
 
@@ -96,6 +99,7 @@ describe('giai đoạn sửa được của phiếu bảo hành (WAR-EDIT-01, 06
     expect(warrantyEditableStages({ status: 'RETURNED', plan: 'REPAIR', result: { resolution: 'REPAIRED' }, test: { functional: true } })).toEqual(['INTAKE', 'DIAGNOSE', 'REPAIR', 'TEST', 'RETURN']);
     // Đổi mới / từ chối: không có giai đoạn sửa chữa, kiểm tra.
     expect(warrantyEditableStages({ status: 'RETURNED', plan: 'EXCHANGE', result: { resolution: 'EXCHANGED' } })).toEqual(['INTAKE', 'DIAGNOSE', 'RETURN']);
+    expect(warrantyEditableStages({ status: 'AWAITING_ISSUE', plan: 'EXCHANGE', result: { resolution: 'EXCHANGED' } })).toEqual(['INTAKE', 'DIAGNOSE']);
     expect(warrantyEditableStages({ status: 'CANCELLED', plan: 'REPAIR' })).toEqual([]);
   });
 });

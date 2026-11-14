@@ -9,11 +9,12 @@ import { PricingService } from './pricing.service';
 import { CustomerPricesController } from './customer-prices.controller';
 import { CustomerPricesService } from './customer-prices.service';
 import { SalesController } from './sales.controller';
+import { SampleIssuesController } from './sample-issues.controller';
 import { SalesService } from './sales.service';
 
 @Module({
   imports: [InventoryModule, ReceivablesModule],
-  controllers: [SalesController, PriceOverridesController, SalesChangeRequestsController, CustomerPricesController],
+  controllers: [SalesController, SampleIssuesController, PriceOverridesController, SalesChangeRequestsController, CustomerPricesController],
   providers: [PricingService, SalesService, PriceOverridesService, SalesChangeRequestsService, CustomerPricesService],
   exports: [SalesService],
 })

@@ -152,13 +152,21 @@ export class WarrantyController {
   }
 
   /** Gợi ý phiếu khách trả (có mã sản phẩm của phiếu) cho ô "Phiếu trả hàng đã nhập hàng lỗi" khi trả khách — 05/11/2026. */
-  @Roles(...WARRANTY_STAFF_ROLES)
+  // Kế toán chọn phiếu trả hàng khi xuất phiếu đổi bảo hành (WAR-EXCH-02); Giám đốc (chỉ xem) vẫn không tra gợi ý.
+  @Roles(...WARRANTY_STAFF_ROLES, 'ACCOUNTANT')
   @Get('tickets/:id/return-slips')
   returnSlips(@Param('id') id: string) {
     return this.warranty.returnSlipOptions(id);
   }
 
   /** Phiếu đổi mới đã trả khách trước 02/11/2026: lập phiếu BH & SWK đổi bảo hành để in đưa thủ kho. */
+  /** Hộp "Xuất phiếu BH & SWK" của kế toán (WAR-EXCH-02, 11/11/2026): kho xuất hàng đổi, tồn khả dụng, thủ kho chọn được. */
+  @Roles(...WARRANTY_VIEWER_ROLES)
+  @Get('tickets/:id/exchange-issue')
+  exchangeIssueInfo(@Param('id') id: string) {
+    return this.warranty.exchangeIssueInfo(id);
+  }
+
   @Roles(...WARRANTY_STAFF_ROLES)
   @Post('tickets/:id/exchange-order')
   issueExchangeOrder(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest, @Headers('idempotency-key') key: string | undefined) {

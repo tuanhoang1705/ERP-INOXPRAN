@@ -10,7 +10,7 @@ import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { MasterDataService, normalizePartnerLists } from './master-data.service';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
-import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
+import { canSeeArea, SALE_ONLY_FILTER, type VisibilityUser } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import { canCreatePartnerKind } from './partner-access';
 import { pageOf, type PageRequest } from '../../common/paging';
@@ -146,16 +146,20 @@ export class CatalogService {
    * Tab Tồn kho / Mua – bán của trang sản phẩm: tồn theo kho – vị trí, lần mua / bán gần nhất,
    * tổng số lượng (đơn vị cơ bản) và giá trị 12 tháng gần đây.
    */
-  async productOverview(id: string) {
+  /** Tồn theo kho + mua / bán gần đây; khối mua (giá mua) / bán chỉ cho người xem đơn mua / Đơn hàng (VIS-ROLE-01). */
+  async productOverview(id: string, viewer?: VisibilityUser) {
     const productId = toObjectId(id);
     if (!(await this.db.collection('products').findOne({ _id: productId }, { projection: { _id: 1 } }))) {
       throw new NotFoundException({ code: 'PRODUCT_NOT_FOUND', message: 'Không tìm thấy sản phẩm' });
     }
     const since = new Date(Date.now() - 365 * 86_400_000);
+    const seePurchases = !viewer || canSeeArea(viewer, 'inventory.purchases') || canSeeArea(viewer, 'payables');
+    const seeSales = !viewer || canSeeArea(viewer, 'sales.menu');
+    const none = Promise.resolve([] as Document[]);
     const [balances, warehouses, lastPurchases, purchaseTotals, lastSales, salesTotals] = await Promise.all([
       this.db.collection('inventory_balances').find({ productId }).toArray(),
       this.db.collection('warehouses').find({}, { projection: { code: 1, name: 1 } }).toArray(),
-      this.db.collection('purchase_orders').aggregate([
+      !seePurchases ? none : this.db.collection('purchase_orders').aggregate([
         { $match: { 'lines.productId': productId, status: { $ne: 'CANCELLED' } } },
         { $sort: { createdAt: -1 } },
         { $limit: 5 },
@@ -163,13 +167,13 @@ export class CatalogService {
         { $match: { 'lines.productId': productId } },
         { $project: { code: 1, supplierName: 1, status: 1, createdAt: 1, currency: 1, line: '$lines' } },
       ]).toArray(),
-      this.db.collection('purchase_orders').aggregate([
+      !seePurchases ? none : this.db.collection('purchase_orders').aggregate([
         { $match: { 'lines.productId': productId, status: { $ne: 'CANCELLED' }, createdAt: { $gte: since } } },
         { $unwind: '$lines' },
         { $match: { 'lines.productId': productId } },
         { $group: { _id: null, quantity: { $sum: '$lines.baseQuantity' }, amount: { $sum: '$lines.lineTotal' }, orders: { $sum: 1 } } },
       ]).toArray(),
-      this.db.collection('sales_orders').aggregate([
+      !seeSales ? none : this.db.collection('sales_orders').aggregate([
         { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER } },
         { $sort: { orderDate: -1 } },
         { $limit: 5 },
@@ -177,7 +181,7 @@ export class CatalogService {
         { $match: { 'lines.productId': productId } },
         { $project: { code: 1, customerName: 1, status: 1, orderDate: 1, line: '$lines' } },
       ]).toArray(),
-      this.db.collection('sales_orders').aggregate([
+      !seeSales ? none : this.db.collection('sales_orders').aggregate([
         { $match: { 'lines.productId': productId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: since } } },
         { $unwind: '$lines' },
         { $match: { 'lines.productId': productId } },
@@ -209,7 +213,7 @@ export class CatalogService {
         })
         .filter((row) => row.onHand !== '0' || row.reserved !== '0')
         .sort((a, b) => String(a.warehouseCode).localeCompare(String(b.warehouseCode)) || String(a.locationCode ?? '').localeCompare(String(b.locationCode ?? ''))),
-      purchases: {
+      purchases: !seePurchases ? null : {
         recent: lastPurchases.map((row) => ({
           id: (row._id as ObjectId).toHexString(),
           code: row.code,
@@ -223,7 +227,7 @@ export class CatalogService {
         })),
         last12Months: total(purchaseTotals),
       },
-      sales: {
+      sales: !seeSales ? null : {
         recent: lastSales.map((row) => ({
           id: (row._id as ObjectId).toHexString(),
           code: row.code,
@@ -340,11 +344,13 @@ export class CatalogService {
       after: serializeDocument(document),
     });
     await this.master.grantWarehouse(request.user.sub, document._id);
+    if (input.purpose === 'SAMPLE') await this.master.grantSampleWarehouse(document._id);
     return serializeDocument(document);
   }
 
   /** Hồ sơ đối tác cho trang chi tiết: khách hàng kèm dư nợ / doanh số / hẹn chăm sóc; nhà cung cấp kèm tổng mua. */
-  async getPartner(id: string) {
+  /** Hồ sơ đối tác; dư nợ / doanh số chỉ cho người xem Công nợ khách, tiền mua hàng cho người xem đơn mua (VIS-ROLE-01). */
+  async getPartner(id: string, viewer?: VisibilityUser) {
     const partner = await this.db.collection('partners').findOne({ _id: toObjectId(id) });
     if (!partner) throw new NotFoundException({ code: 'PARTNER_NOT_FOUND', message: 'Không tìm thấy đối tác' });
     const partnerId = partner._id as ObjectId;
@@ -382,19 +388,23 @@ export class CatalogService {
       partner.regionCode ? this.db.collection('regions').findOne({ code: partner.regionCode }, { projection: { name: 1 } }) : null,
     ]);
     const money = (value: unknown) => new Decimal(decimalString(value ?? '0')).toFixed(2);
+    const seeReceivables = !viewer || canSeeArea(viewer, 'receivables');
+    const seePurchases = !viewer || canSeeArea(viewer, 'inventory.purchases') || canSeeArea(viewer, 'payables');
     return {
       ...serializeDocument(partner),
       stage: partner.kind === 'SUPPLIER' ? undefined : (partner.stage ?? 'CUSTOMER'),
       regionName: region?.name,
       summary: {
-        outstanding: money(exposure[0]?.outstanding),
-        overdue: money(exposure[0]?.overdue),
-        revenueTotal: money(revenue[0]?.total),
-        revenueYearToDate: money(revenue[0]?.yearToDate),
+        ...(seeReceivables ? {
+          outstanding: money(exposure[0]?.outstanding),
+          overdue: money(exposure[0]?.overdue),
+          revenueTotal: money(revenue[0]?.total),
+          revenueYearToDate: money(revenue[0]?.yearToDate),
+        } : {}),
         orderCount: Number(revenue[0]?.orders ?? 0),
         lastOrder: lastOrder ? { id: lastOrder._id.toHexString(), code: lastOrder.code, date: (lastOrder.orderDate as Date).toISOString() } : null,
         purchaseOrderCount: Number(purchases[0]?.orderCount ?? 0),
-        purchaseTotal: money(purchases[0]?.purchaseTotal),
+        ...(seePurchases ? { purchaseTotal: money(purchases[0]?.purchaseTotal) } : {}),
         lastPurchaseAt: (purchases[0]?.lastOrderAt as Date | undefined)?.toISOString() ?? null,
         nextFollowUp: nextFollowUp ? { on: nextFollowUp.followUpOn, note: nextFollowUp.followUpNote } : null,
       },

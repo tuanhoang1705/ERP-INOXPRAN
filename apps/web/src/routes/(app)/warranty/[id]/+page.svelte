@@ -1,6 +1,6 @@
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
-  import type { WarrantyFaultCode, WarrantyFaultLine, WarrantyReturnSlipOption, WarrantyTicket } from '@inoxpran/contracts';
+  import type { WarrantyExchangeIssueInfo, WarrantyFaultCode, WarrantyFaultLine, WarrantyReturnSlipOption, WarrantyTicket } from '@inoxpran/contracts';
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { untrack } from 'svelte';
@@ -17,13 +17,14 @@
   import { api } from '$lib/api';
   import { date, dateTime, todayIso, vnd } from '$lib/format';
   import { hasRole } from '$lib/labels';
-  import { session } from '$lib/session.svelte';
+  import { can, session } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import {
     actionText, channelText, coverageTone, ticketCoverageText, exclusionText, planText, resolutionText, slaText, stageText, statusText, statusTone, toneText,
     WARRANTY_APPROVERS, WARRANTY_STAFF, type SlaView,
   } from '$lib/warranty';
   import {
-    defaultPlanFor, plansForCoverage, remainingWarrantyDays, REPEAT_REPAIR_THRESHOLD, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_EDIT_GRANT_HOURS, WARRANTY_EXCLUSIONS,
+    defaultPlanFor, plansForCoverage, remainingWarrantyDays, REPEAT_REPAIR_THRESHOLD, WARRANTY_ACTIONS_BY_STATUS, WARRANTY_EDIT_GRANT_HOURS, WARRANTY_EXCHANGE_ISSUE_PERMISSION, WARRANTY_EXCLUSIONS,
     warrantyEditableStages, type WarrantyCoverage, type WarrantyEditStage, type WarrantyExclusion, type WarrantyPlan,
   } from '$shared/warranty';
 
@@ -49,8 +50,7 @@
   let reason = $state('');
   let cancelOpen = $state(false);
   let refundAmount = $state('');
-  /** Trả khách đổi mới / hoàn tiền (20/10/2026): hàng đổi đã giao trước; số phiếu trả hàng đã nhập hàng lỗi (chỉ liên kết). */
-  let exchangeDelivered = $state(false);
+  /** Trả khách hoàn tiền: số phiếu trả hàng đã nhập hàng lỗi (chỉ liên kết). Đổi mới nay qua kế toán xuất phiếu (WAR-EXCH-02). */
   let returnSlipCode = $state('');
   /** Gợi ý phiếu khách trả có mã sản phẩm này (05/11/2026) — tải khi phiếu sắp trả đổi mới / hoàn tiền. */
   let returnSlips = $state<WarrantyReturnSlipOption[]>([]);
@@ -60,6 +60,11 @@
   let staff = $state<StaffOption[]>([]);
   let staffRequested = false;
   let exchangeStaffId = $state('');
+  /** Kế toán xuất phiếu BH & SWK đổi bảo hành (WAR-EXCH-02, 11/11/2026): kho xuất, tồn khả dụng, thủ kho in SWK. */
+  let issueInfo = $state<WarrantyExchangeIssueInfo | null>(null);
+  let issueInfoFor = '';
+  let issueKeeperId = $state('');
+  let issuedNotice = $state<{ order: string; slip: string; keeper: string } | null>(null);
   let editOpen = $state(false);
   // ---------- WAR-EDIT-01 (06/11/2026): yêu cầu sửa phiếu theo giai đoạn ----------
   /** Hộp sửa tiếp nhận mở khóa (theo yêu cầu đã duyệt / người duyệt sửa thẳng). */
@@ -78,6 +83,9 @@
 
   const isStaff = $derived(hasRole(session.user?.roles, WARRANTY_STAFF));
   const isApprover = $derived(hasRole(session.user?.roles, WARRANTY_APPROVERS));
+  /** Kế toán được phân bước 2 "KT phát hành" (quản trị gốc luôn có) — xuất phiếu BH & SWK đổi bảo hành. */
+  const canIssue = $derived(Boolean(session.user) && can(WARRANTY_EXCHANGE_ISSUE_PERMISSION));
+  const issueShort = $derived(Boolean(issueInfo && Number(issueInfo.available) < 1));
   const editableStages = $derived(ticket ? warrantyEditableStages(ticket) : []);
   const pendingEdit = $derived(ticket?.editRequests?.find((row) => row.status === 'PENDING') ?? null);
   const myEditGrant = $derived(ticket?.editRequests?.find((row) => row.status === 'GRANTED' && row.requestedById === session.user?.sub) ?? null);
@@ -103,8 +111,6 @@
   /** Phiếu đổi mới đã trả, hệ thống đã xuất hàng đổi nhưng chưa có phiếu BH & SWK (trả trước 02/11/2026). */
   const needsExchangeOrder = $derived(Boolean(ticket && ticket.status === 'RETURNED' && ticket.result?.resolution === 'EXCHANGED' && ticket.stock?.exchange && !ticket.exchangeOrder));
   const billable = $derived(Boolean(ticket?.result && ticket.result.chargedTo === 'CUSTOMER' && Number(ticket.result.cost) > 0 && ticket.result.resolution !== 'REJECTED'));
-  /** Trả khách đổi mới, hệ thống xuất hàng đổi và lập phiếu BH đổi bảo hành → chọn người phụ trách. */
-  const exchangeSlipOnReturn = $derived(resolutionNow === 'EXCHANGED' && !exchangeDelivered);
 
   /** Danh mục mã lỗi tải một lần (danh mục có thể trống — không dùng độ dài mảng làm cờ). */
   let faultCodesLoaded = false;
@@ -142,17 +148,28 @@
     newDate = next.promisedDate;
     reason = '';
     refundAmount = '';
-    exchangeDelivered = false;
     returnSlipCode = '';
     exchangeStaffId = '';
-    // Danh sách người phụ trách chỉ tải khi phiếu sắp / cần lập phiếu BH đổi bảo hành.
-    const exchanging = next.result?.resolution === 'EXCHANGED' && (next.status === 'READY' || (next.status === 'RETURNED' && next.stock?.exchange && !next.exchangeOrder));
-    if (exchanging && !staffRequested && hasRole(session.user?.roles, WARRANTY_STAFF)) {
+    // Danh sách người phụ trách chỉ tải khi kế toán sắp xuất phiếu BH đổi bảo hành, hoặc phiếu đã trả trước 02/11 cần lập phiếu.
+    const issuing = next.status === 'AWAITING_ISSUE' && can(WARRANTY_EXCHANGE_ISSUE_PERMISSION);
+    // Quản lý kho / Admin ghi "hàng đổi đã giao trước" (kèm phiếu trả hàng lỗi) ngay khi phiếu chờ kế toán.
+    const deliveredBefore = next.status === 'AWAITING_ISSUE' && hasRole(session.user?.roles, WARRANTY_APPROVERS);
+    const lateOrder = next.result?.resolution === 'EXCHANGED' && next.status === 'RETURNED' && next.stock?.exchange && !next.exchangeOrder && hasRole(session.user?.roles, WARRANTY_STAFF);
+    if ((issuing || lateOrder) && !staffRequested) {
       staffRequested = true;
       void loadStaff().then((rows) => (staff = rows)).catch(() => (staffRequested = false));
     }
-    const returning = next.status === 'READY' && (next.result?.resolution === 'EXCHANGED' || next.result?.resolution === 'REFUNDED');
-    if (returning && returnSlipsFor !== next.id && hasRole(session.user?.roles, WARRANTY_STAFF)) {
+    if (issuing && issueInfoFor !== next.id) {
+      issueInfoFor = next.id;
+      void api<WarrantyExchangeIssueInfo>(`/warranty/tickets/${next.id}/exchange-issue`)
+        .then((info) => {
+          issueInfo = info;
+          if (!info.keepers.some((keeper) => keeper.id === issueKeeperId)) issueKeeperId = info.keepers.length === 1 ? (info.keepers[0]?.id ?? '') : '';
+        })
+        .catch(() => (issueInfoFor = ''));
+    }
+    const returning = (next.status === 'READY' && next.result?.resolution === 'REFUNDED' && hasRole(session.user?.roles, WARRANTY_STAFF)) || issuing || deliveredBefore;
+    if (returning && returnSlipsFor !== next.id) {
       returnSlipsFor = next.id;
       returnSlipsLoading = true;
       void api<WarrantyReturnSlipOption[]>(`/warranty/tickets/${next.id}/return-slips`)
@@ -269,6 +286,14 @@
       busy = false;
     }
   }
+  /** Kế toán xác nhận xuất phiếu BH & SWK đổi bảo hành → trừ kho, lập phiếu, đóng phiếu bảo hành (WAR-EXCH-02). */
+  async function issueExchange() {
+    if (!ticket || !issueKeeperId || !exchangeStaffId) return;
+    const keeper = issueInfo?.keepers.find((row) => row.id === issueKeeperId)?.displayName ?? '';
+    await act({ type: 'ISSUE_EXCHANGE', warehouseKeeperId: issueKeeperId, ...staffPick(staff, exchangeStaffId), ...(receiverName.trim().length >= 2 ? { receiverName: receiverName.trim() } : {}), ...(returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}), note: optional(note) });
+    if (ticket?.exchangeOrder && ticket.status === 'RETURNED') issuedNotice = { order: ticket.exchangeOrder.code, slip: ticket.exchangeOrder.warehouseSlipNo, keeper: ticket.exchangeOrder.warehouseKeeperName ?? keeper };
+  }
+
   function printExchange(type: 'BH' | 'SWK') {
     if (ticket?.exchangeOrder) window.open(`/print/sales-issue/${ticket.exchangeOrder.id}?type=${type}`, '_blank', 'noopener');
   }
@@ -312,8 +337,10 @@
       {#if isStaff && actions.includes('RESCHEDULE')}<button class="btn" onclick={() => (rescheduleOpen = true)}><CalendarClock size={16} />{m.wr_reschedule()}</button>{/if}
       {#if isStaff && actions.includes('CANCEL')}<button class="btn danger" onclick={() => (cancelOpen = true)}><X size={16} />{m.wr_act_cancel()}</button>{/if}
       {#if ticket.exchangeOrder}
+        {#if canOpen(`/print/sales-issue/${ticket.exchangeOrder.id}`)}
         <button class="btn" onclick={() => printExchange('BH')}><Printer size={16} />{m.in_phieu_bh()}</button>
         <button class="btn" onclick={() => printExchange('SWK')}><Printer size={16} />{m.in_phieu_swk()}</button>
+        {/if}
       {:else if needsExchangeOrder && isStaff}
         <button class="btn primary" disabled={busy || !exchangeStaffId} title={exchangeStaffId ? '' : m.lp_chon_nguoi_phu_trach()} onclick={issueExchangeOrder}><Plus size={16} />{m.bhx_lap_phieu()}</button>
       {/if}
@@ -352,7 +379,8 @@
       </span>
     </div>
   {/if}
-  {#if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : notice === 'requested' ? m.wr_yc_da_gui() : notice === 'edit-granted' ? m.wr_yc_da_duyet({ hours: WARRANTY_EDIT_GRANT_HOURS }) : notice === 'edit-rejected' ? m.wr_yc_da_tu_choi() : notice === 'edit-withdrawn' ? m.wr_yc_da_rut() : m.wr_saved({ code: ticket.code })}</div>{/if}
+  {#if issuedNotice}<div class="banner success"><CircleCheck size={17} />{m.wr_issue_done(issuedNotice)}</div>
+  {:else if notice}<div class="banner success"><CircleCheck size={17} />{notice === 'created' ? m.wr_created({ code: ticket.code }) : notice === 'edited' ? m.wr_edit_saved({ code: ticket.code }) : notice === 'requested' ? m.wr_yc_da_gui() : notice === 'edit-granted' ? m.wr_yc_da_duyet({ hours: WARRANTY_EDIT_GRANT_HOURS }) : notice === 'edit-rejected' ? m.wr_yc_da_tu_choi() : notice === 'edit-withdrawn' ? m.wr_yc_da_rut() : m.wr_saved({ code: ticket.code })}</div>{/if}
 
   <article class={`card sla tone-${sla.tone}`}>
     <header class="card-head"><h2>{m.wr_sla_title()}</h2><b class="sla-text">{slaText(sla)}</b></header>
@@ -454,15 +482,15 @@
           <div><dt>{m.wr_stock_link()}</dt><dd>
             {#if ticket.stock.exchange}{m.wr_stock_exchange_out({ warehouse: ticket.stock.exchange.warehouseName, sku: ticket.product.sku })}<br />{/if}
             {#if ticket.stock.exchangeDelivered}{m.wr_stock_exchange_delivered()}<br />{/if}
-            {#if ticket.exchangeOrder}<a class="link" href={`/sales/orders/${ticket.exchangeOrder.id}`}>{m.bhx_phieu_bh_swk({ code: ticket.exchangeOrder.code, slip: ticket.exchangeOrder.warehouseSlipNo })}</a><br />{/if}
+            {#if ticket.exchangeOrder}{#if canOpen(`/sales/orders/${ticket.exchangeOrder.id}`)}<a class="link" href={`/sales/orders/${ticket.exchangeOrder.id}`}>{m.bhx_phieu_bh_swk({ code: ticket.exchangeOrder.code, slip: ticket.exchangeOrder.warehouseSlipNo })}</a>{:else}{m.bhx_phieu_bh_swk({ code: ticket.exchangeOrder.code, slip: ticket.exchangeOrder.warehouseSlipNo })}{/if}<br />{/if}
             {#if ticket.stock.defect}{m.wr_stock_defect_in({ warehouse: ticket.stock.defect.warehouseName })}
-            {:else if ticket.stock.returnSlip}<a class="link" href="/inventory/returns">{m.wr_stock_return_slip({ code: ticket.stock.returnSlip.code, warehouse: ticket.stock.returnSlip.warehouseName })}</a>
+            {:else if ticket.stock.returnSlip}{#if canOpen('/inventory/returns')}<a class="link" href="/inventory/returns">{m.wr_stock_return_slip({ code: ticket.stock.returnSlip.code, warehouse: ticket.stock.returnSlip.warehouseName })}</a>{:else}{m.wr_stock_return_slip({ code: ticket.stock.returnSlip.code, warehouse: ticket.stock.returnSlip.warehouseName })}{/if}
             {:else}<span class="muted">{m.wr_stock_no_slip()}</span>{/if}
-            <small><a class="link" href={`/inventory/movements?productId=${ticket.product.productId}`}>{m.the_kho()}</a> · {dateTime(ticket.stock.movedAt)}</small></dd></div>
+            <small>{#if canOpen('/inventory/movements')}<a class="link" href={`/inventory/movements?productId=${ticket.product.productId}`}>{m.the_kho()}</a> · {/if}{dateTime(ticket.stock.movedAt)}</small></dd></div>
         {/if}
         {#if ticket.receivable}
           <div><dt>{m.wr_receivable()}</dt><dd><b>{ticket.receivable.code}</b> · {vnd(ticket.receivable.amount)}
-            <small>{ticket.receivable.partnerCode} — {ticket.receivable.partnerName} · {m.wr_due_on({ date: date(ticket.receivable.dueDate) })} · <a class="link" href={`/receivables?search=${ticket.receivable.code}`}>{m.wr_open_receivable()}</a></small></dd></div>
+            <small>{ticket.receivable.partnerCode} — {ticket.receivable.partnerName} · {m.wr_due_on({ date: date(ticket.receivable.dueDate) })}{#if canOpen('/receivables')} · <a class="link" href={`/receivables?search=${ticket.receivable.code}`}>{m.wr_open_receivable()}</a>{/if}</small></dd></div>
         {/if}
         {#if ticket.returnedTo}<div><dt>{m.wr_returned_to()}</dt><dd>{ticket.returnedTo}</dd></div>{/if}
         {#if ticket.cancelReason}<div><dt>{m.wr_act_cancel()}</dt><dd>{ticket.cancelReason}</dd></div>{/if}
@@ -481,6 +509,41 @@
             <div class="row"><button class="btn primary" disabled={busy} onclick={() => act({ type: 'APPROVE', approved: true, note: optional(note) })}>{m.wr_approve()}</button><button class="btn" disabled={busy} onclick={() => act({ type: 'APPROVE', approved: false, note: optional(note) })}>{m.wr_reject()}</button></div>
           {:else}
             <p class="muted">{m.wr_waiting_director()}</p>
+          {/if}
+        {:else if ticket.status === 'AWAITING_ISSUE'}
+          {#if canIssue}
+            <p class="info-note">{m.wr_issue_note({ sku: ticket.product.sku, warehouse: issueInfo?.warehouse.name ?? '…', available: issueInfo?.available ?? '…' })}</p>
+            {#if issueShort && issueInfo}<p class="banner error"><CircleAlert size={16} />{m.wr_issue_no_stock({ warehouse: issueInfo.warehouse.name, available: issueInfo.available, sku: ticket.product.sku })}</p>{/if}
+            <div class="field"><label for="issue-keeper">{m.wr_issue_keeper()} <span class="req">*</span></label>
+              <select id="issue-keeper" bind:value={issueKeeperId} class:missing={!issueKeeperId}>
+                <option value="">{issueInfo && !issueInfo.keepers.length ? m.wr_issue_no_keeper() : m.wr_issue_keeper_pick()}</option>
+                {#each issueInfo?.keepers ?? [] as keeper}<option value={keeper.id}>{keeper.displayName}{keeper.title ? ` — ${keeper.title}` : ''}</option>{/each}
+              </select></div>
+            <div class="field"><label for="exchange-staff">{m.bhx_nguoi_phu_trach()} <span class="req">*</span></label><StaffSelect id="exchange-staff" bind:value={exchangeStaffId} options={staff} missing={!exchangeStaffId} placeholder={m.lp_chon_nguoi_phu_trach()} /><small class="hint">{m.bhx_nguoi_phu_trach_hint()}</small></div>
+            <div class="field"><label for="receiver">{m.wr_returned_to()}</label><input id="receiver" bind:value={receiverName} minlength="2" maxlength="120" /></div>
+            <div class="field">
+              <label for="return-slip">{m.wr_return_slip()}</label>
+              <SuggestInput id="return-slip" bind:value={returnSlipCode} options={returnSlipSuggestions} loading={returnSlipsLoading} uppercase maxlength={40}
+                placeholder={m.wr_return_slip_placeholder()} emptyText={m.wr_return_slip_none({ sku: ticket.product.sku })} toggleLabel={m.wr_mo_ds_phieu_tra()} />
+              <small class="hint">{m.wr_return_slip_hint()}</small>
+            </div>
+            <div class="field"><label for="issue-note">{m.wr_note()}</label><textarea id="issue-note" rows="2" bind:value={note}></textarea></div>
+            <button class="btn primary" disabled={busy || !issueKeeperId || !exchangeStaffId || issueShort} onclick={issueExchange}>{m.wr_issue_btn()}</button>
+          {:else}
+            <p class="muted">{m.wr_issue_waiting({ sku: ticket.product.sku })}</p>
+          {/if}
+          {#if isApprover}
+            <details class="delivered-before">
+              <summary>{m.wr_exchange_delivered()}</summary>
+              <p class="hint">{m.wr_issue_delivered_hint()}</p>
+              <div class="field"><label for="delivered-receiver">{m.wr_returned_to()}</label><input id="delivered-receiver" bind:value={receiverName} minlength="2" maxlength="120" /></div>
+              <div class="field">
+                <label for="delivered-return-slip">{m.wr_return_slip()}</label>
+                <SuggestInput id="delivered-return-slip" bind:value={returnSlipCode} options={returnSlipSuggestions} loading={returnSlipsLoading} uppercase maxlength={40}
+                  placeholder={m.wr_return_slip_placeholder()} emptyText={m.wr_return_slip_none({ sku: ticket.product.sku })} toggleLabel={m.wr_mo_ds_phieu_tra()} />
+              </div>
+              <button class="btn" disabled={busy || receiverName.trim().length < 2} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), exchangeDelivered: true, ...(returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}), note: optional(note) })}>{m.wr_issue_delivered_btn()}</button>
+            </details>
           {/if}
         {:else if !isStaff}
           <p class="muted">{m.wr_view_only()}</p>
@@ -542,16 +605,11 @@
           <div class="field"><label for="test-note">{m.wr_note()}</label><textarea id="test-note" rows="2" bind:value={note}></textarea></div>
           <button class="btn primary" disabled={busy} onclick={() => act({ type: 'TEST', ...checks, note: optional(note) })}>{m.wr_record_test()}</button>
         {:else if ticket.status === 'READY'}
-          {#if resolutionNow === 'EXCHANGED'}<p class="info-note">{m.wr_return_exchange_note({ sku: ticket.product.sku })} {m.bhx_tra_khach_ghi_chu()}</p>{/if}
           {#if resolutionNow === 'REFUNDED'}
             <p class="info-note">{m.wr_return_refund_note()}</p>
             <div class="field"><label for="refund">{m.wr_refund_amount()} <span class="req">*</span></label><NumberInput id="refund" bind:value={refundAmount} /><small class="hint">{vnd(refundAmount || 0)}</small></div>
           {/if}
-          {#if resolutionNow === 'EXCHANGED'}<label class="check"><input type="checkbox" bind:checked={exchangeDelivered} />{m.wr_exchange_delivered()}</label>{/if}
-          {#if exchangeSlipOnReturn}
-            <div class="field"><label for="exchange-staff">{m.bhx_nguoi_phu_trach()} <span class="req">*</span></label><StaffSelect id="exchange-staff" bind:value={exchangeStaffId} options={staff} missing={!exchangeStaffId} placeholder={m.lp_chon_nguoi_phu_trach()} /><small class="hint">{m.bhx_nguoi_phu_trach_hint()}</small></div>
-          {/if}
-          {#if resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED'}
+          {#if resolutionNow === 'REFUNDED'}
             <div class="field">
               <label for="return-slip">{m.wr_return_slip()}</label>
               <SuggestInput id="return-slip" bind:value={returnSlipCode} options={returnSlipSuggestions} loading={returnSlipsLoading} uppercase maxlength={40}
@@ -563,7 +621,7 @@
           <div class="field"><label for="receiver">{m.wr_returned_to()}</label><input id="receiver" bind:value={receiverName} required minlength="2" /></div>
           <div class="field"><label for="return-note">{m.wr_note()}</label><textarea id="return-note" rows="2" bind:value={note}></textarea></div>
           <p class="hint">{m.wr_return_signed_hint()}</p>
-          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount)) || (exchangeSlipOnReturn && !exchangeStaffId)} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}), ...(resolutionNow === 'EXCHANGED' && exchangeDelivered ? { exchangeDelivered: true } : {}), ...(exchangeSlipOnReturn ? staffPick(staff, exchangeStaffId) : {}), ...((resolutionNow === 'EXCHANGED' || resolutionNow === 'REFUNDED') && returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}) })}>{m.wr_return_btn()}</button>
+          <button class="btn primary" disabled={busy || receiverName.trim().length < 2 || (resolutionNow === 'REFUNDED' && !Number(refundAmount))} onclick={() => act({ type: 'RETURN', receiverName: receiverName.trim(), note: optional(note), ...(resolutionNow === 'REFUNDED' ? { refundAmount } : {}), ...(resolutionNow === 'REFUNDED' && returnSlipCode.trim() ? { returnSlipCode: returnSlipCode.trim() } : {}) })}>{m.wr_return_btn()}</button>
         {/if}
       </div>
     </article>
@@ -694,6 +752,13 @@
   .fault-name { display: block; color: var(--subtle); font-size: 11.5px; }
   .info-note { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--blue-soft); color: var(--navy); font-size: 13px; }
   .req { color: var(--red); }
+  /* Kế toán xuất phiếu BH & SWK đổi bảo hành (WAR-EXCH-02): ô chọn thủ kho cùng cỡ ô nhập; ghi hàng đổi đã giao trước gập lại. */
+  #issue-keeper { width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: inherit; font-size: 13.5px; }
+  #issue-keeper.missing { border-color: var(--red); }
+  .next .banner { margin: 0; }
+  .delivered-before { margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; }
+  .delivered-before summary { cursor: pointer; color: var(--muted); }
+  .delivered-before[open] { display: grid; gap: 10px; }
   /* Tên mã lỗi dài không đẩy khung rộng ra (điện thoại tràn ngang trước 05/11/2026). */
   .line select, .line input { width: 100%; min-width: 0; }
   .line select { min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: inherit; font-size: 13px; }

@@ -4,6 +4,9 @@
    * hoặc bấm mũi tên mở cả danh sách như ô chọn cũ. ↑↓ chọn, Enter lấy, Esc đóng. Khi không gõ, ô hiện đối tác đang chọn.
    * Dùng cả cho đại lý và sản phẩm ở form bảo hành (05/11/2026): `noneLabel` thêm dòng "không chọn" (VD khách lẻ nhập tay),
    * `describe` thay dòng phụ (trả chuỗi rỗng thì không hiện).
+   * Ô sản phẩm ở các form kho (PROD-PICK-01, 13/11/2026) dùng qua ProductPicker: `label` là aria-label khi ô nằm trong bảng
+   * (không có thẻ <label>); `floating` đặt danh sách theo màn hình (position: fixed) để khung bảng cuộn ngang không cắt mất,
+   * gần mép dưới thì mở lên trên.
    */
   import { m } from '$lib/paraglide/messages';
   import { tick } from 'svelte';
@@ -23,9 +26,12 @@
     noneLabel,
     describe = (option: T) => [option.phone, option.province].filter(Boolean).join(' · ') || '—',
     invalid = false,
+    label,
+    floating = false,
   }: {
     options: readonly T[]; value?: string; onchoose: (id: string) => void; id?: string; disabled?: boolean; loading?: boolean;
     placeholder?: string; emptyText?: string; toggleLabel?: string; noneLabel?: string; describe?: (option: T) => string; invalid?: boolean;
+    label?: string; floating?: boolean;
   } = $props();
 
   let query = $state('');
@@ -34,6 +40,31 @@
   let active = $state(0);
   let input = $state<HTMLInputElement>();
   let list = $state<HTMLUListElement>();
+  let root = $state<HTMLDivElement>();
+  /** Vị trí danh sách khi `floating` (tính theo khung nhìn). */
+  let place = $state('');
+
+  function reposition() {
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 300), window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - 8 - width));
+    const below = window.innerHeight - rect.bottom - 12;
+    const above = rect.top - 12;
+    const up = below < 200 && above > below;
+    const height = Math.max(120, Math.min(320, up ? above : below));
+    place = `position:fixed;left:${left}px;right:auto;width:${width}px;max-height:${height}px;${up ? `top:auto;bottom:${window.innerHeight - rect.top + 4}px` : `top:${rect.bottom + 4}px`}`;
+  }
+  $effect(() => {
+    if (!open || !floating) return;
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  });
 
   /** Dòng "không chọn" đứng đầu danh sách khi chưa gõ gì. */
   const NONE = { id: '', code: '', name: '' } as unknown as T;
@@ -77,10 +108,13 @@
   }
 </script>
 
-<div class="picker" class:open>
+<div class="picker" class:open bind:this={root}>
   <input
+    bind:this={input}
+    class="input"
     {id}
     {disabled}
+    aria-label={label}
     value={shown}
     placeholder={selected ? customerLabel(selected) : placeholder}
     aria-invalid={invalid}
@@ -98,7 +132,7 @@
   <button type="button" class="toggle" tabindex="-1" aria-label={toggleLabel} {disabled}
     onmousedown={(event) => { event.preventDefault(); if (open) close(); else { input?.focus(); openList(); } }}><ChevronDown size={16} /></button>
   {#if open}
-    <ul id={`${id}-list`} bind:this={list} role="listbox">
+    <ul id={`${id}-list`} bind:this={list} role="listbox" aria-label={label} style={floating ? place : undefined}>
       {#each results as option, position (option.id)}
         <li role="option" aria-selected={option.id === value} class:active={position === active} class:current={option.id === value}
           onmousedown={(event) => { event.preventDefault(); choose(option); }} onmousemove={() => (active = position)}>

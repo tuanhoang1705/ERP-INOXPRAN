@@ -5,6 +5,7 @@
   import { CircleAlert, CircleCheck, Plus, X } from 'lucide-svelte';
   import { api } from '$lib/api';
   import NumberInput from '$lib/components/NumberInput.svelte';
+  import ProductPicker from '$lib/components/ProductPicker.svelte';
 
   type TransferLine = {
     productId: string;
@@ -138,7 +139,7 @@
             {@const product = productFor(line.productId)}
             {@const balance = balanceFor(line.productId)}
             <tr>
-              <td><select class="input product" aria-label={m.san_pham_dong({ p0: index + 1 })} bind:value={line.productId}><option value="">{m.chon_ma_hang()}</option>{#each products as item}<option value={item.id}>{item.sku} — {item.name}</option>{/each}</select></td>
+              <td class="product"><ProductPicker id={`tr-product-${index + 1}`} label={m.san_pham_dong({ p0: index + 1 })} {products} value={line.productId} onchoose={(id) => (line.productId = id)} loading={!products.length} /></td>
               <td class="num" class:bad={Number(line.quantity) > Number(balance?.available ?? 0)}>{product ? `${balance?.available ?? '0'} ${product.baseUnit.toLowerCase()}` : ''}</td>
               <td class="num"><NumberInput class="input qty" decimals={4} aria-label={m.so_luong_dong({ p0: index + 1 })} bind:value={line.quantity} /></td>
               <td><input class="input loc" aria-label={m.vi_tri_nguon_dong({ p0: index + 1 })} maxlength="40" bind:value={line.fromLocationCode} placeholder={m.vd_vi_tri_a1_01()} /></td>

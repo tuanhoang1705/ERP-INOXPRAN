@@ -48,7 +48,8 @@
   let saving = $state(false);
   const mode = $derived<Kind>(editing ? (editing.kind === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER') : kind);
   const customer = $derived(mode === 'CUSTOMER');
-  const active = $derived(warehouses.filter((row) => row.active));
+  // WH-SAMPLE-02 (12/11/2026): kho hàng mẫu cũng chọn được; kho bán hàng đứng trước để là kho mặc định.
+  const active = $derived(warehouses.filter((row) => row.active).sort((a, b) => Number(a.purpose === 'SAMPLE') - Number(b.purpose === 'SAMPLE')));
   /** Mã đã ngừng kinh doanh vẫn hiện được khi sửa phiếu cũ. */
   const productOptions = $derived.by(() => {
     const extra = (editing?.lines ?? []).filter((line) => !products.some((row) => row.id === line.productId)).map((line) => ({ id: line.productId, sku: line.sku, name: line.productName, baseUnit: line.unit }));

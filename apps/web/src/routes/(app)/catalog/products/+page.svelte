@@ -17,6 +17,7 @@
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
   import CategoryPurgeDialog from '$lib/components/CategoryPurgeDialog.svelte';
   import { session } from '$lib/session.svelte';
+  import { canOpen } from '$lib/visibility';
   import Dialog from '$lib/components/Dialog.svelte';
   import RecordDialog, { type RecordValues } from '$lib/components/RecordDialog.svelte';
 
@@ -184,7 +185,7 @@
     <p class="page-sub">{all} {m.ma_hang_inoxpran_theo_bang_bao()}</p>
   </div>
   <div class="actions">
-    <a class="btn" href="/pricing">{m.xem_bang_gia_theo_cap()}</a>
+    {#if canOpen('/pricing')}<a class="btn" href="/pricing">{m.xem_bang_gia_theo_cap()}</a>{/if}
     {#if editable}
       <button class="btn" onclick={() => (categoriesOpen = true)}><FolderTree size={16} />{m.crud_quan_ly_nhom()}</button>
       <button class="btn primary" onclick={() => openProduct(null)}><Plus size={16} />{m.crud_them_san_pham()}</button>

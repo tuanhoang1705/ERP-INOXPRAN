@@ -11,6 +11,7 @@
   import { categoryLabel, movementCategory } from '$lib/inventory';
   import { initialPageSize, rememberPageSize, type Paged } from '$lib/paging';
   import Pagination from '$lib/components/Pagination.svelte';
+  import ProductPicker from '$lib/components/ProductPicker.svelte';
 
   type Movement = {
     id: string; movementType: string; direction: 'IN' | 'OUT'; quantity: string; referenceType: string; referenceId: string;
@@ -19,6 +20,7 @@
     lineNote?: string; correctionOf?: string;
   };
   let products = $state<Product[]>([]);
+  let loaded = $state(false);
   let productId = $state('');
   /** Thẻ kho của một kho (vd mở từ danh sách kho hàng lỗi — INV-DEF-LIST-01); trống = mọi kho. */
   let warehouses = $state<Warehouse[]>([]);
@@ -65,6 +67,7 @@
   }
   onMount(async () => {
     [products, warehouses] = await Promise.all([api<Product[]>('/products').catch(() => []), api<Warehouse[]>('/warehouses').catch(() => [])]);
+    loaded = true;
     productId = page.url.searchParams.get('productId') ?? products[0]?.id ?? '';
     warehouseId = page.url.searchParams.get('warehouseId') ?? '';
     await load();
@@ -96,9 +99,7 @@
 
 <section class="card filters">
   <div class="field"><label for="product">{m.san_pham()}</label>
-    <select id="product" value={productId} onchange={(event) => choose(event.currentTarget.value)}>
-      {#each products as item}<option value={item.id}>{item.sku} — {item.name}</option>{/each}
-    </select>
+    <ProductPicker id="product" {products} value={productId} onchoose={(id) => { if (id !== productId) choose(id); }} loading={!loaded} floating={false} />
   </div>
   <div class="field"><label for="movement-warehouse">{m.kho()}</label>
     <select id="movement-warehouse" value={warehouseId} onchange={(event) => choose(productId, event.currentTarget.value)}>

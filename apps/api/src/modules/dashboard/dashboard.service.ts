@@ -4,9 +4,9 @@ import Decimal from 'decimal.js';
 import type { Db, Document, ObjectId } from 'mongodb';
 import { decimalString, vnMonthStart, vnParts } from '../../common/domain';
 import { MONGO_DATABASE } from '../../common/tokens';
-import { defectiveWarehouseIds } from '../../common/warehouses';
+import { defectiveWarehouseIds, sampleWarehouseIds } from '../../common/warehouses';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
-import { orderParty, SALE_ONLY_FILTER, slipTypeOf } from '@inoxpran/contracts';
+import { canSeeArea, orderParty, SALE_ONLY_FILTER, slipTypeOf, type Area } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import type { RequestUser } from '../../common/request-context';
 import { salesOrderScope } from '../sales/keeper-scope';
@@ -15,6 +15,11 @@ import { openWarrantyTickets, ticketSla, warrantySettings } from '../warranty/wa
 const DAY_MS = 86_400_000;
 const DISTRIBUTOR_TIER = 'TIER_1';
 const NET_AMOUNT = { $ifNull: ['$netTotal', { $subtract: ['$subtotal', '$discountTotal'] }] };
+
+/** Khối bị ẩn với người xem (VIS-ROLE-01): không chạy truy vấn, trả giá trị rỗng. */
+function when<T>(flag: boolean, run: () => Promise<T>, empty: T): Promise<T> {
+  return flag ? run() : Promise.resolve(empty);
+}
 
 function formatVnd(value: Decimal | string): string {
   return `${new Decimal(value).toDecimalPlaces(0).toNumber().toLocaleString('vi-VN')} đ`;
@@ -26,7 +31,18 @@ export class DashboardService {
 
   async summary(page = 1, pageSize = 5, user?: RequestUser): Promise<DashboardSummary> {
     // "Đơn hàng mới nhất": phiếu đã hủy chỉ quản trị gốc thấy (DOC-HIDE-01 — nằm trong salesOrderScope; Admin thường cũng không thấy).
-    const recentScope: Document = user ? salesOrderScope(user) : { status: { $ne: 'CANCELLED' } };
+    // Phiếu xuất hàng mẫu do thủ kho lập (SWK-M — SAMPLE-ISSUE-01) không thuộc luồng phiếu BH → không vào "phiếu lập gần đây".
+    const recentScope: Document = { ...(user ? salesOrderScope(user) : { status: { $ne: 'CANCELLED' } }), warehouseIssued: { $ne: true } };
+    // Mỗi tài khoản chỉ thấy khối liên quan đến công việc của mình (VIS-ROLE-01, 13/11/2026); không có người dùng = đủ khối.
+    const see = (area: Area) => !user || canSeeArea(user, area);
+    const visible = {
+      revenue: see('dashboard.revenue'),
+      receivables: see('dashboard.receivables'),
+      inventoryValue: see('dashboard.inventoryValue'),
+      lowStock: see('inventory.stock'),
+      approvals: see('dashboard.approvals'),
+      recentOrders: see('sales.orderDetail'),
+    };
     const now = new Date();
     const { year, month } = vnParts(now);
     const monthStarts = Array.from({ length: 7 }, (_, index) => vnMonthStart(year, month - 5 + index));
@@ -35,14 +51,20 @@ export class DashboardService {
     const safePage = Math.max(1, Math.floor(page));
     const safeSize = Math.min(50, Math.max(1, Math.floor(pageSize)));
     // So sánh cùng kỳ: từ đầu tháng trước đến cùng mốc thời gian đã trôi qua của tháng này.
+    // DB-CMP-01 (14/11/2026): thẻ Doanh số tháng + biểu đồ giữ theo ngày giao (AR-DLV-01). Riêng phép so cùng kỳ: phiếu bán ĐÃ GIAO cộng theo
+    // NGÀY CHỨNG TỪ (orderDate), kể cả phiếu nhập bù — không theo ngày thao tác hệ thống (ngày bấm giao / ngày lập trên ERP) — cả hai vế:
+    // kỳ này = chứng từ từ ngày 1 đến hết hôm nay; cùng kỳ = chứng từ từ ngày 1 đến hết ngày cùng số của tháng trước.
     const thisMonthStart = monthStarts[5] as Date;
     const previousMonthStart = monthStarts[4] as Date;
     // Tính trọn ngày: từ ngày 1 đến hết ngày cùng số ngày của tháng trước.
     const elapsedDays = vnParts(now).day;
     const previousToDate = new Date(Math.min(previousMonthStart.getTime() + elapsedDays * DAY_MS, thisMonthStart.getTime()));
+    const currentToDate = new Date(thisMonthStart.getTime() + elapsedDays * DAY_MS);
 
     // Kho hàng lỗi không tính vào giá trị tồn và cảnh báo dưới định mức.
     const defective = await defectiveWarehouseIds(this.db);
+    // Kho hàng mẫu (WH-SAMPLE-01) không cảnh báo dưới định mức (vẫn tính vào giá trị tồn — là tài sản công ty).
+    const notForSale = [...defective, ...(await sampleWarehouseIds(this.db))];
     const [
       monthlyRows,
       pendingApprovalOrders,
@@ -57,8 +79,10 @@ export class DashboardService {
       expiringPromotions,
       previousToDateRows,
       collectedRows,
+      firstOrder,
+      currentToDateRows,
     ] = await Promise.all([
-      this.db.collection('sales_orders').aggregate([
+      when(visible.revenue, () => this.db.collection('sales_orders').aggregate([
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
         {
           $group: {
@@ -67,16 +91,16 @@ export class DashboardService {
             revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } },
           },
         },
-      ]).toArray(),
-      this.db.collection('sales_orders').countDocuments({ status: 'PENDING_APPROVAL' }),
-      this.db.collection('approval_requests').countDocuments({
+      ]).toArray(), [] as Document[]),
+      when(visible.approvals, () => this.db.collection('sales_orders').countDocuments({ status: 'PENDING_APPROVAL' }), 0),
+      when(visible.approvals, () => this.db.collection('approval_requests').countDocuments({
         status: 'PENDING',
         entityType: 'SalesOrder',
         requestedAt: { $lt: new Date(now.getTime() - DAY_MS) },
-      }),
-      this.inventoryAtDistributorPrice(defective, now),
-      this.db.collection('inventory_balances').aggregate([
-        { $match: { warehouseId: { $nin: defective } } },
+      }), 0),
+      when(visible.inventoryValue, () => this.inventoryAtDistributorPrice(defective, now), { total: new Decimal(0), fallbackSkus: 0 }),
+      when(visible.lowStock || visible.inventoryValue, () => this.db.collection('inventory_balances').aggregate([
+        { $match: { warehouseId: { $nin: notForSale } } },
         { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: 'product' } },
         { $unwind: '$product' },
         { $match: { 'product.status': 'ACTIVE', 'product.minimumStock': { $gt: 0 } } },
@@ -84,42 +108,49 @@ export class DashboardService {
         { $match: { $expr: { $lte: ['$available', '$product.minimumStock'] } } },
         { $addFields: { ratio: { $cond: [{ $gt: ['$product.minimumStock', 0] }, { $divide: ['$available', '$product.minimumStock'] }, 0] } } },
         { $sort: { ratio: 1 } },
-      ]).toArray(),
-      this.db.collection('receivables').aggregate([
+      ]).toArray(), [] as Document[]),
+      when(visible.receivables, () => this.db.collection('receivables').aggregate([
         { $match: { dueDate: { $lt: now }, status: { $in: OPEN_RECEIVABLE_STATUSES } } },
         { $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
-      ]).toArray(),
-      this.db.collection('receivables').distinct('partnerId', {
+      ]).toArray(), [] as Document[]),
+      when(visible.receivables, () => this.db.collection('receivables').distinct('partnerId', {
         dueDate: { $lt: overdue30Boundary },
         status: { $in: OPEN_RECEIVABLE_STATUSES },
-      }).then((ids) => ids.length),
-      this.db.collection('receivables').aggregate([
+      }).then((ids) => ids.length), 0),
+      when(visible.receivables, () => this.db.collection('receivables').aggregate([
         { $match: { dueDate: { $lt: overdue60Boundary }, status: { $in: OPEN_RECEIVABLE_STATUSES } } },
         { $group: { _id: '$partnerId', total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
         { $lookup: { from: 'partners', localField: '_id', foreignField: '_id', as: 'partner' } },
         { $unwind: '$partner' },
         { $sort: { total: -1 } },
-      ]).toArray(),
+      ]).toArray(), [] as Document[]),
       // Phiếu lập gần nhất lên đầu (cả nháp lẫn đã xuất), không theo ngày chứng từ.
-      this.db.collection('sales_orders').find(recentScope)
+      when(visible.recentOrders, () => this.db.collection('sales_orders').find(recentScope)
         .sort({ createdAt: -1, _id: -1 })
         .skip((safePage - 1) * safeSize)
         .limit(safeSize)
-        .toArray(),
-      this.db.collection('sales_orders').countDocuments(recentScope),
-      this.db.collection('promotions').find({
+        .toArray(), [] as Document[]),
+      when(visible.recentOrders, () => this.db.collection('sales_orders').countDocuments(recentScope), 0),
+      when(see('pricing.manage'), () => this.db.collection('promotions').find({
         status: 'ACTIVE',
         validTo: { $gte: now, $lte: new Date(now.getTime() + 7 * DAY_MS) },
-      }).sort({ validTo: 1 }).toArray(),
-      this.db.collection('sales_orders').aggregate([
-        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: previousMonthStart, $lt: previousToDate } } },
+      }).sort({ validTo: 1 }).toArray(), [] as Document[]),
+      when(visible.revenue, () => this.db.collection('sales_orders').aggregate([
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: previousMonthStart, $lt: previousToDate } } },
         { $group: { _id: null, revenue: { $sum: NET_AMOUNT }, revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
-      ]).toArray(),
+      ]).toArray(), [] as Document[]),
       // Đã thu trong tháng (DB-REV-02): phiếu thu theo ngày thu; phí VC khách trả hộ, giảm nợ trả hàng và bù trừ không phải tiền thu.
-      this.db.collection('payments').aggregate([
+      when(visible.receivables, () => this.db.collection('payments').aggregate([
         { $match: { status: 'POSTED', kind: { $nin: ['FREIGHT', 'RETURN', 'OFFSET'] }, receivedAt: { $gte: thisMonthStart, $lt: monthStarts[6] } } },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 }, payNow: { $sum: { $cond: [{ $eq: ['$autoPayNow', true] }, '$amount', 0] } } } },
-      ]).toArray(),
+      ]).toArray(), [] as Document[]),
+      // Mốc bắt đầu có dữ liệu doanh số (DB-CMP-01): ngày chứng từ sớm nhất của phiếu bán còn hiệu lực trên hệ thống.
+      when(visible.revenue, () => this.db.collection('sales_orders').find({ ...SALE_ONLY_FILTER, status: { $ne: 'CANCELLED' }, orderDate: { $type: 'date' } }, { projection: { orderDate: 1 } }).sort({ orderDate: 1 }).limit(1).next(), null as Document | null),
+      // Kỳ này của phép so cùng kỳ (DB-CMP-01): phiếu bán đã giao, ngày chứng từ từ ngày 1 đến hết hôm nay.
+      when(visible.revenue, () => this.db.collection('sales_orders').aggregate([
+        { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: thisMonthStart, $lt: currentToDate } } },
+        { $group: { _id: null, revenue: { $sum: NET_AMOUNT }, revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
+      ]).toArray(), [] as Document[]),
     ]);
 
     const revenueByMonth = new Map(monthlyRows.map((row) => [String(row._id), decimalString(row.revenue)]));
@@ -141,11 +172,23 @@ export class DashboardService {
     const revenueThisMonth = new Decimal(revenueByMonth.get(monthKeys[5]?.key ?? '') ?? '0');
     const revenuePreviousMonth = new Decimal(revenueByMonth.get(monthKeys[4]?.key ?? '') ?? '0');
     const revenuePreviousToDate = new Decimal(decimalString(previousToDateRows[0]?.revenue ?? '0'));
+    const revenueCurrentToDate = new Decimal(decimalString(currentToDateRows[0]?.revenue ?? '0'));
+    const revenueCurrentToDateGross = new Decimal(decimalString(currentToDateRows[0]?.revenueGross ?? '0'));
     // Doanh số gồm VAT (03/11/2026): ô chính của bảng điều khiển.
     const previousKey = `${vnParts(previousMonthStart).year}-${String(vnParts(previousMonthStart).month).padStart(2, '0')}`;
     const revenuePreviousMonthGross = new Decimal(grossByMonth.get(previousKey) ?? '0');
     const revenuePreviousToDateGross = new Decimal(decimalString(previousToDateRows[0]?.revenueGross ?? '0'));
     const previousMonthNumber = vnParts(previousMonthStart).month;
+    // DB-CMP-01: chỉ so khi dữ liệu trên hệ thống phủ trọn khoảng cùng kỳ — ngày chứng từ sớm nhất không muộn hơn ngày 1 tháng trước;
+    // đã qua ít nhất 4 ngày của tháng; cùng kỳ có doanh số. Thiếu điều kiện nào thì không hiện % (thẻ chỉ ghi "Tháng N đạt …").
+    // Phiếu chưa giao (đang giữ hàng / đã xuất chờ giao) chưa tính ở cả hai vế — như thẻ doanh số.
+    const firstDocumentDate = firstOrder?.orderDate instanceof Date ? firstOrder.orderDate : null;
+    const previousComplete = !firstDocumentDate || firstDocumentDate.getTime() < previousMonthStart.getTime() + DAY_MS;
+    const comparedDays = Math.round((previousToDate.getTime() - previousMonthStart.getTime()) / DAY_MS);
+    const revenueComparisonNote: DashboardSummary['revenueComparisonNote'] = elapsedDays <= 3 ? 'EARLY_MONTH'
+      : !previousComplete ? 'PREVIOUS_INCOMPLETE'
+      : revenuePreviousToDateGross.gt(0) ? null : 'NO_PREVIOUS';
+    const dataStartDate = firstDocumentDate ? (() => { const parts = vnParts(firstDocumentDate); return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`; })() : null;
     const overdue = new Decimal(decimalString(overdueRows[0]?.total ?? '0'));
 
     const alerts: DashboardSummary['alerts'] = [];
@@ -168,7 +211,7 @@ export class DashboardService {
       });
     }
     const lowest = lowStockRows[0] as (Document & { product: Document; available: unknown }) | undefined;
-    if (lowest) {
+    if (lowest && visible.lowStock) {
       alerts.push({
         id: 'low-stock',
         level: 'WARNING',
@@ -220,7 +263,7 @@ export class DashboardService {
       });
     }
     // Phiếu bảo hành quá hẹn trả — người phụ trách bảo hành (nhân viên, Quản lý kho) và Giám đốc (xem).
-    if (user?.roles.some((role) => ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUSE_MANAGER'].includes(role))) {
+    if (user?.root || user?.roles.some((role) => ['ADMIN', 'DIRECTOR', 'WARRANTY', 'WAREHOUSE_MANAGER'].includes(role))) {
       const settings = await warrantySettings(this.db);
       const overdueWarranty = (await openWarrantyTickets(this.db)).filter((ticket) => ticketSla(ticket, settings, now).tone === 'overdue').length;
       if (overdueWarranty > 0) {
@@ -245,15 +288,19 @@ export class DashboardService {
       collectedCount: Number(collected?.count ?? 0),
       collectedPayNow: new Decimal(decimalString(collected?.payNow ?? '0')).toFixed(2),
       revenuePreviousMonth: revenuePreviousMonth.toFixed(2),
-      // 3 ngày đầu tháng số liệu quá ít để so sánh có ý nghĩa.
-      revenueChangePercent: elapsedDays > 3 && revenuePreviousToDate.gt(0)
-        ? revenueThisMonth.minus(revenuePreviousToDate).div(revenuePreviousToDate).mul(100).toDecimalPlaces(1).toNumber()
+      // 3 ngày đầu tháng số liệu quá ít để so sánh có ý nghĩa; tháng trước chưa đủ dữ liệu cũng không so (DB-CMP-01).
+      revenueChangePercent: elapsedDays > 3 && previousComplete && revenuePreviousToDate.gt(0)
+        ? revenueCurrentToDate.minus(revenuePreviousToDate).div(revenuePreviousToDate).mul(100).toDecimalPlaces(1).toNumber()
         : null,
       revenuePreviousMonthGross: revenuePreviousMonthGross.toFixed(2),
-      revenueGrossChangePercent: elapsedDays > 3 && revenuePreviousToDateGross.gt(0)
-        ? revenueThisMonthGross.minus(revenuePreviousToDateGross).div(revenuePreviousToDateGross).mul(100).toDecimalPlaces(1).toNumber()
+      revenueGrossChangePercent: revenueComparisonNote === null
+        ? revenueCurrentToDateGross.minus(revenuePreviousToDateGross).div(revenuePreviousToDateGross).mul(100).toDecimalPlaces(1).toNumber()
         : null,
-      revenueComparisonLabel: `cùng kỳ tháng ${previousMonthNumber}`,
+      revenueComparisonLabel: `cùng kỳ 1–${comparedDays}/${previousMonthNumber}`,
+      revenueComparisonNote,
+      dataStartDate,
+      revenueComparisonCurrentGross: revenueCurrentToDateGross.toFixed(2),
+      revenueComparisonPreviousGross: revenuePreviousToDateGross.toFixed(2),
       pendingApprovalOrders,
       pendingOver24h,
       inventoryValue: inventoryRows.total.toFixed(2),
@@ -278,6 +325,7 @@ export class DashboardService {
         version: Number(order.version),
       })),
       recentOrdersTotal,
+      visible,
       alerts,
     };
   }

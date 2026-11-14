@@ -8,7 +8,7 @@
   import { m } from '$lib/paraglide/messages';
   import { vatLabel } from '$shared/sales-math';
   import { salesIssueTemplate } from '$shared/sales-templates';
-  import { isNonSalePurpose, PURPOSE_TITLE_VI } from '$shared/sales-purpose';
+  import { isNonSalePurpose, PURPOSE_TITLE_VI, recipientAddressOf } from '$shared/sales-purpose';
   import { zeroPriceKindOf, ZERO_PRICE_LABEL_VI } from '$shared/sales-line-kind';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
@@ -143,11 +143,11 @@
         {#if order.purpose === 'GIFT'}
           <tr><th>Nhân viên phụ trách:</th><td colspan="3">{order.salesRepName ?? ''}</td></tr>
           <tr><th>Tặng cho:</th><td colspan="3">{order.destination ?? ''}</td></tr>
-          <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
-          <tr><th>Ghi chú:</th><td colspan="3">Hàng tặng — không tính tiền, không thu hồi.</td></tr>
+          <tr><th>Địa chỉ:</th><td colspan="3">{recipientAddressOf(order)}</td></tr>
         {:else}
           <tr><th>Người mượn hàng:</th><td colspan="3">{order.salesRepName ?? ''}</td></tr>
           <tr><th>Gửi tới:</th><td colspan="3">{order.destination ?? ''}</td></tr>
+          {#if order.recipientAddress}<tr><th>Địa chỉ:</th><td colspan="3">{order.recipientAddress}</td></tr>{/if}
           <tr><th>Hẹn trả:</th><td colspan="3">{order.expectedReturnDate ? order.expectedReturnDate.split('-').reverse().join('/') : ''}</td></tr>
           <tr><th>Diễn giải:</th><td colspan="3">{order.description ?? ''}</td></tr>
           <tr><th>Ghi chú:</th><td colspan="3">Hàng không bán — không tính tiền. Mang về nhập lại kho theo phiếu này.</td></tr>

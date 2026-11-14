@@ -358,7 +358,7 @@ export class StockCountsService {
       const balances = await this.db.collection('inventory_balances').find({ warehouseId: { $in: warehouseIds }, productId: product._id }, { session }).toArray();
       let targetWarehouse = row.scope === 'ALL' ? (input.warehouseId ? toObjectId(input.warehouseId, 'warehouseId') : null) : (row.warehouseId as ObjectId);
       if (!targetWarehouse) {
-        const main = await this.db.collection('warehouses').findOne({ _id: { $in: warehouseIds }, purpose: { $ne: 'DEFECTIVE' } }, { session, sort: { code: 1 } });
+        const main = await this.db.collection('warehouses').findOne({ _id: { $in: warehouseIds }, purpose: { $nin: ['DEFECTIVE', 'SAMPLE'] } }, { session, sort: { code: 1 } });
         targetWarehouse = (main?._id as ObjectId | undefined) ?? warehouseIds[0]!;
       }
       if (!warehouseIds.some((value) => value.equals(targetWarehouse!))) {

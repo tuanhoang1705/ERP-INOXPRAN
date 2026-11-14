@@ -15,6 +15,7 @@
   import { partnerStatus, purchaseStatus, receivableStatus, salesStatus, tierLabel } from '$lib/labels';
   import { can } from '$lib/permissions';
   import { session } from '$lib/session.svelte';
+  import { canOpen, canSee } from '$lib/visibility';
   import { statusText as warrantyStatusText, statusTone as warrantyTone } from '$lib/warranty';
   import ConfirmDelete from '$lib/components/ConfirmDelete.svelte';
   import Dialog from '$lib/components/Dialog.svelte';
@@ -30,10 +31,11 @@
   import RelatedTable from './RelatedTable.svelte';
   import CustomerPricesPanel from '$lib/components/CustomerPricesPanel.svelte';
 
+  /** Dư nợ / doanh số / tổng mua không có khi tài khoản không xem Công nợ khách / đơn mua (VIS-ROLE-01, 13/11/2026). */
   type Summary = {
-    outstanding: string; overdue: string; revenueTotal: string; revenueYearToDate: string; orderCount: number;
+    outstanding?: string; overdue?: string; revenueTotal?: string; revenueYearToDate?: string; orderCount: number;
     lastOrder: { id: string; code: string; date: string } | null;
-    purchaseOrderCount: number; purchaseTotal: string; lastPurchaseAt: string | null;
+    purchaseOrderCount: number; purchaseTotal?: string; lastPurchaseAt: string | null;
     nextFollowUp: { on: string; note?: string } | null;
   };
   type Detail = Partner & { regionName?: string; summary: Summary };
@@ -249,12 +251,13 @@
     { id: 'activities', label: m.crm_nhat_ky_cham_soc(), hidden: !isCustomer },
     { id: 'addresses', label: m.crm_dia_chi_nhan_hang(), badge: addresses.length, hidden: !isCustomer },
     { id: 'bank', label: m.crm_ngan_hang(), badge: banks.length },
-    { id: 'sales', label: m.crm_lich_su_ban(), badge: partner?.summary.orderCount, hidden: !isCustomer },
+    // Tab sang phần việc khác chỉ hiện khi tài khoản xem được phần đó (VIS-ROLE-01, 13/11/2026).
+    { id: 'sales', label: m.crm_lich_su_ban(), badge: partner?.summary.orderCount, hidden: !isCustomer || !canSee('sales.orderDetail') },
     // Giá riêng từng khách (PRI-CUST-01): kế toán / Admin sửa, người khác xem.
-    { id: 'prices', label: m.gr_tab(), badge: priceCount, hidden: !isCustomer },
-    { id: 'receivables', label: m.crm_cong_no(), hidden: !isCustomer },
-    { id: 'warranty', label: m.crm_bao_hanh(), hidden: !isCustomer },
-    { id: 'purchases', label: m.crm_don_mua(), badge: partner?.summary.purchaseOrderCount, hidden: isCustomer },
+    { id: 'prices', label: m.gr_tab(), badge: priceCount, hidden: !isCustomer || !canSee('pricing.priceList') },
+    { id: 'receivables', label: m.crm_cong_no(), hidden: !isCustomer || !canSee('receivables') },
+    { id: 'warranty', label: m.crm_bao_hanh(), hidden: !isCustomer || !canSee('warranty') },
+    { id: 'purchases', label: m.crm_don_mua(), badge: partner?.summary.purchaseOrderCount, hidden: isCustomer || !(canSee('inventory.purchases') || canSee('payables')) },
     { id: 'attachments', label: m.rw_dinh_kem(), badge: attachmentCount },
     { id: 'history', label: m.rw_lich_su() },
   ]);
@@ -323,15 +326,17 @@
 
       {#if isCustomer}
         <div class="kpis">
-          <div class="card kpi"><p class="label">{m.crm_doanh_so_nam()}</p><p class="value">{vnd(partner.summary.revenueYearToDate)}</p><p class="note">{m.crm_tong_doanh_so()} {vnd(partner.summary.revenueTotal)}</p></div>
-          <div class="card kpi"><p class="label">{m.crm_du_no()}</p><p class="value">{vnd(partner.summary.outstanding)}</p><p class="note" class:danger={Number(partner.summary.overdue) > 0}>{m.crm_qua_han()} {vnd(partner.summary.overdue)}</p></div>
-          <div class="card kpi"><p class="label">{m.crm_don_gan_nhat()}</p><p class="value">{#if partner.summary.lastOrder}<a class="link" href={`/sales/orders/${partner.summary.lastOrder.id}`}>{partner.summary.lastOrder.code}</a>{:else}—{/if}</p><p class="note">{partner.summary.lastOrder ? date(partner.summary.lastOrder.date) : m.crm_chua_mua_hang()}</p></div>
+          {#if partner.summary.outstanding !== undefined}
+          <div class="card kpi"><p class="label">{m.crm_doanh_so_nam()}</p><p class="value">{vnd(partner.summary.revenueYearToDate ?? '0')}</p><p class="note">{m.crm_tong_doanh_so()} {vnd(partner.summary.revenueTotal ?? '0')}</p></div>
+          <div class="card kpi"><p class="label">{m.crm_du_no()}</p><p class="value">{vnd(partner.summary.outstanding)}</p><p class="note" class:danger={Number(partner.summary.overdue) > 0}>{m.crm_qua_han()} {vnd(partner.summary.overdue ?? '0')}</p></div>
+          {/if}
+          <div class="card kpi"><p class="label">{m.crm_don_gan_nhat()}</p><p class="value">{#if partner.summary.lastOrder}{#if canOpen(`/sales/orders/${partner.summary.lastOrder.id}`)}<a class="link" href={`/sales/orders/${partner.summary.lastOrder.id}`}>{partner.summary.lastOrder.code}</a>{:else}{partner.summary.lastOrder.code}{/if}{:else}—{/if}</p><p class="note">{partner.summary.lastOrder ? date(partner.summary.lastOrder.date) : m.crm_chua_mua_hang()}</p></div>
           <div class="card kpi"><p class="label">{m.crm_hen_tiep_theo()}</p><p class="value">{partner.summary.nextFollowUp ? date(partner.summary.nextFollowUp.on) : '—'}</p><p class="note">{partner.summary.nextFollowUp?.note ?? m.crm_chua_hen()}</p></div>
         </div>
       {:else}
         <div class="kpis three">
           <div class="card kpi"><p class="label">{m.crm_so_don_mua()}</p><p class="value">{num(partner.summary.purchaseOrderCount)}</p></div>
-          <div class="card kpi"><p class="label">{m.crm_tong_mua()}</p><p class="value">{vnd(partner.summary.purchaseTotal)}</p></div>
+          {#if partner.summary.purchaseTotal !== undefined}<div class="card kpi"><p class="label">{m.crm_tong_mua()}</p><p class="value">{vnd(partner.summary.purchaseTotal)}</p></div>{/if}
           <div class="card kpi"><p class="label">{m.crm_lan_mua_gan_nhat()}</p><p class="value">{partner.summary.lastPurchaseAt ? date(partner.summary.lastPurchaseAt) : '—'}</p></div>
         </div>
       {/if}

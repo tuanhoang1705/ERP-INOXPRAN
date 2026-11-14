@@ -1,8 +1,10 @@
 /**
  * Ô tìm chức năng (NAV-02, 09/10/2026): mọi màn hình trong menu + các thao tác nhanh ngoài menu,
  * lọc theo vai trò / quản trị gốc giống menu, tìm không phân biệt dấu và hoa thường.
+ * Từ 13/11/2026 (VIS-ROLE-01) lọc thêm theo vùng hiển thị của đường dẫn — không gợi ý phần không thuộc công việc của tài khoản.
  */
 import { foldText } from '$shared/text';
+import { canSeeArea, canSeePath, type Area } from '$shared/visibility';
 import { m } from '$lib/paraglide/messages';
 import type { NavSection } from '$lib/nav';
 
@@ -17,6 +19,8 @@ export interface CommandItem {
   rootOnly?: boolean | undefined;
   /** Cần một trong các quyền nghiệp vụ (PERM-01). */
   permissions?: string[] | undefined;
+  /** Vùng của tab chứa mục (VD Báo cáo) — tab bị ẩn thì mục cũng không gợi ý. */
+  sectionArea?: Area | undefined;
 }
 
 export interface CommandUser {
@@ -41,6 +45,8 @@ const KEYWORDS: Record<string, string> = {
   '/inventory/reports/monthly': 'bao cao ton kho thang excel',
   '/inventory/reports/journal': 'nhat ky xuat nhap excel',
   '/inventory/transfers/new': 'chuyen kho dieu chuyen',
+  '/inventory/sample-issues/new': 'xuat hang mau swk-m swkm phieu mau',
+  '/inventory/sample-issues': 'xuat hang mau swk-m swkm phieu mau',
   '/inventory?adjust=1': 'dieu chinh ton hao hut hang mau',
   '/procurement': 'po don mua nhap kho nhap hang',
   '/procurement/new': 'po lap don mua nhap hang dat hang',
@@ -74,6 +80,7 @@ export function quickActions(): CommandItem[] {
     action(m.lap_don_mua(), '/procurement/new', ['PROCUREMENT', 'PROCUREMENT_MANAGER']),
     action(m.crud_dieu_chinh_ton(), '/inventory?adjust=1', WAREHOUSE_EDITORS),
     action(m.dieu_chuyen_kho(), '/inventory/transfers/new', WAREHOUSE_EDITORS),
+    action(m.xm_lap_phieu(), '/inventory/sample-issues/new', WAREHOUSE_EDITORS),
     action(m.cmd_tai_khoan(), '/account'),
   ];
 }
@@ -89,9 +96,10 @@ export function buildCommands(sections: readonly NavSection[], extra: readonly C
           href: item.href,
           path: group.title === section.label ? section.label : `${section.label} › ${group.title}`,
           keywords: KEYWORDS[item.href] ?? '',
-          roleGates: [section.roles, item.roles],
+          roleGates: [item.roles],
           rootOnly: item.rootOnly,
           permissions: item.permissions,
+          sectionArea: section.area,
         });
       }
     }
@@ -109,6 +117,8 @@ export function visibleCommands(items: readonly CommandItem[], user: CommandUser
     if (item.rootOnly && !user.root) return false;
     if (!item.roleGates.every((gate) => passes(user.roles, gate))) return false;
     if (item.permissions?.length && !user.root && !item.permissions.some((key) => user.permissions?.includes(key))) return false;
+    if (!canSeePath(user, item.href)) return false;
+    if (item.sectionArea && !canSeeArea(user, item.sectionArea)) return false;
     if (seen.has(item.href)) return false;
     seen.add(item.href);
     return true;

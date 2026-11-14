@@ -13,7 +13,7 @@ import {
 import { z } from 'zod';
 import { assertWarehouseAccess } from '../../common/access';
 import { onlyProvided } from '../../common/patch';
-import { AllowReadOnly, Roles } from '../../common/roles.decorator';
+import { AllowReadOnly, Area, Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { pageRequest } from '../../common/paging';
 import { ImportShipmentsService } from './import-shipments.service';
@@ -36,6 +36,7 @@ export class ProcurementController {
     private readonly payablesBook: PayablesService,
   ) {}
 
+  @Area('inventory.purchases', 'payables')
   @Get('purchase-orders')
   list(
     @Req() request: AuthenticatedRequest,
@@ -45,6 +46,7 @@ export class ProcurementController {
     return this.procurement.list(status, search, pageRequest(page, pageSize), supplierId, from, to, request.user);
   }
 
+  @Area('inventory.purchases', 'payables')
   @Get('purchase-orders/:id')
   get(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.procurement.get(id, request.user);
@@ -119,11 +121,13 @@ export class ProcurementController {
   }
 
   /** Phiếu nhập kho đã ghi của một đơn mua / lô hàng (để xem và sửa). */
+  @Area('inventory.purchases', 'payables')
   @Get('goods-receipts')
   receipts(@Query('purchaseOrderId') purchaseOrderId?: string, @Query('importShipmentId') importShipmentId?: string) {
     return this.procurement.listReceipts({ purchaseOrderId, importShipmentId });
   }
 
+  @Area('inventory.purchases', 'payables')
   @Get('goods-receipts/:id')
   receipt(@Param('id') id: string) {
     return this.procurement.getReceipt(id);
@@ -140,6 +144,7 @@ export class ProcurementController {
 
   // ---------- lô hàng nhập ----------
 
+  @Area('inventory.purchases', 'payables')
   @Get('import-shipments')
   shipmentList(
     @Req() request: AuthenticatedRequest,
@@ -155,6 +160,7 @@ export class ProcurementController {
     return this.shipments.draft(purchaseOrderId);
   }
 
+  @Area('inventory.purchases', 'payables')
   @Get('import-shipments/:id')
   shipment(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.shipments.get(id, request.user);
