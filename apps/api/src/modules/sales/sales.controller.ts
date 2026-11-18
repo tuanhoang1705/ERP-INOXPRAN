@@ -44,8 +44,10 @@ export class SalesController {
     @Query('loan') loan?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    /** view=summary: danh sách không kèm các dòng hàng, chỉ số dòng (lineCount) — PERF-LIST-01, 17/11/2026. */
+    @Query('view') view?: string,
   ) {
-    return this.sales.list(request.user, status, search, channel, customerId, confirmation, pageRequest(page, pageSize), { type, loan, from, to });
+    return this.sales.list(request.user, status, search, channel, customerId, confirmation, pageRequest(page, pageSize), { type, loan, from, to, summary: view === 'summary' });
   }
 
   @Roles('ADMIN', 'SALES', 'SALES_MANAGER', 'ACCOUNTANT')

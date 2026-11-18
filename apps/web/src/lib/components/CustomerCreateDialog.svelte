@@ -4,15 +4,6 @@
    * Kế toán thêm khách ngay khi lập phiếu BH; phòng Kinh doanh quản lý (sửa / xóa) hồ sơ khách; Giám đốc chỉ xem.
    */
   export const CUSTOMER_CREATE_ROLES = ['ACCOUNTANT', 'CATALOG_MANAGER', 'SALES_MANAGER', 'PROCUREMENT_MANAGER'];
-
-  /** Mã KHnnn kế tiếp theo các mã đang có — chỉ là gợi ý, khách đã có mã trên sổ sách/MISA thì dùng mã đó. */
-  export function nextCustomerCode(codes: string[]): string {
-    const highest = codes.reduce((max, code) => {
-      const match = /^KH(\d+)$/.exec(code);
-      return match ? Math.max(max, Number(match[1])) : max;
-    }, 0);
-    return `KH${String(highest + 1).padStart(3, '0')}`;
-  }
 </script>
 
 <script lang="ts">
@@ -21,7 +12,7 @@
    * Mã khách không đổi khi sửa. Hạn mức, số ngày nợ, khóa công nợ chỉ Giám đốc / kế toán đổi (máy chủ kiểm tra lại).
    * Kiểm tra phía giao diện chỉ lặp lại quy tắc của schema để báo lỗi sớm; máy chủ vẫn là nơi quyết định.
    */
-  import type { Partner } from '@inoxpran/contracts';
+  import type { NextCustomerCode, Partner } from '@inoxpran/contracts';
   import { untrack } from 'svelte';
   import { CircleAlert } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
@@ -42,9 +33,8 @@
     provinceOldCode?: string | undefined; provinceNewCode?: string | undefined; territoryChannel?: string | undefined; territoryException?: { reason: string; byName: string } | undefined;
     taxCode?: string | undefined; phone?: string | undefined; email?: string | undefined; address?: string | undefined;
   };
-  let { open = $bindable(false), existingCodes = [], partner = null, allowProspect = false, oncreated }: {
+  let { open = $bindable(false), partner = null, allowProspect = false, oncreated }: {
     open?: boolean;
-    existingCodes?: string[];
     /** Hồ sơ khách hàng (CRM): cho tạo khách "cơ hội" (chưa cấp giá / công nợ). Phiếu bán hàng chỉ tạo khách chính thức. */
     allowProspect?: boolean;
     /** Có hồ sơ = chế độ sửa. */
@@ -63,7 +53,14 @@
   let employees = $state<Employee[]>([]);
   let referenceLoaded = false;
 
-  const suggestedCode = $derived(nextCustomerCode(existingCodes));
+  /**
+   * Mã KH tự sinh (CUS-CODE-01, 17/11/2026): máy chủ trả số trống nhỏ nhất (khách đã xóa để lại số trống thì lấp số đó trước).
+   * Không sửa ô mã → gửi KHÔNG kèm mã để máy chủ cấp lúc lưu (hai người thêm cùng lúc không trùng). Khách đã có mã trên MISA /
+   * sổ sách thì sửa ô mã thành đúng mã đó (CUS-01).
+   */
+  let suggestion = $state<NextCustomerCode | null>(null);
+  let codeTouched = $state(false);
+  const autoCode = $derived(!partner && (!codeTouched || !form.code.trim() || form.code.trim() === suggestion?.code));
   /** Nhân viên kinh doanh chỉ được tạo khách cơ hội. */
   const prospectOnly = $derived(allowProspect && !hasRole(session.user?.roles, CUSTOMER_CREATE_ROLES) && can.createProspects());
   const prospect = $derived(!partner && allowProspect && form.stage === 'PROSPECT');
@@ -82,12 +79,26 @@
             salesRepId: partner.salesRepId ?? '', taxCode: partner.taxCode ?? '', phone: partner.phone ?? '', email: partner.email ?? '', address: partner.address ?? '',
             creditLimit: String(Math.round(Number(partner.creditLimit ?? 0))), paymentTermDays: String(partner.paymentTermDays ?? 0), status: partner.status, stage: 'CUSTOMER',
           }
-        : { ...blank(), code: suggestedCode, stage: prospectOnly ? 'PROSPECT' : 'CUSTOMER' };
+        : { ...blank(), stage: prospectOnly ? 'PROSPECT' : 'CUSTOMER' };
       errors = {};
       error = '';
+      codeTouched = false;
+      suggestion = null;
+      if (!partner) void loadSuggestion();
       if (!referenceLoaded) void loadReference();
     });
   });
+
+  async function loadSuggestion() {
+    try {
+      const next = await api<NextCustomerCode>('/partners/next-customer-code');
+      suggestion = next;
+      if (!codeTouched) form.code = next.code;
+    } catch {
+      // Không lấy được gợi ý: vẫn lưu được — máy chủ tự cấp mã khi ô mã để trống.
+      suggestion = null;
+    }
+  }
 
   async function loadReference() {
     referenceLoaded = true;
@@ -113,7 +124,7 @@
   function validate(): Partial<Record<Field, string>> {
     const found: Partial<Record<Field, string>> = {};
     const code = form.code.trim();
-    if (code.length < 2 || code.length > 40 || !/^[A-Z0-9][A-Z0-9._/-]*$/.test(code)) found.code = fieldMessage.code();
+    if (!autoCode && (code.length < 2 || code.length > 40 || !/^[A-Z0-9][A-Z0-9._/-]*$/.test(code))) found.code = fieldMessage.code();
     if (form.name.trim().length < 2) found.name = fieldMessage.name();
     if (!prospect && !form.customerTier) found.customerTier = fieldMessage.customerTier();
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) found.email = fieldMessage.email();
@@ -145,7 +156,7 @@
       const saved = await api<Partner>(partner ? `/partners/${partner.id}` : '/partners', {
         method: partner ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          ...(partner ? { version: partner.version, status: form.status } : { code: form.code.trim(), kind: 'CUSTOMER', stage: prospect ? 'PROSPECT' : 'CUSTOMER' }),
+          ...(partner ? { version: partner.version, status: form.status } : { ...(autoCode ? {} : { code: form.code.trim() }), kind: 'CUSTOMER', stage: prospect ? 'PROSPECT' : 'CUSTOMER' }),
           name: form.name.trim(),
           ...(prospect ? {} : { customerTier: form.customerTier }),
           provinceNewCode: optional(form.provinceNewCode),
@@ -187,10 +198,12 @@
       </fieldset>
     {/if}
     <div class="field">
-      <label for="kh-code">{m.ma_khach_hang()} <span class="req">*</span></label>
-      <input id="kh-code" value={form.code} readonly={editing} maxlength="40" autocomplete="off" aria-invalid={Boolean(errors.code)}
-        oninput={(event) => (form.code = event.currentTarget.value.toUpperCase())} />
-      {#if errors.code}<span class="error">{errors.code}</span>{:else if !editing}<span class="hint">{m.kh_goi_y_ma({ code: suggestedCode })}</span>{/if}
+      <label for="kh-code">{m.ma_khach_hang()} {#if editing}<span class="req">*</span>{/if}</label>
+      <input id="kh-code" value={form.code} readonly={editing} maxlength="40" autocomplete="off" aria-invalid={Boolean(errors.code)} placeholder={editing ? '' : m.kh_ma_dang_lay()}
+        oninput={(event) => { codeTouched = true; form.code = event.currentTarget.value.toUpperCase(); }} />
+      {#if errors.code}<span class="error">{errors.code}</span>
+      {:else if !editing && autoCode && suggestion}<span class="hint" data-code-hint>{suggestion.fillsGap && suggestion.highest ? m.kh_ma_tu_sinh_lap_trong({ code: suggestion.code, highest: suggestion.highest }) : m.kh_ma_tu_sinh_ke_tiep({ code: suggestion.code })}</span>
+      {:else if !editing && !autoCode}<span class="hint">{m.kh_ma_tu_nhap()}</span>{/if}
     </div>
     {#if !prospect}
     <div class="field">

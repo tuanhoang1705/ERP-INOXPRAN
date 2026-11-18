@@ -219,6 +219,7 @@ export const sections: NavSection[] = [
         title: m.bao_cao_thong_ke(),
         items: [
           { label: m.doanh_so_theo_dai_ly_khu(), href: '/reports/sales' },
+          { label: m.rr_title(), href: '/reports/returns' },
           { label: m.ton_kho_duoi_dinh_muc(), href: '/inventory?low=1' },
           { label: m.inv_ton_kho_thang(), href: '/inventory/reports/monthly' },
           { label: m.wr_report_title(), href: '/warranty/reports', roles: ['DIRECTOR'] },

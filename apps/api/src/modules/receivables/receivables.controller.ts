@@ -60,10 +60,11 @@ export class ReceivablesController {
   @Area('receivables')
   @Get('receivables/customers/:id/statement/export')
   async statementExport(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Query('from') from?: string, @Query('to') to?: string) {
-    const { buffer, fileName } = await this.receivables.statementWorkbook(id, from || undefined, to || undefined, request.user.displayName || request.user.email, request.user);
+    // Sổ công nợ theo mẫu kế toán "CN NPP … dd.mm.xlsx" (AR-XLS-03).
+    const { buffer, fileName, displayName } = await this.receivables.statementWorkbook(id, from || undefined, to || undefined, request.user);
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      disposition: `attachment; filename="${fileName}"`,
+      disposition: `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(displayName)}`,
       length: buffer.length,
     });
   }

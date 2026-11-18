@@ -1,6 +1,6 @@
 import type { SalesPriceSheet } from '@inoxpran/contracts';
 import { describe, expect, it } from 'vitest';
-import { computeIssue, normalizeQuantity, type IssueProduct } from './sales-issue';
+import { computeIssue, normalizeQuantity, sameComputed, type IssueProduct } from './sales-issue';
 
 const product = (id: string, sku: string, pack = 4): IssueProduct => ({ id, sku, baseUnit: 'Cái', unitConversions: [{ unit: 'Thùng', factorToBase: String(pack) }] });
 const products = new Map([product('p1', 'INP6004'), product('p2', 'INP6012'), product('p3', 'INP2001', 2)].map((item) => [item.id, item]));
@@ -89,5 +89,27 @@ describe('computeIssue', () => {
     expect(normalizeQuantity('')).toEqual({ quantity: null, error: null });
     expect(normalizeQuantity('0')).toEqual({ quantity: null, error: null });
     expect(normalizeQuantity('1.23456').error).toBe('Số lượng tối đa 4 chữ số lẻ');
+  });
+});
+
+describe('sameComputed — giữ object dòng không đổi (SAL-PERF-01)', () => {
+  const base = [
+    { productId: 'p1', unit: 'Cái', quantity: '15', gift: false },
+    { productId: 'p2', unit: 'Cái', quantity: '8', gift: false },
+  ];
+  const priced = sheet();
+
+  it('tính lại cùng dữ liệu → mọi dòng giống hệt; sửa số lượng một dòng → chỉ dòng đó khác', () => {
+    const first = computeIssue(base, products, priced, '8', 'LINE');
+    const again = computeIssue(base, products, priced, '8', 'LINE');
+    expect(again.lines.every((line, index) => sameComputed(first.lines[index]!, line!))).toBe(true);
+    const edited = computeIssue([base[0]!, { ...base[1]!, quantity: '9' }], products, priced, '8', 'LINE');
+    expect(sameComputed(first.lines[1]!, edited.lines[1]!)).toBe(false);
+  });
+
+  it('thuế chia lại làm đổi tiền thuế dòng khác → dòng đó cũng được coi là đổi', () => {
+    const first = computeIssue(base, products, priced, '8', 'LINE');
+    const other = computeIssue([base[0]!, { ...base[1]!, quantity: '1' }], products, priced, '8', 'LINE');
+    expect(first.lines[0]!.taxAmount === other.lines[0]!.taxAmount).toBe(sameComputed(first.lines[0]!, other.lines[0]!));
   });
 });

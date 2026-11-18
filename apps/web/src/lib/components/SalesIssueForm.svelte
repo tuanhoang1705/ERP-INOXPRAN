@@ -10,16 +10,16 @@
    */
   import type { Product, SalesOrder, SalesPriceSheet, SampleSaleRequest, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
   import { paymentTermChoices } from '$shared/payment-terms';
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick, untrack } from 'svelte';
   import { flip } from 'svelte/animate';
   import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, CircleAlert, CircleCheck, Clock, Copy, Gift, Info, ListPlus, Lock, Pencil, Plus, RotateCcw, ScanLine, Trash2, X } from 'lucide-svelte';
   import Dialog from './Dialog.svelte';
-  import { api } from '$lib/api';
-  import { num, todayIso, vnd } from '$lib/format';
+  import { api, ApiRequestError } from '$lib/api';
+  import { money2, num, todayIso, vnd } from '$lib/format';
   import { hasRole, tierLabel, zeroPriceKindLabel, zeroPriceKindTone, zeroPriceRowClass } from '$lib/labels';
-  import { computeIssue, type IssueProduct } from '$lib/sales-issue';
+  import { computeIssue, sameComputed, type ComputedLine, type IssueProduct } from '$lib/sales-issue';
   import CustomerCreateDialog, { CUSTOMER_CREATE_ROLES } from './CustomerCreateDialog.svelte';
   import { periodText } from '$lib/server-text';
   import { can, defaultWarehouseId, session } from '$lib/session.svelte';
@@ -67,7 +67,6 @@
   /** Đề nghị sửa (SAL-CHG-01): lý do bắt buộc, gửi cho Admin duyệt thay vì lưu thẳng. */
 
   let dealers = $state<Dealer[]>([]);
-  let dealerCodes = $state<string[]>([]);
   let dealersLoaded = $state(false);
   let customerDialogOpen = $state(false);
   const canCreateCustomer = $derived(hasRole(session.user?.roles, CUSTOMER_CREATE_ROLES));
@@ -195,6 +194,8 @@
   let sheetLoading = $state(false);
   let saving = $state(false);
   let error = $state('');
+  /** Phiếu đã lưu nháp trong phiên này nhưng phát hành bị từ chối — lần bấm sau sửa / phát hành chính phiếu này (SAL-ISSUE-RETRY-01). */
+  let savedDraft = $state<{ id: string; code: string; version: number } | null>(null);
   let loadError = $state('');
 
   /** Mẫu chứng từ: PXK-001 — một thuế suất cho cả phiếu (mọi phiếu cũ, sửa vẫn giữ); PXK-002 — thuế suất từng dòng. */
@@ -209,8 +210,25 @@
   const productById = $derived(new Map(products.map((product) => [product.id, product])));
   const basisById = $derived(new Map((sheet?.items ?? []).map((item) => [item.productId, item])));
   const issueProducts = $derived(new Map<string, IssueProduct>(products.map((product) => [product.id, product])));
-  /** Toàn bộ phép tính của phiếu — chạy lại tức thì mỗi khi số lượng, đơn vị, hàng tặng, thuế suất hay bảng giá thay đổi. */
-  const calc = $derived(computeIssue(lines, issueProducts, sheet, vatRate, template.vatMode));
+  /**
+   * Toàn bộ phép tính của phiếu — chạy lại tức thì mỗi khi số lượng, đơn vị, hàng tặng, thuế suất hay bảng giá thay đổi.
+   * SAL-PERF-01 (16/11/2026): dòng có kết quả không đổi giữ nguyên object cũ → chỉ dòng vừa sửa vẽ lại, phiếu nhiều dòng không giật.
+   */
+  let previousComputed = new Map<number, ComputedLine>();
+  const calc = $derived.by(() => {
+    const result = computeIssue(lines, issueProducts, sheet, vatRate, template.vatMode);
+    const next = new Map<number, ComputedLine>();
+    const stable = result.lines.map((line, index) => {
+      if (!line) return null;
+      const key = lines[index]?.key ?? -1;
+      const before = previousComputed.get(key);
+      const kept = before && sameComputed(before, line) ? before : line;
+      next.set(key, kept);
+      return kept;
+    });
+    previousComputed = next;
+    return { ...result, lines: stable };
+  });
   const summary = $derived(calc.summary);
   /** "1,08" — hệ số tách thuế khỏi bảng giá gồm thuế của một thuế suất. */
   const divisorOf = (rate: string) => (1 + Number(vatPercent(rate)) / 100).toLocaleString(intlLocale(), { maximumFractionDigits: 2 });
@@ -223,7 +241,7 @@
   const autoCodeText = $derived(existing && existing.codeMode !== 'MANUAL' ? existing.code : m.bh_tu_sinh({ period: period }));
   const hasLines = $derived(calc.lines.some((line) => line !== null));
 
-  const price2 = (value: string | number) => Number(value).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const price2 = money2;
   const dong = (value: string) => num(roundDong(value));
 
   /** Quản trị gốc đang sửa phiếu đã phát hành: lưu qua /root, tồn kho / công nợ tự điều chỉnh theo chênh lệch. */
@@ -435,15 +453,20 @@
     }
   }
 
-  /** Tải bảng giá riêng của khách tại kho xuất (một lần); sau đó mọi phép tính diễn ra ngay trên trình duyệt. */
+  /**
+   * Tải bảng giá riêng của khách tại kho xuất; sau đó mọi phép tính diễn ra ngay trên trình duyệt.
+   * `quiet` (INV-01, 17/11/2026): tải lại ngầm để cột Tồn khả dụng theo kịp phiếu người khác vừa giữ — không khóa nút lưu,
+   * không xóa bảng / báo lỗi khi mạng chập chờn.
+   */
   let sheetSequence = 0;
-  async function loadSheet() {
+  async function loadSheet(quiet = false) {
+    if (quiet && (!sheet || sheetLoading || saving)) return;
     const sequence = ++sheetSequence;
     if (!warehouseId || (!nonSale && !customerId)) {
       sheet = null;
       return;
     }
-    sheetLoading = true;
+    if (!quiet) sheetLoading = true;
     try {
       // Phiếu hàng mẫu / kiểm định: bảng không khách (giá 0, chỉ tồn khả dụng).
       // Sửa phiếu đã phát hành: bảng giá theo thời điểm phát hành của phiếu — dòng không sửa giữ đúng giá cũ (SAL-EDIT-GRANT-01).
@@ -453,14 +476,27 @@
       sheet = result;
       if (!vatTouched && isVatRate(result.defaultVatRate)) vatRate = result.defaultVatRate;
     } catch (caught) {
-      if (sequence === sheetSequence) {
+      if (sequence === sheetSequence && !quiet) {
         sheet = null;
         error = caught instanceof Error ? caught.message : m.khong_tai_duoc_bang_gia_cua();
       }
     } finally {
-      if (sequence === sheetSequence) sheetLoading = false;
+      if (sequence === sheetSequence && !quiet) sheetLoading = false;
     }
   }
+
+  // Cột Tồn là tồn khả dụng lúc tải: nhiều người cùng lập phiếu thì tải lại ngầm mỗi 60 giây và khi quay lại tab.
+  $effect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') void loadSheet(true);
+    };
+    const timer = setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  });
 
   /** Tài khoản thủ kho của kho xuất — chỉ người được chọn thấy phiếu và lập phiếu SWK. */
   async function loadKeepers() {
@@ -484,7 +520,6 @@
 
   function setDealers(rows: Dealer[]) {
     dealers = rows.filter((row) => row.status !== 'INACTIVE');
-    dealerCodes = rows.map((row) => row.code);
     dealersLoaded = true;
   }
 
@@ -608,10 +643,14 @@
     const first = lines.findIndex((line) => line.gift);
     return first < 0 ? lines.length : first;
   }
-  /** Dòng hàng bán mới chèn trên nhóm hàng khác; dòng hàng khác thêm ở cuối. */
-  function addLine(gift = false) {
-    if (gift) lines.push(blankLine(true));
-    else lines.splice(saleLineEnd(), 0, blankLine());
+  /**
+   * Dòng hàng bán mới chèn trên nhóm hàng khác; dòng hàng khác thêm ở cuối. SAL-PERF-01 (16/11/2026): cuộn tới dòng mới và đặt con
+   * trỏ vào ô mã — phiếu có nhiều hàng tặng thì dòng bán mới nằm giữa bảng, trước đây khuất nên tưởng bấm "Thêm dòng" không ăn.
+   */
+  function addLine(gift = false, focus = false) {
+    const at = gift ? lines.length : saleLineEnd();
+    lines.splice(at, 0, blankLine(gift));
+    if (focus) void focusLine(at, 'input.sku');
   }
   /** Chuyển dòng lên / xuống theo ý kế toán — trong nhóm của dòng (hàng khác vẫn ở cuối). */
   function canMove(index: number, step: -1 | 1) {
@@ -619,11 +658,18 @@
     const other = lines[index + step];
     return Boolean(line && other && line.gift === other.gift);
   }
+  /** Hiệu ứng trượt dòng chỉ khi bấm chuyển dòng lên / xuống — thêm / xóa dòng không đo lại vị trí mọi dòng (SAL-PERF-01). */
+  let moving = false;
+  function slide(node: Element, rects: { from: DOMRect; to: DOMRect }) {
+    return moving ? flip(node, rects, { duration: 160 }) : { duration: 0 };
+  }
   function moveLine(index: number, step: -1 | 1) {
     if (!canMove(index, step)) return;
     editingPrice = null;
+    moving = true;
     const [line] = lines.splice(index, 1);
     if (line) lines.splice(index + step, 0, line);
+    void tick().then(() => { moving = false; });
   }
   /** Thêm nhanh dòng hàng tặng cùng mã (như phiếu thật: tặng 1 sản phẩm mỗi mã). */
   function addGiftFor(line: Line) {
@@ -662,8 +708,14 @@
     const line = lines[index];
     return Boolean(line && line.productId && canIssue && grantApproved && !nonSale && !line.gift && calc.lines[index]);
   }
-  const hasLineBelow = (index: number) => lines.slice(index + 1).some((line) => line.productId);
-  const hasPriceBelow = (index: number) => lines.some((_, position) => position > index && priceEditable(position));
+  // Vị trí dòng có mã / dòng sửa giá được cuối cùng — tính một lần thay vì mỗi dòng quét lại cả phiếu (SAL-PERF-01).
+  const lastProductIndex = $derived(lines.findLastIndex((line) => line.productId));
+  const lastPriceIndex = $derived.by(() => {
+    for (let position = lines.length - 1; position >= 0; position -= 1) if (priceEditable(position)) return position;
+    return -1;
+  });
+  const hasLineBelow = (index: number) => lastProductIndex > index;
+  const hasPriceBelow = (index: number) => lastPriceIndex > index;
   /**
    * SAL-FILL-01 (06/11/2026, kế toán — như MISA "Sao chép dữ liệu cho các dòng dưới"): chép số lượng / đơn giá của dòng đang chọn
    * xuống mọi dòng có mã hàng **từ dòng đó trở xuống**. Đơn giá chỉ chép vào dòng bán sửa giá được (ghi thành giá sửa tay).
@@ -683,7 +735,12 @@
   }
   async function focusLine(index: number, selector: string) {
     await tick();
-    lineBody?.rows[index]?.querySelector<HTMLInputElement>(selector)?.focus();
+    const input = lineBody?.rows[index]?.querySelector<HTMLInputElement>(selector);
+    if (!input) return;
+    // Dòng ngoài màn hình hoặc sát mép (thanh tiêu đề / thanh nút che) → cuộn vào giữa màn hình.
+    const rect = input.getBoundingClientRect();
+    if (rect.top < 120 || rect.bottom > window.innerHeight - 120) input.scrollIntoView({ block: 'center' });
+    input.focus({ preventScroll: true });
   }
   /** Chèn bản sao ngay dưới dòng (mã, tên, đơn vị, số lượng, loại hàng, giá sửa tay) — không gộp vào dòng cũ. */
   function duplicateLine(index: number) {
@@ -738,7 +795,7 @@
       ...(!nonSale && grantApproved && grant && calc.lines.some((line) => line?.overridden) ? { priceOverrideRequestId: grant.id } : {}),
       templateCode: template.code, warehouseId, orderDate, taxRate: vatRate,
       ...(loanSource ? { soldLoanId: loanSource.id } : {}),
-      ...(sampleRequest && !nonSale && !existing ? { sampleRequest: { slipId: sampleRequest.slipId, requestId: sampleRequest.requestId } } : {}),
+      ...(sampleRequest && !nonSale && !existing && !savedDraft ? { sampleRequest: { slipId: sampleRequest.slipId, requestId: sampleRequest.requestId } } : {}),
       ...(nonSale
         ? {
             purpose: slipType, ...(destination.trim() ? { destination: destination.trim() } : {}), ...(loanType && expectedReturnDate ? { expectedReturnDate } : {}),
@@ -829,14 +886,27 @@
     }
     saving = true;
     const expectedTotal = summary.grandTotal;
+    let refreshStock = false;
     try {
       // Sửa theo quyền đã duyệt → /granted-edit/:grantId; người có quyền sửa trực tiếp → /root; phiếu nháp → PATCH thường.
-      const editPath = grantId ? `/granted-edit/${grantId}` : rootEdit ? '/root' : '';
-      const order = existing
-        ? await api<SalesOrder>(`/sales-orders/${existing.id}${editPath}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: existing.version }) })
+      // Đã lưu nháp ở lần bấm trước (phát hành bị từ chối): sửa chính phiếu nháp đó với phiên bản mới nhất (SAL-ISSUE-RETRY-01).
+      const editPath = savedDraft ? '' : grantId ? `/granted-edit/${grantId}` : rootEdit ? '/root' : '';
+      const target = savedDraft ?? (existing ? { id: existing.id, version: existing.version } : null);
+      const order = target
+        ? await api<SalesOrder>(`/sales-orders/${target.id}${editPath}`, { method: 'PATCH', idempotentCommand: true, body: JSON.stringify({ ...payload(), version: target.version }) })
         : await api<SalesOrder>('/sales-orders', { method: 'POST', idempotentCommand: true, body: JSON.stringify(payload()) });
       if (issue) {
-        await api(`/sales-orders/${order.id}/submit`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: order.version }) });
+        try {
+          await api(`/sales-orders/${order.id}/submit`, { method: 'POST', idempotentCommand: true, body: JSON.stringify({ version: order.version }) });
+        } catch (caught) {
+          // Phiếu đã lưu nháp nhưng chưa phát hành được (VD hàng vừa bị phiếu khác giữ trước): ở lại form, lần bấm sau sửa và phát hành
+          // chính phiếu nháp này — không lập phiếu thứ hai, không báo "người khác đã cập nhật". Địa chỉ trang chuyển sang trang sửa nháp.
+          savedDraft = { id: order.id, code: order.code, version: order.version };
+          if (!existing) replaceState(`/sales/orders/${order.id}/edit`, {});
+          refreshStock = caught instanceof ApiRequestError && caught.payload.code === 'INSUFFICIENT_AVAILABLE_STOCK';
+          error = m.bh_da_luu_nhap_chua_phat_hanh({ code: order.code, reason: caught instanceof Error ? caught.message : m.khong_the_luu_phieu() });
+          return;
+        }
       }
       // Máy chủ tính lại bằng cùng công thức; chỉ lệch khi bảng giá/khuyến mãi vừa đổi trong lúc đang lập phiếu.
       const repriced = String(Number(order.grandTotal)) !== expectedTotal ? `&repriced=${expectedTotal}` : '';
@@ -845,14 +915,16 @@
       error = caught instanceof Error ? caught.message : m.khong_the_luu_phieu();
     } finally {
       saving = false;
+      // Thiếu tồn: tải lại cột Tồn ngay (sau khi nhả trạng thái đang lưu) để thấy số còn lại thật.
+      if (refreshStock) void loadSheet(true);
     }
   }
 </script>
 
 <section class="page-head">
   <div>
-    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span><span>{existing ? m.sua({ code: existing.code }) : canIssue ? m.lap_phieu_moi() : m.de_nghi_xuat_ban()}</span></nav>
-    <h1 class="page-title">{existing ? m.sua_phieu_xuat_kho_ban_hang({ code: existing.code }) : slipType === 'SAMPLE' ? m.lp_lap_phieu_hang_mau() : slipType === 'INSPECTION' ? m.lp_lap_phieu_kiem_dinh() : gift ? m.lp_lap_phieu_xuat_tang() : canIssue ? m.lap_phieu_xuat_kho_ban_hang() : m.de_nghi_ke_toan_lap_phieu()}</h1>
+    <nav class="crumbs" aria-label={m.duong_dan()}><a href="/sales/orders">{m.don_hang()}</a><span><a href="/sales/orders">{m.phieu_xuat_kho_ban_hang()}</a></span><span>{existing ? m.sua({ code: existing.code }) : savedDraft ? m.sua({ code: savedDraft.code }) : canIssue ? m.lap_phieu_moi() : m.de_nghi_xuat_ban()}</span></nav>
+    <h1 class="page-title">{existing ? m.sua_phieu_xuat_kho_ban_hang({ code: existing.code }) : savedDraft ? m.sua_phieu_xuat_kho_ban_hang({ code: savedDraft.code }) : slipType === 'SAMPLE' ? m.lp_lap_phieu_hang_mau() : slipType === 'INSPECTION' ? m.lp_lap_phieu_kiem_dinh() : gift ? m.lp_lap_phieu_xuat_tang() : canIssue ? m.lap_phieu_xuat_kho_ban_hang() : m.de_nghi_ke_toan_lap_phieu()}</h1>
     <p class="page-sub">
       {#if existing}<span class="pill template" title={templateDescription(template)}>{m.mau()} {template.code}</span>
       {:else}<select class="pill template template-select" bind:value={newTemplate} title={templateDescription(template)} aria-label={m.bh_chon_mau()}>{#each SALES_ISSUE_TEMPLATES as code}<option value={code}>{code === 'PXK-002' ? m.bh_mau_thue_dong() : m.bh_mau_thue_tong()}</option>{/each}</select>{/if}
@@ -860,7 +932,7 @@
     </p>
   </div>
   <div class="actions">
-    <a class="btn" href={existing ? `/sales/orders/${existing.id}` : '/sales/orders'}>{m.huy_bo()}</a>
+    <a class="btn" href={existing ? `/sales/orders/${existing.id}` : savedDraft ? `/sales/orders/${savedDraft.id}` : '/sales/orders'}>{m.huy_bo()}</a>
     {#if rootEdit}
       <button class="btn primary" disabled={saving} onclick={() => save(false)}>{saving ? m.dang_xu_ly() : m.root_luu_thay_doi()}</button>
     {:else if canIssue}
@@ -998,8 +1070,8 @@
   <header class="block-head">
     <span class="step">2</span><h2>{m.hang_hoa()}</h2>
     <label class="scan"><ScanLine size={16} /><input bind:this={scanInput} bind:value={scan} onkeydown={scanAdd} placeholder={m.quet_ma_vach_nhap_ma_hang()} aria-label={m.quet_ma_vach_hoac_nhap_ma()} /></label>
-    <button class="btn soft small" onclick={() => addLine(false)}><Plus size={15} />{m.them_dong()}</button>
-    {#if !nonSale}<button class="btn small" onclick={() => addLine(true)}><Gift size={15} />{m.bh_them_hang_khac()}</button>{/if}
+    <button class="btn soft small" onclick={() => addLine(false, true)}><Plus size={15} />{m.them_dong()}</button>
+    {#if !nonSale}<button class="btn small" onclick={() => addLine(true, true)}><Gift size={15} />{m.bh_them_hang_khac()}</button>{/if}
   </header>
   {#if nonSale}<!-- Phiếu không tính tiền: không có quyền sửa giá. -->
   {:else if canIssue && grant?.status === 'PENDING'}
@@ -1012,6 +1084,10 @@
   <datalist id="sku-list">{#each products as product}<option value={product.sku}>{product.name}</option>{/each}</datalist>
   <div class="table-wrap">
     <table class="table lines">
+      <!-- SAL-PERF-01 (16/11/2026): cột rộng cố định — gõ / thêm dòng không phải dàn lại cả bảng theo nội dung mọi dòng
+           (đo trên máy giả lập chậm ×4: phiếu 40 dòng mỗi phím 240 → 120 ms, 100 dòng 430 → 185 ms). Phần rộng còn lại
+           dành cho Tên hàng; màn hẹp hơn ~1300 px thì bảng cuộn ngang. -->
+      <colgroup><col class="c-stt" /><col class="c-sku" /><col /><col class="c-unit" /><col class="c-stock" /><col class="c-qty" /><col class="c-price" /><col class="c-ck" /><col class="c-amount" />{#if lineVat && !nonSale}<col class="c-vat" /><col class="c-tax" />{/if}<col class="c-actions" /></colgroup>
       <thead><tr><th>{m.stt()}</th><th>{m.ma_hang()}</th><th>{m.ten_hang()}</th><th>{m.don_vi()}</th><th class="num">{m.ton_kha_dung()}</th><th class="num">{m.so_luong()}</th><th class="num">{m.don_gia()}<small>{!lineVat && vatRate === 'KCT' ? m.khong_chiu_thue() : m.chua_thue_gtgt()}</small></th><th class="num">CK (%)</th><th class="num">{m.thanh_tien()}</th>{#if lineVat && !nonSale}<th class="num">{m.bh_phan_tram_thue()}</th><th class="num">{m.bh_tien_thue_dong()}</th>{/if}<th><span class="sr-only">{m.thao_tac()}</span></th></tr></thead>
       <tbody bind:this={lineBody} oncontextmenu={openRowMenu}>
         {#each lines as line, index (line.key)}
@@ -1020,7 +1096,7 @@
           {@const basis = basisById.get(line.productId)}
           {@const demand = calc.demandByProduct.get(line.productId) ?? 0}
           {@const lineError = calc.lineErrors[index]}
-          <tr data-line={index} class={line.gift ? zeroPriceRowClass(zeroPriceKindOf(line) ?? 'GIFT') : ''} animate:flip={{ duration: 160 }}>
+          <tr data-line={index} class={line.gift ? zeroPriceRowClass(zeroPriceKindOf(line) ?? 'GIFT') : ''} animate:slide>
             <td class="muted">{index + 1}</td>
             <td><input class="input sku" list="sku-list" bind:value={line.skuInput} onchange={() => onSkuChange(line)} placeholder="INP…" aria-label={m.ma_hang_dong({ p0: index + 1 })} /></td>
             <td class="name">{#if product}<input class="input pname" bind:value={line.name} maxlength="300" onblur={() => { if (!line.name?.trim()) line.name = product.name; }} aria-label={m.ten_hang_dong({ p0: index + 1 })} title={line.name && line.name !== product.name ? m.ten_hang_danh_muc({ name: product.name }) : ''} />{/if}{#if line.gift}{@const kind = zeroPriceKindOf(line) ?? 'GIFT'}<select class={`kind-select ${zeroPriceKindTone(kind)}`} value={kind} onchange={(event) => (line.zeroPriceKind = event.currentTarget.value as ZeroPriceKind)} aria-label={m.bh_loai_hang_khac_dong({ row: index + 1 })}>{#each ZERO_PRICE_KINDS as option}<option value={option}>{zeroPriceKindLabel(option)}</option>{/each}</select>{/if}</td>
@@ -1078,6 +1154,12 @@
       {/if}
     </table>
   </div>
+  {#if lines.length > 8}<!-- Phiếu dài: nút thêm dòng ngay dưới bảng, không phải cuộn lên đầu (SAL-PERF-01). -->
+    <div class="add-bottom">
+      <button class="btn soft small" data-add="bottom" onclick={() => addLine(false, true)}><Plus size={15} />{m.them_dong()}</button>
+      {#if !nonSale}<button class="btn small" onclick={() => addLine(true, true)}><Gift size={15} />{m.bh_them_hang_khac()}</button>{/if}
+    </div>
+  {/if}
   <RowContextMenu bind:open={rowMenu.open} x={rowMenu.x} y={rowMenu.y} label={m.bh_ctx_menu_dong({ row: rowMenu.index + 1 })} items={rowMenuItems} />
   {#if calc.stockWarnings.length}
     <div class="warnings">{#each calc.stockWarnings as warning}<p class={warning.tone}><CircleAlert size={15} />{warning.text}</p>{/each}</div>
@@ -1158,7 +1240,7 @@
   {/snippet}
 </Dialog>
 
-<CustomerCreateDialog bind:open={customerDialogOpen} existingCodes={dealerCodes} oncreated={customerCreated} />
+<CustomerCreateDialog bind:open={customerDialogOpen} oncreated={customerCreated} />
 
 <style>
   .banner .close { margin-left: auto; color: inherit; }
@@ -1195,17 +1277,29 @@
   .scan { display: flex; align-items: center; gap: 7px; margin-left: auto; width: 290px; padding: 0 10px; border: 1px dashed #b9c7d4; border-radius: 8px; color: var(--muted); }
   .scan input { width: 100%; height: 32px; border: 0; outline: 0; background: transparent; font-size: 13px; }
   /* Bảng 12 cột (thêm % thuế GTGT / Tiền thuế GTGT — 27/10/2026) vừa màn 1366 px. */
+  .lines { table-layout: fixed; min-width: 1060px; }
+  .lines col.c-stt { width: 42px; }
+  .lines col.c-sku { width: 116px; }
+  .lines col.c-unit { width: 92px; }
+  .lines col.c-stock { width: 50px; }
+  .lines col.c-qty { width: 98px; }
+  .lines col.c-price { width: 122px; }
+  .lines col.c-ck { width: 50px; }
+  .lines col.c-amount { width: 102px; }
+  .lines col.c-vat { width: 78px; }
+  .lines col.c-tax { width: 86px; }
+  .lines col.c-actions { width: 114px; }
   .lines th, .lines td { padding: 8px 5px; }
   .lines th:first-child, .lines td:first-child { padding-left: 16px; }
   .lines th small { display: block; font-size: 10.5px; font-weight: 500; text-transform: none; letter-spacing: 0; }
   .lines .input { min-height: 36px; padding: 6px 8px; }
   .lines tfoot td { padding-top: 12px; padding-bottom: 12px; border-top: 1px solid var(--line); background: var(--surface-2); font-weight: 700; }
-  .sku { width: 102px; font-weight: 600; color: var(--navy); text-transform: uppercase; }
-  .unit { width: 84px; }
+  .sku { width: 100%; font-weight: 600; color: var(--navy); text-transform: uppercase; }
+  .unit { width: 100%; }
   td :global(.qty) { width: 66px; text-align: center; font-weight: 600; }
   td :global(.qty.invalid) { border-color: var(--red); background: var(--red-soft); }
   .name { min-width: 150px; }
-  .pname { width: 100%; min-width: 140px; }
+  .pname { width: 100%; min-width: 0; }
   .price span[title] { cursor: help; }
   .price-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border: 1px dashed transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
   .price-btn:hover { border-color: var(--line); background: var(--surface-2); }
@@ -1220,11 +1314,11 @@
   .price small.orig { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--subtle); font-size: 11px; }
   .price small.own-price { display: block; color: var(--green); font-size: 11px; font-weight: 600; }
   .price .reset { display: inline-grid; padding: 0; border: 0; background: transparent; color: var(--navy-2); cursor: pointer; }
-  :global(.input.price-input) { width: 130px; text-align: right; }
+  :global(.input.price-input) { width: 100%; text-align: right; }
   .price-grant { margin: 0 18px 12px; }
   .price-grant .link { margin-left: auto; border: 0; background: transparent; color: var(--navy-2); font-weight: 600; cursor: pointer; }
   /* Loại hàng khác (SAL-KIND-01): ô chọn dạng nhãn, tô màu theo loại đang chọn — tặng cam, đổi xanh, bù tím (giống nhãn trên trang phiếu). */
-  .kind-select { display: block; min-width: 112px; margin-top: 6px; padding: 3px 28px 3px 11px; border: 1px solid transparent; border-radius: 999px; appearance: none; background: var(--blue-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235A6B7C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; color: var(--navy-2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .kind-select { display: block; min-width: min(112px, 100%); max-width: 100%; margin-top: 6px; padding: 3px 28px 3px 11px; border: 1px solid transparent; border-radius: 999px; appearance: none; background: var(--blue-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235A6B7C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center; color: var(--navy-2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
   .kind-select.orange { background-color: var(--orange-soft); color: var(--orange); }
   .kind-select.violet { background-color: var(--violet-soft); color: var(--violet); }
   .kind-select:hover { border-color: var(--line); }
@@ -1245,6 +1339,7 @@
   .warnings p { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0; padding: 8px 14px; border-radius: 8px; font-size: 13px; }
   .warnings .warning { background: var(--orange-soft); color: #b4501f; }
   .warnings .error { background: var(--red-soft); color: var(--red); }
+  .add-bottom { display: flex; gap: 8px; padding: 10px 22px 0; }
   .bottom { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(360px, 1fr); gap: 18px; align-items: start; }
   .note { padding: 18px 22px 20px; }
   .summary { overflow: hidden; }

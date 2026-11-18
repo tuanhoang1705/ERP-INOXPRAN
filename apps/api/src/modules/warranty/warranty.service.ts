@@ -48,7 +48,7 @@ import { SequenceService } from '../../common/sequence.service';
 import { resolveStaff, type PickedStaff } from '../../common/staff';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { ticketSla, WARRANTY_TICKETS, warrantySettings } from './warranty-sla';
-import { slicePage, type PageRequest } from '../../common/paging';
+import { pageOf, type PageRequest } from '../../common/paging';
 import { EvidenceIntakeService } from '../../common/evidence-intake.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { SalesService, WALK_IN_PARTNER_CODE } from '../sales/sales.service';
@@ -141,20 +141,43 @@ export class WarrantyService {
     const query = hideStatus(own, viewer);
     const settings = await warrantySettings(this.db);
     const now = new Date();
-    const rows = (await this.collection().find(query).sort({ receivedAt: -1 }).limit(500).toArray()).map((ticket) => {
-      const sla = ticketSla(ticket, settings, now);
-      return { ticket, sla };
-    });
-    const counts = { overdue: 0, warning: 0, normal: 0, closed: 0 };
-    for (const row of rows) counts[row.sla.tone] += 1;
+    // PERF-LIST-01 (17/11/2026): màu "đã đóng" = đã trả khách (returnedAt) hoặc đã hủy — đúng điều kiện của ticketSla. Phiếu đang mở
+    // ít (đang sửa) nên đọc hết để tính màu hạn; phiếu đã đóng tăng dần theo năm nên đếm và cắt trang ngay trong MongoDB. Trước đây
+    // đọc 500 phiếu mới nhất rồi mới cắt trang: tốn dần theo dữ liệu, và quá 500 phiếu thì phiếu cũ không còn trong danh sách.
+    const closedMatch = { $or: [{ returnedAt: { $ne: null } }, { status: 'CANCELLED' }] };
+    const openMatch = { returnedAt: null, status: { $ne: 'CANCELLED' } };
+    const [openTickets, closedCount] = await Promise.all([
+      this.collection().find({ $and: [query, openMatch] }).toArray(),
+      this.collection().countDocuments({ $and: [query, closedMatch] }),
+    ]);
+    const counts = { overdue: 0, warning: 0, normal: 0, closed: closedCount };
     const order = { overdue: 0, warning: 1, normal: 2, closed: 3 };
-    const shown = rows
-      .filter((row) => !filter.tone || row.sla.tone === filter.tone)
-      // Theo luồng màu: quá hạn → cảnh báo → trong hạn → đã đóng; trong mỗi nhóm số phiếu mới nhất trước, như danh sách phiếu BH
-      // (09/11/2026 — người dùng: danh sách lộn xộn). Phiếu hủy (…-H1) cùng nhóm đã đóng, xếp theo số gốc.
-      .sort((a, b) => order[a.sla.tone] - order[b.sla.tone] || String(b.ticket.originalCode ?? b.ticket.code).localeCompare(String(a.ticket.originalCode ?? a.ticket.code), 'en', { numeric: true }) || String(b.ticket.code).localeCompare(String(a.ticket.code)));
-    const present = shown.map(({ ticket, sla }) => ({ ...serializeDocument(ticket), sla: { ...sla, dueAt: sla.dueAt.toISOString(), warningAt: sla.warningAt.toISOString() } }));
-    if (paging) return slicePage(present, paging, { settings, counts });
+    // Theo luồng màu: quá hạn → cảnh báo → trong hạn → đã đóng; trong mỗi nhóm số phiếu mới nhất trước, như danh sách phiếu BH
+    // (09/11/2026 — người dùng: danh sách lộn xộn). Phiếu hủy (…-H1) cùng nhóm đã đóng, xếp theo số gốc.
+    const open = openTickets
+      .map((ticket) => ({ ticket, sla: ticketSla(ticket, settings, now) }))
+      .filter((row) => {
+        counts[row.sla.tone] += 1;
+        return !filter.tone || row.sla.tone === filter.tone;
+      })
+      .sort((a, b) => order[a.sla.tone] - order[b.sla.tone] || String(b.ticket.originalCode ?? b.ticket.code).localeCompare(String(a.ticket.originalCode ?? a.ticket.code), 'en', { numeric: true }) || String(b.ticket.code).localeCompare(String(a.ticket.code), 'en', { numeric: true }));
+    const withClosed = !filter.tone || filter.tone === 'closed';
+    const request = paging ?? { page: 1, pageSize: 500, skip: 0 };
+    const openPage = open.slice(request.skip, request.skip + request.pageSize);
+    const closedLimit = withClosed ? request.pageSize - openPage.length : 0;
+    const closedPage = closedLimit > 0
+      ? await this.collection().aggregate([
+        { $match: { $and: [query, closedMatch] } },
+        { $addFields: { _order: { $ifNull: ['$originalCode', '$code'] } } },
+        { $sort: { _order: -1, code: -1, _id: -1 } },
+        { $skip: Math.max(0, request.skip - open.length) },
+        { $limit: closedLimit },
+        { $unset: '_order' },
+      ], { collation: { locale: 'en', numericOrdering: true } }).toArray()
+      : [];
+    const present = [...openPage, ...closedPage.map((ticket) => ({ ticket, sla: ticketSla(ticket, settings, now) }))]
+      .map(({ ticket, sla }) => ({ ...serializeDocument(ticket), sla: { ...sla, dueAt: sla.dueAt.toISOString(), warningAt: sla.warningAt.toISOString() } }));
+    if (paging) return pageOf(present, open.length + (withClosed ? closedCount : 0), paging, { settings, counts });
     return { settings, counts, rows: present };
   }
 

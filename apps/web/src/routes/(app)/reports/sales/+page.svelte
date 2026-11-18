@@ -211,7 +211,7 @@
         {/if}
       </tbody>
       {#if report?.rows.length}
-        <tfoot><tr><td></td><td></td><td colspan="3">{m.tong_cong()}{report.rows.length} {m.khach_hang_phat_sinh()}</td><td class="num">{num(report.totals.orders)}</td><td class="num">{num(report.totals.revenue)}</td><td class="num">{num(report.totals.discount)}</td><td class="num">{num(report.totals.closingDebt)}</td><td class="num">100%</td></tr></tfoot>
+        <tfoot><tr><td></td><td></td><td colspan="4">{m.tong_cong()}{report.rows.length} {m.khach_hang_phat_sinh()}</td><td class="num">{num(report.totals.orders)}</td><td class="num">{num(report.totals.revenue)}</td><td class="num">{num(report.totals.discount)}</td><td class="num">{num(report.totals.closingDebt)}</td><td class="num">100%</td></tr></tfoot>
       {/if}
     </table>
   </div>

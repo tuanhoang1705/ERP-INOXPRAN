@@ -20,6 +20,10 @@ export function vnd(value: string | number | null | undefined): string {
 export function num(value: string | number | null | undefined): string {
   return whole(Number(value ?? 0));
 }
+/** Số 2 chữ số lẻ (đơn giá) — bộ định dạng dựng sẵn, không tạo Intl mới mỗi lần gọi (SAL-PERF-01). */
+export function money2(value: string | number | null | undefined): string {
+  return twoDecimals.format(Number(value ?? 0));
+}
 /** Số có tối đa 1 chữ số thập phân theo ngôn ngữ (VD 5,4 / 5.4). */
 export function decimal1(value: number): string {
   return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(value);

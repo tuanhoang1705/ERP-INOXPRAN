@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CorrectGoodsReceiptSchema, CreateStockReturnSchema, UpdateStockReturnSchema, UpdateWarrantyIntakeSchema, VoidStockReturnSchema, WarrantyActionSchema } from './index.js';
 import { categoryAmount, categoryOf, STOCK_BACKDATE_FROM } from './shared/inventory-categories.js';
+import { expandStockReturnCode } from './shared/stock-return-code.js';
 
 const id = '6ad5ec55b1816be287b02c63';
 const customerReturn = {
@@ -14,6 +15,22 @@ const customerReturn = {
 };
 
 describe('phiếu trả hàng 20/10/2026: ngày nhận, nguyên nhân dòng, sửa / hủy', () => {
+  it('giữ số tự nhập khi tạo, mặc định tự sinh và không đổi số khi sửa phiếu', () => {
+    expect(CreateStockReturnSchema.parse(customerReturn).code).toBeUndefined();
+    expect(CreateStockReturnSchema.parse({ ...customerReturn, code: ' 0040 ' }).code).toBe('0040');
+    expect(UpdateStockReturnSchema.parse({ ...customerReturn, version: 0, reason: 'Sửa số lượng', code: '0041' })).not.toHaveProperty('code');
+  });
+
+  it('ghép số ngắn với tháng chứng từ và chuẩn hóa số ghi đầy đủ trên phiếu giấy', () => {
+    expect(expandStockReturnCode('0040', 'NK', '2026-10-19')).toBe('NK2026100040');
+    expect(expandStockReturnCode('40', 'XT', '2026-11-18')).toBe('XT2026110040');
+    expect(expandStockReturnCode(' nk2026100040 ', 'NK', '2026-11-18')).toBe('NK2026100040');
+    expect(expandStockReturnCode('10000', 'NK', '2026-11-18')).toBe('NK20261110000');
+    for (const invalid of ['', '0000', 'NK2026130040', 'NK2026110040-H1', 'XT2026110040', 'BH2026110040']) {
+      expect(expandStockReturnCode(invalid, 'NK', '2026-11-18')).toBeNull();
+    }
+  });
+
   it('khách trả nhận ngày giờ nhận (có múi giờ) và nguyên nhân từng dòng', () => {
     const parsed = CreateStockReturnSchema.parse(customerReturn);
     expect(parsed.kind === 'CUSTOMER' && parsed.receivedAt).toBe('2026-10-19T09:00:00+07:00');

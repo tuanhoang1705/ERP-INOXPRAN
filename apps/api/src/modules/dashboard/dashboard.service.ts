@@ -11,6 +11,8 @@ import { REVENUE_STATUSES } from '../sales/pricing.service';
 import type { RequestUser } from '../../common/request-context';
 import { salesOrderScope } from '../sales/keeper-scope';
 import { openWarrantyTickets, ticketSla, warrantySettings } from '../warranty/warranty-sla';
+import { addSlip, calendarDays, emptySplit, percentOf, receivedBetween, slipReceivedAt } from '../reports/returns-report';
+import { RETURN_THRESHOLDS } from '@inoxpran/contracts';
 
 const DAY_MS = 86_400_000;
 const DISTRIBUTOR_TIER = 'TIER_1';
@@ -81,6 +83,7 @@ export class DashboardService {
       collectedRows,
       firstOrder,
       currentToDateRows,
+      returnRows,
     ] = await Promise.all([
       when(visible.revenue, () => this.db.collection('sales_orders').aggregate([
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: monthStarts[0], $lt: monthStarts[6] } } },
@@ -151,6 +154,11 @@ export class DashboardService {
         { $match: { status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, orderDate: { $gte: thisMonthStart, $lt: currentToDate } } },
         { $group: { _id: null, revenue: { $sum: NET_AMOUNT }, revenueGross: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
       ]).toArray(), [] as Document[]),
+      // Hàng khách trả (RPT-RET-01): phiếu NK nhận trong tháng + mọi phiếu đang chờ kế toán.
+      when(visible.revenue, () => this.db.collection('stock_returns').find({
+        kind: 'CUSTOMER', status: { $ne: 'VOIDED' },
+        $or: [...(receivedBetween(thisMonthStart).$or as Document[]), { accountingStatus: 'PENDING' }],
+      }, { projection: { receivedAt: 1, postedAt: 1, createdAt: 1, accountingStatus: 1, accountingMode: 1, creditNote: 1, value: 1, category: 1, 'lines.quantity': 1 } }).toArray(), [] as Document[]),
     ]);
 
     const revenueByMonth = new Map(monthlyRows.map((row) => [String(row._id), decimalString(row.revenue)]));
@@ -190,6 +198,9 @@ export class DashboardService {
       : revenuePreviousToDateGross.gt(0) ? null : 'NO_PREVIOUS';
     const dataStartDate = firstDocumentDate ? (() => { const parts = vnParts(firstDocumentDate); return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`; })() : null;
     const overdue = new Decimal(decimalString(overdueRows[0]?.total ?? '0'));
+    const returnSplit = emptySplit();
+    for (const row of returnRows) if (slipReceivedAt(row) >= thisMonthStart) addSlip(returnSplit, row);
+    const pendingReturns = returnRows.filter((row) => row.accountingStatus === 'PENDING');
 
     const alerts: DashboardSummary['alerts'] = [];
     const worstDebtor = dangerRows[0];
@@ -326,6 +337,15 @@ export class DashboardService {
       })),
       recentOrdersTotal,
       visible,
+      ...(visible.revenue ? {
+        returnsThisMonth: {
+          total: returnSplit.total.toFixed(2),
+          rate: percentOf(returnSplit.total, revenueThisMonthGross),
+          slips: returnSplit.slips,
+          pendingSlips: pendingReturns.length,
+          pendingOverdueSlips: pendingReturns.filter((row) => calendarDays(slipReceivedAt(row), now) > RETURN_THRESHOLDS.pendingDays).length,
+        },
+      } : {}),
       alerts,
     };
   }

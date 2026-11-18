@@ -81,6 +81,8 @@
     if (customerId) query.set('customerId', customerId);
     query.set('page', String(pageNo));
     query.set('pageSize', String(pageSize));
+    // Bảng chỉ cần số dòng hàng, không cần cả mảng dòng (PERF-LIST-01).
+    query.set('view', 'summary');
     try {
       const result = await api<Paged<Row> & { totalValue: string }>(`/sales-orders?${query}`);
       rows = result.rows;
@@ -175,7 +177,7 @@
               {/if}
               <td><span class="tag" class:b2c={row.channel === 'B2C' && !row.purpose?.match(/SAMPLE|INSPECTION|GIFT|WARRANTY/)} class:loan={row.purpose === 'SAMPLE' || row.purpose === 'INSPECTION' || row.purpose === 'GIFT' || row.purpose === 'WARRANTY'}>{slipTypeShort(slipTypeOf(row))}</span></td>
               <td class="muted">{row.salesRepName ?? '—'}</td>
-              <td class="num">{row.lineCount ?? row.lines.length}</td>
+              <td class="num">{row.lineCount ?? row.lines?.length ?? 0}</td>
               <td class="num"><b>{num(row.grandTotal)}</b></td>
               <td><span class={`pill ${info.tone}`}>{info.label}</span></td>
             </tr>

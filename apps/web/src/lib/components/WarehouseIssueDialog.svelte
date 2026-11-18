@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { carrierToSave } from '$lib/labels';
   import { partyName } from '$lib/slip-type';
   import { m } from '$lib/paraglide/messages';
   /** Kho lập phiếu xuất kho bán hàng số SWK từ phiếu BH đã được khách xác nhận. */
@@ -42,7 +43,7 @@
         body: JSON.stringify({
           version: order.version,
           ...(receiverName.trim() ? { receiverName: receiverName.trim() } : {}),
-          ...(carrier.trim() ? { carrier: carrier.trim() } : {}),
+          ...(carrier.trim() ? { carrier: carrierToSave(carrier) } : {}),
           ...(note.trim() ? { note: note.trim() } : {}),
         }),
       });

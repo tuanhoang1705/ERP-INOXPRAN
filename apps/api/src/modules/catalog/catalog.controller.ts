@@ -3,7 +3,7 @@ import type { FastifyReply } from 'fastify';
 import { ApiTags } from '@nestjs/swagger';
 import {
   ConvertPartnerSchema,
-  CreatePartnerSchema,
+  CreatePartnerRequestSchema,
   CreateProductSchema,
   CreateWarehouseSchema,
   EmployeeInputSchema,
@@ -141,6 +141,13 @@ export class CatalogController {
     return this.catalog.listPartners(kind, search, pageRequest(page, pageSize), stage, from, to);
   }
 
+  /** Mã KH tự sinh kế tiếp (số trống nhỏ nhất) để điền sẵn khi thêm khách — CUS-CODE-01. Khai báo trước partners/:id. */
+  @Roles(...PARTNER_CREATE_ROLES)
+  @Get('partners/next-customer-code')
+  nextCustomerCode() {
+    return this.catalog.nextCustomerCode();
+  }
+
   @Get('partners/:id')
   partner(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.catalog.getPartner(id, request.user);
@@ -156,7 +163,7 @@ export class CatalogController {
   @Roles(...PARTNER_CREATE_ROLES)
   @Post('partners')
   createPartner(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
-    return this.catalog.createPartner(CreatePartnerSchema.parse(body), request);
+    return this.catalog.createPartner(CreatePartnerRequestSchema.parse(body), request);
   }
 
   /** Quyền theo loại đối tác và quyền đổi hạn mức công nợ kiểm tra trong service (NVKD: chỉ hồ sơ khách cơ hội). */

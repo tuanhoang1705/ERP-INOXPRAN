@@ -408,9 +408,12 @@ export class InventoryService {
           { session },
         );
         if (updated.modifiedCount !== 1) {
+          const balance = await this.db.collection('inventory_balances').findOne({ warehouseId, productId }, { session, projection: { onHand: 1, reserved: 1 } });
+          const available = Decimal.max(0, new Decimal(decimalString(balance?.onHand ?? '0')).sub(decimalString(balance?.reserved ?? '0'))).toString();
           throw new ConflictException({
             code: 'INSUFFICIENT_AVAILABLE_STOCK',
-            message: `Tồn khả dụng của ${String(product.sku)} không đủ`,
+            message: `Tồn khả dụng của ${String(product.sku)} không đủ (còn ${available}, cần ${decimalString(line.quantity)})`,
+            details: { summary: `${String(product.sku)}: ${available} / ${decimalString(line.quantity)}`, items: [{ sku: String(product.sku), available, requested: decimalString(line.quantity) }] },
           });
         }
       }
@@ -440,6 +443,40 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Mã thiếu tồn khả dụng cho các dòng (cộng gộp các dòng cùng mã, VD dòng bán + dòng tặng) — để báo rõ "mã nào còn bao nhiêu,
+   * phiếu cần bao nhiêu" khi nhiều người cùng giữ một mã (INV-01, 17/11/2026).
+   */
+  private async shortages(warehouseId: ObjectId, lines: ReservationLine[], session: ClientSession): Promise<Array<{ sku: string; available: string; requested: string }>> {
+    // Dòng phiếu lưu productId dạng ObjectId, dòng mới dạng chuỗi — gộp theo chuỗi hex.
+    const demand = new Map<string, Decimal>();
+    for (const line of lines) {
+      const key = String(line.productId);
+      demand.set(key, (demand.get(key) ?? new Decimal(0)).add(decimalString(line.baseQuantity)));
+    }
+    const ids = [...demand.keys()].map((id) => toObjectId(id, 'productId'));
+    const [balances, products] = await Promise.all([
+      this.db.collection('inventory_balances').find({ warehouseId, productId: { $in: ids } }, { session, projection: { productId: 1, onHand: 1, reserved: 1 } }).toArray(),
+      this.db.collection('products').find({ _id: { $in: ids } }, { session, projection: { sku: 1 } }).toArray(),
+    ]);
+    const balanceOf = new Map(balances.map((row) => [(row.productId as ObjectId).toHexString(), new Decimal(decimalString(row.onHand ?? '0')).sub(decimalString(row.reserved ?? '0'))]));
+    const skuOf = new Map(products.map((row) => [(row._id as ObjectId).toHexString(), String(row.sku)]));
+    return [...demand.entries()]
+      .filter(([productId, requested]) => (balanceOf.get(productId) ?? new Decimal(0)).lt(requested))
+      .map(([productId, requested]) => ({ sku: skuOf.get(productId) ?? productId, available: Decimal.max(0, balanceOf.get(productId) ?? 0).toString(), requested: requested.toString() }));
+  }
+
+  private shortageError(items: Array<{ sku: string; available: string; requested: string }>, fallbackSku?: string): ConflictException {
+    const summary = items.length
+      ? items.map((item) => `${item.sku} còn ${item.available}, phiếu cần ${item.requested}`).join('; ')
+      : fallbackSku ?? '';
+    return new ConflictException({
+      code: 'INSUFFICIENT_AVAILABLE_STOCK',
+      message: `Tồn khả dụng không đủ để giữ hàng: ${summary}. Hàng có thể vừa được phiếu khác giữ trước — tải lại tồn kho, giảm số lượng rồi phát hành lại.`,
+      details: { summary: items.length ? items.map((item) => `${item.sku}: ${item.available} / ${item.requested}`).join('; ') : summary, items },
+    });
+  }
+
   async reserve(
     orderId: ObjectId,
     warehouseIdValue: string,
@@ -448,6 +485,9 @@ export class InventoryService {
     session: ClientSession,
   ): Promise<void> {
     const warehouseId = toObjectId(warehouseIdValue, 'warehouseId');
+    // Báo trước đủ mọi mã thiếu (đọc trong giao dịch); lệnh giữ có điều kiện bên dưới vẫn là chốt chặn khi nhiều người cùng giữ.
+    const short = await this.shortages(warehouseId, lines, session);
+    if (short.length) throw this.shortageError(short);
     for (const line of lines) {
       const productId = toObjectId(line.productId, 'productId');
       const quantityValue = decimalString(line.baseQuantity);
@@ -461,9 +501,7 @@ export class InventoryService {
         { $inc: { reserved: quantity }, $set: { updatedAt: new Date() } },
         { session },
       );
-      if (updated.modifiedCount !== 1) {
-        throw new ConflictException({ code: 'INSUFFICIENT_AVAILABLE_STOCK', message: 'Tồn khả dụng không đủ để giữ hàng' });
-      }
+      if (updated.modifiedCount !== 1) throw this.shortageError(await this.shortages(warehouseId, lines, session));
       await this.db.collection('inventory_reservations').insertOne(
         {
           _id: new ObjectId(),

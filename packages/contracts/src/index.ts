@@ -27,10 +27,13 @@ export * from './shared/currency.js';
 export * from './shared/packing.js';
 export * from './shared/landed-cost.js';
 export * from './shared/inventory-categories.js';
+export * from './shared/stock-return-code.js';
 export * from './shared/stock-count.js';
 export * from './shared/text.js';
 export * from './shared/provinces.js';
 export * from './shared/visibility.js';
+export * from './shared/customer-code.js';
+export * from './shared/returns-report.js';
 
 export const IdSchema = z.string().min(1).max(64);
 export const CodeSchema = z
@@ -322,6 +325,14 @@ export const CreatePartnerSchema = PartnerSchema.pick({
   /** Lý do đặt NVKD khác người phụ trách vùng (chỉ Admin / quản trị gốc). */
   .extend({ territoryExceptionReason: z.string().trim().min(5).max(300).optional() });
 export type CreatePartner = z.infer<typeof CreatePartnerSchema>;
+/**
+ * Thêm đối tác qua giao diện (CUS-CODE-01, 17/11/2026): khách hàng được bỏ trống mã — máy chủ cấp số trống nhỏ nhất KHnnn
+ * (nhiều người thêm cùng lúc không trùng). Nhà cung cấp vẫn bắt buộc nhập mã. Nhập từ Excel vẫn dùng CreatePartnerSchema (bắt buộc mã).
+ */
+export const CreatePartnerRequestSchema = CreatePartnerSchema.extend({ code: CodeSchema.optional() }).superRefine((value, ctx) => {
+  if (!value.code && value.kind === 'SUPPLIER') ctx.addIssue({ code: 'custom', path: ['code'], message: 'Nhập mã nhà cung cấp' });
+});
+export type CreatePartnerRequest = z.infer<typeof CreatePartnerRequestSchema>;
 
 /** Chuyển khách "cơ hội" thành khách chính thức: bắt buộc cấp giá; hạn mức / số ngày nợ do Giám đốc, kế toán đặt. */
 export const ConvertPartnerSchema = z.object({
@@ -591,8 +602,12 @@ export interface SalesIssuer {
   title?: string;
 }
 
+/** Bỏ trống khi dùng số tự sinh. Khi nhập tay, máy chủ ghép và kiểm tra theo loại phiếu và ngày chứng từ. */
+const OptionalStockReturnCode = z.string().trim().toUpperCase().min(1).max(13).optional();
+
 /** Thủ kho nhập lại hàng mẫu / hàng kiểm định mang về (một phần hoặc đủ) theo phiếu. */
 export const LoanReturnSchema = z.object({
+  code: OptionalStockReturnCode,
   version: z.number().int().positive(),
   lines: z.array(z.object({ productId: IdSchema, quantity: PositiveDecimalStringSchema })).min(1).max(200),
   note: z.string().trim().max(500).optional(),
@@ -1526,6 +1541,17 @@ export const DashboardSummarySchema = z.object({
    * không được tính, trả số 0 / danh sách rỗng.
    */
   visible: z.object({ revenue: z.boolean(), receivables: z.boolean(), inventoryValue: z.boolean(), lowStock: z.boolean(), approvals: z.boolean(), recentOrders: z.boolean() }),
+  /**
+   * Hàng khách trả tháng này (RPT-RET-01, 18/11/2026) — chỉ khi xem được doanh số: giá trị phiếu NK theo ngày nhận hàng, % trên doanh số giao
+   * tháng này; phiếu chờ kế toán tính mọi tháng. Thẻ doanh số giữ nguyên.
+   */
+  returnsThisMonth: z.object({
+    total: MoneySchema,
+    rate: z.number().nullable(),
+    slips: z.number().int().nonnegative(),
+    pendingSlips: z.number().int().nonnegative(),
+    pendingOverdueSlips: z.number().int().nonnegative(),
+  }).optional(),
   alerts: z.array(
     z.object({
       id: IdSchema,
@@ -2262,6 +2288,7 @@ export type UpdatePromotion = z.infer<typeof UpdatePromotionSchema>;
 /** `note`: nguyên nhân / ghi chú từng dòng (20/10/2026 — sau Tên sản phẩm, Số lượng), hiện trên danh sách và thẻ kho. */
 const StockReturnLineSchema = z.object({ productId: IdSchema, quantity: PositiveDecimalStringSchema, note: z.string().trim().max(300).optional() });
 const StockReturnBase = {
+  code: OptionalStockReturnCode,
   partnerId: IdSchema,
   warehouseId: IdSchema,
   note: z.string().trim().min(3).max(500),
@@ -2299,8 +2326,8 @@ const StockReturnRevision = { version: z.number().int().min(0), reason: z.string
  * một giao dịch; giữ lịch sử sửa. Kế toán đã xử lý thì chuyển lại "chờ kế toán". Phiếu hàng mẫu nhập lại sửa bằng UpdateSampleReturnSchema.
  */
 export const UpdateStockReturnSchema = z.discriminatedUnion('kind', [
-  CreateCustomerReturnSchema.extend(StockReturnRevision),
-  CreateSupplierReturnSchema.extend(StockReturnRevision),
+  CreateCustomerReturnSchema.omit({ code: true }).extend(StockReturnRevision),
+  CreateSupplierReturnSchema.omit({ code: true }).extend(StockReturnRevision),
 ]);
 export type UpdateStockReturn = z.infer<typeof UpdateStockReturnSchema>;
 /** Hủy phiếu trả hàng đã lưu (nhập sai cả phiếu): đảo thẻ kho, phiếu giữ lại với trạng thái "Đã hủy". */
@@ -2311,6 +2338,7 @@ export type VoidStockReturn = z.infer<typeof VoidStockReturnSchema>;
  * (SAMPLE_IN), phiếu TH loại hàng mẫu ghi người mượn, không qua kế toán. Có phiếu thì nhập lại trên phiếu (loan-returns).
  */
 export const CreateSampleReturnSchema = z.object({
+  code: OptionalStockReturnCode,
   warehouseId: IdSchema,
   /** Người mượn là NVKD (danh mục nhân viên kinh doanh) … */
   borrowerId: IdSchema.optional(),

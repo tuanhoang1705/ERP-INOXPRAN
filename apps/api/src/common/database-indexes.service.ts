@@ -95,6 +95,23 @@ export class DatabaseIndexesService implements OnModuleInit {
       this.db.collection('users').createIndex({ status: 1, lastSeenAt: -1 }),
       this.db.collection('system_jobs').createIndex({ type: 1, at: -1 }),
       this.db.collection('audit_events').createIndex({ occurredAt: -1 }),
+      // Rà soát truy vấn 17/11/2026 (PERF-LIST-01): danh sách phân trang cần chỉ mục đúng thứ tự sắp xếp (kể cả _id để cố định thứ tự),
+      // nếu không MongoDB đọc cả bảng rồi sắp xếp trong bộ nhớ ở mọi lần mở trang dù chỉ trả 20–50 dòng.
+      this.db.collection('sales_orders').createIndex({ orderDate: -1, createdAt: -1, _id: -1 }),
+      this.db.collection('sales_orders').createIndex({ status: 1, orderDate: -1, createdAt: -1, _id: -1 }),
+      // Số phiếu + tổng giá trị trên đầu danh sách BH: đọc thẳng từ chỉ mục, không đọc từng phiếu (20.000 phiếu: 65 ms → 14 ms).
+      this.db.collection('sales_orders').createIndex({ status: 1, warehouseIssued: 1, grandTotal: 1 }),
+      this.db.collection('inventory_movements').createIndex({ occurredAt: -1, _id: -1 }),
+      this.db.collection('inventory_movements').createIndex({ productId: 1, occurredAt: -1, _id: -1 }),
+      this.db.collection('audit_events').createIndex({ occurredAt: -1, _id: -1 }),
+      this.db.collection('receivables').createIndex({ status: 1, dueDate: 1, _id: 1 }),
+      this.db.collection('receivables').createIndex({ createdAt: -1, _id: -1 }),
+      this.db.collection('stock_returns').createIndex({ createdAt: -1, _id: -1 }),
+      this.db.collection('stock_returns').createIndex({ kind: 1, createdAt: -1, _id: -1 }),
+      this.db.collection('purchase_orders').createIndex({ createdAt: -1, _id: -1 }),
+      this.db.collection('import_shipments').createIndex({ createdAt: -1, _id: -1 }),
+      this.db.collection('partner_activities').createIndex({ occurredAt: -1, _id: -1 }),
+      this.db.collection('login_events').createIndex({ at: -1, _id: -1 }),
     ]);
     // ROOT-DEL-02 (13/10/2026) đã bỏ ngày 14/10: gỡ cờ ẩn với nhân viên còn sót (chạy lại nhiều lần không sao).
     await Promise.all(['sales_orders', 'shipments', 'inventory_movements', 'receivables', 'approval_requests', 'price_override_requests'].map((name) =>

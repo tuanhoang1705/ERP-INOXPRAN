@@ -66,6 +66,17 @@ export interface IssueComputation {
   pending: boolean;
 }
 
+/**
+ * Hai kết quả tính của một dòng giống hệt nhau (so từng trường; bảng giá so theo object) — form giữ object cũ để dòng không đổi
+ * không vẽ lại (SAL-PERF-01, 16/11/2026).
+ */
+export function sameComputed(a: ComputedLine, b: ComputedLine): boolean {
+  if (a === b) return true;
+  const keys = Object.keys(b) as Array<keyof ComputedLine>;
+  if (keys.length !== Object.keys(a).length) return false;
+  return keys.every((key) => a[key] === b[key]);
+}
+
 /** Hệ số quy đổi đơn vị bán → đơn vị cơ sở. */
 export function conversionFactor(product: IssueProduct, unit: string): string | null {
   if (unit === product.baseUnit) return '1';

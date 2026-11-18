@@ -28,7 +28,7 @@ import Decimal from 'decimal.js';
 import type { ClientSession, Db, Document } from 'mongodb';
 import { ObjectId } from 'mongodb';
 import { AuditService } from '../../common/audit.service';
-import { nextReturnCode, nextReturnInCode, releaseReturnNumber } from './return-codes';
+import { insertStockReturn, nextReturnCode, releaseReturnNumber } from './return-codes';
 import { decimal, decimalString, serializeDocument, toObjectId } from '../../common/domain';
 import { IdempotencyService } from '../../common/idempotency.service';
 import { OutboxService } from '../../common/outbox.service';
@@ -43,6 +43,7 @@ import { allocationView, planReturnCredit, postReturnCredit, returnLineAmount, v
 import { loadSegmentRules, planPartner, reallocatePartner, segmentContext } from '../receivables/segment-store';
 import { lineSegment, rulesFor } from '../receivables/segments';
 import { InventoryService } from './inventory.service';
+import { returnListOrder, RETURN_ORDER_FIELDS } from './return-order';
 
 /** Phiếu BH đã xuất kho (có giá bán để gợi ý đơn giá trả hàng). */
 const SHIPPED_ORDER_STATUSES = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'];
@@ -129,7 +130,10 @@ export class StockReturnsService {
     const filter: Document = kind === 'CUSTOMER' || kind === 'SUPPLIER' || kind === 'SAMPLE' ? { kind } : {};
     if (!user.root) filter.status = { $ne: 'VOIDED' };
     const [rows, total] = await Promise.all([
-      this.db.collection('stock_returns').find(filter).sort({ createdAt: -1, _id: -1 }).skip(paging.skip).limit(paging.pageSize).toArray(),
+      // NK-SORT-01: theo số phiếu (tháng trên số, rồi số thứ tự) giảm dần, không theo lúc bấm lưu.
+      this.db.collection('stock_returns').aggregate([
+        { $match: filter }, ...returnListOrder(), { $skip: paging.skip }, { $limit: paging.pageSize }, { $unset: RETURN_ORDER_FIELDS },
+      ]).toArray(),
       this.db.collection('stock_returns').countDocuments(filter),
     ]);
     return pageOf(rows.map((row) => this.view(row)), total, paging);
@@ -512,7 +516,7 @@ export class StockReturnsService {
       if (!warehouse) throw new NotFoundException({ code: 'WAREHOUSE_NOT_FOUND', message: 'Không tìm thấy kho hoạt động', details: [{ path: ['warehouseId'] }] });
       const merged = this.mergeLines(input.lines);
       const productById = await this.products(merged, session);
-      const code = await nextReturnInCode(this.db, this.sequences, session);
+      const code = await nextReturnCode(this.db, this.sequences, session, 'NK', new Date(), input.code);
       const lines = this.stockLines(merged);
       await this.inventory.applyPhysicalMovement(
         {
@@ -548,7 +552,7 @@ export class StockReturnsService {
         createdByName: request.user.displayName,
         createdAt: new Date(),
       };
-      await this.db.collection('stock_returns').insertOne(document, { session });
+      await insertStockReturn(this.db, document, session);
       await this.audit.record(
         {
           actorId: request.user.sub, actorEmail: request.user.email, correlationId: request.correlationId,
@@ -723,7 +727,7 @@ export class StockReturnsService {
       const receivedAt = input.kind === 'CUSTOMER' ? this.receivedAtOf(input.receivedAt, now) : undefined;
       const ready = await this.prepare(input, session);
       // Khách trả hàng: số NK theo tháng nhận hàng (NK-01); trả nhà máy: XT. Cả hai đếm tiếp cả năm như phiếu BH (NUM-01).
-      const code = ready.customer ? await nextReturnInCode(this.db, this.sequences, session, receivedAt ?? now) : await nextReturnCode(this.db, this.sequences, session, 'XT', now);
+      const code = await nextReturnCode(this.db, this.sequences, session, ready.customer ? 'NK' : 'XT', receivedAt ?? now, input.code);
       await this.post(code, ready, input.note, receivedAt, request.user.sub, session);
       const { value, needsAccounting } = this.money(ready);
       const document = {
@@ -751,7 +755,7 @@ export class StockReturnsService {
         createdByName: request.user.displayName,
         createdAt: now,
       };
-      await this.db.collection('stock_returns').insertOne(document, { session });
+      await insertStockReturn(this.db, document, session);
       if (needsAccounting) {
         await this.notifyAccountant(document, 'CUSTOMER_RETURN_POSTED', {
           title: `Khách trả hàng ${code} — cần điều chỉnh công nợ`,

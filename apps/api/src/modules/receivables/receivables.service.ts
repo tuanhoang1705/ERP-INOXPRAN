@@ -11,7 +11,7 @@ import { decimal, decimalString, serializeDocument, toObjectId, vnMonthStart, vn
 import { IdempotencyService } from '../../common/idempotency.service';
 import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
-import { addBodyRow, brandSheet, brandWorkbook, exportedAt, finalize, FORMATS, kpiStrip, signatureBlock, tableHeader, titleBlock, toBuffer, totalRow, type BrandColumn } from '../../common/excel-brand';
+import { toBuffer } from '../../common/excel-brand';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { applyAllocations } from './allocation-store';
@@ -19,6 +19,8 @@ import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, OVERDUE_HOLD_RE
 import { buildLedger, type LedgerHistory, type LedgerPayment, type LedgerReceivable } from './ledger';
 import { DOCUMENT_MODES } from './reallocate';
 import { buildSummaryWorkbook, type SummaryCustomer, type SummaryMonth } from './summary-workbook';
+import { buildStatementDetailLines, vnDayOf } from './statement-detail';
+import { buildStatementDetailWorkbook } from './statement-detail-workbook';
 import { pendingDeliveryOf } from './pending-delivery';
 import { loadSegmentItems } from './segment-items';
 import { loadSegmentRules, reallocatePartner } from './segment-store';
@@ -46,33 +48,33 @@ export class ReceivablesService {
       filter.dueDate = { $lt: new Date() };
       filter.status = { $in: OPEN_RECEIVABLE_STATUSES };
     }
-    const pipeline: Document[] = [
-      { $match: filter },
+    if (search) {
+      const pattern = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      // Tìm theo tên / mã khách: tra danh sách khách trước (ít dòng) thay vì ghép khách vào mọi chứng từ rồi mới lọc (PERF-LIST-01).
+      const partnerIds = (await this.db.collection('partners').find({ $or: [{ name: pattern }, { code: pattern }] }, { projection: { _id: 1 } }).toArray()).map((row) => row._id);
+      filter.$or = [{ code: pattern }, { salesOrderCode: pattern }, { warrantyCode: pattern }, { openingDocumentNo: pattern }, { historyInvoiceNo: pattern }, { historyDocumentNo: pattern }, { payerName: pattern }, { partnerId: { $in: partnerIds } }];
+    }
+    // Sắp xếp + cắt trang trên chính bảng công nợ (có chỉ mục theo hạn trả / ngày phát sinh); chỉ các dòng của trang mới ghép tên khách.
+    const pipeline: Document[] = [{ $match: filter }, { $sort: includePaid ? { createdAt: -1, _id: -1 } : { dueDate: 1, _id: 1 } }];
+    const withPartner: Document[] = [
       { $lookup: { from: 'partners', localField: 'partnerId', foreignField: '_id', as: 'partner' } },
       { $unwind: '$partner' },
     ];
-    if (search) {
-      const pattern = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      pipeline.push({ $match: { $or: [{ code: pattern }, { salesOrderCode: pattern }, { warrantyCode: pattern }, { openingDocumentNo: pattern }, { historyInvoiceNo: pattern }, { historyDocumentNo: pattern }, { payerName: pattern }, { 'partner.name': pattern }, { 'partner.code': pattern }] } });
-    }
-    pipeline.push({ $sort: includePaid ? { createdAt: -1, _id: -1 } : { dueDate: 1, _id: 1 } });
     let rows: Document[];
     let summary: { total: number; outstanding: string } | null = null;
     if (paging) {
-      const [facet] = await this.db.collection('receivables').aggregate([
-        ...pipeline,
-        {
-          $facet: {
-            rows: [{ $skip: paging.skip }, { $limit: paging.pageSize }],
-            summary: [{ $group: { _id: null, total: { $sum: 1 }, outstanding: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } }],
-          },
-        },
-      ]).toArray();
-      rows = (facet?.rows as Document[] | undefined) ?? [];
-      const group = (facet?.summary as Document[] | undefined)?.[0];
+      const [page, groups] = await Promise.all([
+        this.db.collection('receivables').aggregate([...pipeline, { $skip: paging.skip }, { $limit: paging.pageSize }, ...withPartner]).toArray(),
+        this.db.collection('receivables').aggregate([
+          { $match: filter },
+          { $group: { _id: null, total: { $sum: 1 }, outstanding: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
+        ]).toArray(),
+      ]);
+      rows = page;
+      const group = groups[0];
       summary = { total: Number(group?.total ?? 0), outstanding: new Decimal(decimalString(group?.outstanding ?? '0')).toFixed(2) };
     } else {
-      rows = await this.db.collection('receivables').aggregate([...pipeline, { $limit: 1000 }]).toArray();
+      rows = await this.db.collection('receivables').aggregate([...pipeline, { $limit: 1000 }, ...withPartner]).toArray();
     }
     const now = new Date();
     const mapped = rows.map((row) => {
@@ -699,63 +701,54 @@ export class ReceivablesService {
     };
   }
 
-  /** Sổ chi tiết công nợ khách theo bộ chuẩn Excel thương hiệu (XLS-01): khối chỉ số, bảng phát sinh, phần tổng như sheet đối chiếu, ký tên. */
-  async statementWorkbook(partnerId: string, from: string | undefined, to: string | undefined, preparedBy: string, viewer?: Viewer): Promise<{ buffer: Buffer; fileName: string }> {
+  /**
+   * Sổ công nợ khách theo mẫu kế toán `CN NPP … dd.mm.xlsx` (AR-XLS-03, 16/11/2026, thay XLS-01): mỗi dòng hàng của mỗi chứng từ
+   * một dòng (mã hàng, ĐVT, số lượng, đơn giá, thuế…), cùng nguồn và cùng kỳ với sổ chi tiết — (4) = còn nợ cuối kỳ trên màn hình.
+   */
+  async statementWorkbook(partnerId: string, from: string | undefined, to: string | undefined, viewer?: Viewer): Promise<{ buffer: Buffer; fileName: string; displayName: string }> {
     const statement = await this.statement(partnerId, from, to, viewer);
-    const workbook = brandWorkbook();
-    const day = (value: Date) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }).format(value);
-    const dayOf = (value: string | undefined) => (value ? day(new Date(`${value}T12:00:00+07:00`)) : '');
-    const period = from || to ? `Từ ${from ? dayOf(from) : 'đầu'} đến ${to ? dayOf(to) : 'nay'}` : 'Toàn bộ';
-    const columns: BrandColumn[] = [
-      { key: 'stt', header: 'STT', width: 6, type: 'int' },
-      { key: 'date', header: 'Ngày', width: 12, type: 'date' },
-      { key: 'doc', header: 'Chứng từ', width: 18, type: 'code' },
-      { key: 'text', header: 'Diễn giải', width: 44, wrap: true },
-      { key: 'debit', header: 'Phát sinh nợ (đ)', width: 17, type: 'money' },
-      { key: 'receipt', header: 'Đã thu (đ)', width: 17, type: 'money', tint: 'in' },
-      { key: 'freight', header: 'Phí vận chuyển (đ)', width: 16, type: 'money' },
-      { key: 'returns', header: 'Trả hàng / giảm (đ)', width: 17, type: 'money' },
-      { key: 'balance', header: 'Còn nợ lũy kế (đ)', width: 19, type: 'money', emphasis: true },
-    ];
-    const sheet = brandSheet(workbook, 'Sổ công nợ', columns);
-    let rowNo = titleBlock(sheet, columns.length, 'Sổ chi tiết công nợ khách hàng', [
-      `Khách hàng: ${statement.partner.code} — ${statement.partner.name}`,
-      `Kỳ: ${period} · Người lập: ${preparedBy} · Xuất lúc ${exportedAt()}`,
+    const id = toObjectId(partnerId, 'partnerId');
+    const ids = (kinds: readonly string[]) => [...new Set(statement.rows.filter((row) => kinds.includes(row.kind)).map((row) => row.refId))].map((value) => new ObjectId(value));
+    const [partner, receivables, payments] = await Promise.all([
+      this.db.collection('partners').findOne({ _id: id }, { projection: { code: 1, name: 1, nameZh: 1, shortName: 1 } }),
+      this.db.collection('receivables').find({ _id: { $in: ids(['DEBIT', 'VOID']) } }).toArray(),
+      this.db.collection('payments').find({ _id: { $in: ids(['RECEIPT', 'FREIGHT', 'RETURN']) } }).toArray(),
     ]);
-    rowNo = kpiStrip(sheet, rowNo, columns.length, [
-      { label: 'SỐ DƯ ĐẦU KỲ (Đ)', value: Number(statement.opening), format: FORMATS.money },
-      { label: 'PHÁT SINH NỢ (Đ)', value: Number(statement.totals.debit), format: FORMATS.money },
-      { label: 'ĐÃ THU (Đ)', value: Number(statement.totals.receipt), format: FORMATS.money, tone: 'good' },
-      { label: 'CÒN NỢ CUỐI KỲ (Đ)', value: Number(statement.closing), format: FORMATS.money, tone: Number(statement.closing) > 0 ? 'danger' : 'good' },
+    const orderIds = receivables.map((row) => row.salesOrderId).filter((value): value is ObjectId => value instanceof ObjectId);
+    const returnIds = payments.map((row) => row.stockReturnId).filter((value): value is ObjectId => value instanceof ObjectId);
+    const [orders, stockReturns] = await Promise.all([
+      orderIds.length ? this.db.collection('sales_orders').find({ _id: { $in: orderIds } }, { projection: { code: 1, lines: 1, templateCode: 1, taxRate: 1 } }).toArray() : [],
+      returnIds.length ? this.db.collection('stock_returns').find({ _id: { $in: returnIds } }, { projection: { code: 1 } }).toArray() : [],
     ]);
-    const header = rowNo;
-    tableHeader(sheet, header, columns);
-    statement.rows.forEach((row, index) => {
-      addBodyRow(sheet, columns, {
-        stt: index + 1, date: new Date(new Date(row.date).getTime() + 7 * 3_600_000), doc: row.documentNo, text: row.description,
-        debit: Number(row.debit) || null, receipt: Number(row.receipt) || null, freight: Number(row.freight) || null, returns: Number(row.returns) || null, balance: Number(row.balance),
-      }, index, { cells: Number(row.balance) < 0 ? { balance: { color: 'green' } } : {} });
+    const byId = (rows: Document[]) => new Map(rows.map((row) => [(row._id as ObjectId).toHexString(), row]));
+    const name = String(partner?.name ?? statement.partner.name);
+    const nameZh = partner?.nameZh ? String(partner.nameZh) : undefined;
+    const { lines, vatRates } = buildStatementDetailLines(statement.rows, {
+      partner: { name, nameZh },
+      receivables: byId(receivables),
+      payments: byId(payments),
+      orders: byId(orders),
+      returnCodes: new Map(stockReturns.map((row) => [(row._id as ObjectId).toHexString(), String(row.code)])),
+    }, from ? { date: from, amount: statement.opening } : undefined);
+    // (5) công nợ nhóm tách riêng là số hiện tại — chỉ in khi kỳ xuất tới hôm nay.
+    const today = vnDayOf(new Date().toISOString());
+    const current = !to || to >= today;
+    const segments = current ? statement.segments.filter((segment) => new Decimal(segment.outstanding).gt(0)).map((segment) => ({ name: segment.name, amount: Number(segment.outstanding) })) : null;
+    const shortName = String(partner?.shortName || name).trim();
+    const workbook = buildStatementDetailWorkbook({
+      customer: { code: statement.partner.code, name, nameZh },
+      sheetName: shortName,
+      lines,
+      vatPercent: vatRates.size === 1 ? [...vatRates][0] : undefined,
+      segments,
     });
-    totalRow(sheet, columns, {
-      text: 'CỘNG PHÁT SINH TRONG KỲ', debit: Number(statement.totals.debit), receipt: Number(statement.totals.receipt),
-      freight: Number(statement.totals.freight), returns: Number(statement.totals.returns), balance: Number(statement.closing),
-    });
-    finalize(sheet, header, header + statement.rows.length, columns.length);
-    // Phần tổng giống sheet đối chiếu của kế toán: thêm công nợ từng nhóm tách riêng và còn lại trừ nhóm (CN-SEG-01).
-    const groups = statement.segments.filter((segment) => new Decimal(segment.outstanding).gt(0));
-    const summary: Array<[string, string]> = [
-      ['Còn nợ cuối kỳ', statement.closing],
-      ['Chứng từ còn nợ (hiện tại)', statement.openDebt],
-      ['Khách trả trước chưa bù trừ (hiện tại)', statement.prepayment],
-      ...groups.map((segment): [string, string] => [`Công nợ ${segment.name} (hiện tại)`, segment.outstanding]),
-      ...(groups.length ? [[`Còn lại trừ ${groups.map((segment) => segment.name).join(', ')} (hiện tại)`, statement.current.normal] as [string, string]] : []),
-    ];
-    sheet.addRow([]);
-    summary.forEach(([label, value], index) => addBodyRow(sheet, columns, { text: label, balance: Number(value) }, index, index === 0 ? { cells: { text: { bold: true }, balance: { bold: true } } } : {}));
-    signatureBlock(sheet, columns.length, preparedBy, ['Người lập biểu', 'Kế toán trưởng', 'Xác nhận của khách hàng']);
-    const buffer = await toBuffer(workbook);
+    const stamp = (to && to < today ? to : today);
     const safe = statement.partner.code.replace(/[^A-Za-z0-9_-]/g, '');
-    return { buffer, fileName: `SoCongNo_${safe}_${from ?? 'dau'}_${to ?? 'nay'}.xlsx` };
+    return {
+      buffer: await toBuffer(workbook),
+      fileName: `CongNo_${safe}_${stamp.replace(/-/g, '')}.xlsx`,
+      displayName: `CN ${shortName.replace(/[\\/:*?"<>|]/g, ' ')} ${stamp.slice(8, 10)}.${stamp.slice(5, 7)}.xlsx`,
+    };
   }
 
   /** Xem trước cách phân bổ một khoản thu theo khách (chứng từ cũ nhất trước, phần dư thành trả trước). */

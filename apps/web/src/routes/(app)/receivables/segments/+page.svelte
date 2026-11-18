@@ -89,7 +89,7 @@
     editOpen = true;
     if (!customers.length && !customersLoading) {
       customersLoading = true;
-      void api<CustomerOption[]>('/partners?kind=CUSTOMER')
+      void api<CustomerOption[]>('/partners?kind=CUSTOMER&stage=CUSTOMER')
         .then((rows) => (customers = rows))
         .catch(() => undefined)
         .finally(() => (customersLoading = false));

@@ -19,7 +19,7 @@
   import WarehouseIssueDialog from '$lib/components/WarehouseIssueDialog.svelte';
   import { api } from '$lib/api';
   import { date, dateTime, num, vnd } from '$lib/format';
-  import { approvalReason, hasRole, orderStage, tierLabel, zeroPriceRowClass } from '$lib/labels';
+  import { approvalReason, carrierText, hasRole, orderStage, tierLabel, zeroPriceRowClass } from '$lib/labels';
   import LineKindPill from '$lib/components/LineKindPill.svelte';
   import { can, session, stepActor } from '$lib/session.svelte';
   import { canOpen } from '$lib/visibility';
@@ -486,7 +486,7 @@
             <div><dt>{m.so_phieu_swk()}</dt><dd class="code">{order.warehouseSlipNo}</dd></div>
             <div><dt>{m.nguoi_lap_swk()}</dt><dd>{order.shippedByName ?? '—'}</dd></div>
             <div class="wide2"><dt>{m.nguoi_nhan_hang()}</dt><dd>{order.receiverName ?? '—'}</dd></div>
-            <div class="wide2"><dt>{m.van_chuyen()}</dt><dd>{order.carrier ?? '—'}</dd></div>
+            <div class="wide2"><dt>{m.van_chuyen()}</dt><dd>{order.carrier ? carrierText(order.carrier) : '—'}</dd></div>
           {/if}
           {#if order.note || order.warehouseNote}
             <div class="wide"><dt>{m.ghi_chu()}</dt><dd class="order-note">{[order.note, order.warehouseNote ? `Kho: ${order.warehouseNote}` : ''].filter(Boolean).join(' · ')}</dd></div>

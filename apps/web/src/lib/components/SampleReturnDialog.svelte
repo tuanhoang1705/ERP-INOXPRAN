@@ -15,6 +15,7 @@
   import { loadStaff, staffPick, type StaffOption } from '$lib/staff';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import StockReturnNumberField from './StockReturnNumberField.svelte';
   import ProductPicker from './ProductPicker.svelte';
   import StaffSelect from './StaffSelect.svelte';
 
@@ -38,6 +39,7 @@
   let lines = $state<Array<{ productId: string; quantity: string }>>([]);
   let error = $state('');
   let saving = $state(false);
+  let numberField = $state<ReturnType<typeof StockReturnNumberField>>();
   // WH-SAMPLE-02 (12/11/2026): hàng mẫu nhập lại vào kho nào cũng được (trừ kho hàng lỗi); có kho mẫu thì đứng đầu danh sách.
   const active = $derived(warehouses.filter((row) => row.active && row.purpose !== 'DEFECTIVE').sort((a, b) => Number(b.purpose === 'SAMPLE') - Number(a.purpose === 'SAMPLE')));
   const loanLines = $derived(chosen?.loanLines?.filter((line) => Number(line.remaining) > 0) ?? []);
@@ -83,13 +85,15 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     error = '';
+    const code = numberField?.readCode();
+    if (code === null) return;
     saving = true;
     try {
       if (tab === 'SLIP') {
         if (!chosen || !returnLines.length || overLimit) return;
         const result = await api<{ returnCode: string }>(`/sales-orders/${chosen.id}/loan-returns`, {
           method: 'POST', idempotentCommand: true,
-          body: JSON.stringify({ version: chosen.version, lines: returnLines, ...(note.trim() ? { note: note.trim() } : {}) }),
+          body: JSON.stringify({ version: chosen.version, lines: returnLines, ...(code ? { code } : {}), ...(note.trim() ? { note: note.trim() } : {}) }),
         });
         open = false;
         onsaved?.(result.returnCode);
@@ -101,7 +105,7 @@
         }
         const result = await api<{ code: string }>('/inventory/returns/samples', {
           method: 'POST', idempotentCommand: true,
-          body: JSON.stringify({ ...borrowerOf(free.borrowerId), warehouseId: free.warehouseId, note: free.note.trim(), lines: filled }),
+          body: JSON.stringify({ ...borrowerOf(free.borrowerId), warehouseId: free.warehouseId, note: free.note.trim(), lines: filled, ...(code ? { code } : {}) }),
         });
         open = false;
         onsaved?.(result.code);
@@ -121,6 +125,7 @@
       <button type="button" role="tab" aria-selected={tab === 'NOSLIP'} class:active={tab === 'NOSLIP'} onclick={() => (tab = 'NOSLIP')}>{m.smp_khong_phieu()}</button>
     </div>
     {#if error}<div class="banner error"><CircleAlert size={17} /><span>{error}</span></div>{/if}
+    {#if open}<StockReturnNumberField bind:this={numberField} prefix="NK" />{/if}
 
     {#if tab === 'SLIP'}
       {#if !chosen}

@@ -8,6 +8,7 @@
   import { CircleAlert, PackageCheck, PackageX } from 'lucide-svelte';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import StockReturnNumberField from './StockReturnNumberField.svelte';
   import { api } from '$lib/api';
   import { dateTime, num } from '$lib/format';
 
@@ -29,6 +30,7 @@
   let closeOpen = $state(false);
   let quantities = $state<Record<string, string>>({});
   let returnNote = $state('');
+  let numberField = $state<ReturnType<typeof StockReturnNumberField>>();
   let outcome = $state<'CONSUMED' | 'SOLD'>('CONSUMED');
   let closeReason = $state('');
   let working = $state(false);
@@ -52,12 +54,14 @@
 
   async function submitReturn() {
     if (!returnLines.length || overLimit) return;
+    const code = numberField?.readCode();
+    if (code === null) return;
     working = true;
     error = '';
     try {
       const result = await api<{ returnCode: string }>(`/sales-orders/${order.id}/loan-returns`, {
         method: 'POST', idempotentCommand: true,
-        body: JSON.stringify({ version: order.version, lines: returnLines, ...(returnNote.trim() ? { note: returnNote.trim() } : {}) }),
+        body: JSON.stringify({ version: order.version, lines: returnLines, ...(code ? { code } : {}), ...(returnNote.trim() ? { note: returnNote.trim() } : {}) }),
       });
       returnOpen = false;
       onchanged(m.lp_nhap_lai_ok({ code: result.returnCode }));
@@ -137,6 +141,7 @@
 
 <Dialog bind:open={returnOpen} title={m.lp_nhap_lai_tieu_de({ code: order.code })} wide>
   <p class="lead">{m.lp_nhap_lai_giai_thich()}</p>
+  {#if returnOpen}<StockReturnNumberField bind:this={numberField} prefix="NK" />{/if}
   {#if error}<div class="banner error"><CircleAlert size={16} /><span>{error}</span></div>{/if}
   <div class="table-wrap">
     <table class="table">

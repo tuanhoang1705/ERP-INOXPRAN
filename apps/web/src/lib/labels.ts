@@ -4,6 +4,21 @@ import type { ZeroPriceKind } from '$shared/sales-line-kind';
 export function zeroPriceKindLabel(kind: ZeroPriceKind): string {
   return { GIFT: m.hang_tang(), EXCHANGE: m.bh_hang_doi(), COMPENSATION: m.bh_hang_bu() }[kind];
 }
+/**
+ * Ô "Vận chuyển" của phiếu SWK (16/11/2026): trước đây điền sẵn "khách tự lấy tại kho" theo ngôn ngữ người lập rồi lưu thành chữ,
+ * nên phiếu lập bằng giao diện tiếng Trung hiện 客户到仓自提 cho người xem tiếng Việt. Câu này hiện theo ngôn ngữ đang dùng.
+ */
+export const SELF_PICKUP_VI = 'Khách tự lấy tại kho';
+const SELF_PICKUP_TEXTS = new Set(['khách tự lấy tại kho', 'khách lấy tại kho', '客户到仓自提']);
+export function carrierText(value: string | null | undefined): string {
+  const text = value?.trim() ?? '';
+  return SELF_PICKUP_TEXTS.has(text.toLowerCase()) ? m.khach_tu_lay_tai_kho() : text;
+}
+/** Lưu câu tiếng Việt chuẩn khi người lập để nguyên câu điền sẵn. */
+export function carrierToSave(value: string): string {
+  const text = value.trim();
+  return SELF_PICKUP_TEXTS.has(text.toLowerCase()) || text === m.khach_tu_lay_tai_kho() ? SELF_PICKUP_VI : text;
+}
 export type Tone = '' | 'success' | 'warning' | 'danger' | 'neutral' | 'orange' | 'violet';
 
 /** Màu hàng tặng / đổi / bù (SAL-KIND-01): tặng cam, đổi xanh navy (pill mặc định), bù tím. */

@@ -37,6 +37,8 @@
   let tier = $state('');
   let stage = $state('');
   let grade = $state('');
+  /** Mặc định mã KH lớn → nhỏ: khách mới nhất ở trên (CUS-LIST-01, 17/11/2026). */
+  let sort = $state('code-desc');
   let followUpOpen = $state(false);
   let followUpCounts = $state({ overdue: 0, today: 0 });
   const today = todayIso();
@@ -52,7 +54,6 @@
   let editing = $state<Dealer | null>(null);
   let deleteOpen = $state(false);
   let deleting = $state<Dealer | null>(null);
-  let existingCodes = $state<string[]>([]);
   let total = $state(0);
   let page = $state(1);
   let pageSize = $state(initialPageSize());
@@ -64,7 +65,7 @@
     loading = true;
     error = '';
     try {
-      const filters = { region, tier, search, stage, grade, from, to };
+      const filters = { region, tier, search, stage, grade, from, to, sort };
       const result = await api<Paged<Dealer> & { periodLabel: string }>(`/dealers?${pageQuery(filters, page, pageSize)}`);
       rows = result.rows;
       total = result.total;
@@ -92,14 +93,13 @@
     void load();
     // Từ thông báo "lịch chăm sóc" (?followUp=due) hoặc nút "Mới" trên hồ sơ (?new=1).
     if (current.url.searchParams.get('followUp')) followUpOpen = true;
-    if (current.url.searchParams.get('new') && canCreate) void openCreate();
+    if (current.url.searchParams.get('new') && canCreate) openCreate();
   });
 
-  async function openCreate() {
+  function openCreate() {
     editing = null;
+    // Mã KH tự sinh: hộp thoại tự hỏi máy chủ số trống nhỏ nhất (CUS-CODE-01).
     createOpen = true;
-    // Gợi ý mã KHnnn kế tiếp cần toàn bộ mã khách (danh sách đang phân trang chỉ có một trang).
-    existingCodes = await api<Array<{ code: string }>>('/partners?kind=CUSTOMER').then((list) => list.map((row) => row.code)).catch(() => rows.map((row) => row.code));
   }
   function openEdit(row: Dealer) {
     void goto(`/catalog/dealers/${row.id}`);
@@ -144,6 +144,7 @@
 <section class="card filters">
   <div class="field"><label for="search">{m.tim_kiem()}</label><input id="search" bind:value={search} oninput={searchChanged} placeholder={m.ma_ten_dai_ly_tinh_thanh()} /></div>
   {#if money}<DateRangeFilter bind:from bind:to label={m.dr_ky_doanh_so()} id="dealer-period" onchange={refilter} />{/if}
+  <div class="field"><label for="dealer-sort">{m.dl_sap_xep()}</label><select id="dealer-sort" bind:value={sort} onchange={refilter}><option value="code-desc">{m.dl_sx_ma_giam()}</option><option value="code-asc">{m.dl_sx_ma_tang()}</option><option value="name">{m.dl_sx_ten()}</option><option value="">{m.dl_sx_cap()}</option></select></div>
   <div class="field"><label for="region">{m.khu_vuc()}</label><select id="region" bind:value={region} onchange={refilter}><option value="">{m.tat_ca_khu_vuc()}</option>{#each NEW_PROVINCES as item}<option value={item.code}>{item.name}</option>{/each}</select></div>
   <div class="field"><label for="tier">{m.cap()}</label><select id="tier" bind:value={tier} onchange={refilter}><option value="">{m.tat_ca_cac_cap()}</option><option value="TIER_1">{m.cap_1_nha_phan_phoi()}</option><option value="TIER_2">{m.cap_2_dai_ly()}</option><option value="RETAIL">{m.khach_le()}</option></select></div>
   <div class="field"><label for="stage">{m.crm_loai_khach()}</label><select id="stage" bind:value={stage} onchange={refilter}><option value="">{m.tat_ca()}</option><option value="CUSTOMER">{m.crm_khach_chinh_thuc()}</option><option value="PROSPECT">{m.crm_khach_co_hoi()}</option></select></div>
@@ -192,11 +193,11 @@
 </section>
 {#if hasRole(session.user?.roles, ['SALES', 'SALES_MANAGER'])}<p class="hint">{m.mo_tab_don_hang_tao_don()}</p>{/if}
 
-<CustomerCreateDialog bind:open={createOpen} partner={editing} {existingCodes} allowProspect oncreated={created} />
+<CustomerCreateDialog bind:open={createOpen} partner={editing} allowProspect oncreated={created} />
 <ConfirmDelete bind:open={deleteOpen} name={deleting ? `${deleting.code} — ${deleting.name}` : ''} ondelete={removeDealer} ondeactivate={deleting?.status !== 'INACTIVE' ? deactivateDealer : undefined} />
 
 <style>
-  .filters { grid-template-columns: 2fr 1.4fr repeat(4, 1fr); }
+  .filters { grid-template-columns: 2fr 1.4fr 1.3fr repeat(4, 1fr); }
   .count { padding: 0 7px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 12px; }
   .count.late { background: var(--red-soft); color: var(--red); }
   .grade { margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--orange-soft); color: var(--orange); font-size: 11px; font-weight: 700; }

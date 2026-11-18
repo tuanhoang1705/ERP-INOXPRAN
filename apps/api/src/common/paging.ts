@@ -20,8 +20,3 @@ export function pageRequest(page?: string, pageSize?: string, defaultSize = 50):
 export function pageOf<T, E extends object = object>(rows: T[], total: number, request: PageRequest, extra?: E) {
   return { rows, total, page: request.page, pageSize: request.pageSize, ...(extra ?? ({} as E)) };
 }
-
-/** Cắt một trang từ danh sách đã sắp xếp (khi phải tính trên toàn bộ trước, VD sắp theo màu hẹn trả). */
-export function slicePage<T, E extends object = object>(all: T[], request: PageRequest, extra?: E) {
-  return pageOf(all.slice(request.skip, request.skip + request.pageSize), all.length, request, extra);
-}

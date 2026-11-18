@@ -17,6 +17,7 @@
   import { CUSTOMER_RETURN_CATEGORIES, DEFECT_RETURN_CATEGORIES, STOCK_BACKDATE_FROM, type CustomerReturnCategory } from '$shared/inventory-categories';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
+  import StockReturnNumberField from './StockReturnNumberField.svelte';
   import CustomerPicker from './CustomerPicker.svelte';
   import type { CustomerOption } from '$lib/customer-search';
 
@@ -46,6 +47,7 @@
   let errors = $state<Record<string, string>>({});
   let error = $state('');
   let saving = $state(false);
+  let numberField = $state<ReturnType<typeof StockReturnNumberField>>();
   const mode = $derived<Kind>(editing ? (editing.kind === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER') : kind);
   const customer = $derived(mode === 'CUSTOMER');
   // WH-SAMPLE-02 (12/11/2026): kho hàng mẫu cũng chọn được; kho bán hàng đứng trước để là kho mặc định.
@@ -103,6 +105,7 @@
     event.preventDefault();
     errors = {};
     error = '';
+    const code = editing ? undefined : numberField?.readCode();
     const filled = lines.filter((line) => line.productId && line.quantity);
     if (!form.partnerId) errors.partnerId = m.kh_bat_buoc_chon();
     if (!form.warehouseId) errors.warehouseId = m.kh_bat_buoc_chon();
@@ -110,12 +113,13 @@
     if (customer && !form.receivedAt) errors.receivedAt = m.kh_bat_buoc_chon();
     if (editing && form.reason.trim().length < 3) errors.reason = m.inv_ghi_chu_toi_thieu();
     if (!filled.length || filled.some((line) => !(Number(line.quantity) > 0))) errors.lines = m.inv_can_dong_hang();
-    if (Object.keys(errors).length) return;
+    if (code === null || Object.keys(errors).length) return;
     saving = true;
     try {
       const source = form.sourceCode.trim().toUpperCase();
       const body = {
         kind: mode,
+        ...(code ? { code } : {}),
         partnerId: form.partnerId,
         warehouseId: form.warehouseId,
         note: form.note.trim(),
@@ -150,6 +154,9 @@
 <Dialog bind:open title={editing ? m.inv_sua_phieu_tra({ code: editing.code }) : customer ? m.inv_khach_tra_hang() : m.inv_tra_nha_may()} wide>
   <form id="stock-return-form" class="grid" onsubmit={submit} novalidate>
     {#if error}<div class="banner error span"><CircleAlert size={17} /><span>{error}</span></div>{/if}
+    {#if open && !editing}
+      <div class="span"><StockReturnNumberField bind:this={numberField} prefix={customer ? 'NK' : 'XT'} documentDay={form.receivedAt.slice(0, 10)} /></div>
+    {/if}
     <div class="field">
       <label for="sr-partner">{customer ? m.khach_hang() : m.nha_cung_cap()} <span class="req">*</span></label>
       <CustomerPicker id="sr-partner" options={partners} value={form.partnerId} loading={partnersLoading} invalid={Boolean(errors.partnerId)}

@@ -148,6 +148,12 @@
       {:else if summary?.revenueComparisonNote === 'PREVIOUS_INCOMPLETE' || summary?.revenueComparisonNote === 'NO_PREVIOUS'}<span class="dot"></span>{m.db_thang_truoc_ca_thang({ month: previousMonthNo })} {vnd(summary.revenuePreviousMonthGross)}
       {:else if summary}<span class="dot"></span>{m.dau_thang_thang_truoc_dat()} {vnd(summary.revenuePreviousMonthGross)}{/if}
     </p>
+    <!-- RPT-RET-01 (18/11/2026): hàng khách trả tháng này, thẻ doanh số giữ nguyên. -->
+    {#if summary?.returnsThisMonth && summary.returnsThisMonth.slips > 0}
+      <p class="note returns">
+        {#if canSeePath(session.user, '/reports/returns')}<a href="/reports/returns">{m.rr_db_returns({ amount: vnd(summary.returnsThisMonth.total), rate: percent(summary.returnsThisMonth.rate) })}</a>{:else}{m.rr_db_returns({ amount: vnd(summary.returnsThisMonth.total), rate: percent(summary.returnsThisMonth.rate) })}{/if}{#if summary.returnsThisMonth.pendingSlips} · <span class:late={summary.returnsThisMonth.pendingOverdueSlips > 0}>{m.rr_db_pending({ count: summary.returnsThisMonth.pendingSlips })}</span>{/if}
+      </p>
+    {/if}
   </article>
   {/if}
   {#if show.receivables}
@@ -280,6 +286,9 @@
 <style>
   .tag.loan { background: var(--orange-soft); color: #b4501f; }
   .kpi.top { border-top: 4px solid var(--green); }
+  .note.returns { margin-top: 6px; }
+  .note.returns a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+  .note.returns .late { color: var(--red); font-weight: 600; }
   .kpi.amber { border-top-color: var(--amber); }
   .kpi.red { border-top-color: var(--red); }
   .kpi.blue { border-top-color: var(--navy-2); }

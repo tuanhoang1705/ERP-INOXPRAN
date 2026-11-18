@@ -3,7 +3,7 @@ import { salesEditStage, type SalesChangePreview, type UndoIssue } from '@inoxpr
 import type { AttachmentMeta, CreateSalesOrder, CustomerConfirmation, DiscardSalesOrder, LoanClose, LoanPurpose, LoanReturn, NotificationTemplate, PermissionKey, SalesPriceSheet, SalesQuote, SalesQuoteRequest, SalesStepOwners, TextParams, UpdateSalesOrder, WarehouseIssue, WarehouseKeeper } from '@inoxpran/contracts';
 import { CANCELLABLE_SALES_STATUSES, cancelledCode, paymentTermChoices, DEFAULT_SALES_ISSUE_TEMPLATE, hasKeeperRole,expandSalesOrderCode, nextSalesOrderSequence, salesIssueTemplate, salesOrderCodeProblem, salesOrderPeriodPrefix, salesOrderYearPattern, salesOrderYearSequence, warehouseSlipNumber } from '@inoxpran/contracts';
 import { isZeroPriceLine, otherLinesLast, zeroPricedSaleLine, type ZeroPriceLine } from '@inoxpran/contracts';
-import { defaultReturnDate, isLoanPurpose, isNonSale, isNonSalePurpose, loanInCategory, nonSaleOutCategory, orderParty, PURPOSE_LABEL_VI, purposeOf, SALES_SLIP_TYPES, slipTypeFilter, vnDate, type SalesSlipType } from '@inoxpran/contracts';
+import { defaultReturnDate, isLoanPurpose, isNonSale, isNonSalePurpose, loanInCategory, nonSaleOutCategory, orderParty, PURPOSE_LABEL_VI, purposeOf, SALE_ONLY_FILTER, SALES_SLIP_TYPES, slipTypeFilter, vnDate, type SalesSlipType } from '@inoxpran/contracts';
 import { CreateSalesOrderSchema, isWarehouseIssued, SAMPLE_ISSUE_PREFIX, sampleIssueCode, sampleIssueYearPattern, sampleSaleActive } from '@inoxpran/contracts';
 import type { CreateSampleIssue, SalesIssuer, SampleSaleCancel, SampleSaleRequestInput, UpdateSampleIssue, VoidSampleIssue } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
@@ -19,7 +19,7 @@ import { PriceOverridesService } from './price-overrides.service';
 import { releaseHoldIfCleared } from '../receivables/overdue-review';
 import { voidReturnCreditsOf } from '../receivables/return-credit';
 import { PAY_NOW_ACTOR, postPayNowReceipt, voidPayNowReceipts } from '../receivables/pay-now';
-import { nextReturnInCode, releaseReturnNumber } from '../inventory/return-codes';
+import { insertStockReturn, nextReturnCode, releaseReturnNumber } from '../inventory/return-codes';
 import { pendingDeliveryOf } from '../receivables/pending-delivery';
 import { loadSegmentRules, orderLinesForSegments, reallocatePartner } from '../receivables/segment-store';
 import { orderSegments, rulesFor } from '../receivables/segments';
@@ -124,7 +124,7 @@ export class SalesService {
 
   async list(
     user: RequestUser, status?: string, search?: string, channel?: string, customerId?: string, confirmation?: string, paging: PageRequest | null = null,
-    more: { type?: string | undefined; loan?: string | undefined; from?: string | undefined; to?: string | undefined; warehouseIssued?: boolean } = {},
+    more: { type?: string | undefined; loan?: string | undefined; from?: string | undefined; to?: string | undefined; warehouseIssued?: boolean; summary?: boolean } = {},
   ) {
     const filter: Document = {};
     if (status) filter.status = status.includes(',') ? { $in: status.split(',').map((value) => value.trim()).filter(Boolean) } : status;
@@ -161,10 +161,21 @@ export class SalesService {
       ? issuedScope
       : more.loan === 'OUT' ? { $or: [{ $and: [baseScope, { warehouseIssued: { $ne: true } }] }, issuedScope] } : { $and: [baseScope, { warehouseIssued: { $ne: true } }] };
     const query = { $and: [filter, scope] };
-    const cursor = this.db.collection('sales_orders').find(query).sort({ orderDate: -1, createdAt: -1, _id: -1 });
-    if (!paging) return (await cursor.limit(250).toArray()).map(serializeDocument);
+    const sort = { orderDate: -1, createdAt: -1, _id: -1 } as const;
+    // Bản rút gọn cho các bảng danh sách (PERF-LIST-01, 17/11/2026): bỏ mảng dòng hàng (~80% dung lượng mỗi phiếu), chỉ trả số dòng.
+    const fetch = (skip: number, limit: number) => more.summary
+      ? this.db.collection('sales_orders').aggregate([
+        { $match: query },
+        { $sort: sort },
+        ...(skip ? [{ $skip: skip }] : []),
+        { $limit: limit },
+        { $addFields: { lineCount: { $size: { $ifNull: ['$lines', []] } } } },
+        { $unset: 'lines' },
+      ]).toArray()
+      : this.db.collection('sales_orders').find(query).sort(sort).skip(skip).limit(limit).toArray();
+    if (!paging) return (await fetch(0, 250)).map(serializeDocument);
     const [rows, total, sum] = await Promise.all([
-      cursor.skip(paging.skip).limit(paging.pageSize).toArray(),
+      fetch(paging.skip, paging.pageSize),
       this.db.collection('sales_orders').countDocuments(query),
       // Tổng giá trị không cộng phiếu đã hủy (trừ khi đang lọc riêng phiếu đã hủy).
       this.db.collection('sales_orders').aggregate([
@@ -354,7 +365,8 @@ export class SalesService {
     const [computedContext, balances, exposure, approval] = await Promise.all([
       this.pricing.customerContext(customer, settings),
       this.db.collection('inventory_balances').find({ warehouseId: toObjectId(warehouseId, 'warehouseId') }).toArray(),
-      this.exposure(customer._id as ObjectId),
+      // Sửa phiếu đã phát hành: dư nợ không tính chính phiếu đó (CREDIT-02).
+      this.exposure(customer._id as ObjectId, undefined, order?._id as ObjectId | undefined),
       this.db.collection<{ _id: string } & Document>('settings').findOne({ _id: 'approval' }),
     ]);
     // Sửa phiếu đã phát hành: CK bậc doanh số như lúc phát hành (khớp máy chủ khi lưu).
@@ -801,6 +813,10 @@ export class SalesService {
       if (legacyCancelled) await this.releaseNumber(holder, request, session);
       if (!holder || legacyCancelled) {
         await this.sequences.track('BH', orderDate, sequence, session);
+        // Bộ đếm tháng chỉ làm hai người cùng THÁNG xung đột ghi; số đếm cả năm nên hai phiếu khác tháng lập cùng lúc từng nhận
+        // cùng số thứ tự (BH2026100743 / BH2026110743 — đo 17/11/2026: 40 phiếu chỉ 23 số). Ghi thêm bộ đếm năm → mọi phiếu BH
+        // trong năm lập cùng lúc đều xung đột ghi, giao dịch sau chạy lại và lấy số kế tiếp.
+        await this.sequences.claim('BH', orderDate, sequence, session);
         return code;
       }
     }
@@ -1759,7 +1775,11 @@ export class SalesService {
     let sequence = (highest?.value ?? 0) + 1;
     for (let attempt = 0; attempt < 50; attempt += 1, sequence += 1) {
       const code = sampleIssueCode(parts, sequence);
-      if (!(await this.db.collection('sales_orders').findOne({ code }, { session, projection: { _id: 1 } }))) return code;
+      if (!(await this.db.collection('sales_orders').findOne({ code }, { session, projection: { _id: 1 } }))) {
+        // Hai thủ kho lập phiếu mẫu cùng lúc: cùng ghi bộ đếm năm → xung đột ghi, giao dịch sau chạy lại lấy số kế tiếp.
+        await this.sequences.claim(SAMPLE_ISSUE_PREFIX, at, sequence, session);
+        return code;
+      }
     }
     throw new ConflictException({ code: 'SAMPLE_ISSUE_CODE', message: 'Không cấp được số phiếu SWK-M mới — thử lại' });
   }
@@ -2096,7 +2116,7 @@ export class SalesService {
       `Khách mua luôn hàng mẫu theo phiếu ${String(order.code)} — bù lại kho đã xuất mẫu`,
       request,
       session,
-      { soldConversion: true, saleOrderId: order._id, saleOrderCode: String(order.code) },
+      { extra: { soldConversion: true, saleOrderId: order._id, saleOrderCode: String(order.code) } },
     );
     const loanStatus = this.loanStatusOf(this.quantitiesOf(slip.lines as Array<{ productId: unknown; baseQuantity: unknown }>), await this.returnedQuantities(code, session));
     await this.db.collection('sales_orders').updateOne(
@@ -2195,11 +2215,11 @@ export class SalesService {
     note: string,
     request: AuthenticatedRequest,
     session: ClientSession,
-    extra: Document = {},
+    options: { manualCode?: string | undefined; extra?: Document } = {},
   ) {
     const { order, purpose, code } = loan;
     const category = loanInCategory(purpose);
-    const returnCode = await nextReturnInCode(this.db, this.sequences, session);
+    const returnCode = await nextReturnCode(this.db, this.sequences, session, 'NK', new Date(), options.manualCode);
     await this.inventory.applyPhysicalMovement({
       warehouseId: (order.warehouseId as ObjectId).toHexString(),
       referenceType: 'StockReturn',
@@ -2231,7 +2251,7 @@ export class SalesService {
       warehouseId: order.warehouseId,
       warehouseName: String(warehouse?.name ?? ''),
       note,
-      ...extra,
+      ...options.extra,
       lines: lines.map((line) => {
         const product = productById.get(line.productId);
         return { productId: new ObjectId(line.productId), sku: String(product?.sku ?? ''), productName: String(product?.name ?? ''), unit: String(product?.baseUnit ?? ''), quantity: decimal(line.quantity.toString()) };
@@ -2240,7 +2260,7 @@ export class SalesService {
       createdByName: request.user.displayName,
       createdAt: new Date(),
     };
-    await this.db.collection('stock_returns').insertOne(document, { session });
+    await insertStockReturn(this.db, document, session);
     return document;
   }
 
@@ -2261,7 +2281,7 @@ export class SalesService {
         }
       }
       const label = loan.purpose === 'INSPECTION' ? 'hàng kiểm định' : 'hàng mẫu';
-      const returnDoc = await this.postLoanReturn(loan, [...quantities].map(([productId, quantity]) => ({ productId, quantity })), input.note || `Nhập lại ${label} theo ${loan.code}`, request, session);
+      const returnDoc = await this.postLoanReturn(loan, [...quantities].map(([productId, quantity]) => ({ productId, quantity })), input.note || `Nhập lại ${label} theo ${loan.code}`, request, session, { manualCode: input.code });
       for (const [productId, quantity] of quantities) loan.returned.set(productId, (loan.returned.get(productId) ?? new Decimal(0)).add(quantity));
       const loanStatus = this.loanStatusOf(loan.shipped, loan.returned);
       const now = new Date();
@@ -2337,7 +2357,7 @@ export class SalesService {
           `Chuyển bán phần hàng mẫu chưa về theo ${loan.code}: ${input.reason}`,
           request,
           session,
-          { soldConversion: true },
+          { extra: { soldConversion: true } },
         );
         returnCode = returnDoc.code;
       }
@@ -2364,21 +2384,33 @@ export class SalesService {
   }
 
   /**
-   * Dư nợ xét hạn mức: khoản phải thu chưa thu + phiếu bán đã xuất kho chưa giao (chưa ghi công nợ — AR-DLV-01),
-   * để hạn mức không bị nới khi công nợ chuyển sang ghi lúc giao thành công.
+   * Dư nợ xét hạn mức: khoản phải thu chưa thu + phiếu bán đã xuất kho chưa giao (chưa ghi công nợ — AR-DLV-01)
+   * + phiếu bán đã phát hành đang giữ hàng / chờ duyệt (CREDIT-02, 17/11/2026 — trước đây hai phiếu cùng khách phát hành liền nhau
+   * đều lọt hạn mức dù cộng lại vượt). `exceptOrderId`: phiếu đang xét / đang sửa không tính chính nó.
    */
-  private async exposure(customerId: ObjectId, session?: ClientSession): Promise<string> {
-    const [rows, pending] = await Promise.all([
+  private async exposure(customerId: ObjectId, session?: ClientSession, exceptOrderId?: ObjectId): Promise<string> {
+    const options = session ? { session } : {};
+    const [rows, pending, issued] = await Promise.all([
       this.db.collection('receivables').aggregate(
         [
           { $match: { partnerId: customerId, status: { $in: ['OPEN', 'PARTIALLY_PAID', 'OVERDUE'] } } },
           { $group: { _id: null, total: { $sum: { $subtract: ['$amount', '$paidAmount'] } } } },
         ],
-        session ? { session } : {},
+        options,
       ).toArray(),
       pendingDeliveryOf(this.db, customerId, session),
+      this.db.collection('sales_orders').aggregate(
+        [
+          { $match: { customerId, status: { $in: ['RESERVED', 'PENDING_APPROVAL'] }, ...SALE_ONLY_FILTER, ...(exceptOrderId ? { _id: { $ne: exceptOrderId } } : {}) } },
+          { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+        ],
+        options,
+      ).toArray(),
     ]);
-    return new Decimal(decimalString(rows[0]?.total ?? Decimal128.fromString('0'))).add(pending.amount).toString();
+    return new Decimal(decimalString(rows[0]?.total ?? Decimal128.fromString('0')))
+      .add(pending.amount)
+      .add(decimalString(issued[0]?.total ?? Decimal128.fromString('0')))
+      .toString();
   }
 
   async submit(id: string, version: number, request: AuthenticatedRequest, idempotencyKey: string | undefined) {
@@ -2403,6 +2435,9 @@ export class SalesService {
           this.assertSalePriced(order.lines as Array<ZeroPriceLine & { sku?: unknown; unitPrice: unknown }>, order.grandTotal);
           const customer = await this.loadCustomer(order.customerId as ObjectId, session);
           this.assertCustomerCanOrder(customer);
+          // Hai lần phát hành cùng khách cùng lúc: cùng ghi hồ sơ khách → xung đột ghi, lần sau chạy lại và thấy phiếu trước khi xét
+          // hạn mức (CREDIT-02). Trường riêng, không đụng `version` của hồ sơ.
+          await this.db.collection('partners').updateOne({ _id: order.customerId as ObjectId }, { $inc: { creditCheckSeq: 1 } }, { session });
           const settings = await this.db.collection<{ _id: string } & Document>('settings').findOne({ _id: 'approval' }, { session });
           const highestDiscount = (order.lines as Array<{ discountRate: unknown }>).reduce(
             (highest, line) => Decimal.max(highest, decimalString(line.discountRate)),
@@ -2411,7 +2446,7 @@ export class SalesService {
           const evaluation = evaluateApproval({
             orderTotal: decimalString(order.grandTotal),
             highestDiscountRate: highestDiscount.toString(),
-            currentExposure: await this.exposure(order.customerId as ObjectId, session),
+            currentExposure: await this.exposure(order.customerId as ObjectId, session, orderId),
             creditLimit: decimalString(customer.creditLimit),
             orderApprovalThreshold: String(settings?.orderValueThreshold ?? '100000000'),
             discountApprovalThreshold: String(settings?.discountRateThreshold ?? '15'),

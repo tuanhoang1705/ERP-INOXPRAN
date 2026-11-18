@@ -1,5 +1,6 @@
-import { ConflictException } from '@nestjs/common';
-import { cancelledCode } from '@inoxpran/contracts';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { cancelledCode, expandStockReturnCode, vnDate, type StockReturnPrefix } from '@inoxpran/contracts';
+import { MongoServerError } from 'mongodb';
 import type { ClientSession, Db, Document, ObjectId } from 'mongodb';
 import { vnParts } from '../../common/domain';
 import { documentCode, type SequenceService } from '../../common/sequence.service';
@@ -41,12 +42,37 @@ export async function releaseReturnNumber(db: Db, row: Document, session: Client
   return updated ?? row;
 }
 
+function returnCodeExists(code: string) {
+  return new ConflictException({ code: 'RETURN_CODE_EXISTS', message: `Số phiếu ${code} đã được dùng. Hãy kiểm tra lại số trên phiếu giấy.`, details: [{ path: ['code'] }] });
+}
+
+/** Chỉ mục duy nhất trên stock_returns.code bảo vệ cả khi một luồng khác ghi cùng số. */
+export async function insertStockReturn(db: Db, document: Document & { code: string }, session: ClientSession): Promise<void> {
+  try {
+    await db.collection('stock_returns').insertOne(document, { session });
+  } catch (error) {
+    if (error instanceof MongoServerError && error.code === 11000 && error.keyPattern?.code) throw returnCodeExists(document.code);
+    throw error;
+  }
+}
+
 /**
  * Số phiếu trả hàng kế tiếp (NK khách trả / hàng mẫu, XT trả nhà máy) theo cách phiếu BH (NUM-01): số lớn nhất **đang dùng** trong
  * năm + 1 — phiếu hủy đã nhả số nên số của phiếu cuối bị hủy được dùng lại; số trống ở giữa bỏ qua. Bỏ qua số đã có ở phiếu khác
  * (kể cả mã cũ) và số NK của công nợ nhập từ sổ cũ. Phiếu hủy từ trước khi có quy tắc nhả số mà đang giữ số này → nhả rồi dùng.
  */
-export async function nextReturnCode(db: Db, sequences: SequenceService, session: ClientSession, prefix: 'NK' | 'XT', at = new Date()): Promise<string> {
+export async function nextReturnCode(db: Db, sequences: SequenceService, session: ClientSession, prefix: StockReturnPrefix, at = new Date(), manual?: string): Promise<string> {
+  if (manual !== undefined) {
+    const code = expandStockReturnCode(manual, prefix, vnDate(at));
+    if (!code) throw new BadRequestException({ code: 'RETURN_CODE_INVALID', message: `Nhập số thứ tự (ví dụ 0040) hoặc số phiếu ${prefix} đầy đủ.`, details: [{ path: ['code'] }] });
+    // Bộ số chạy cả năm, nên 0040 đã dùng ở tháng khác trong cùng năm cũng là trùng.
+    const serial = code.slice(8);
+    const inYear = new RegExp(`^${code.slice(0, 6)}(?:0[1-9]|1[0-2])${serial.length === 4 ? '0?' : ''}${serial}$`, 'i');
+    const used = await occupiedReturnCode(db, session, prefix, inYear);
+    if (used) throw returnCodeExists(used);
+    const codeDate = new Date(`${code.slice(2, 6)}-${code.slice(6, 8)}-01T00:00:00+07:00`);
+    return claimReturnCode(db, sequences, session, prefix, codeDate, Number(serial));
+  }
   const { year } = vnParts(at);
   const pattern = `^${prefix}${year}(0[1-9]|1[0-2])\\d{4,5}$`;
   const [highest] = await db.collection('stock_returns')
@@ -58,23 +84,30 @@ export async function nextReturnCode(db: Db, sequences: SequenceService, session
   let sequence = (highest?.value ?? 0) + 1;
   for (let attempt = 0; attempt < 200; attempt += 1, sequence += 1) {
     const code = documentCode(prefix, at, sequence);
-    const [holder, legacy, history] = await Promise.all([
-      db.collection('stock_returns').findOne({ code }, { session }),
-      db.collection('stock_returns').countDocuments({ legacyCode: code }, { session, limit: 1 }),
-      prefix === RETURN_IN_PREFIX ? db.collection('payments').countDocuments({ reference: code, mode: 'HISTORY' }, { session, limit: 1 }) : Promise.resolve(0),
-    ]);
-    if (legacy || history) continue;
-    if (holder && holder.status !== 'VOIDED') continue;
-    if (holder) await releaseReturnNumber(db, holder, session);
-    await sequences.claim(prefix, at, sequence, session);
-    return code;
+    if (!await occupiedReturnCode(db, session, prefix, code)) return claimReturnCode(db, sequences, session, prefix, at, sequence);
   }
   throw new ConflictException({ code: 'RETURN_CODE_EXHAUSTED', message: `Không cấp được số ${prefix} mới — báo quản trị hệ thống` });
 }
 
-/** Số NK kế tiếp (khách trả hàng / hàng mẫu nhập lại). */
-export function nextReturnInCode(db: Db, sequences: SequenceService, session: ClientSession, at = new Date()): Promise<string> {
-  return nextReturnCode(db, sequences, session, RETURN_IN_PREFIX, at);
+async function occupiedReturnCode(db: Db, session: ClientSession, prefix: StockReturnPrefix, match: string | RegExp): Promise<string | null> {
+  const returns = db.collection('stock_returns');
+  const active = await returns.findOne({ code: match, status: { $ne: 'VOIDED' } }, { session, projection: { code: 1 } });
+  if (active) return String(active.code);
+  const legacy = await returns.findOne({ legacyCode: match }, { session, projection: { legacyCode: 1 } });
+  if (legacy) return String(legacy.legacyCode);
+  if (prefix === RETURN_IN_PREFIX) {
+    const history = await db.collection('payments').findOne({ reference: match, mode: 'HISTORY' }, { session, projection: { reference: 1 } });
+    if (history) return String(history.reference);
+  }
+  return null;
+}
+
+async function claimReturnCode(db: Db, sequences: SequenceService, session: ClientSession, prefix: StockReturnPrefix, at: Date, sequence: number): Promise<string> {
+  const code = documentCode(prefix, at, sequence);
+  const cancelled = await db.collection('stock_returns').findOne({ code, status: 'VOIDED' }, { session });
+  if (cancelled) await releaseReturnNumber(db, cancelled, session);
+  await sequences.claim(prefix, at, sequence, session);
+  return code;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

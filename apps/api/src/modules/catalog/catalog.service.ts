@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CreatePartner, CreateProduct, CreateWarehouse } from '@inoxpran/contracts';
+import type { CreatePartnerRequest, CreateProduct, CreateWarehouse, NextCustomerCode } from '@inoxpran/contracts';
 import type { Db, Document, Filter } from 'mongodb';
 import Decimal from 'decimal.js';
 import { Decimal128, ObjectId } from 'mongodb';
@@ -10,11 +10,12 @@ import type { AuthenticatedRequest } from '../../common/request-context';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { MasterDataService, normalizePartnerLists } from './master-data.service';
 import { OPEN_RECEIVABLE_STATUSES } from '../receivables/overdue-review';
-import { canSeeArea, SALE_ONLY_FILTER, type VisibilityUser } from '@inoxpran/contracts';
+import { canSeeArea, nextFreeCustomerCode, SALE_ONLY_FILTER, type VisibilityUser } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 import { canCreatePartnerKind } from './partner-access';
 import { pageOf, type PageRequest } from '../../common/paging';
 import { enforceTerritory, normalizeProvinces } from '../../common/territories';
+import { addSlip, emptySplit, paymentBucket, percentOf, receivedBetween, slipReceivedAt } from '../reports/returns-report';
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -27,6 +28,9 @@ function actor(request: AuthenticatedRequest) {
     correlationId: request.correlationId,
   };
 }
+
+/** Trần an toàn cho danh mục tải trọn vào ô chọn (mã hàng, khách, NCC) — PERF-LIST-01, 17/11/2026. */
+const PICKER_LIMIT = 5000;
 
 @Injectable()
 export class CatalogService {
@@ -50,7 +54,8 @@ export class CatalogService {
       filter.$or = [{ sku: pattern }, { name: pattern }, { model: pattern }];
     }
     const cursor = this.db.collection('products').find(filter).sort({ sku: 1 });
-    const documents = paging ? await cursor.skip(paging.skip).limit(paging.pageSize).toArray() : await cursor.limit(500).toArray();
+    // Không phân trang = danh mục cho ô chọn mã hàng: lấy đủ (PICKER_LIMIT chỉ chặn lỗi), trước đây cắt ở 500 mã là ô chọn thiếu mã mà không báo.
+    const documents = paging ? await cursor.skip(paging.skip).limit(paging.pageSize).toArray() : await cursor.limit(PICKER_LIMIT).toArray();
     const [categories, balances] = await Promise.all([
       this.db.collection('product_categories').find({}).toArray(),
       // Chỉ cộng tồn của các mã đang hiển thị.
@@ -254,7 +259,8 @@ export class CatalogService {
       filter.$or = [{ code: pattern }, { name: pattern }, { taxCode: pattern }];
     }
     const cursor = this.db.collection('partners').find(filter).sort({ name: 1, _id: 1 });
-    if (!paging) return (await cursor.limit(250).toArray()).map(serializeDocument);
+    // Ô chọn khách / NCC: lấy đủ (trước đây 250 dòng theo tên — nhiều khách cơ hội là ô chọn thiếu khách mà không báo).
+    if (!paging) return (await cursor.limit(PICKER_LIMIT).toArray()).map(serializeDocument);
     const [documents, total] = await Promise.all([cursor.skip(paging.skip).limit(paging.pageSize).toArray(), this.db.collection('partners').countDocuments(filter)]);
     if (kind !== 'SUPPLIER') return pageOf(documents.map(serializeDocument), total, paging);
     // Nhà cung cấp: số đơn mua, tổng giá trị, ngày đơn gần nhất (chỉ cho các dòng đang hiển thị).
@@ -274,7 +280,16 @@ export class CatalogService {
     }), total, paging);
   }
 
-  async createPartner(input: CreatePartner, request: AuthenticatedRequest) {
+  /**
+   * Mã KH tự sinh (CUS-CODE-01, 17/11/2026): số trống nhỏ nhất KHnnn trên MỌI đối tác (khách chính thức, cơ hội, ngừng dùng, NCC
+   * dạng BOTH) — mã là duy nhất trên cả bảng đối tác. KH000 (khách lẻ) không bao giờ cấp.
+   */
+  async nextCustomerCode(): Promise<NextCustomerCode> {
+    const rows = await this.db.collection('partners').find({ code: { $regex: /^KH\d+$/ } }, { projection: { _id: 0, code: 1 } }).toArray();
+    return nextFreeCustomerCode(rows.map((row) => String(row.code)));
+  }
+
+  async createPartner(input: CreatePartnerRequest, request: AuthenticatedRequest) {
     if (!canCreatePartnerKind(request.user.roles, input.kind, input.stage)) {
       throw new ForbiddenException({
         code: 'PARTNER_KIND_FORBIDDEN',
@@ -307,13 +322,18 @@ export class CatalogService {
       createdAt: now,
       updatedAt: now,
     };
-    try {
-      await this.db.collection('partners').insertOne(document);
-    } catch (error) {
-      if ((error as { code?: number }).code === 11000) {
-        throw new ConflictException({ code: 'PARTNER_CODE_EXISTS', message: `Mã ${input.code} đã tồn tại` });
+    // Khách bỏ trống mã: cấp số trống nhỏ nhất; hai người thêm cùng lúc nhận cùng số → chỉ mục duy nhất chặn người sau → tính lại.
+    const automatic = !input.code;
+    for (let attempt = 1; ; attempt += 1) {
+      if (automatic) document.code = (await this.nextCustomerCode()).code;
+      try {
+        await this.db.collection('partners').insertOne(document);
+        break;
+      } catch (error) {
+        if ((error as { code?: number }).code !== 11000) throw error;
+        if (automatic && attempt < 8) continue;
+        throw new ConflictException({ code: 'PARTNER_CODE_EXISTS', message: `Mã ${String(document.code)} đã tồn tại` });
       }
-      throw error;
     }
     await this.audit.record({
       ...actor(request),
@@ -355,7 +375,9 @@ export class CatalogService {
     if (!partner) throw new NotFoundException({ code: 'PARTNER_NOT_FOUND', message: 'Không tìm thấy đối tác' });
     const partnerId = partner._id as ObjectId;
     const yearStart = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1) - 7 * 3_600_000);
-    const [exposure, revenue, lastOrder, purchases, nextFollowUp, region] = await Promise.all([
+    // Hàng trả 90 ngày (RPT-RET-01): phiếu NK theo ngày nhận hàng, so với doanh số giao 90 ngày; trả nợ bằng hàng theo sổ công nợ.
+    const since90 = new Date(Date.now() - 90 * 86_400_000);
+    const [exposure, revenue, lastOrder, purchases, nextFollowUp, region, returns90, sales90, payments90] = await Promise.all([
       this.db.collection('receivables').aggregate([
         { $match: { partnerId, status: { $in: OPEN_RECEIVABLE_STATUSES } } },
         {
@@ -386,7 +408,28 @@ export class CatalogService {
       ]).toArray(),
       this.db.collection('partner_activities').findOne({ partnerId, done: false, followUpOn: { $exists: true } }, { sort: { followUpOn: 1 }, projection: { followUpOn: 1, followUpNote: 1 } }),
       partner.regionCode ? this.db.collection('regions').findOne({ code: partner.regionCode }, { projection: { name: 1 } }) : null,
+      this.db.collection('stock_returns').find(
+        { kind: 'CUSTOMER', partnerId, status: { $ne: 'VOIDED' }, ...receivedBetween(since90) },
+        { projection: { receivedAt: 1, postedAt: 1, createdAt: 1, accountingStatus: 1, accountingMode: 1, creditNote: 1, value: 1, category: 1, 'lines.quantity': 1 } },
+      ).toArray(),
+      this.db.collection('sales_orders').aggregate([
+        { $match: { customerId: partnerId, status: { $in: REVENUE_STATUSES }, ...SALE_ONLY_FILTER, deliveredAt: { $gte: since90 } } },
+        { $group: { _id: null, total: { $sum: { $ifNull: ['$grandTotal', 0] } } } },
+      ]).toArray(),
+      this.db.collection('payments').aggregate([
+        { $match: { partnerId, status: 'POSTED', receivedAt: { $gte: since90 } } },
+        { $group: { _id: { $ifNull: ['$kind', 'RECEIPT'] }, total: { $sum: '$amount' } } },
+      ]).toArray(),
     ]);
+    const returnSplit = emptySplit();
+    for (const row of returns90) if (slipReceivedAt(row) >= since90) addSlip(returnSplit, row);
+    let collected90 = new Decimal(0);
+    let returnCredits90 = new Decimal(0);
+    for (const row of payments90) {
+      const bucket = paymentBucket(row._id);
+      if (bucket === 'collected') collected90 = collected90.add(decimalString(row.total));
+      else if (bucket === 'returnCredits') returnCredits90 = returnCredits90.add(decimalString(row.total));
+    }
     const money = (value: unknown) => new Decimal(decimalString(value ?? '0')).toFixed(2);
     const seeReceivables = !viewer || canSeeArea(viewer, 'receivables');
     const seePurchases = !viewer || canSeeArea(viewer, 'inventory.purchases') || canSeeArea(viewer, 'payables');
@@ -400,6 +443,13 @@ export class CatalogService {
           overdue: money(exposure[0]?.overdue),
           revenueTotal: money(revenue[0]?.total),
           revenueYearToDate: money(revenue[0]?.yearToDate),
+          returns90: {
+            total: returnSplit.total.toFixed(2),
+            rate: percentOf(returnSplit.total, decimalString(sales90[0]?.total ?? '0')),
+            slips: returnSplit.slips,
+            pending: returnSplit.pending.toFixed(2),
+            debtByReturns: percentOf(returnCredits90, collected90.add(returnCredits90)),
+          },
         } : {}),
         orderCount: Number(revenue[0]?.orders ?? 0),
         lastOrder: lastOrder ? { id: lastOrder._id.toHexString(), code: lastOrder.code, date: (lastOrder.orderDate as Date).toISOString() } : null,

@@ -196,7 +196,8 @@
     if (!data) return;
     const query = new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) });
     try {
-      await download(`/receivables/customers/${id}/statement/export?${query}`, `SoCongNo_${data.partner.code}.xlsx`);
+      // Sổ công nợ theo mẫu kế toán (AR-XLS-03): máy chủ đặt tên "CN {tên ngắn} dd.mm.xlsx".
+      await download(`/receivables/customers/${id}/statement/export?${query}`, `CN ${data.partner.code}.xlsx`);
     } catch (caught) {
       error = caught instanceof Error ? caught.message : m.khong_tai_duoc_tep();
     }

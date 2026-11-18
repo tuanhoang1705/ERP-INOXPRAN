@@ -7,10 +7,13 @@ import type { ApiError } from '@inoxpran/contracts';
  * Thông báo lỗi theo ngôn ngữ giao diện. Tiếng Việt dùng nguyên câu máy chủ trả về (có chi tiết cụ thể);
  * ngôn ngữ khác dịch theo mã lỗi (messages: err_<mã>), chưa có bản dịch thì giữ câu của máy chủ.
  */
-export function localizedErrorMessage(payload: Pick<ApiError, 'code' | 'message'>): string {
+export function localizedErrorMessage(payload: Pick<ApiError, 'code' | 'message' | 'details'>): string {
   if (getLocale() === 'vi' || !payload.code) return payload.message;
   const translate = (messages as unknown as Record<string, unknown>)[`err_${payload.code.toLowerCase()}`];
-  return typeof translate === 'function' ? (translate as () => string)() : payload.message;
+  if (typeof translate !== 'function') return payload.message;
+  // Chi tiết không phụ thuộc ngôn ngữ (VD thiếu tồn "INP6403: 6 / 10" — mã hàng, khả dụng / cần) nối sau câu dịch.
+  const summary = payload.details && typeof payload.details === 'object' && !Array.isArray(payload.details) ? (payload.details as { summary?: unknown }).summary : undefined;
+  return `${(translate as () => string)()}${typeof summary === 'string' && summary ? `：${summary}` : ''}`;
 }
 
 export class ApiRequestError extends Error {

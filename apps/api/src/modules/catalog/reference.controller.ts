@@ -197,6 +197,8 @@ export class ReferenceController {
     @Query('grade') grade?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    /** Trang Hồ sơ đại lý & khách hàng (CUS-LIST-01, 17/11/2026): code-desc (mặc định của trang) · code-asc · name; bỏ trống = theo cấp rồi mã (ô chọn khách). */
+    @Query('sort') sort?: string,
   ) {
     const paging = pageRequest(page, pageSize);
     // Khoảng ngày (LIST-DATE-01) = kỳ tính cột doanh số; bỏ trống = kỳ bậc doanh số đang cấu hình (quý).
@@ -218,9 +220,8 @@ export class ReferenceController {
     }
     const pricing = await this.db.collection<{ _id: string } & Document>('settings').findOne({ _id: 'pricing' });
     const quarter = salesTierWindow(pricing?.salesTierPeriod);
-    const cursor = this.db.collection('partners').find(filter).sort({ customerTier: 1, code: 1 });
     const [partners, total] = await Promise.all([
-      paging ? cursor.skip(paging.skip).limit(paging.pageSize).toArray() : cursor.toArray(),
+      this.sortedPartners(filter, sort, paging),
       paging ? this.db.collection('partners').countDocuments(filter) : Promise.resolve(0),
     ]);
     const ids = partners.map((partner) => partner._id as ObjectId);
@@ -267,6 +268,29 @@ export class ReferenceController {
       });
     const periodLabel = revenueWindow ? `${from ? from.split('-').reverse().join('/') : '…'} – ${to ? to.split('-').reverse().join('/') : '…'}` : quarter.label;
     return paging ? { periodLabel, ...pageOf(rows, total, paging) } : { periodLabel, rows };
+  }
+
+  /**
+   * Thứ tự danh sách khách. Theo mã: so theo SỐ của mã KHnnn (KH1000 đứng trên KH999), mã không theo dạng KH xếp cuối.
+   * Theo tên: thứ tự chữ tiếng Việt. Mặc định (ô chọn khách ở các form): theo cấp rồi mã như trước.
+   */
+  private sortedPartners(filter: Document, sort: string | undefined, paging: { skip: number; pageSize: number } | null): Promise<Document[]> {
+    const partners = this.db.collection('partners');
+    const page = (cursor: { skip(n: number): { limit(n: number): { toArray(): Promise<Document[]> } }; toArray(): Promise<Document[]> }) =>
+      paging ? cursor.skip(paging.skip).limit(paging.pageSize).toArray() : cursor.toArray();
+    if (sort === 'code-desc' || sort === 'code-asc') {
+      const direction = sort === 'code-desc' ? -1 : 1;
+      return partners.aggregate([
+        { $match: filter },
+        { $addFields: { _kh: { $regexMatch: { input: '$code', regex: /^KH\d+$/ } } } },
+        { $addFields: { _khNumber: { $cond: ['$_kh', { $toDouble: { $substrCP: ['$code', 2, 40] } }, null] } } },
+        { $sort: { _kh: -1, _khNumber: direction, code: direction, _id: direction } },
+        ...(paging ? [{ $skip: paging.skip }, { $limit: paging.pageSize }] : []),
+        { $project: { _kh: 0, _khNumber: 0 } },
+      ]).toArray();
+    }
+    if (sort === 'name') return page(partners.find(filter).collation({ locale: 'vi' }).sort({ name: 1, _id: 1 }));
+    return page(partners.find(filter).sort({ customerTier: 1, code: 1 }));
   }
 
   @Roles('ADMIN', 'DIRECTOR', 'AUDITOR')

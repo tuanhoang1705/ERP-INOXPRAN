@@ -11,7 +11,7 @@
   import { ArrowUpRight, CircleAlert, CircleCheck, Plus, RefreshCw, Trash2, UserCheck } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { api, ApiRequestError } from '$lib/api';
-  import { date, num, vnd } from '$lib/format';
+  import { date, num, percent, vnd } from '$lib/format';
   import { partnerStatus, purchaseStatus, receivableStatus, salesStatus, tierLabel } from '$lib/labels';
   import { can } from '$lib/permissions';
   import { session } from '$lib/session.svelte';
@@ -34,6 +34,8 @@
   /** Dư nợ / doanh số / tổng mua không có khi tài khoản không xem Công nợ khách / đơn mua (VIS-ROLE-01, 13/11/2026). */
   type Summary = {
     outstanding?: string; overdue?: string; revenueTotal?: string; revenueYearToDate?: string; orderCount: number;
+    /** Hàng trả 90 ngày (RPT-RET-01). */
+    returns90?: { total: string; rate: number | null; slips: number; pending: string; debtByReturns: number | null };
     lastOrder: { id: string; code: string; date: string } | null;
     purchaseOrderCount: number; purchaseTotal?: string; lastPurchaseAt: string | null;
     nextFollowUp: { on: string; note?: string } | null;
@@ -327,7 +329,7 @@
       {#if isCustomer}
         <div class="kpis">
           {#if partner.summary.outstanding !== undefined}
-          <div class="card kpi"><p class="label">{m.crm_doanh_so_nam()}</p><p class="value">{vnd(partner.summary.revenueYearToDate ?? '0')}</p><p class="note">{m.crm_tong_doanh_so()} {vnd(partner.summary.revenueTotal ?? '0')}</p></div>
+          <div class="card kpi"><p class="label">{m.crm_doanh_so_nam()}</p><p class="value">{vnd(partner.summary.revenueYearToDate ?? '0')}</p><p class="note">{m.crm_tong_doanh_so()} {vnd(partner.summary.revenueTotal ?? '0')}</p>{#if partner.summary.returns90 && partner.summary.returns90.slips > 0}<p class="note" class:danger={(partner.summary.returns90.rate ?? 100) > 10}>{m.rr_partner_returns({ amount: vnd(partner.summary.returns90.total), rate: percent(partner.summary.returns90.rate) })}{#if partner.summary.returns90.debtByReturns !== null} · {m.rr_partner_debt({ rate: percent(partner.summary.returns90.debtByReturns) })}{/if}</p>{/if}</div>
           <div class="card kpi"><p class="label">{m.crm_du_no()}</p><p class="value">{vnd(partner.summary.outstanding)}</p><p class="note" class:danger={Number(partner.summary.overdue) > 0}>{m.crm_qua_han()} {vnd(partner.summary.overdue ?? '0')}</p></div>
           {/if}
           <div class="card kpi"><p class="label">{m.crm_don_gan_nhat()}</p><p class="value">{#if partner.summary.lastOrder}{#if canOpen(`/sales/orders/${partner.summary.lastOrder.id}`)}<a class="link" href={`/sales/orders/${partner.summary.lastOrder.id}`}>{partner.summary.lastOrder.code}</a>{:else}{partner.summary.lastOrder.code}{/if}{:else}—{/if}</p><p class="note">{partner.summary.lastOrder ? date(partner.summary.lastOrder.date) : m.crm_chua_mua_hang()}</p></div>
@@ -452,7 +454,7 @@
           {#if editable}<div class="add-row"><button class="btn small" onclick={() => (banks = [...banks, { bankName: '', accountNumber: '' }])}><Plus size={14} />{m.crm_them_ngan_hang()}</button></div>{/if}
         </section>
       {:else if active === 'sales' && isCustomer}
-        <RelatedTable endpoint={`/sales-orders?customerId=${partner.id}`} empty={m.crm_chua_mua_hang()} columns={[
+        <RelatedTable endpoint={`/sales-orders?customerId=${partner.id}&view=summary`} empty={m.crm_chua_mua_hang()} columns={[
           { label: m.sp_so_phieu_ban(), value: (row: Row) => text(row.code), href: (row: Row) => `/sales/orders/${row.id}` },
           { label: m.ngay(), value: (row: Row) => date(text(row.orderDate)) },
           { label: m.crm_so_dong(), value: (row: Row) => num(Number(row.lineCount ?? 0)), num: true },
