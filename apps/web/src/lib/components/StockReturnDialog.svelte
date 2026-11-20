@@ -7,18 +7,23 @@
    * - Trả nhà máy (xuất kho): chặn xuất quá tồn khả dụng; ghi số đơn mua gốc thì không trả quá số đã nhận.
    * Sửa phiếu đã lưu: bắt buộc ghi lý do; máy chủ đảo thẻ kho cũ rồi ghi lại (20/10/2026).
    * Chỉ ghi kho; điều chỉnh công nợ / hóa đơn do kế toán xử lý riêng.
+   * RET-SRC-PICK-01 (19/11/2026): ô "Số phiếu BH gốc" vừa gõ vừa chọn — chọn khách xong, bấm vào ô là ra các phiếu BH đã xuất kho
+   * của khách (mới nhất trước, kèm số còn trả được), gõ số phiếu / mã hàng / tên hàng để lọc; vẫn gõ tay được số không có trong danh sách.
    */
-  import type { StockReturn, Warehouse } from '@inoxpran/contracts';
+  import type { StockReturn, StockReturnSourceOption, Warehouse } from '@inoxpran/contracts';
   import { untrack } from 'svelte';
   import { CircleAlert, Plus, X } from 'lucide-svelte';
   import { m } from '$lib/paraglide/messages';
   import { api, ApiRequestError } from '$lib/api';
+  import { date } from '$lib/format';
+  import { intlLocale } from '$lib/i18n';
   import { categoryLabel } from '$lib/inventory';
   import { CUSTOMER_RETURN_CATEGORIES, DEFECT_RETURN_CATEGORIES, STOCK_BACKDATE_FROM, type CustomerReturnCategory } from '$shared/inventory-categories';
   import Dialog from './Dialog.svelte';
   import NumberInput from './NumberInput.svelte';
   import StockReturnNumberField from './StockReturnNumberField.svelte';
   import CustomerPicker from './CustomerPicker.svelte';
+  import SuggestInput, { type Suggestion } from './SuggestInput.svelte';
   import type { CustomerOption } from '$lib/customer-search';
 
   type Kind = 'CUSTOMER' | 'SUPPLIER';
@@ -101,6 +106,50 @@
 
   const unitOf = (id: string) => productOptions.find((row) => row.id === id)?.baseUnit ?? '';
 
+  // ---------- RET-SRC-PICK-01: gợi ý số phiếu BH gốc theo khách đang chọn ----------
+  let sources = $state<StockReturnSourceOption[]>([]);
+  let sourcesLoading = $state(false);
+  let sourceRequest = 0;
+  /** Tải lại mỗi lần mở hộp thoại / đổi khách (số còn trả được đổi sau mỗi phiếu trả). */
+  $effect(() => {
+    const partnerId = open && customer ? form.partnerId : '';
+    const excludeId = editing?.id;
+    untrack(() => {
+      const request = ++sourceRequest;
+      sources = [];
+      sourcesLoading = Boolean(partnerId);
+      if (!partnerId) return;
+      void api<StockReturnSourceOption[]>(`/inventory/return-sources?partnerId=${encodeURIComponent(partnerId)}${excludeId ? `&excludeId=${encodeURIComponent(excludeId)}` : ''}`)
+        .then((rows) => { if (request === sourceRequest) sources = rows; })
+        .catch(() => undefined)
+        .finally(() => { if (request === sourceRequest) sourcesLoading = false; });
+    });
+  });
+
+  const quantityFormat = new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: 4 });
+  /** "INP6403 ×10 · INP6209 ×5 · +2 mã" — các mã còn số (đã xuất / còn trả được). */
+  function itemsText(lines: StockReturnSourceOption['lines'], field: 'remaining' | 'shipped', max: number, units = false) {
+    const items = lines.filter((line) => Number(line[field]) > 0);
+    const text = items.slice(0, max).map((line) => `${line.sku} ×${quantityFormat.format(Number(line[field]))}${units && line.unit ? ` ${line.unit.toLowerCase()}` : ''}`).join(' · ');
+    return items.length > max ? `${text} · ${m.inv_bh_goc_them_ma({ count: items.length - max })}` : text;
+  }
+  const sourceSuggestions = $derived<Suggestion[]>(sources.map((row) => ({
+    value: row.code,
+    label: [date(row.date), row.warranty ? m.inv_bh_goc_doi_bh() : ''].filter(Boolean).join(' · '),
+    detail: row.state === 'RETURNABLE' ? m.inv_bh_goc_con_tra({ items: itemsText(row.lines, 'remaining', 3) }) : m.inv_bh_goc_da_xuat({ items: itemsText(row.lines, 'shipped', 3) }),
+    ...(row.state === 'NOT_DELIVERED' ? { note: m.inv_bh_goc_chua_giao() } : row.state === 'FULLY_RETURNED' ? { note: m.inv_bh_goc_da_tra_het() } : {}),
+    muted: row.state !== 'RETURNABLE',
+    keywords: row.lines.map((line) => `${line.sku} ${line.productName}`).join(' '),
+  })));
+  /** Phiếu BH đang ghi trong ô (nếu là phiếu của khách) — hiện số còn trả được / cảnh báo ngay, không đợi lúc ghi phiếu. */
+  const chosenSource = $derived(customer && !form.preErp ? sources.find((row) => row.code === form.sourceCode.trim().toUpperCase()) : undefined);
+  function chooseCustomer(id: string) {
+    // Đổi khách: bỏ số phiếu BH đã chọn từ danh sách của khách cũ (số gõ tay giữ nguyên để máy chủ kiểm tra).
+    if (id !== form.partnerId && sources.some((row) => row.code === form.sourceCode.trim().toUpperCase())) form.sourceCode = '';
+    form.partnerId = id;
+    errors.partnerId = '';
+  }
+
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     errors = {};
@@ -161,7 +210,7 @@
       <label for="sr-partner">{customer ? m.khach_hang() : m.nha_cung_cap()} <span class="req">*</span></label>
       <CustomerPicker id="sr-partner" options={partners} value={form.partnerId} loading={partnersLoading} invalid={Boolean(errors.partnerId)}
         placeholder={customer ? m.kh_tim_nguoi_mua() : m.kh_tim_ncc()} emptyText={customer ? m.kh_khong_tim_thay_khach() : m.kh_khong_tim_thay_ncc()}
-        onchoose={(id) => { form.partnerId = id; errors.partnerId = ''; }} />
+        onchoose={chooseCustomer} />
       {#if errors.partnerId}<span class="error">{errors.partnerId}</span>{/if}
     </div>
     {#if customer}
@@ -186,13 +235,23 @@
     </div>
     <div class="field">
       <label for="sr-source">{customer ? m.inv_so_phieu_bh_goc() : m.inv_so_don_mua_goc()}</label>
-      <input id="sr-source" value={form.sourceCode} maxlength="40" autocomplete="off" placeholder={customer ? 'BH2026100001' : 'PO2026100001'} aria-invalid={Boolean(errors.sourceCode)}
-        oninput={(event) => (form.sourceCode = event.currentTarget.value.toUpperCase())} />
+      {#if customer && !form.preErp}
+        <SuggestInput id="sr-source" bind:value={form.sourceCode} options={sourceSuggestions} loading={sourcesLoading} uppercase maxlength={40} invalid={Boolean(errors.sourceCode)}
+          placeholder={m.inv_bh_goc_placeholder()} toggleLabel={m.inv_bh_goc_mo_danh_sach()}
+          emptyText={form.partnerId ? m.inv_bh_goc_khong_co() : m.inv_bh_goc_chon_khach_truoc()} />
+      {:else}
+        <input id="sr-source" value={form.sourceCode} maxlength="40" autocomplete="off" placeholder={customer ? 'BH2026100001' : 'PO2026100001'} aria-invalid={Boolean(errors.sourceCode)}
+          oninput={(event) => (form.sourceCode = event.currentTarget.value.toUpperCase())} />
+      {/if}
       {#if customer}
         <!-- INV-RET-PREERP-01: phiếu BH lập trước khi có ERP — chỉ ghi số, không kiểm tra theo phiếu gốc. -->
         <label class="pre-erp"><input id="sr-pre-erp" type="checkbox" bind:checked={form.preErp} />{m.inv_bh_truoc_erp()}</label>
       {/if}
-      {#if errors.sourceCode}<span class="error">{errors.sourceCode}</span>{:else}<span class="hint">{customer ? (form.preErp ? m.inv_bh_truoc_erp_goi_y() : m.inv_so_phieu_bh_goi_y()) : m.inv_so_don_mua_goi_y()}</span>{/if}
+      {#if errors.sourceCode}<span class="error">{errors.sourceCode}</span>
+      {:else if chosenSource && chosenSource.state !== 'RETURNABLE'}
+        <span class="warn">{chosenSource.state === 'NOT_DELIVERED' ? m.inv_bh_goc_canh_bao_chua_giao({ code: chosenSource.code }) : m.inv_bh_goc_canh_bao_da_tra_het({ code: chosenSource.code })}</span>
+      {:else if chosenSource}<span class="hint">{m.inv_bh_goc_con_tra_theo_phieu({ items: itemsText(chosenSource.lines, 'remaining', 6, true) })}</span>
+      {:else}<span class="hint">{customer ? (form.preErp ? m.inv_bh_truoc_erp_goi_y() : m.inv_so_phieu_bh_goi_y()) : m.inv_so_don_mua_goi_y()}</span>{/if}
     </div>
     <div class="field span">
       <label for="sr-note">{m.ghi_chu()} <span class="req">*</span></label>
@@ -257,5 +316,6 @@
   .hint-sample { color: var(--navy-2); }
   .pre-erp { display: flex; align-items: center; gap: 8px; margin-top: 2px; color: var(--text); font-size: 13px; font-weight: 400; cursor: pointer; }
   .pre-erp input { width: 16px; height: 16px; accent-color: var(--navy); }
+  .warn { color: var(--amber); font-size: 12px; }
   @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 </style>

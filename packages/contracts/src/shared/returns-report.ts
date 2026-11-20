@@ -17,8 +17,6 @@ export const RETURN_DEBT_STATES: readonly ReturnDebtState[] = ['CREDITED', 'NOT_
 export type ReturnRating = 'NORMAL' | 'WATCH' | 'WARNING' | 'HIGH_RISK';
 /** Đánh giá tỷ lệ trả toàn công ty theo tháng. */
 export type ReturnMonthTone = 'OK' | 'WATCH' | 'OVER';
-/** Ô của bảng "theo tháng bán": đã hết khoảng thời gian / đang tính / chưa đến. */
-export type ReturnBucketState = 'DONE' | 'RUNNING' | 'NOT_YET';
 /** Khoảng xem của các tab Theo khách hàng / mã hàng / NVKD. */
 export type ReturnsScope = 'month' | '90' | '180';
 export const RETURNS_SCOPES: readonly ReturnsScope[] = ['month', '90', '180'];
@@ -34,19 +32,6 @@ export const RETURN_THRESHOLDS = {
   /** Phiếu NK chờ kế toán quá số ngày này thì báo đỏ. */
   pendingDays: 7,
 } as const;
-
-/** Khoảng ngày của bảng theo tháng bán: 0–30, 31–60, 61–90, trên 90 ngày sau ngày giao. */
-export const RETURN_LAG_BUCKETS: ReadonlyArray<{ from: number; to: number | null }> = [
-  { from: 0, to: 30 },
-  { from: 31, to: 60 },
-  { from: 61, to: 90 },
-  { from: 91, to: null },
-];
-
-export function returnLagBucket(days: number): number {
-  const index = RETURN_LAG_BUCKETS.findIndex((bucket) => bucket.to === null || days <= bucket.to);
-  return index < 0 ? RETURN_LAG_BUCKETS.length - 1 : index;
-}
 
 export function returnMonthTone(rate: number | null): ReturnMonthTone | null {
   if (rate === null) return null;
@@ -158,19 +143,6 @@ export interface ReturnsReportRep {
   slips: number;
 }
 
-export interface ReturnsReportCohortRow {
-  key: string;
-  label: string;
-  sales: string;
-  buckets: Array<{ value: string; rate: number | null; state: ReturnBucketState }>;
-  returned: string;
-  returnedRate: number | null;
-  /** 100 − returnedRate; null khi tháng chưa có doanh số. */
-  kept: number | null;
-  /** Còn khoảng thời gian đang tính (số có thể tăng). */
-  running: boolean;
-}
-
 export interface ReturnsReport {
   month: { key: string; label: string; from: string; to: string; partial: boolean };
   window: { scope: ReturnsScope; from: string; to: string; label: string };
@@ -207,15 +179,8 @@ export interface ReturnsReport {
   customers: ReturnsReportCustomer[];
   products: ReturnsReportProduct[];
   reps: ReturnsReportRep[];
-  cohort: {
-    rows: ReturnsReportCohortRow[];
-    /** Phiếu trả không có phiếu BH gốc (hàng bán trước ERP) nhận trong 6 tháng — không xếp được tháng bán. */
-    unlinkedValue: string;
-    unlinkedSlips: number;
-    lag: Array<{ value: string; share: number | null }>;
-    lagTotal: string;
-    medianDays: number | null;
-  };
+  /* Bảng "Theo tháng bán" (cohort theo tháng giao của phiếu BH gốc) bỏ ngày 20/11/2026 — RPT-RET-COHORT-OFF-01: đa số hàng trả
+     không ghi phiếu BH gốc nên bảng không theo dõi được. */
 }
 
 /** Một phiếu NK trong danh sách bấm xem từ báo cáo. */

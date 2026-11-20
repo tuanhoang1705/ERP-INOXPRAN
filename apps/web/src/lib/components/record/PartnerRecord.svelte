@@ -467,7 +467,8 @@
         <p class="ledger-link"><a class="btn small" href={`/receivables/customers/${partner.id}`}>{m.cn_so_khach_title()}</a>{#if partner.autoHoldExempt}<span class="pill neutral" title={m.cn_khong_tu_khoa_giai_thich()}>{m.cn_khong_tu_khoa()}</span>{/if}</p>
         <RelatedTable endpoint={`/receivables?partnerId=${partner.id}&includePaid=true`} empty={m.crm_khong_co_cong_no()} columns={[
           { label: m.crm_chung_tu(), value: (row: Row) => text(row.code) },
-          { label: m.crm_nguon(), value: (row: Row) => text(row.salesOrderCode ?? row.warrantyCode ?? row.historyInvoiceNo ?? row.historyDocumentNo ?? row.openingDocumentNo ?? '—') },
+          // CN-HIST-NO-01: dòng sổ cũ ghi số chứng từ; chỉ có số hóa đơn thì ghi rõ "HĐ …".
+          { label: m.crm_nguon(), value: (row: Row) => text(row.salesOrderCode ?? row.warrantyCode ?? row.historyDocumentNo ?? (row.historyInvoiceNo ? m.cn_hd_so({ no: text(row.historyInvoiceNo) }) : undefined) ?? row.openingDocumentNo ?? '—') },
           { label: m.crm_han_tra(), value: (row: Row) => date(text(row.dueDate)) },
           { label: m.crm_so_tien(), value: (row: Row) => vnd(text(row.amount)), num: true },
           { label: m.crm_da_thu(), value: (row: Row) => vnd(text(row.paidAmount)), num: true },

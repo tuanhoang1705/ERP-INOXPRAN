@@ -19,7 +19,7 @@
   import NumberInput from './NumberInput.svelte';
 
   type Preview = {
-    allocations: Array<{ receivableId: string; segment?: string | null; code: string; documentNo: string; amount: string; outstanding: string; dueDate?: string; createdAt?: string }>;
+    allocations: Array<{ receivableId: string; segment?: string | null; code: string; documentNo: string; invoiceNo?: string; amount: string; outstanding: string; dueDate?: string; createdAt?: string }>;
     leftover: string;
     openDebt: string;
   };
@@ -173,7 +173,8 @@
               <thead><tr><th>{m.chung_tu()}</th><th>{m.han_thanh_toan()}</th><th class="num">{m.con_lai()}</th><th class="num">{m.cn_phan_bo()}</th></tr></thead>
               <tbody>
                 {#each preview.allocations as row (`${row.receivableId}-${row.segment ?? ''}`)}
-                  <tr><td>{row.documentNo}<small>{row.code}{row.segment ? ` · ${m.seg_phan_nhom({ name: segmentName(row.segment) })}` : ''}</small></td><td>{row.dueDate ? date(row.dueDate) : '—'}</td><td class="num">{num(row.outstanding)}</td><td class="num"><b>{num(row.amount)}</b></td></tr>
+                  <!-- CN-HIST-NO-01: dòng sổ cũ không có số chứng từ thì chỉ còn "HĐ …" · mã ERP ở dòng phụ. -->
+                  <tr><td>{row.documentNo}<small>{[row.invoiceNo ? m.cn_hd_so({ no: row.invoiceNo }) : '', row.code].filter(Boolean).join(' · ')}{row.segment ? ` · ${m.seg_phan_nhom({ name: segmentName(row.segment) })}` : ''}</small></td><td>{row.dueDate ? date(row.dueDate) : '—'}</td><td class="num">{num(row.outstanding)}</td><td class="num"><b>{num(row.amount)}</b></td></tr>
                 {/each}
               </tbody>
             </table>

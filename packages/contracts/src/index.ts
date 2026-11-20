@@ -502,7 +502,8 @@ const SalesOrderInputObject = z.object({
   /** Các trường in trên phiếu xuất kho bán hàng. */
   contactName: z.string().trim().max(120).optional(),
   description: z.string().trim().max(300).optional(),
-  deliveryLocation: z.string().trim().max(300).optional(),
+  /** Tối đa 500 như địa chỉ nhận hàng đã lưu ở hồ sơ khách (chọn được ở form — SAL-ADDR-01, 20/11/2026). */
+  deliveryLocation: z.string().trim().max(500).optional(),
   /** Tài khoản thủ kho tiếp nhận phiếu — chỉ người này thấy và lập SWK cho phiếu. Bắt buộc khi phát hành BH. */
   warehouseKeeperId: IdSchema.optional(),
   templateCode: SalesIssueTemplateSchema.default(DEFAULT_SALES_ISSUE_TEMPLATE),
@@ -2428,6 +2429,23 @@ export interface StockReturn {
   creditNote?: { paymentId: string; code: string; amount: string; postedOn: string; credit: string; segment?: string };
   createdByName: string;
   createdAt: string;
+}
+
+/**
+ * Gợi ý ô "Số phiếu BH gốc" khi lập / sửa phiếu khách trả (RET-SRC-PICK-01, 19/11/2026): phiếu BH đã xuất kho của khách, mới nhất
+ * trước, kèm số còn trả được từng mã (cách tính như lúc ghi phiếu). Không có tiền — thủ kho dùng.
+ * RETURNABLE = chọn được; NOT_DELIVERED = đã xuất kho, chưa xác nhận giao thành công; FULLY_RETURNED = đã trả hết.
+ */
+export type StockReturnSourceState = 'RETURNABLE' | 'NOT_DELIVERED' | 'FULLY_RETURNED';
+export interface StockReturnSourceOption {
+  code: string;
+  /** Ngày chứng từ của phiếu BH (thiếu thì ngày lập). */
+  date: string;
+  state: StockReturnSourceState;
+  /** Phiếu đổi hàng bảo hành. */
+  warranty?: boolean;
+  /** Mỗi mã một dòng (dòng bán + dòng tặng cùng mã gộp lại); số theo đơn vị cơ bản. */
+  lines: Array<{ productId: string; sku: string; productName: string; unit: string; shipped: string; remaining: string }>;
 }
 
 /** Đơn giá trả hàng kế toán chốt cho từng mã (đã gồm VAT, như giá trên phiếu BH). */

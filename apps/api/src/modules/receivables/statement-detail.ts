@@ -3,6 +3,7 @@ import Decimal from 'decimal.js';
 import type { Document } from 'mongodb';
 import { decimalString } from '../../common/domain';
 import type { LedgerRow } from './ledger';
+import { numbersLabel, paymentNumbers, receivableNumbers, type DisplayNumbers } from './ledger-numbers';
 import type { StatementDetailLine } from './statement-detail-workbook';
 
 /**
@@ -61,11 +62,13 @@ export function buildStatementDetailLines(
     if (row.kind === 'DEBIT' || row.kind === 'VOID') {
       const doc = sources.receivables.get(row.refId);
       const amount = money(row.debit);
-      const documentNo = text(doc?.salesOrderCode) ?? text(doc?.historyDocumentNo) ?? text(doc?.openingDocumentNo) ?? text(doc?.warrantyCode) ?? row.documentNo;
-      const invoiceNo = text(doc?.historyInvoiceNo);
-      const base = { date, documentNo, ...(invoiceNo ? { invoiceNo } : {}) };
+      // D số chứng từ: dòng sổ cũ chỉ số chứng từ sổ cũ — trống khi sổ cũ không ghi; số hóa đơn ở G (CN-HIST-NO-01).
+      const numbers: DisplayNumbers = doc
+        ? receivableNumbers(doc)
+        : { history: false, ...(row.documentNo ? { documentNo: row.documentNo } : {}), ...(row.invoiceNo ? { invoiceNo: row.invoiceNo } : {}) };
+      const base = { date, ...(numbers.documentNo ? { documentNo: numbers.documentNo } : {}), ...(numbers.invoiceNo ? { invoiceNo: numbers.invoiceNo } : {}) };
       if (row.kind === 'VOID') {
-        lines.push({ ...base, description: `Hủy chứng từ ${row.documentNo} 作废${doc?.voidReason ? ` — ${String(doc.voidReason)}` : ''}`, amount: num(amount) });
+        lines.push({ ...base, description: `Hủy chứng từ ${numbersLabel(numbers, row.code)} 作废${doc?.voidReason ? ` — ${String(doc.voidReason)}` : ''}`, amount: num(amount) });
         continue;
       }
       const order = row.salesOrderId ? sources.orders.get(row.salesOrderId) : undefined;
@@ -87,20 +90,24 @@ export function buildStatementDetailLines(
     }
 
     const payment = sources.payments.get(row.refId);
-    const extra = [text(payment?.reference), text(payment?.note)].filter(Boolean).join(' · ');
-    const documentNo = text(payment?.historyDocumentNo) ?? text(payment?.code) ?? row.documentNo;
+    const numbers: DisplayNumbers = payment ? paymentNumbers(payment) : { history: false, ...(row.documentNo ? { documentNo: row.documentNo } : {}) };
+    // Phiếu sổ cũ: reference là số chứng từ / số hóa đơn — đã ở cột D / G, diễn giải chỉ thêm ghi chú.
+    const extra = (numbers.history ? [text(payment?.note)] : [text(payment?.reference), text(payment?.note)]).filter(Boolean).join(' · ');
+    // D: phiếu sổ cũ chỉ số chứng từ sổ cũ (trống khi sổ cũ không ghi — CN-HIST-NO-01); phiếu ERP = mã phiếu.
+    const documentNo = numbers.history ? numbers.documentNo : text(payment?.code) ?? (row.documentNo || undefined);
+    const numberCells = { ...(documentNo ? { documentNo } : {}), ...(numbers.invoiceNo ? { invoiceNo: numbers.invoiceNo } : {}) };
     if (row.kind === 'RECEIPT') {
       const method = METHOD_TEXT[String(payment?.method ?? '')] ?? '收款';
-      lines.push({ date, documentNo, description: `Thu tiền khách hàng ${method}${extra ? ` — ${extra}` : ''}`, paid: num(money(row.receipt)) });
+      lines.push({ date, ...numberCells, description: `Thu tiền khách hàng ${method}${extra ? ` — ${extra}` : ''}`, paid: num(money(row.receipt)) });
       continue;
     }
     if (row.kind === 'FREIGHT') {
-      lines.push({ date, documentNo, description: `Phí vận chuyển khách trả 运费${extra ? ` — ${extra}` : ''}`, freight: num(money(row.freight)) });
+      lines.push({ date, ...numberCells, description: `Phí vận chuyển khách trả 运费${extra ? ` — ${extra}` : ''}`, freight: num(money(row.freight)) });
       continue;
     }
     // RETURN: trả hàng (có dòng hàng) / giảm giá, trừ lương (một dòng) — P âm.
     const returnCode = payment?.stockReturnId ? sources.returnCodes.get(String(payment.stockReturnId)) : undefined;
-    const base = { date, documentNo: returnCode ?? documentNo };
+    const base = { date, ...numberCells, ...(returnCode ? { documentNo: returnCode } : {}) };
     const history = (payment?.historyLines as Document[] | undefined) ?? [];
     const amount = money(row.returns).neg();
     if (history.length) {

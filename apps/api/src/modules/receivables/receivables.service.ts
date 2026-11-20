@@ -17,6 +17,7 @@ import { pageOf, type PageRequest } from '../../common/paging';
 import { applyAllocations } from './allocation-store';
 import { classifyOverdue, daysOverdue, OPEN_RECEIVABLE_STATUSES, OVERDUE_HOLD_REASON, releaseHoldIfCleared, runOverdueReview } from './overdue-review';
 import { buildLedger, type LedgerHistory, type LedgerPayment, type LedgerReceivable } from './ledger';
+import { receivableNumbers } from './ledger-numbers';
 import { DOCUMENT_MODES } from './reallocate';
 import { buildSummaryWorkbook, type SummaryCustomer, type SummaryMonth } from './summary-workbook';
 import { buildStatementDetailLines, vnDayOf } from './statement-detail';
@@ -299,8 +300,10 @@ export class ReceivablesService {
     return rule;
   }
 
-  private static documentNo(row: Document | undefined, fallback: string): string {
-    return String(row?.salesOrderCode ?? row?.historyInvoiceNo ?? row?.historyDocumentNo ?? row?.openingDocumentNo ?? row?.warrantyCode ?? fallback);
+  /** Số chứng từ hiển thị (dòng sổ cũ: trống khi sổ cũ không ghi — CN-HIST-NO-01, không lấy số hóa đơn) + số hóa đơn sổ cũ. */
+  private static numbers(row: Document | undefined, code: string): { documentNo: string; invoiceNo?: string } {
+    const value = receivableNumbers({ ...(row ?? {}), code });
+    return { documentNo: value.documentNo ?? '', ...(value.invoiceNo ? { invoiceNo: value.invoiceNo } : {}) };
   }
 
   /** Công nợ theo khách hàng (CN-KH-01): phát sinh, đã thu, phí vận chuyển, trả hàng / giảm, khách trả trước, còn nợ. */
@@ -471,12 +474,14 @@ export class ReceivablesService {
         ...edited(row),
       };
     };
+    // Ô "Số CT" khi sửa phiếu: phiếu sổ cũ chỉ số chứng từ sổ cũ (reference có thể là số hóa đơn — CN-HIST-NO-01); phiếu khác = mã giao dịch / số CT ghi tay.
+    const typedPaymentNo = (row: Document) => (row.mode === 'HISTORY' ? optional(row.historyDocumentNo) : optional(row.reference));
     const historyOfPayment = (row: Document): LedgerHistory | undefined => (row.status === 'POSTED' && ['RECEIPT', 'FREIGHT', 'RETURN'].includes(String(row.kind ?? 'RECEIPT'))
       ? {
           kind: 'PAYMENT', date: vnDay(row.receivedAt as Date), amount: decimalString(row.amount), paymentKind: String(row.kind ?? 'RECEIPT'),
           // Phiếu gắn chứng từ khác: sửa ở chứng từ gốc.
           ...(row.autoPayNow ? { locked: 'PAY_NOW' as const } : row.stockReturnId ? { locked: 'STOCK_RETURN' as const } : {}),
-          ...(optional(row.reference) ? { documentNo: String(row.reference) } : {}),
+          ...(typedPaymentNo(row) ? { documentNo: typedPaymentNo(row) as string } : {}),
           ...(optional(row.note) ? { note: String(row.note) } : {}),
           ...edited(row),
         }
@@ -514,6 +519,7 @@ export class ReceivablesService {
       note: optional(row.note),
       mode: optional(row.mode),
       documentNo: optional(row.historyDocumentNo),
+      invoiceNo: optional(row.historyInvoiceNo),
       history: historyOfPayment(row),
     }));
     return { ledgerReceivables, ledgerPayments };
@@ -646,7 +652,7 @@ export class ReceivablesService {
           .filter((part) => new Decimal(part.outstanding).gt(0)),
         dueDate: item.dueDate.toISOString(),
         createdAt: item.createdAt.toISOString(),
-        documentNo: ReceivablesService.documentNo(item.document, item.code),
+        ...ReceivablesService.numbers(item.document, item.code),
         salesOrderId: item.document.salesOrderId ? String(item.document.salesOrderId) : undefined,
         sourceType: item.document.sourceType ? String(item.document.sourceType) : undefined,
         segmentTag: item.document.segmentTag ? String(item.document.segmentTag.code) : undefined,
@@ -772,7 +778,7 @@ export class ReceivablesService {
           code: item?.code ?? '',
           amount: allocation.amount,
           outstanding: part?.outstanding ?? item?.outstanding.toFixed(2) ?? '0.00',
-          documentNo: ReceivablesService.documentNo(item?.document, item?.code ?? ''),
+          ...ReceivablesService.numbers(item?.document, item?.code ?? ''),
           dueDate: item?.dueDate.toISOString(),
           createdAt: item?.createdAt.toISOString(),
         };

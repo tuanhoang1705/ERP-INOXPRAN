@@ -5,6 +5,7 @@ import { releaseDocumentNumber } from '../../common/document-numbers';
 import { decimal, decimalString } from '../../common/domain';
 import type { SequenceService } from '../../common/sequence.service';
 import { applyAllocations } from './allocation-store';
+import { numbersLabel, receivableNumbers } from './ledger-numbers';
 import { OPEN_RECEIVABLE_STATUSES, releaseHoldIfCleared } from './overdue-review';
 import { openParts, partRank, planPartsAllocation, type OpenPart } from './segments';
 
@@ -91,8 +92,9 @@ export function historyLinesOf(lines: readonly ReturnCreditLine[]) {
   }));
 }
 
+/** Chữ nhận ra chứng từ trong danh sách trừ nợ: số chứng từ; dòng sổ cũ không có số chứng từ thì "HĐ …" / mã ERP (CN-HIST-NO-01). */
 function documentNo(row: Document): string {
-  return String(row.salesOrderCode ?? row.historyInvoiceNo ?? row.historyDocumentNo ?? row.openingDocumentNo ?? row.warrantyCode ?? row.code);
+  return numbersLabel(receivableNumbers(row), String(row.code));
 }
 
 /** Tính phiếu giảm nợ (không ghi): trừ vào chứng từ nào, phần dư thành khách trả trước. `segment` = nhóm kế toán chọn (null = tổng nợ). */

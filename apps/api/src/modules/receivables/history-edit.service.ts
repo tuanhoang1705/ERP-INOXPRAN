@@ -10,6 +10,7 @@ import type { AuthenticatedRequest } from '../../common/request-context';
 import { SequenceService } from '../../common/sequence.service';
 import { MONGO_DATABASE } from '../../common/tokens';
 import { planHistoryCredits, receivableStatus } from './history-edit';
+import { numbersLabel, paymentNumbers, receivableNumbers } from './ledger-numbers';
 import { releaseHoldIfCleared } from './overdue-review';
 import { DOCUMENT_MODES } from './reallocate';
 import { reallocatePartner } from './segment-store';
@@ -174,10 +175,15 @@ export class HistoryEditService {
       // Phiếu thu theo đúng chứng từ: phân bổ lại trong chính các chứng từ đó, không vượt số còn nợ.
       const documentAllocations = DOCUMENT_MODES.has(String(payment.mode ?? '')) ? await this.documentAllocations(payment, input.amount, session) : null;
       const history = payment.mode === 'HISTORY';
+      // Phiếu sổ cũ không có số chứng từ: `reference` đang giữ số hóa đơn — lưu sang historyInvoiceNo trước khi đổi / bỏ Số CT (CN-HIST-NO-01).
+      const keptInvoice = history && !payment.historyInvoiceNo
+        ? paymentNumbers({ mode: payment.mode, reference: payment.reference, historyDocumentNo: payment.historyDocumentNo }).invoiceNo
+        : undefined;
       const set: Document = {
         amount: decimal(new Decimal(input.amount).toFixed(2)),
         kind: input.kind,
         receivedAt: vnNoon(input.date),
+        ...(keptInvoice ? { historyInvoiceNo: keptInvoice } : {}),
         ...(input.reference ? { reference: input.reference, ...(history ? { historyDocumentNo: input.reference } : {}) } : {}),
         ...(input.note ? { note: input.note } : history ? { note: KIND_LABEL[input.kind] } : {}),
         ...(documentAllocations ? { allocations: documentAllocations } : {}),
@@ -323,8 +329,9 @@ export class HistoryEditService {
     const partnerId = record.partnerId as ObjectId;
     const balance = await this.rebuild(partnerId, record.importBatchId as ObjectId | undefined, session, now, input.deletedPaymentId);
     const code = String(record.code);
-    // Số kế toán quen dùng trên sổ: số HĐ / số chứng từ, phiếu BH, phiếu thu theo số tham chiếu.
-    const label = String(input.kind === 'DOCUMENT' ? record.historyInvoiceNo || record.historyDocumentNo || record.salesOrderCode || record.warrantyCode || code : record.reference || code);
+    // Số kế toán quen dùng trên sổ: số chứng từ (phiếu BH, số CT sổ cũ…); dòng sổ cũ không có số CT thì "HĐ …", rồi mã ERP (CN-HIST-NO-01).
+    const fields = { mode: record.mode, code, reference: record.reference, sourceType: record.sourceType, salesOrderCode: record.salesOrderCode, historyDocumentNo: record.historyDocumentNo, historyInvoiceNo: record.historyInvoiceNo, openingDocumentNo: record.openingDocumentNo, warrantyCode: record.warrantyCode };
+    const label = numbersLabel(input.kind === 'DOCUMENT' ? receivableNumbers(fields) : paymentNumbers(fields), code);
     if (record.importBatchId) {
       await this.db.collection('import_batches').updateOne(
         { _id: record.importBatchId as ObjectId },

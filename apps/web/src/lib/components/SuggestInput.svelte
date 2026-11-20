@@ -1,5 +1,6 @@
 <script lang="ts" module>
-  export type Suggestion = { value: string; label?: string; detail?: string; note?: string; muted?: boolean };
+  /** `keywords`: chữ chỉ dùng để lọc, không hiện (VD mã + tên hàng trên phiếu BH gốc — RET-SRC-PICK-01). */
+  export type Suggestion = { value: string; label?: string; detail?: string; note?: string; muted?: boolean; keywords?: string };
 </script>
 
 <script lang="ts">
@@ -21,9 +22,10 @@
     loading = false,
     uppercase = false,
     maxlength,
+    invalid = false,
   }: {
     value?: string; options: readonly Suggestion[]; id: string; placeholder?: string; emptyText?: string; toggleLabel?: string; loading?: boolean;
-    uppercase?: boolean; maxlength?: number;
+    uppercase?: boolean; maxlength?: number; invalid?: boolean;
   } = $props();
 
   let open = $state(false);
@@ -32,12 +34,19 @@
   let input = $state<HTMLInputElement>();
   let list = $state<HTMLUListElement>();
 
-  /** Chưa gõ (mới mở, hoặc ô đang là một gợi ý) thì hiện cả danh sách; gõ thì lọc theo số / nhãn / dòng phụ (không dấu). */
+  /**
+   * Chưa gõ (mới mở, hoặc ô đang là một gợi ý) thì hiện cả danh sách; gõ thì lọc theo số / nhãn / dòng phụ / từ khóa (không dấu),
+   * gõ nhiều từ thì dòng phải chứa đủ các từ.
+   */
   const results = $derived.by(() => {
     if (!open) return [];
     const text = typed ? foldText(value) : '';
     if (!text) return options;
-    return options.filter((option) => foldText(`${option.value} ${option.label ?? ''} ${option.detail ?? ''}`).includes(text));
+    const tokens = text.split(/\s+/).filter(Boolean);
+    return options.filter((option) => {
+      const haystack = foldText(`${option.value} ${option.label ?? ''} ${option.detail ?? ''} ${option.keywords ?? ''}`);
+      return tokens.every((token) => haystack.includes(token));
+    });
   });
 
   function openList() {
@@ -87,6 +96,7 @@
     aria-expanded={open}
     aria-controls={`${id}-list`}
     aria-autocomplete="list"
+    aria-invalid={invalid}
     onfocus={openList}
     oninput={(event) => { value = uppercase ? event.currentTarget.value.toUpperCase() : event.currentTarget.value; typed = true; open = true; active = 0; }}
     onkeydown={keydown}

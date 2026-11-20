@@ -1,4 +1,4 @@
-import { RETURN_LAG_BUCKETS, type ReturnBucketState, type ReturnDebtState, type ReturnsSplit } from '@inoxpran/contracts';
+import { type ReturnDebtState, type ReturnsSplit } from '@inoxpran/contracts';
 import Decimal from 'decimal.js';
 import type { Document } from 'mongodb';
 import { decimalString, vnDayStart, vnParts } from '../../common/domain';
@@ -55,32 +55,11 @@ export function calendarDays(from: Date, to: Date): number {
   return Math.round((vnDayStart(to).getTime() - vnDayStart(from).getTime()) / DAY_MS);
 }
 
-/**
- * Ô của bảng theo tháng bán (tháng [start, end)) và khoảng ngày `index`: chưa đến khi ngày bán đầu tháng + số ngày đầu khoảng còn
- * ở tương lai; đã xong khi ngày bán cuối tháng + số ngày cuối khoảng đã qua; khoảng cuối (trên 90 ngày) không bao giờ xong.
- */
-export function lagBucketState(start: Date, end: Date, index: number, now: Date): ReturnBucketState {
-  const bucket = RETURN_LAG_BUCKETS[index];
-  if (!bucket) return 'NOT_YET';
-  const today = vnDayStart(now).getTime();
-  if (start.getTime() + bucket.from * DAY_MS > today) return 'NOT_YET';
-  if (bucket.to === null) return 'RUNNING';
-  const lastSaleDay = vnDayStart(new Date(end.getTime() - DAY_MS)).getTime();
-  return lastSaleDay + bucket.to * DAY_MS < today ? 'DONE' : 'RUNNING';
-}
-
 /** Phần trăm một chữ số thập phân; mẫu số 0 → null. */
 export function percentOf(part: Decimal.Value, whole: Decimal.Value): number | null {
   const base = new Decimal(whole);
   if (base.lte(0)) return null;
   return new Decimal(part).div(base).mul(100).toDecimalPlaces(1).toNumber();
-}
-
-export function median(values: number[]): number | null {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle]! : Math.round((sorted[middle - 1]! + sorted[middle]!) / 2);
 }
 
 export interface SplitAccumulator {

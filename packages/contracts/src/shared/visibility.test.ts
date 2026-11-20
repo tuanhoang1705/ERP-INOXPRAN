@@ -17,22 +17,23 @@ describe('quyền hiển thị theo vai trò (VIS-ROLE-01)', () => {
   });
 
   it('ma trận đã duyệt 13/11/2026', () => {
-    expect(areasOf('SALES_MANAGER')).toEqual(['dashboard.revenue', 'dashboard.receivables', 'dashboard.approvals', 'catalog.products', 'catalog.dealers', 'catalog.regions', 'sales.menu', 'sales.orderDetail', 'approvals', 'inventory.stock', 'inventory.reports', 'pricing.priceList', 'pricing.manage', 'receivables', 'reports']);
+    expect(areasOf('SALES_MANAGER')).toEqual(['dashboard.revenue', 'dashboard.receivables', 'dashboard.approvals', 'catalog.products', 'catalog.dealers', 'catalog.regions', 'sales.menu', 'sales.orderDetail', 'approvals', 'inventory.stock', 'inventory.reports', 'inventory.monthlyReport', 'pricing.priceList', 'pricing.manage', 'receivables', 'reports']);
     expect(areasOf('SALES')).toEqual(['dashboard.receivables', ...SALES_DESK]);
     expect(areasOf('ACCOUNTANT')).toEqual([
       'dashboard.revenue', 'dashboard.receivables', 'dashboard.inventoryValue', 'catalog.products', 'catalog.dealers', 'catalog.suppliers',
       'sales.menu', 'sales.orderDetail', 'sales.changeRequests', 'sales.priceApprovals',
-      'inventory.stock', 'inventory.shipments', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts', 'inventory.reports',
+      'inventory.stock', 'inventory.shipments', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts', 'inventory.reports', 'inventory.monthlyReport',
       'pricing.priceList', 'pricing.manage', 'receivables', 'payables', 'warranty', 'reports',
     ]);
     expect(areasOf('WAREHOUSE_MANAGER')).toEqual([
       'dashboard.inventoryValue', 'catalog.products', 'catalog.suppliers', 'catalog.warehouses', 'sales.orderDetail', 'sales.changeRequests',
-      'inventory.stock', 'inventory.shipments', 'inventory.transfers', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts', 'inventory.reports',
+      'inventory.stock', 'inventory.shipments', 'inventory.transfers', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts', 'inventory.reports', 'inventory.monthlyReport',
       'pricing.priceList', 'warranty',
     ]);
+    // Thủ kho: Kho & Giao hàng, gồm Tồn kho tháng (VIS-INV-MONTH-01, 20/11/2026) nhưng chưa có Nhật ký xuất nhập.
     expect(areasOf('WAREHOUSE')).toEqual([
       'catalog.products', 'catalog.warehouses', 'sales.orderDetail', 'sales.changeRequests',
-      'inventory.stock', 'inventory.shipments', 'inventory.transfers', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts',
+      'inventory.stock', 'inventory.shipments', 'inventory.transfers', 'inventory.purchases', 'inventory.movements', 'inventory.sampleIssues', 'inventory.returns', 'inventory.counts', 'inventory.monthlyReport',
     ]);
     expect(areasOf('PROCUREMENT_MANAGER')).toEqual(['catalog.products', 'catalog.suppliers', 'approvals', 'inventory.stock', 'inventory.purchases', 'payables']);
     expect(areasOf('PROCUREMENT')).toEqual(['catalog.products', 'catalog.suppliers', 'inventory.stock', 'inventory.purchases', 'payables']);
@@ -59,7 +60,8 @@ describe('quyền hiển thị theo vai trò (VIS-ROLE-01)', () => {
     expect(routeArea('/sales/change-requests')).toBe('sales.changeRequests');
     expect(routeArea('/inventory')).toBe('inventory.stock');
     expect(routeArea('/inventory/sample-issues/x/edit')).toBe('inventory.sampleIssues');
-    expect(routeArea('/inventory/reports/monthly')).toBe('inventory.reports');
+    expect(routeArea('/inventory/reports/monthly')).toBe('inventory.monthlyReport');
+    expect(routeArea('/inventory/reports/journal')).toBe('inventory.reports');
     expect(routeArea('/inventory-x')).toBeNull();
     expect(routeArea('/pricing/tiers')).toBe('pricing.manage');
     expect(routeArea('/print/sales-issue/1')).toBe('sales.orderDetail');
@@ -71,7 +73,10 @@ describe('quyền hiển thị theo vai trò (VIS-ROLE-01)', () => {
     expect(canSeePath(keeper, '/print/sales-issue/abc')).toBe(true);
     expect(canSeePath(keeper, '/sales/orders')).toBe(false);
     expect(canSeePath(keeper, '/sales/change-requests')).toBe(true);
-    expect(canSeePath(keeper, '/inventory/reports/monthly')).toBe(false);
+    expect(canSeePath(keeper, '/inventory/reports/monthly')).toBe(true);
+    expect(canSeePath(keeper, '/inventory/reports/journal')).toBe(false);
+    expect(canSeePath(userOf('SALES'), '/inventory/reports/monthly')).toBe(false);
+    expect(canSeePath(userOf('PROCUREMENT'), '/inventory/reports/monthly')).toBe(false);
     expect(canSeePath(keeper, '/receivables')).toBe(false);
     expect(canSeePath(keeper, '/')).toBe(true);
     // Đơn mua: người theo dõi phải trả cũng mở được (kế toán, mua hàng).

@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * Công nợ theo khách hàng (CN-KH-01, 16/10/2026): tổng phát sinh / đã thu / phí vận chuyển khách trả / trả hàng / còn nợ của
+   * Công nợ theo khách hàng (CN-KH-01, 16/10/2026; cột phí vận chuyển và trả hàng tách riêng từ 19/11/2026 — CN-KH-COL-01):
+   * tổng phát sinh / đã thu / phí vận chuyển khách trả / trả hàng / còn nợ của
    * từng khách — NPP trả gối đầu nên kế toán thu theo khách, không theo từng phiếu. Bấm khách để xem sổ chi tiết.
    */
   import { m } from '$lib/paraglide/messages';
@@ -105,11 +106,11 @@
   <div class="table-wrap">
     <table class="table compact">
       <thead><tr>
-        <th>{m.khach_hang()}</th><th class="num">{m.cn_phat_sinh()}</th><th class="num">{m.cn_da_thu()}</th><th class="num">{m.cn_phi_vc()} · {m.cn_tra_hang_giam()}</th>
+        <th>{m.khach_hang()}</th><th class="num">{m.cn_phat_sinh()}</th><th class="num">{m.cn_da_thu()}</th><th class="num">{m.cn_phi_vc()}</th><th class="num">{m.cn_tra_hang_giam()}</th>
         <th class="num">{m.cn_con_no()}</th><th class="num">{m.seg_no_nhom_tach_rieng()}</th><th>{m.cn_qua_han()}</th>
       </tr></thead>
       <tbody>
-        {#if loading && !rows.length}<tr class="empty-row"><td colspan="7">{m.dang_doc_so_cong_no()}</td></tr>
+        {#if loading && !rows.length}<tr class="empty-row"><td colspan="8">{m.dang_doc_so_cong_no()}</td></tr>
         {:else if rows.length}
           {#each rows as row (row.partnerId)}
             {@const level = row.overdueLevel ? overdueLevel[row.overdueLevel] : null}
@@ -122,16 +123,17 @@
               </td>
               <td class="num">{num(row.debit)}</td>
               <td class="num muted">{num(row.receipt)}</td>
-              <td class="num muted">{num(row.freight)}<small>{m.cn_tra_hang_giam()}: {num(row.returns)}</small></td>
+              <td class="num muted">{num(row.freight)}</td>
+              <td class="num muted">{num(row.returns)}</td>
               <td class="num"><b class:credit={Number(row.balance) < 0}>{num(row.balance)}</b>{#if Number(row.prepayment) > 0}<small>{m.cn_tra_truoc_ngan({ amount: num(row.prepayment) })}</small>{/if}</td>
               <td class="num seg-cell">{#if Number(row.segmentOutstanding) > 0}<span class="segment">{num(row.segmentOutstanding)}</span>{#each row.segments as part (part.code)}<small>{segmentName(part.code)}</small>{/each}<small>{m.seg_con_lai_tru_nhom()}: {num(row.normalBalance)}</small>{:else}<span class="muted">—</span>{/if}</td>
               <td>{#if level}<span class={`pill ${level.tone}`}>{m.qua_han()} {row.maxDaysOverdue} {m.ngay()}</span>{:else if row.openDocuments}<span class="muted">{m.cn_trong_han()}</span>{:else}—{/if}</td>
             </tr>
           {/each}
-        {:else}<tr class="empty-row"><td colspan="7">{m.cn_khong_co_khach()}</td></tr>{/if}
+        {:else}<tr class="empty-row"><td colspan="8">{m.cn_khong_co_khach()}</td></tr>{/if}
       </tbody>
       {#if totals && rows.length}
-        <tfoot><tr><td>{m.cong()}</td><td class="num">{num(totals.debit)}</td><td class="num">{num(totals.receipt)}</td><td class="num">{num(totals.freight)}<small>{m.cn_tra_hang_giam()}: {num(totals.returns)}</small></td><td class="num"><b>{num(totals.balance)}</b></td><td class="num">{num(totals.segmentOutstanding)}</td><td></td></tr></tfoot>
+        <tfoot><tr><td>{m.cong()}</td><td class="num">{num(totals.debit)}</td><td class="num">{num(totals.receipt)}</td><td class="num">{num(totals.freight)}</td><td class="num">{num(totals.returns)}</td><td class="num"><b>{num(totals.balance)}</b></td><td class="num">{num(totals.segmentOutstanding)}</td><td></td></tr></tfoot>
       {/if}
     </table>
   </div>
@@ -152,7 +154,9 @@
   .credit { color: var(--green); }
   .segment { color: var(--navy-2); font-weight: 600; }
   td small { display: block; color: var(--subtle); font-size: 11.5px; }
-  /* Dòng phụ dài ("Còn lại trừ nhóm tách riêng: …", "Trả hàng / giảm: …") được xuống dòng để bảng vừa 1366 px. */
+  /* Dòng phụ dài ("Còn lại trừ nhóm tách riêng: …") được xuống dòng để bảng vừa 1366 px.
+     Phí vận chuyển và Trả hàng / giảm là hai cột riêng (19/11/2026): trước đây gộp một cột, số to ở dòng Cộng là tổng phí vận chuyển
+     nhưng dễ bị đọc nhầm là tổng trả hàng. */
   td.num small { white-space: normal; }
   .seg-cell { max-width: 170px; }
   tfoot td { font-weight: 600; }

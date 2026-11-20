@@ -5,6 +5,8 @@
    * Thu tiền theo khách (tự phân bổ chứng từ cũ nhất trước), ghi phí vận chuyển, bù trừ khoản trả trước, xuất Excel.
    * Nhóm công nợ tách riêng (CN-SEG-01, 17/10/2026): ô "Công nợ <nhóm>" + "Còn lại trừ nhóm", dòng phát sinh ghi "trong đó …",
    * chứng từ còn nợ chỉ báo quá hạn trên phần nợ thường; kế toán gắn tay cả chứng từ vào nhóm (VD "Hàng mẫu").
+   * CN-HIST-NO-01 (19/11/2026, kế toán): ô Chứng từ in đậm đúng số chứng từ; dòng sổ cũ không có số chứng từ thì để trống — số hóa đơn
+   * hiện riêng thành dòng nhỏ "HĐ …" cạnh mã ERP, không thay số chứng từ.
    */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
@@ -22,7 +24,7 @@
   import HistoryRowDialog, { type HistoryRowInfo, type HistoryRowResult } from '$lib/components/HistoryRowDialog.svelte';
 
   type Row = {
-    date: string; kind: 'DEBIT' | 'VOID' | 'RETURN' | 'FREIGHT' | 'RECEIPT'; refId: string; code: string; documentNo: string; description: string; detail?: string;
+    date: string; kind: 'DEBIT' | 'VOID' | 'RETURN' | 'FREIGHT' | 'RECEIPT'; refId: string; code: string; documentNo: string; invoiceNo?: string; description: string; detail?: string;
     salesOrderId?: string; sourceType?: string; segments?: Array<{ code: string; amount: string }>; debit: string; receipt: string; freight: string; returns: string; balance: string;
     /** Dòng nhập từ sổ công nợ cũ — kế toán sửa / xóa được (CN-HIST-EDIT-01). */
     history?: HistoryRowInfo;
@@ -33,7 +35,7 @@
     opening: string; closing: string; rows: Row[]; totals: { debit: string; receipt: string; freight: string; returns: string };
     openDebt: string; prepayment: string;
     openDocuments: Array<{
-      id: string; code: string; documentNo: string; outstanding: string; normalOutstanding: string; segmentOutstanding: string; segments: Array<{ code: string; outstanding: string }>;
+      id: string; code: string; documentNo: string; invoiceNo?: string; outstanding: string; normalOutstanding: string; segmentOutstanding: string; segments: Array<{ code: string; outstanding: string }>;
       amount: string; dueDate: string; createdAt: string; daysOverdue: number; salesOrderId?: string; segmentTag?: string;
     }>;
     segments: SegmentInfo[];
@@ -102,6 +104,11 @@
   }
   let tagSegment = $state('');
   let tagReason = $state('');
+  type Numbered = { code: string; documentNo: string; invoiceNo?: string };
+  /** Dòng phụ dưới số chứng từ (CN-HIST-NO-01): "HĐ …" (số hóa đơn sổ cũ) · mã ERP (khi khác số chứng từ). */
+  const subNumbers = (row: Numbered) => [row.invoiceNo ? m.cn_hd_so({ no: row.invoiceNo }) : '', row.code !== row.documentNo ? row.code : ''].filter(Boolean).join(' · ');
+  /** Chữ nhận ra một dòng (tiêu đề hộp sửa, gắn nhóm): số chứng từ, không có thì "HĐ …", rồi mã ERP. */
+  const rowName = (row: Numbered) => row.documentNo || (row.invoiceNo ? m.cn_hd_so({ no: row.invoiceNo }) : row.code);
   function openTag(id: string, label: string, current = '') {
     tagTarget = { id, label, current };
     tagSegment = current;
@@ -320,12 +327,12 @@
           {#each data.rows as row (`${row.kind}-${row.refId}`)}
             <tr class:void={row.kind === 'VOID'}>
               <td class="nowrap">{date(row.date)}</td>
-              <td>{#if row.salesOrderId}<a class="link code" href={`/sales/orders/${row.salesOrderId}`}>{row.documentNo}</a>{:else}<span class="code">{row.documentNo}</span>{/if}{#if row.code !== row.documentNo}<small>{row.code}</small>{/if}</td>
+              <td>{#if row.salesOrderId}<a class="link code" href={`/sales/orders/${row.salesOrderId}`}>{row.documentNo}</a>{:else if row.documentNo}<span class="code">{row.documentNo}</span>{/if}{#if subNumbers(row)}<small>{subNumbers(row)}</small>{/if}</td>
               <td>
                 {rowLabel(row)}{#if row.detail}<small>{row.detail}</small>{/if}
                 {#each row.segments ?? [] as part (part.code)}<small class="segment-note">{m.seg_trong_do({ name: segmentName(part.code), amount: num(part.amount) })}</small>{/each}
                 {#if row.history?.edited}<small class="edited" title={row.history.edited.reason}>{row.history.added ? m.hx_them_tay({ who: row.history.edited.byName, date: date(row.history.edited.at) }) : m.hx_da_sua_tay({ who: row.history.edited.byName, date: date(row.history.edited.at) })}</small>{/if}
-                {#if canCollect && row.kind === 'DEBIT' && data.segments.some((segment) => segment.active)}<button class="link-btn tag" onclick={() => openTag(row.refId, row.documentNo, data?.openDocuments.find((doc) => doc.id === row.refId)?.segmentTag ?? '')}><Tags size={12} />{m.seg_gan_nhom()}</button>{/if}
+                {#if canCollect && row.kind === 'DEBIT' && data.segments.some((segment) => segment.active)}<button class="link-btn tag" onclick={() => openTag(row.refId, rowName(row), data?.openDocuments.find((doc) => doc.id === row.refId)?.segmentTag ?? '')}><Tags size={12} />{m.seg_gan_nhom()}</button>{/if}
                 {#if canCollect && row.history?.locked}<small class="locked">{row.history.locked === 'PAY_NOW' ? m.hx_khoa_pay_now() : m.hx_khoa_tra_hang()}</small>
                 {:else if canCollect && row.history}<span class="row-actions"><button class="link-btn tag" onclick={() => openHistory(row, 'edit')}><Pencil size={12} />{m.hx_sua()}</button><button class="link-btn tag danger" onclick={() => openHistory(row, 'delete')}><Trash2 size={12} />{m.hx_xoa()}</button></span>{/if}
               </td>
@@ -354,7 +361,7 @@
         <tbody>
           {#each data.openDocuments as doc (doc.id)}
             <tr>
-              <td>{#if doc.salesOrderId}<a class="link code" href={`/sales/orders/${doc.salesOrderId}`}>{doc.documentNo}</a>{:else}<span class="code">{doc.documentNo}</span>{/if}<small>{doc.code}</small></td>
+              <td>{#if doc.salesOrderId}<a class="link code" href={`/sales/orders/${doc.salesOrderId}`}>{doc.documentNo}</a>{:else if doc.documentNo}<span class="code">{doc.documentNo}</span>{/if}<small>{[doc.invoiceNo ? m.cn_hd_so({ no: doc.invoiceNo }) : '', doc.code].filter(Boolean).join(' · ')}</small></td>
               <td>{date(doc.createdAt)}</td>
               <td>{date(doc.dueDate)}</td>
               <td class="num muted">{num(doc.amount)}</td>
@@ -387,7 +394,7 @@
   {/snippet}
 </Dialog>
 
-<HistoryRowDialog bind:open={historyOpen} mode={historyMode} partnerId={id} id={historyRow?.refId ?? ''} code={historyRow ? (historyRow.code !== historyRow.documentNo ? `${historyRow.documentNo} (${historyRow.code})` : historyRow.code) : ''} info={historyRow?.history ?? null} onsaved={historySaved} />
+<HistoryRowDialog bind:open={historyOpen} mode={historyMode} partnerId={id} id={historyRow?.refId ?? ''} code={historyRow ? (rowName(historyRow) !== historyRow.code ? `${rowName(historyRow)} (${historyRow.code})` : historyRow.code) : ''} info={historyRow?.history ?? null} onsaved={historySaved} />
 
 <SegmentItemsDialog bind:open={itemsOpen} title={itemsSegment ? m.seg_hang_dang_no_tieu_de({ name: itemsSegment.name }) : ''} holders={itemsSegment?.holding ? [itemsSegment.holding] : []} />
 

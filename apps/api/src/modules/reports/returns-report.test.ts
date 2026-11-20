@@ -1,7 +1,7 @@
-import { customerReturnRating, returnLagBucket, returnMonthTone } from '@inoxpran/contracts';
+import { customerReturnRating, returnMonthTone } from '@inoxpran/contracts';
 import { Decimal128 } from 'mongodb';
 import { describe, expect, it } from 'vitest';
-import { addSlip, calendarDays, emptySplit, lagBucketState, median, paymentBucket, percentOf, receivedBetween, slipReceivedAt, slipState, slipValue, splitView } from './returns-report';
+import { addSlip, calendarDays, emptySplit, paymentBucket, percentOf, receivedBetween, slipReceivedAt, slipState, slipValue, splitView } from './returns-report';
 
 const d = (value: string) => Decimal128.fromString(value);
 const at = (iso: string) => new Date(iso);
@@ -44,27 +44,12 @@ describe('trạng thái và giá trị phiếu NK khách trả (RPT-RET-01)', ()
   });
 });
 
-describe('khoảng ngày theo tháng bán', () => {
-  it('xếp số ngày vào 0–30 / 31–60 / 61–90 / trên 90', () => {
-    expect([0, 30, 31, 60, 61, 90, 91, 400].map(returnLagBucket)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
-  });
-
+describe('đếm ngày', () => {
   it('đếm ngày theo lịch Việt Nam', () => {
     // 26/09 00:30 và 26/09 08:00 giờ VN: cùng ngày; 25/09 23:30 → 26/09 08:00: 1 ngày.
     expect(calendarDays(at('2026-09-25T17:30:00Z'), at('2026-09-26T01:00:00Z'))).toBe(0);
     expect(calendarDays(at('2026-09-25T16:30:00Z'), at('2026-09-26T01:00:00Z'))).toBe(1);
     expect(calendarDays(at('2026-09-25T03:00:00Z'), at('2026-10-29T03:00:00Z'))).toBe(34);
-  });
-
-  it('ô đã xong / đang tính / chưa đến tính theo hôm nay', () => {
-    const start = at('2026-08-31T17:00:00Z'); // 01/09 giờ VN
-    const end = at('2026-09-30T17:00:00Z'); // 01/10 giờ VN
-    const now = at('2026-11-18T03:00:00Z');
-    expect(lagBucketState(start, end, 0, now)).toBe('DONE'); // 30/09 + 30 = 30/10
-    expect(lagBucketState(start, end, 1, now)).toBe('RUNNING'); // 30/09 + 60 = 29/11
-    expect(lagBucketState(start, end, 2, now)).toBe('RUNNING'); // bắt đầu 01/09 + 61 = 01/11
-    expect(lagBucketState(start, end, 3, now)).toBe('NOT_YET'); // 01/09 + 91 = 01/12
-    expect(lagBucketState(at('2026-10-31T17:00:00Z'), at('2026-11-30T17:00:00Z'), 1, now)).toBe('NOT_YET');
   });
 });
 
@@ -98,12 +83,6 @@ describe('tiện ích', () => {
   it('phần trăm một chữ số, mẫu 0 = không có', () => {
     expect(percentOf('168', '1960')).toBe(8.6);
     expect(percentOf('5', '0')).toBeNull();
-  });
-
-  it('trung vị', () => {
-    expect(median([])).toBeNull();
-    expect(median([47, 20, 34])).toBe(34);
-    expect(median([10, 20, 31, 40])).toBe(26);
   });
 
   it('loại phiếu thu: bù trừ không tính, thiếu loại = thu tiền', () => {

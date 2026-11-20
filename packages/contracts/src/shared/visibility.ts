@@ -33,6 +33,7 @@ export const AREAS = [
   'inventory.returns',
   'inventory.counts',
   'inventory.reports',
+  'inventory.monthlyReport',
   'pricing.priceList',
   'pricing.manage',
   'receivables',
@@ -89,7 +90,10 @@ export const AREA_RULES: Record<Area, AreaRule> = {
   'inventory.sampleIssues': { roles: all('ACCOUNTANT', ...WAREHOUSE_STAFF) },
   'inventory.returns': { roles: all('ACCOUNTANT', ...WAREHOUSE_STAFF) },
   'inventory.counts': { roles: all('ACCOUNTANT', ...WAREHOUSE_STAFF) },
+  // Báo cáo kho: Nhật ký xuất nhập (`inventory.reports`) và Tồn kho tháng — Tồn kho tháng chỉ có số lượng, mở thêm cho thủ kho
+  // (VIS-INV-MONTH-01, 20/11/2026).
   'inventory.reports': { roles: all('SALES_MANAGER', 'ACCOUNTANT', 'WAREHOUSE_MANAGER') },
+  'inventory.monthlyReport': { roles: all('SALES_MANAGER', 'ACCOUNTANT', ...WAREHOUSE_STAFF) },
   // Giá & khuyến mãi.
   'pricing.priceList': { roles: all(...SALES_STAFF, 'ACCOUNTANT', 'WAREHOUSE_MANAGER', 'CATALOG_MANAGER') },
   'pricing.manage': { roles: all(...SALES_STAFF, 'ACCOUNTANT') },
@@ -151,6 +155,7 @@ export const ROUTE_AREAS: ReadonlyArray<readonly [string, Area]> = [
   ['/inventory/returns', 'inventory.returns'],
   ['/inventory/counts', 'inventory.counts'],
   ['/inventory/reports', 'inventory.reports'],
+  ['/inventory/reports/monthly', 'inventory.monthlyReport'],
   ['/procurement', 'inventory.purchases'],
   ['/pricing', 'pricing.priceList'],
   ['/pricing/promotions', 'pricing.manage'],

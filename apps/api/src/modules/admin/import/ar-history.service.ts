@@ -573,6 +573,8 @@ export class ArHistoryImportService {
           historyRowId: entry.id,
           historyType: entry.type,
           ...(entry.documentNo ? { historyDocumentNo: entry.documentNo } : {}),
+          // Số hóa đơn lưu riêng — không hiện thay số chứng từ (CN-HIST-NO-01, 19/11/2026).
+          ...(entry.invoiceNo ? { historyInvoiceNo: entry.invoiceNo } : {}),
           ...(entry.source ? { historySource: entry.source } : {}),
           // Dòng hàng của phiếu trả hàng: phần hàng thuộc nhóm công nợ tách riêng trừ vào phần nhóm (CN-SEG-01).
           ...(analysis.linesByEntry.get(entry.id)?.length ? { historyLines: (analysis.linesByEntry.get(entry.id) ?? []).map(({ entryId: _id, ...line }) => line) } : {}),

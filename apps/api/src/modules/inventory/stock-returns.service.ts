@@ -19,6 +19,7 @@ import {
   type StockReturnCreditPreview,
   type StockReturnCreditTarget,
   type StockReturnCreditTargetPreview,
+  type StockReturnSourceOption,
   type UpdateSampleReturn,
   type UpdateStockReturn,
   type VatRate,
@@ -44,6 +45,7 @@ import { loadSegmentRules, planPartner, reallocatePartner, segmentContext } from
 import { lineSegment, rulesFor } from '../receivables/segments';
 import { InventoryService } from './inventory.service';
 import { returnListOrder, RETURN_ORDER_FIELDS } from './return-order';
+import { remainingQuantities, returnSourceOptions, RETURN_SOURCE_LIMIT } from './return-sources';
 
 /** Phiếu BH đã xuất kho (có giá bán để gợi ý đơn giá trả hàng). */
 const SHIPPED_ORDER_STATUSES = ['SHIPPED', 'PARTIALLY_SHIPPED', 'DELIVERED'];
@@ -174,23 +176,43 @@ export class StockReturnsService {
     session: ClientSession,
     excludeId?: ObjectId,
   ) {
-    const remaining = new Map<string, Decimal>();
-    for (const line of source.lines as Document[]) {
-      const key = (line.productId as ObjectId).toHexString();
-      const quantity = kind === 'CUSTOMER' ? line.baseQuantity : line.receivedBaseQuantity;
-      remaining.set(key, (remaining.get(key) ?? new Decimal(0)).add(decimalString(quantity ?? '0')));
-    }
     const previous = await this.db
       .collection('stock_returns')
       .find({ kind, [sourceField]: source.code, status: { $ne: 'VOIDED' }, ...(excludeId ? { _id: { $ne: excludeId } } : {}) }, { session })
       .toArray();
-    for (const row of previous) {
-      for (const line of row.lines as Document[]) {
-        const key = (line.productId as ObjectId).toHexString();
-        remaining.set(key, (remaining.get(key) ?? new Decimal(0)).sub(decimalString(line.quantity)));
-      }
-    }
-    return remaining;
+    return remainingQuantities(source.lines as Document[], (line) => (kind === 'CUSTOMER' ? line.baseQuantity : line.receivedBaseQuantity), previous);
+  }
+
+  /**
+   * Gợi ý ô "Số phiếu BH gốc" (RET-SRC-PICK-01, 19/11/2026): phiếu BH đã xuất kho của khách, mới nhất trước, kèm số còn trả được
+   * từng mã — cùng cách tính với lúc ghi phiếu. `excludeId` = phiếu trả đang sửa (số của phiếu đó coi như chưa trả).
+   */
+  async sourceOptions(partnerId: string, excludeId?: string): Promise<StockReturnSourceOption[]> {
+    const customerId = toObjectId(partnerId, 'partnerId');
+    const exclude = excludeId ? toObjectId(excludeId, 'excludeId') : undefined;
+    const orders = await this.db
+      .collection('sales_orders')
+      .find(
+        { customerId, shippedAt: { $type: 'date' }, status: { $ne: 'CANCELLED' } },
+        { projection: { code: 1, purpose: 1, status: 1, orderDate: 1, createdAt: 1, 'lines.productId': 1, 'lines.sku': 1, 'lines.productName': 1, 'lines.unit': 1, 'lines.baseQuantity': 1 } },
+      )
+      .sort({ orderDate: -1, createdAt: -1, _id: -1 })
+      .limit(RETURN_SOURCE_LIMIT)
+      .toArray();
+    if (!orders.length) return [];
+    const productIds = [...new Set(orders.flatMap((order) => ((order.lines as Document[] | undefined) ?? []).map((line) => (line.productId as ObjectId).toHexString())))].map((id) => new ObjectId(id));
+    const [returns, products] = await Promise.all([
+      this.db
+        .collection('stock_returns')
+        .find(
+          { kind: 'CUSTOMER', salesOrderCode: { $in: orders.map((order) => String(order.code)) }, status: { $ne: 'VOIDED' }, ...(exclude ? { _id: { $ne: exclude } } : {}) },
+          { projection: { salesOrderCode: 1, 'lines.productId': 1, 'lines.quantity': 1 } },
+        )
+        .toArray(),
+      this.db.collection('products').find({ _id: { $in: productIds } }, { projection: { baseUnit: 1 } }).toArray(),
+    ]);
+    const unitOf = new Map(products.map((product) => [(product._id as ObjectId).toHexString(), product.baseUnit ? String(product.baseUnit) : undefined]));
+    return returnSourceOptions(orders, returns, (id) => unitOf.get(id));
   }
 
   /** Phiếu khách trả đang chờ kế toán xử lý công nợ. */

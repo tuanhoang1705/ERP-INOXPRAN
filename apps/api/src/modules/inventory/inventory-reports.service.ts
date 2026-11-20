@@ -73,8 +73,8 @@ export class InventoryReportsService {
       const show = (value: string) => value.split('-').reverse().join('/');
       return {
         start, end,
-        title: `${fromDay} 至 ${toDay} 仓库出入库汇总 — NHẬT KÝ XUẤT NHẬP KHO TỪ ${show(fromDay)} ĐẾN ${show(toDay)}`,
-        sheetName: '出入库汇总',
+        title: { vi: `Nhật ký xuất nhập kho từ ${show(fromDay)} đến ${show(toDay)}`, zh: `${fromDay} 至 ${toDay} 仓库出入库汇总` },
+        sheetName: 'Nhật ký XNK 出入库汇总',
         fileTag: `${fromDay}_${toDay}`,
       };
     }
@@ -82,8 +82,8 @@ export class InventoryReportsService {
     const range = this.range(month);
     return {
       start: range.start, end: range.end,
-      title: `${range.year}年${range.monthNo}月 仓库出入库汇总 — NHẬT KÝ XUẤT NHẬP KHO THÁNG ${range.monthNo}/${range.year}`,
-      sheetName: `${range.monthNo}月出入库汇总`,
+      title: { vi: `Nhật ký xuất nhập kho tháng ${range.monthNo}/${range.year}`, zh: `${range.year}年${range.monthNo}月 仓库出入库汇总` },
+      sheetName: `Nhật ký XNK T${range.monthNo} ${range.monthNo}月出入库汇总`,
       fileTag: month,
     };
   }
@@ -363,7 +363,10 @@ export class InventoryReportsService {
     });
   }
 
-  /** Nhật ký xuất nhập kho (出入库汇总) theo bộ chuẩn Excel thương hiệu (XLS-01): tiêu đề Trung + Việt, cột nhập tô xanh, cột xuất tô cam. */
+  /**
+   * Nhật ký xuất nhập kho (出入库汇总) theo bộ chuẩn Excel thương hiệu (XLS-01): song ngữ Việt + Trung (XLS-BI-01), cột nhập tô xanh,
+   * cột xuất tô cam.
+   */
   async journalWorkbook(period: JournalPeriod, options: JournalOptions, preparedBy: string): Promise<Buffer> {
     const range = this.journalPeriod(period);
     const rows = (await this.journal(period, options, null)) as InventoryJournalRow[];
@@ -371,7 +374,7 @@ export class InventoryReportsService {
     const vnDay = (value: string) => new Date(new Date(value).getTime() + 7 * 3_600_000);
     const columns: BrandColumn[] = [
       { key: 'stt', header: 'STT\n序号', width: 6, type: 'int' },
-      { key: 'partner', header: 'Khách hàng / NCC\n客户', width: 30, wrap: true },
+      { key: 'partner', header: 'Khách hàng / NCC\n客户 / 供应商', width: 30, wrap: true },
       { key: 'partnerCode', header: 'Mã KH\n客户编号', width: 11, type: 'code' },
       { key: 'orderDate', header: 'Ngày phiếu BH\n销售单日期', width: 12, type: 'date' },
       { key: 'order', header: 'Số phiếu BH\n销售单号', width: 16, type: 'code' },
@@ -387,19 +390,21 @@ export class InventoryReportsService {
       { key: 'warehouse', header: 'Kho\n仓库', width: 10 },
     ];
     const workbook = brandWorkbook();
-    const sheet = brandSheet(workbook, range.sheetName, columns);
-    let rowNo = titleBlock(sheet, columns.length, range.title, [
-      `Người lập: ${preparedBy} · Xuất lúc ${exportedAt()} · ${rows.length} dòng${rows.length >= EXPORT_LIMIT ? ` (giới hạn ${EXPORT_LIMIT})` : ''}`,
-    ]);
+    const sheet = brandSheet(workbook, range.sheetName, columns, { bilingual: true });
+    const at = exportedAt();
+    const limited = rows.length >= EXPORT_LIMIT;
+    let rowNo = titleBlock(sheet, columns.length, range.title, [{
+      vi: `Người lập: ${preparedBy} · Xuất lúc ${at} · ${rows.length} dòng${limited ? ` (giới hạn ${EXPORT_LIMIT})` : ''}`,
+      zh: `制表人：${preparedBy} · 导出时间 ${at} · 共 ${rows.length} 行${limited ? `（上限 ${EXPORT_LIMIT}）` : ''}`,
+    }]);
     const sum = (direction: StockDirection) => round(rows.filter((row) => row.direction === direction).reduce((total, row) => total + row.quantity, 0));
     rowNo = kpiStrip(sheet, rowNo, columns.length, [
-      { label: 'SỐ DÒNG PHÁT SINH', value: rows.length, format: FORMATS.int },
-      { label: 'TỔNG NHẬP 入库', value: sum('IN'), format: FORMATS.qty, tone: 'good' },
-      { label: 'TỔNG XUẤT 出库', value: sum('OUT'), format: FORMATS.qty },
+      { label: { vi: 'SỐ DÒNG PHÁT SINH', zh: '明细行数' }, value: rows.length, format: FORMATS.int },
+      { label: { vi: 'TỔNG NHẬP', zh: '入库合计' }, value: sum('IN'), format: FORMATS.qty, tone: 'good' },
+      { label: { vi: 'TỔNG XUẤT', zh: '出库合计' }, value: sum('OUT'), format: FORMATS.qty },
     ]);
     const header = rowNo;
     tableHeader(sheet, header, columns);
-    sheet.getRow(header).height = 44;
     rows.forEach((row, index) => {
       addBodyRow(sheet, columns, {
         stt: index + 1,

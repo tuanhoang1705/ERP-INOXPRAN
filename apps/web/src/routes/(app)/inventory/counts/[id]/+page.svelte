@@ -3,13 +3,15 @@
    * Màn kiểm kê 2 bước (STK-01): 1. kiểm tồn sản phẩm → 2. kiểm tồn số lượng → chốt.
    * Nhập nhanh: gõ / quét mã rồi Enter (bước 2: Enter sang ô số lượng, Enter lần nữa để thêm); mã mới nhất luôn ở đầu.
    * Số tồn ERP ẩn đến khi bấm "Kiểm tra" (đếm mù). Danh sách tự lưu nháp.
+   * Bước 1 chỉ cho kết quả khớp / lệch theo mã: không hiện cột Tồn ERP, không có nút Sửa ERP — sửa tồn ERP ở bước 2
+   * (KK-SKU-VIEW-01, 20/11/2026).
    */
   import { m } from '$lib/paraglide/messages';
   import type { StockCountRow, StockCountRowState, StockCountView, Warehouse } from '@inoxpran/contracts';
   import { page as appPage } from '$app/state';
   import { goto } from '$app/navigation';
   import { onDestroy, onMount, tick } from 'svelte';
-  import { AlertTriangle, Check, CircleAlert, CircleCheck, ClipboardCheck, DatabaseZap, ListPlus, Plus, RotateCcw, ScanSearch, Trash2, Undo2, XCircle } from 'lucide-svelte';
+  import { AlertTriangle, Check, CircleAlert, CircleCheck, ClipboardCheck, CornerDownLeft, DatabaseZap, ListPlus, Plus, RotateCcw, ScanSearch, Trash2, Undo2, XCircle } from 'lucide-svelte';
   import { api, ApiRequestError } from '$lib/api';
   import { dateTime, num } from '$lib/format';
   import { can } from '$lib/permissions';
@@ -327,8 +329,8 @@
     fixRow = row;
     fixReason = '';
     fixError = '';
-    const counted = qtyById.get(row.productId)?.quantity;
-    fixTarget = step === 'SKU' ? (row.state === 'ONLY_ERP' ? '0' : '') : counted ?? (row.state === 'ONLY_ERP' ? '0' : '');
+    // Chỉ mở ở bước 2: tồn đúng mặc định = số đã đếm (mã ERP còn mà không ai đếm → 0).
+    fixTarget = qtyById.get(row.productId)?.quantity ?? (row.state === 'ONLY_ERP' ? '0' : '');
     const stocks = stockOf(row.productId);
     fixWarehouse = stocks.find((item) => !item.defective)?.warehouseId ?? count?.warehouseIds.find((warehouseId) => warehouses.find((item) => item.id === warehouseId)?.purpose !== 'DEFECTIVE') ?? count?.warehouseIds[0] ?? '';
     fixOpen = true;
@@ -469,13 +471,18 @@
         {/if}
         <button class="btn primary add" onclick={() => (step === 'SKU' ? addSku() : addQty())} disabled={busy}><Plus size={16} />{m.kk_them()}</button>
       </div>
-      {#if inputError}<p class="input-msg error">{inputError}</p>{:else if inputNotice}<p class="input-msg">{inputNotice}</p>{/if}
-      <p class="progress">{step === 'SKU' ? m.kk_da_nhap_ma({ count: skuList.length }) : m.kk_da_dem_ma({ counted: qtyList.filter((entry) => lockedIds.has(entry.productId)).length, total: lockedIds.size })}</p>
+      <div class="entry-foot">
+        <div>
+          {#if inputError}<p class="input-msg error">{inputError}</p>{:else if inputNotice}<p class="input-msg">{inputNotice}</p>{/if}
+          <p class="progress">{step === 'SKU' ? m.kk_da_nhap_ma({ count: skuList.length }) : m.kk_da_dem_ma({ counted: qtyList.filter((entry) => lockedIds.has(entry.productId)).length, total: lockedIds.size })}</p>
+        </div>
+        <p class="enter-hint"><CornerDownLeft size={14} />{step === 'SKU' ? m.kk_goi_y_enter_sku() : m.kk_goi_y_enter_qty()}</p>
+      </div>
     {/if}
 
     {#if shownCheck}
       <div class={`banner ${mismatched ? 'error' : 'success'} result`}>
-        {#if mismatched}<AlertTriangle size={17} /><span>{m.kk_co_lech({ count: mismatched, total: shownCheck.rows.length, at: dateTime(shownCheck.at) })}{#if movedCount} · {m.kk_co_phat_sinh({ count: movedCount })}{/if}</span>
+        {#if mismatched}<AlertTriangle size={17} /><span>{(step === 'SKU' ? m.kk_co_lech_sku : m.kk_co_lech)({ count: mismatched, total: shownCheck.rows.length, at: dateTime(shownCheck.at) })}{#if movedCount} · {m.kk_co_phat_sinh({ count: movedCount })}{/if}</span>
         {:else}<CircleCheck size={17} /><span>{m.kk_khop_het({ total: shownCheck.rows.length, at: dateTime(shownCheck.at) })}</span>{/if}
       </div>
     {:else if isOpen && lastCheck}
@@ -488,7 +495,7 @@
           <tr>
             <th class="num">#</th><th>{m.kk_ma_sp()}</th><th>{m.kk_ten_sp()}</th>
             {#if step === 'QTY'}<th class="num">{m.kk_thuc_dem()}</th>{/if}
-            {#if shownCheck}<th class="num">{m.kk_ton_erp()}</th>{#if step === 'QTY'}<th class="num">{m.kk_chenh_lech()}</th>{/if}<th>{m.kk_ket_qua()}</th>{/if}
+            {#if shownCheck}{#if step === 'QTY'}<th class="num">{m.kk_ton_erp()}</th><th class="num">{m.kk_chenh_lech()}</th>{/if}<th>{m.kk_ket_qua()}</th>{/if}
             {#if editable}<th class="actions-col"></th>{/if}
           </tr>
         </thead>
@@ -506,8 +513,10 @@
                 </td>
               {/if}
               {#if shownCheck}
-                <td class="num">{row.erpOnHand === null ? '—' : num(row.erpOnHand)}{#if combined && stockOf(row.productId).length > 1}<small class="by-wh">{stockOf(row.productId).map((item) => `${item.defective ? m.kk_kho_loi_ngan() : m.kk_kho_chinh_ngan()} ${num(item.onHand)}`).join(' · ')}</small>{/if}</td>
-                {#if step === 'QTY'}<td class="num diff">{signed(row.difference)}</td>{/if}
+                {#if step === 'QTY'}
+                  <td class="num">{row.erpOnHand === null ? '—' : num(row.erpOnHand)}{#if combined && stockOf(row.productId).length > 1}<small class="by-wh">{stockOf(row.productId).map((item) => `${item.defective ? m.kk_kho_loi_ngan() : m.kk_kho_chinh_ngan()} ${num(item.onHand)}`).join(' · ')}</small>{/if}</td>
+                  <td class="num diff">{signed(row.difference)}</td>
+                {/if}
                 <td>
                   <span class={`pill ${row.state === 'MATCH' ? 'success' : 'danger'}`}>{row.state ? rowStateLabel(row.state) : ''}</span>
                   {#if row.moved}<span class="moved" title={m.kk_phat_sinh_tooltip()}><AlertTriangle size={14} />{m.kk_phat_sinh()}</span>{/if}
@@ -521,7 +530,7 @@
                   {#if step === 'QTY' && !row.entered}
                     <button class="btn small" onclick={() => countThis(row)}><ScanSearch size={14} />{m.kk_nhap_so()}</button>
                   {/if}
-                  {#if shownCheck && row.state && row.state !== 'MATCH'}
+                  {#if shownCheck && step === 'QTY' && row.state && row.state !== 'MATCH'}
                     <button class="btn small fix" onclick={() => openFix(row)}><DatabaseZap size={14} />{m.kk_sua_erp()}</button>
                   {/if}
                   {#if row.entered}
@@ -635,9 +644,12 @@
   .entry.qty { grid-template-columns: minmax(0, 1fr) 180px auto; }
   .entry input, .entry :global(input) { height: 46px; font-size: 17px; }
   .entry .add { height: 46px; padding: 0 22px; }
-  .input-msg { margin: 8px 20px 0; font-size: 13px; color: var(--green); }
+  /* Dưới ô nhập: thông báo vừa thêm + số mã (trái), gợi ý phím Enter ngay dưới nút Thêm (phải). */
+  .entry-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0 16px; padding: 0 20px; }
+  .input-msg { margin: 8px 0 0; font-size: 13px; color: var(--green); }
   .input-msg.error { color: var(--red); font-weight: 600; }
-  .progress { margin: 6px 20px 0; color: var(--muted); font-size: 12.5px; }
+  .progress { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+  .enter-hint { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0 auto; color: var(--muted); font-size: 12.5px; text-align: right; }
   .result { margin: 14px 20px 0; }
   .list { margin-top: 14px; max-height: 62vh; overflow: auto; }
   tr.ok td { background: #eefaf1; }

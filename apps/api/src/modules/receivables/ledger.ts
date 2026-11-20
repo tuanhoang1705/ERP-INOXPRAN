@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { numbersLabel, paymentNumbers, receivableNumbers } from './ledger-numbers';
 
 /**
  * Sổ chi tiết công nợ theo khách (CN-KH-01) dựng theo sự kiện:
@@ -70,7 +71,10 @@ export interface LedgerPayment {
   reference?: string | undefined;
   note?: string | undefined;
   mode?: string | undefined;
+  /** Số chứng từ sổ cũ (`historyDocumentNo`). */
   documentNo?: string | undefined;
+  /** Số hóa đơn sổ cũ (`historyInvoiceNo`). */
+  invoiceNo?: string | undefined;
   history?: LedgerHistory | undefined;
 }
 
@@ -79,8 +83,13 @@ export interface LedgerRow {
   kind: LedgerKind;
   refId: string;
   code: string;
-  /** Số chứng từ hiển thị: số phiếu BH / HĐ / mã giao dịch ngân hàng. */
+  /**
+   * Số chứng từ hiển thị: số phiếu BH / chứng từ đầu kỳ / mã giao dịch / mã ERP; dòng sổ cũ chỉ số chứng từ của sổ cũ — trống khi
+   * sổ cũ không ghi (CN-HIST-NO-01, không lấy số hóa đơn thay).
+   */
   documentNo: string;
+  /** Số hóa đơn của dòng sổ cũ (hiện riêng "HĐ …"). */
+  invoiceNo?: string;
   description: string;
   /** Mã giao dịch / ghi chú (giao diện tự dịch nhãn theo loại, hiện thêm dòng này). */
   detail?: string;
@@ -112,22 +121,17 @@ export interface Ledger {
 const PAYMENT_KIND: Record<string, LedgerKind> = { RECEIPT: 'RECEIPT', FREIGHT: 'FREIGHT', RETURN: 'RETURN' };
 const METHOD_VI: Record<string, string> = { BANK_TRANSFER: 'chuyển khoản', CASH: 'tiền mặt', OTHER: 'khác' };
 
-function receivableLabel(row: LedgerReceivable): { documentNo: string; description: string } {
-  if (row.sourceType === 'HISTORY_IMPORT') {
+function receivableLabel(row: LedgerReceivable): { documentNo: string; invoiceNo?: string; label: string; description: string } {
+  const numbers = receivableNumbers(row);
+  const shown = { documentNo: numbers.documentNo ?? '', ...(numbers.invoiceNo ? { invoiceNo: numbers.invoiceNo } : {}), label: numbersLabel(numbers, row.code) };
+  if (row.sourceType === 'HISTORY_IMPORT' || row.sourceType === 'MANUAL') {
     const parts = [row.historyInvoiceNo ? `HĐ ${row.historyInvoiceNo}` : '', row.historyDocumentNo ? `CT ${row.historyDocumentNo}` : ''].filter(Boolean);
-    return {
-      documentNo: row.historyInvoiceNo || row.historyDocumentNo || row.code,
-      description: `Công nợ lịch sử${parts.length ? ` — ${parts.join(' · ')}` : ''}${row.note ? ` · ${row.note}` : ''}`,
-    };
+    return { ...shown, description: `${row.sourceType === 'MANUAL' ? 'Công nợ thêm tay' : 'Công nợ lịch sử'}${parts.length ? ` — ${parts.join(' · ')}` : ''}${row.note ? ` · ${row.note}` : ''}` };
   }
-  if (row.sourceType === 'MANUAL') {
-    const parts = [row.historyInvoiceNo ? `HĐ ${row.historyInvoiceNo}` : '', row.historyDocumentNo ? `CT ${row.historyDocumentNo}` : ''].filter(Boolean);
-    return { documentNo: row.historyInvoiceNo || row.historyDocumentNo || row.code, description: `Công nợ thêm tay${parts.length ? ` — ${parts.join(' · ')}` : ''}${row.note ? ` · ${row.note}` : ''}` };
-  }
-  if (row.sourceType === 'OPENING_BALANCE') return { documentNo: row.openingDocumentNo ?? row.code, description: `Công nợ đầu kỳ — chứng từ ${row.openingDocumentNo ?? ''}`.trim() };
-  if (row.salesOrderCode) return { documentNo: row.salesOrderCode, description: `Xuất bán — phiếu ${row.salesOrderCode}` };
-  if (row.warrantyCode) return { documentNo: row.warrantyCode, description: `Phí dịch vụ bảo hành ${row.warrantyCode}` };
-  return { documentNo: row.code, description: row.note ?? 'Chứng từ phải thu' };
+  if (row.sourceType === 'OPENING_BALANCE') return { ...shown, description: `Công nợ đầu kỳ — chứng từ ${row.openingDocumentNo ?? ''}`.trim() };
+  if (row.salesOrderCode) return { ...shown, description: `Xuất bán — phiếu ${row.salesOrderCode}` };
+  if (row.warrantyCode) return { ...shown, description: `Phí dịch vụ bảo hành ${row.warrantyCode}` };
+  return { ...shown, description: row.note ?? 'Chứng từ phải thu' };
 }
 
 function paymentLabel(row: LedgerPayment, kind: LedgerKind): string {
@@ -147,15 +151,15 @@ export function ledgerEvents(receivables: readonly LedgerReceivable[], payments:
   for (const row of receivables) {
     const amount = new Decimal(row.amount);
     if (amount.lte(0)) continue;
-    const label = receivableLabel(row);
+    const { label: name, ...label } = receivableLabel(row);
     const link = { ...(row.salesOrderId ? { salesOrderId: row.salesOrderId } : {}), ...(row.sourceType ? { sourceType: row.sourceType } : {}), ...(row.note && (row.sourceType === 'HISTORY_IMPORT' || row.sourceType === 'MANUAL') ? { detail: row.note } : {}) };
     const segments = (row.segments ?? []).filter((part) => new Decimal(part.amount).gt(0)).map((part) => ({ code: part.code, amount: new Decimal(part.amount).toFixed(2) }));
     events.push({ at: row.createdAt, date: row.createdAt.toISOString(), kind: 'DEBIT', refId: row.id, code: row.code, ...label, ...link, ...(segments.length ? { segments } : {}), ...(row.history ? { history: row.history } : {}), debit: amount.toFixed(2), receipt: zero, freight: zero, returns: zero, effect: amount });
     if (row.status === 'VOIDED') {
       const at = row.voidedAt ?? row.updatedAt ?? row.createdAt;
       events.push({
-        at, date: at.toISOString(), kind: 'VOID', refId: row.id, code: row.code, documentNo: label.documentNo,
-        description: `Hủy chứng từ ${label.documentNo}${row.voidReason ? ` — ${row.voidReason}` : ''}`, ...link,
+        at, date: at.toISOString(), kind: 'VOID', refId: row.id, code: row.code, documentNo: label.documentNo, ...(label.invoiceNo ? { invoiceNo: label.invoiceNo } : {}),
+        description: `Hủy chứng từ ${name}${row.voidReason ? ` — ${row.voidReason}` : ''}`, ...link,
         debit: amount.neg().toFixed(2), receipt: zero, freight: zero, returns: zero, effect: amount.neg(),
       });
     }
@@ -164,11 +168,14 @@ export function ledgerEvents(receivables: readonly LedgerReceivable[], payments:
     const kind = PAYMENT_KIND[row.kind || 'RECEIPT'];
     if (row.status !== 'POSTED' || !kind) continue;
     const amount = new Decimal(row.amount);
-    const detail = [row.reference, row.note].filter(Boolean).join(' · ');
+    const numbers = paymentNumbers({ mode: row.mode, code: row.code, reference: row.reference, historyDocumentNo: row.documentNo, historyInvoiceNo: row.invoiceNo });
+    // Phiếu sổ cũ: `reference` là số chứng từ hoặc số hóa đơn — đã hiện ở cột chứng từ / dòng "HĐ …", diễn giải chỉ còn ghi chú.
+    const detail = (numbers.history ? [row.note] : [row.reference, row.note]).filter(Boolean).join(' · ');
     events.push({
       ...(detail ? { detail } : {}),
       ...(row.history ? { history: row.history } : {}),
-      at: row.receivedAt, date: row.receivedAt.toISOString(), kind, refId: row.id, code: row.code, documentNo: row.documentNo || row.reference || row.code, description: paymentLabel(row, kind),
+      ...(numbers.invoiceNo ? { invoiceNo: numbers.invoiceNo } : {}),
+      at: row.receivedAt, date: row.receivedAt.toISOString(), kind, refId: row.id, code: row.code, documentNo: numbers.documentNo ?? '', description: paymentLabel(row, kind),
       debit: zero, receipt: kind === 'RECEIPT' ? amount.toFixed(2) : zero, freight: kind === 'FREIGHT' ? amount.toFixed(2) : zero, returns: kind === 'RETURN' ? amount.toFixed(2) : zero,
       effect: amount.neg(),
     });

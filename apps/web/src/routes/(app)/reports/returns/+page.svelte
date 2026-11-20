@@ -1,7 +1,7 @@
 <script lang="ts">
   import { NEW_PROVINCES } from '$shared/provinces';
   import { CUSTOMER_RETURN_CATEGORIES } from '$shared/inventory-categories';
-  import { RETURN_LAG_BUCKETS, RETURN_THRESHOLDS, type ReturnDebtState, type ReturnMonthTone, type ReturnRating, type ReturnsScope } from '$shared/returns-report';
+  import { RETURN_THRESHOLDS, type ReturnDebtState, type ReturnMonthTone, type ReturnRating, type ReturnsScope } from '$shared/returns-report';
   import { canSeePath } from '$shared/visibility';
   import { m } from '$lib/paraglide/messages';
   import type { ReturnsReport, ReturnsReportSlip } from '@inoxpran/contracts';
@@ -13,11 +13,11 @@
   import { categoryLabel } from '$lib/inventory';
   import { session } from '$lib/session.svelte';
 
-  type Tab = 'overview' | 'customers' | 'cohort' | 'products' | 'reps' | 'definitions';
+  // Tab "Theo tháng bán" bỏ ngày 20/11/2026 (RPT-RET-COHORT-OFF-01): đa số hàng trả không ghi phiếu BH gốc nên không theo dõi được.
+  type Tab = 'overview' | 'customers' | 'products' | 'reps' | 'definitions';
   const TABS: Array<{ key: Tab; label: () => string }> = [
     { key: 'overview', label: m.rr_tab_overview },
     { key: 'customers', label: m.rr_tab_customers },
-    { key: 'cohort', label: m.rr_tab_cohort },
     { key: 'products', label: m.rr_tab_products },
     { key: 'reps', label: m.rr_tab_reps },
     { key: 'definitions', label: m.rr_tab_definitions },
@@ -73,15 +73,6 @@
   const ratingClass = (rating: ReturnRating) => ({ HIGH_RISK: 'danger', WARNING: 'orange', WATCH: 'warning', NORMAL: 'success' })[rating];
   const ratingText = (rating: ReturnRating) => ({ HIGH_RISK: m.rr_rating_HIGH_RISK(), WARNING: m.rr_rating_WARNING(), WATCH: m.rr_rating_WATCH(), NORMAL: m.rr_rating_NORMAL() })[rating];
   const stateText = (state: ReturnDebtState) => ({ CREDITED: m.rr_state_credited(), NOT_CREDITED: m.rr_state_not_credited(), PENDING: m.rr_state_pending(), NO_MONEY: m.rr_state_no_money() })[state];
-  const bucketLabel = (index: number) => {
-    const bucket = RETURN_LAG_BUCKETS[index]!;
-    return bucket.to === null ? m.rr_bucket_last({ days: bucket.from - 1 }) : m.rr_bucket({ from: bucket.from, to: bucket.to });
-  };
-  const lagLabel = (index: number) => {
-    const bucket = RETURN_LAG_BUCKETS[index]!;
-    return bucket.to === null ? m.rr_lag_bucket_last({ days: bucket.from - 1 }) : m.rr_lag_bucket({ from: bucket.from, to: bucket.to });
-  };
-  const heatClass = (rate: number | null) => (rate === null ? 'h0' : rate >= 3 ? 'h3' : rate >= 2 ? 'h2' : rate >= 1 ? 'h1' : 'h0');
 
   // Biểu đồ: trục % theo bội số 4, tối thiểu 12%.
   const chartMax = $derived(Math.max(12, Math.ceil(Math.max(RETURN_THRESHOLDS.company.ok, ...(report?.months.map((row) => row.rate ?? 0) ?? [0])) / 4) * 4));
@@ -111,7 +102,6 @@
   });
   const withReturns = $derived((report?.customers ?? []).filter((row) => row.slips > 0).length);
   const reasonMax = $derived(Math.max(1, ...(report?.reasons.map((row) => Number(row.value)) ?? [0])));
-  const lagMax = $derived(Math.max(1, ...(report?.cohort.lag.map((row) => Number(row.value)) ?? [0])));
   const slipsTotal = $derived(slips.reduce((sum, row) => sum + Number(row.value ?? 0), 0));
 
   async function load() {
@@ -169,7 +159,6 @@
     return { from: `${key}-01`, to: `${key}-${String(last).padStart(2, '0')}` };
   };
   const windowRange = () => (report ? { from: report.window.from, to: report.window.to } : monthRange(monthKey));
-  const todayIso = `${today.year}-${String(today.month).padStart(2, '0')}-${String(today.day).padStart(2, '0')}`;
   const openMonth = (key: string, state?: ReturnDebtState) => openSlips(`${m.rr_slips_month({ month: monthText(key) })}${state ? ` · ${stateText(state)}` : ''}`, { ...monthRange(key), ...(state ? { state } : {}) });
 </script>
 
@@ -417,55 +406,6 @@
     <footer class="foot">{m.rr_rating_rules({ watch: RETURN_THRESHOLDS.customer.watch, warning: RETURN_THRESHOLDS.customer.warning, days: RETURN_THRESHOLDS.highRisk.overdueDays, debt: RETURN_THRESHOLDS.highRisk.debtByReturns })}</footer>
   </section>
 
-{:else if tab === 'cohort'}
-  <section class="card">
-    <header class="card-head wrap">
-      <div><h2>{m.rr_cohort_title()}</h2><p>{m.rr_cohort_sub()}</p></div>
-      <div class="legend">
-        <span>{m.rr_heat_legend()}</span>
-        <span><i class="h0"></i>{m.rr_heat_lt1()}</span><span><i class="h1"></i>1–2%</span><span><i class="h2"></i>2–3%</span><span><i class="h3"></i>{m.rr_heat_ge3()}</span><span><i class="running"></i>{m.rr_running_legend()}</span>
-      </div>
-    </header>
-    <div class="table-wrap">
-      <table class="table heat">
-        <thead><tr><th>{m.rr_col_sold_month()}</th><th class="num">{m.rr_col_sales()}</th>{#each RETURN_LAG_BUCKETS as _, index}<th class="num">{bucketLabel(index)}</th>{/each}<th class="num">{m.rr_col_returned_total()}</th><th class="num">{m.rr_col_kept()}</th></tr></thead>
-        <tbody>
-          {#each report.cohort.rows as row}
-            <tr>
-              <td class="nowrap"><b>{monthText(row.key)}</b></td>
-              <td class="num">{money(row.sales)}</td>
-              {#each row.buckets as bucket}
-                {#if bucket.state === 'NOT_YET'}<td class="num na">{m.rr_not_yet()}</td>
-                {:else if Number(bucket.value) === 0}<td class="num zero" class:running={bucket.state === 'RUNNING'}>—</td>
-                {:else}<td class={`num cell ${heatClass(bucket.rate)}`} class:running={bucket.state === 'RUNNING'}>{money(bucket.value)}<br /><span class="small">{percent(bucket.rate)}</span></td>{/if}
-              {/each}
-              <td class="num"><button class="link" onclick={() => openSlips(m.rr_slips_sold({ month: monthText(row.key) }), { from: `${row.key}-01`, to: todayIso, soldMonth: row.key })}>{money(row.returned)}</button><br /><span class="small muted">{percent(row.returnedRate)}</span></td>
-              <td class="num"><b>{percent(row.kept)}</b>{#if row.running}<br /><span class="small muted">{m.rr_running_legend()}</span>{/if}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
-    <footer class="foot">{#if report.cohort.unlinkedSlips}<button class="link" onclick={() => openSlips(m.rr_slips_unlinked(), { from: report!.cohort.rows[0] ? `${report!.cohort.rows[0].key}-01` : todayIso, to: monthRange(report!.month.key).to, linked: 'none' })}>{m.rr_cohort_unlinked({ amount: vnd(report.cohort.unlinkedValue), count: report.cohort.unlinkedSlips })}</button>{:else}{m.rr_unit_vnd()}{/if}</footer>
-  </section>
-  <section class="two">
-    <article class="card">
-      <header class="card-head"><div><h2>{m.rr_lag_title()}</h2><p>{m.rr_lag_sub({ amount: vnd(report.cohort.lagTotal), days: report.cohort.medianDays ?? '—' })}</p></div></header>
-      <div class="card-body bars">
-        {#each report.cohort.lag as row, index}
-          <div class="bar-row static">
-            <span class="bar-text"><span>{lagLabel(index)}</span><span><b>{vnd(row.value)}</b> <span class="muted">· {percent(row.share, 0)}</span></span></span>
-            <span class="track"><i style={`width:${(Number(row.value) / lagMax) * 100}%`}></i></span>
-          </div>
-        {/each}
-      </div>
-    </article>
-    <article class="card">
-      <header class="card-head"><h2>{m.rr_cohort_howto_title()}</h2></header>
-      <div class="card-body howto"><p>{m.rr_cohort_howto_1()}</p><p>{m.rr_cohort_howto_2()}</p><p>{m.rr_cohort_howto_3()}</p></div>
-    </article>
-  </section>
-
 {:else if tab === 'products'}
   <section class="card">
     <header class="card-head"><div><h2>{m.rr_products_title()}</h2><p>{m.rr_products_sub({ window: report.window.label })}</p></div></header>
@@ -531,7 +471,6 @@
           <tr><td>{m.rr_def_rate_name()}</td><td>B ÷ A</td><td>{m.rr_def_rate_note({ ok: RETURN_THRESHOLDS.company.ok, watch: RETURN_THRESHOLDS.company.watch })}</td></tr>
           <tr><td>{m.rr_kpi_net()}</td><td>{m.rr_def_net_formula()}</td><td>{m.rr_def_net_note()}</td></tr>
           <tr><td>{m.rr_col_debt_by_returns()}</td><td>{m.rr_def_debt_formula()}</td><td>{m.rr_def_debt_note()}</td></tr>
-          <tr><td>{m.rr_def_kept_name()}</td><td>{m.rr_def_kept_formula()}</td><td>{m.rr_def_kept_note()}</td></tr>
           <tr><td>{m.rr_def_unvalued_name()}</td><td>{m.rr_def_unvalued_formula()}</td><td>{m.rr_def_unvalued_note()}</td></tr>
         </tbody>
       </table>
@@ -625,7 +564,6 @@
   .two > .card { margin-bottom: 0; }
   .split-list { display: grid; gap: 16px; }
   .split-row, .bar-row { display: grid; gap: 7px; width: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-  .bar-row.static { cursor: default; }
   .split-title { display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; }
   .split-title .right { margin-left: auto; }
   .split-bar { display: flex; gap: 2px; height: 16px; overflow: hidden; border-radius: 4px; background: var(--surface-2); }
@@ -649,23 +587,7 @@
   .row-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .row-tools input[type='search'] { min-width: 220px; }
   .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
-  .heat td.cell { border-radius: 4px; }
-  .heat td.h0 { background: #FDF0E8; }
-  .heat td.h1 { background: #F8D3BC; }
-  .heat td.h2 { background: #EFA77F; }
-  .heat td.h3 { background: #D9773F; }
-  .heat td.cell, .heat td.cell .small { color: #1B2733; }
-  .heat td.running { outline: 1.5px dashed #8A3410; outline-offset: -3px; }
-  .heat td.zero { color: var(--muted); }
   td.who { min-width: 220px; }
-  .heat td.na { color: var(--muted); font-size: 12px; }
-  .legend i.h0 { background: #FDF0E8; border: 1px solid #E8D6CB; }
-  .legend i.h1 { background: #F8D3BC; }
-  .legend i.h2 { background: #EFA77F; }
-  .legend i.h3 { background: #D9773F; }
-  .legend i.running { outline: 2px dashed #8A3410; outline-offset: -2px; }
-  .howto { display: grid; gap: 10px; font-size: 14px; line-height: 1.55; }
-  .howto p { margin: 0; }
   .defs td { vertical-align: top; line-height: 1.5; }
   .defs td:first-child { font-weight: 600; white-space: nowrap; }
   .state { display: inline-flex; align-items: center; gap: 6px; }

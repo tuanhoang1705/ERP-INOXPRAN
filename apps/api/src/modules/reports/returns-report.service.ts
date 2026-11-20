@@ -5,15 +5,12 @@ import {
   customerReturnRating,
   DEFECT_RETURN_CATEGORIES,
   provinceReportName,
-  RETURN_LAG_BUCKETS,
   RETURN_THRESHOLDS,
-  returnLagBucket,
   returnMonthTone,
   SALE_ONLY_FILTER,
   type ReturnDebtState,
   type ReturnRating,
   type ReturnsReport,
-  type ReturnsReportCohortRow,
   type ReturnsReportCustomer,
   type ReturnsReportMonth,
   type ReturnsReportProduct,
@@ -33,8 +30,6 @@ import {
   calendarDays,
   DAY_MS,
   emptySplit,
-  lagBucketState,
-  median,
   monthKeyOf,
   paymentBucket,
   percentOf,
@@ -487,50 +482,6 @@ export class ReturnsReportService {
       }))
       .sort((a, b) => Number(b.returns) - Number(a.returns) || Number(b.sales) - Number(a.sales));
 
-    // 5. Theo tháng bán: hàng trả (đến hôm nay) của phiếu BH giao trong từng tháng, theo số ngày từ giao đến trả.
-    const cohort = months.map((entry) => ({ ...entry, buckets: RETURN_LAG_BUCKETS.map(() => new Decimal(0)) }));
-    const lag = RETURN_LAG_BUCKETS.map(() => new Decimal(0));
-    const lagDays: number[] = [];
-    let unlinkedValue = new Decimal(0);
-    let unlinkedSlips = 0;
-    for (const slip of slips) {
-      if (slipState(slip) === 'NO_MONEY') continue;
-      const receivedAt = slipReceivedAt(slip);
-      const source = slip.salesOrderCode ? sources.get(String(slip.salesOrderCode)) : undefined;
-      const deliveredAt = source?.deliveredAt as Date | undefined;
-      if (!deliveredAt) {
-        if (inRange(receivedAt, starts[0] as Date, monthEnd)) {
-          unlinkedSlips += 1;
-          unlinkedValue = unlinkedValue.add(slipValue(slip) ?? 0);
-        }
-        continue;
-      }
-      const row = cohort[monthIndex.get(monthKeyOf(deliveredAt)) ?? -1];
-      if (!row) continue;
-      const days = Math.max(0, calendarDays(deliveredAt, receivedAt));
-      const bucket = returnLagBucket(days);
-      const value = slipValue(slip) ?? new Decimal(0);
-      row.buckets[bucket] = (row.buckets[bucket] as Decimal).add(value);
-      lag[bucket] = (lag[bucket] as Decimal).add(value);
-      lagDays.push(days);
-    }
-    const lagTotal = lag.reduce((sum, value) => sum.add(value), new Decimal(0));
-    const cohortRows: ReturnsReportCohortRow[] = cohort.map((entry) => {
-      const returned = entry.buckets.reduce((sum, value) => sum.add(value), new Decimal(0));
-      const returnedRate = percentOf(returned, entry.sales);
-      const buckets = entry.buckets.map((value, index) => ({ value: value.toFixed(2), rate: percentOf(value, entry.sales), state: lagBucketState(entry.start, entry.end, index, now) }));
-      return {
-        key: entry.key,
-        label: monthLabel(entry.start),
-        sales: entry.sales.toFixed(2),
-        buckets,
-        returned: returned.toFixed(2),
-        returnedRate,
-        kept: returnedRate === null ? null : new Decimal(100).minus(returnedRate).toDecimalPlaces(1).toNumber(),
-        running: buckets.some((bucket) => bucket.state !== 'DONE'),
-      };
-    });
-
     const pendingOverdueSlips = pendingToMonthEnd.filter((slip) => categoryOk(slip) && calendarDays(slipReceivedAt(slip), now) > RETURN_THRESHOLDS.pendingDays).length;
     return {
       month: { key: monthKeyOf(monthStart), label: monthLabel(monthStart), from: isoDay(monthStart), to: isoDay(new Date(monthEnd.getTime() - DAY_MS)), partial },
@@ -560,14 +511,6 @@ export class ReturnsReportService {
       customers: customerRows,
       products: productRows,
       reps: repRows,
-      cohort: {
-        rows: cohortRows,
-        unlinkedValue: unlinkedValue.toFixed(2),
-        unlinkedSlips,
-        lag: lag.map((value) => ({ value: value.toFixed(2), share: percentOf(value, lagTotal) })),
-        lagTotal: lagTotal.toFixed(2),
-        medianDays: median(lagDays),
-      },
     };
   }
 

@@ -86,13 +86,13 @@ export class InventoryController {
 
   // ---- Báo cáo kho theo mẫu công ty (月库存明细单 / 出库汇总) ----
 
-  @Area('inventory.reports')
+  @Area('inventory.monthlyReport')
   @Get('reports/monthly')
   monthly(@Query('month') month: string, @Query('warehouseId') warehouseId?: string) {
     return this.reports.monthly(month, warehouseId || undefined);
   }
 
-  @Area('inventory.reports')
+  @Area('inventory.monthlyReport')
   @Get('reports/monthly/export')
   async monthlyExport(@Query('month') month: string, @Query('warehouseId') warehouseId: string | undefined) {
     const buffer = await this.reports.monthlyWorkbook(month, warehouseId || undefined);
@@ -150,6 +150,16 @@ export class InventoryController {
   @Get('returns')
   listReturns(@Req() request: AuthenticatedRequest, @Query('kind') kind?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
     return this.returns.list(kind, pageRequest(page ?? '1', pageSize, 20) ?? { page: 1, pageSize: 20, skip: 0 }, request.user);
+  }
+
+  /**
+   * Gợi ý ô "Số phiếu BH gốc" khi lập / sửa phiếu khách trả (RET-SRC-PICK-01, 19/11/2026): phiếu BH đã xuất kho của khách kèm số
+   * còn trả được từng mã (không có tiền); `excludeId` = phiếu trả đang sửa. Người lập được phiếu trả mới gọi được.
+   */
+  @Roles(...WAREHOUSE_EDITOR_ROLES)
+  @Get('return-sources')
+  returnSources(@Query('partnerId') partnerId: string, @Query('excludeId') excludeId?: string) {
+    return this.returns.sourceOptions(partnerId, excludeId || undefined);
   }
 
   /** Phiếu đã hủy: chỉ quản trị gốc mở được (người khác nhận "không tìm thấy"). */

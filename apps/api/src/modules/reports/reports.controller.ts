@@ -4,6 +4,7 @@ import { CUSTOMER_RETURN_CATEGORIES, customerProvince, RETURN_DEBT_STATES, RETUR
 import { z } from 'zod';
 import { Roles } from '../../common/roles.decorator';
 import type { AuthenticatedRequest } from '../../common/request-context';
+import { categoryZhShort, TIER_LABELS, TIER_ZH } from './report-labels';
 import { returnsReportWorkbook } from './returns-report-workbook';
 import { ReturnsReportService, type ReturnsReportFilter } from './returns-report.service';
 import { ReportsService } from './reports.service';
@@ -92,12 +93,22 @@ export class ReportsController {
     const slips = await this.returns.slips({ from: report.month.from, to: report.month.to, region: filter.region, salesRepId: filter.salesRepId, tier: filter.tier, category: filter.category });
     const preparedBy = request.user.displayName || request.user.email;
     const repName = filter.salesRepId ? report.reps.find((row) => row.id === filter.salesRepId)?.name : undefined;
-    const filterText = [
-      filter.region ? `Tỉnh: ${filter.region}` : '',
-      filter.salesRepId ? `NVKD phụ trách: ${repName ?? filter.salesRepId}` : '',
-      filter.tier ? `Cấp: ${{ TIER_1: 'NPP · Cấp 1', TIER_2: 'Đại lý · Cấp 2', RETAIL: 'Khách lẻ' }[filter.tier] ?? filter.tier}` : '',
-      filter.category ? `Loại hàng trả: ${INVENTORY_CATEGORIES.find((item) => item.code === filter.category)?.vi ?? filter.category}` : '',
-    ].filter(Boolean).join(' · ');
+    // Bộ lọc ghi trên file, song ngữ (XLS-BI-01).
+    const category = filter.category ? INVENTORY_CATEGORIES.find((item) => item.code === filter.category) : undefined;
+    const filterText = {
+      vi: [
+        filter.region ? `Tỉnh: ${filter.region}` : '',
+        filter.salesRepId ? `NVKD phụ trách: ${repName ?? filter.salesRepId}` : '',
+        filter.tier ? `Cấp: ${TIER_LABELS[filter.tier] ?? filter.tier}` : '',
+        filter.category ? `Loại hàng trả: ${category?.vi ?? filter.category}` : '',
+      ].filter(Boolean).join(' · '),
+      zh: [
+        filter.region ? `省份：${filter.region}` : '',
+        filter.salesRepId ? `负责业务员：${repName ?? filter.salesRepId}` : '',
+        filter.tier ? `级别：${TIER_ZH[filter.tier] ?? filter.tier}` : '',
+        filter.category ? `退货类型：${category ? categoryZhShort(category.zh) : filter.category}` : '',
+      ].filter(Boolean).join(' · '),
+    };
     const buffer = await returnsReportWorkbook(report, slips, preparedBy, filterText);
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

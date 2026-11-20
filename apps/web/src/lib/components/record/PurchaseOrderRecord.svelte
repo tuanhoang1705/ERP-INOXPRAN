@@ -242,25 +242,29 @@
     return null;
   }
 
+  /** Tiêu đề cột song ngữ khi xuất Excel (XLS-BI-01): dòng Việt rồi dòng Trung, không theo ngôn ngữ đang dùng. */
+  type Message = (inputs?: Record<string, never>, options?: { locale?: 'vi' | 'zh' }) => string;
+  const both = (message: Message, suffix = '') => `${message({}, { locale: 'vi' })}${suffix}\n${message({}, { locale: 'zh' })}${suffix}`;
+
   const columns = $derived<Array<GridColumn<DraftLine>>>([
-    { key: 'sku', label: m.ma_sp(), value: (row) => row.sku, required: true, width: '110px' },
-    { key: 'name', label: m.ten_san_pham(), value: (row) => row.productName },
-    { key: 'supplierCode', label: m.sp_ma_hang_ncc(), value: (row) => productById.get(row.productId)?.supplierItemCode ?? '', hiddenByDefault: true },
+    { key: 'sku', label: m.ma_sp(), exportLabel: both(m.ma_sp), value: (row) => row.sku, required: true, width: '110px' },
+    { key: 'name', label: m.ten_san_pham(), exportLabel: both(m.ten_san_pham), value: (row) => row.productName },
+    { key: 'supplierCode', label: m.sp_ma_hang_ncc(), exportLabel: both(m.sp_ma_hang_ncc), value: (row) => productById.get(row.productId)?.supplierItemCode ?? '', hiddenByDefault: true },
     {
-      key: 'unit', label: m.dvt(), value: (row) => row.unit, width: '110px',
+      key: 'unit', label: m.dvt(), exportLabel: both(m.dvt), value: (row) => row.unit, width: '110px',
       edit: {
         get: (row) => row.unit,
         set: (row, value) => { row.unit = value; const product = productById.get(row.productId); if (product) row.unitCost = defaultCost(product, value) || row.unitCost; },
         options: (row) => { const product = productById.get(row.productId); return product ? [{ value: product.baseUnit, label: product.baseUnit }, ...product.unitConversions.map((item) => ({ value: item.unit, label: `${item.unit} (${num(item.factorToBase)})` }))] : [{ value: row.unit, label: row.unit }]; },
       },
     },
-    { key: 'quantity', label: m.so_luong(), value: (row) => num(row.quantity), align: 'right', required: true, width: '100px', edit: { get: (row) => row.quantity, set: (row, value) => (row.quantity = value), decimals: 3 }, total: (rows) => num(rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0)) },
-    { key: 'unitCost', label: `${m.sp_don_gia()} (${currency})`, value: (row) => row.unitCost, align: 'right', width: '130px', edit: { get: (row) => row.unitCost, set: (row, value) => (row.unitCost = value), decimals: 4 } },
-    { key: 'amount', label: `${m.thanh_tien()} (${currency})`, value: (row) => money(draftLineTotal(row), currency), align: 'right', total: () => money(totals.total, currency) },
-    { key: 'cartons', label: m.po_so_thung(), value: (row) => num(draftPacking(row, productById.get(row.productId)).cartons), align: 'right', width: '80px', total: () => num(totals.packing.cartons) },
+    { key: 'quantity', label: m.so_luong(), exportLabel: both(m.so_luong), value: (row) => num(row.quantity), align: 'right', required: true, width: '100px', edit: { get: (row) => row.quantity, set: (row, value) => (row.quantity = value), decimals: 3 }, total: (rows) => num(rows.reduce((sum, row) => sum + Number(row.quantity || 0), 0)) },
+    { key: 'unitCost', label: `${m.sp_don_gia()} (${currency})`, exportLabel: both(m.sp_don_gia, ` (${currency})`), value: (row) => row.unitCost, align: 'right', width: '130px', edit: { get: (row) => row.unitCost, set: (row, value) => (row.unitCost = value), decimals: 4 } },
+    { key: 'amount', label: `${m.thanh_tien()} (${currency})`, exportLabel: both(m.thanh_tien, ` (${currency})`), value: (row) => money(draftLineTotal(row), currency), align: 'right', total: () => money(totals.total, currency) },
+    { key: 'cartons', label: m.po_so_thung(), exportLabel: both(m.po_so_thung), value: (row) => num(draftPacking(row, productById.get(row.productId)).cartons), align: 'right', width: '80px', total: () => num(totals.packing.cartons) },
     { key: 'cbm', label: 'CBM', value: (row) => String(draftPacking(row, productById.get(row.productId)).cbm), align: 'right', width: '80px', total: () => String(totals.packing.cbm) },
-    { key: 'grossKg', label: m.po_kg_ca_bi(), value: (row) => String(draftPacking(row, productById.get(row.productId)).grossKg), align: 'right', width: '90px', total: () => String(totals.packing.grossKg) },
-    { key: 'note', label: m.ghi_chu(), value: (row) => row.note, edit: { get: (row) => row.note, set: (row, value) => (row.note = value) }, hiddenByDefault: false },
+    { key: 'grossKg', label: m.po_kg_ca_bi(), exportLabel: both(m.po_kg_ca_bi), value: (row) => String(draftPacking(row, productById.get(row.productId)).grossKg), align: 'right', width: '90px', total: () => String(totals.packing.grossKg) },
+    { key: 'note', label: m.ghi_chu(), exportLabel: both(m.ghi_chu), value: (row) => row.note, edit: { get: (row) => row.note, set: (row, value) => (row.note = value) }, hiddenByDefault: false },
   ]);
 
   function validate(): string | null {

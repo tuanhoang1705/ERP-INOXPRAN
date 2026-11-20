@@ -15,6 +15,8 @@
     hiddenByDefault?: boolean | undefined;
     /** Giá trị dòng tổng của cột. */
     total?: ((rows: T[]) => string) | undefined;
+    /** Tiêu đề cột trong file xuất Excel (mặc định = label) — VD song ngữ Việt + Trung (XLS-BI-01). */
+    exportLabel?: string | undefined;
   }
 </script>
 
@@ -160,8 +162,10 @@
 
   function exportCsv() {
     const escape = (value: string) => (/[",\n;]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
-    const lines = [visible.map((column) => escape(column.label)).join(','), ...rows.map((row) => visible.map((column) => escape(column.value(row))).join(','))];
-    if (hasTotals) lines.push(visible.map((column, index) => escape(column.total ? column.total(rows) : index === 0 ? m.rw_tong_cong() : '')).join(','));
+    const lines = [visible.map((column) => escape(column.exportLabel ?? column.label)).join(','), ...rows.map((row) => visible.map((column) => escape(column.value(row))).join(','))];
+    // File xuất song ngữ (XLS-BI-01): nhãn dòng tổng có cả tiếng Việt và tiếng Trung, không theo ngôn ngữ đang dùng.
+    const totalLabel = `${m.rw_tong_cong({}, { locale: 'vi' })} ${m.rw_tong_cong({}, { locale: 'zh' })}`;
+    if (hasTotals) lines.push(visible.map((column, index) => escape(column.total ? column.total(rows) : index === 0 ? totalLabel : '')).join(','));
     const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');

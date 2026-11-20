@@ -8,7 +8,7 @@
    * Mọi con số được tính ngay trên trình duyệt (không chờ máy chủ) từ bảng giá riêng của khách, bằng đúng hàm
    * máy chủ dùng khi lưu chứng từ — xem $lib/sales-issue và $shared/sales-math.
    */
-  import type { Product, SalesOrder, SalesPriceSheet, SampleSaleRequest, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
+  import type { PartnerAddress, Product, SalesOrder, SalesPriceSheet, SampleSaleRequest, Warehouse, WarehouseKeeper } from '@inoxpran/contracts';
   import { paymentTermChoices } from '$shared/payment-terms';
   import { goto, replaceState } from '$app/navigation';
   import { page } from '$app/state';
@@ -49,6 +49,8 @@
     id: string; code: string; name: string; province?: string; address?: string; phone?: string; taxCode?: string; customerTier?: string;
     status: string; holdReason?: string; creditLimit: string; paymentTermDays: number; salesRepId?: string; salesRepName?: string; outstanding: string; periodRevenue: string;
     provinceOldCode?: string; territoryChannel?: string;
+    /** Địa chỉ nhận hàng đã lưu ở hồ sơ khách (tab Địa chỉ nhận hàng) — gợi ý cho ô Địa điểm giao hàng. */
+    addresses?: PartnerAddress[];
   };
   type Employee = { id: string; code: string; name: string; role: string };
   /** name: tên hàng in trên phiếu — mặc định tên trong danh mục, kế toán sửa tay được (SAL-NAME-01). */
@@ -204,6 +206,23 @@
   /** Được phân công bước 2 — phát hành phiếu BH (SAL-STEP-01): lập phiếu để phát hành, chọn thủ kho, tự nhập số; không có thì gửi đề nghị. */
   const canIssue = $derived(can('sales.step.issue'));
   const dealer = $derived(dealers.find((item) => item.id === customerId));
+  /**
+   * Ô Địa điểm giao hàng gõ được hoặc chọn từ các địa chỉ nhận hàng đã lưu của khách (SAL-ADDR-01, 20/11/2026): địa chỉ mặc định lên
+   * đầu, dòng phụ là người nhận · điện thoại. Không tự điền — để trống vẫn nghĩa là khách lấy tại kho.
+   */
+  const addressOptions = $derived.by(() => {
+    const seen = new Set<string>();
+    const options: Suggestion[] = [];
+    const saved = [...(dealer?.addresses ?? [])].sort((a, b) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault)));
+    for (const row of saved) {
+      const value = row.address?.trim() ?? '';
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      const detail = [row.receiver, row.phone].filter(Boolean).join(' · ');
+      options.push({ value, ...(row.label ? { label: row.label } : {}), ...(row.isDefault ? { note: m.crm_mac_dinh() } : {}), ...(detail ? { detail } : {}) });
+    }
+    return options;
+  });
   /** Phân vùng NVKD (PV-01): khách ở vùng đã giao thì NVKD của phiếu là NVKD của khách, chỉ Admin / quản trị gốc đổi được. */
   const repOwner = $derived(dealer?.salesRepId ? territoryOwner(dealer.provinceOldCode, dealer.territoryChannel) : null);
   const repLocked = $derived(Boolean(repOwner) && !canDo.overrideTerritory());
@@ -1049,7 +1068,12 @@
     {#if nonSale}
       {#if loanType}<div class="field"><label for="return-date">{m.lp_hen_tra()}</label><input id="return-date" type="date" min={orderDate} bind:value={expectedReturnDate} /></div>{/if}
     {:else}
-      <div class="field wide"><label for="location">{m.dia_diem_giao_hang()}</label><input id="location" bind:value={deliveryLocation} maxlength="300" placeholder={m.de_trong_neu_khach_lay_tai()} /></div>
+      <div class="field wide">
+        <label for="location">{m.dia_diem_giao_hang()}</label>
+        <SuggestInput id="location" bind:value={deliveryLocation} options={addressOptions} maxlength={500} placeholder={m.de_trong_neu_khach_lay_tai()} toggleLabel={m.sal_mo_dia_chi()}
+          emptyText={addressOptions.length ? '' : customerId ? m.sal_khach_chua_luu_dia_chi() : m.sal_chon_khach_xem_dia_chi()} />
+        {#if addressOptions.length}<small class="field-hint">{m.sal_dia_chi_da_luu({ count: addressOptions.length })}</small>{/if}
+      </div>
       <div class="field">
         <label for="term">{m.dieu_khoan_thanh_toan()}</label>
         <select id="term" bind:value={paymentTermDays}>{#each termOptions as days}<option value={days}>{days === 0 ? m.thanh_toan_ngay() : m.cong_no_ngay({ days: days })}</option>{/each}</select>

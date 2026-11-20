@@ -161,6 +161,55 @@ describe('sổ công nợ khách theo dòng hàng (AR-XLS-03)', () => {
     expect(sheet.getCell(`I${start + 5}`).fill).toMatchObject({ fgColor: { argb: 'FFFFFF00' } });
   });
 
+  it('CN-HIST-NO-01: dòng sổ cũ không có số chứng từ → cột D trống, số hóa đơn chỉ ở G; phiếu sổ cũ cũng vậy', async () => {
+    const only = { invoice: new ObjectId().toHexString(), manual: new ObjectId().toHexString(), voided: new ObjectId().toHexString(), ret: new ObjectId().toHexString(), thu: new ObjectId().toHexString(), bare: new ObjectId().toHexString() };
+    const local = {
+      ...sources,
+      receivables: new Map<string, Document>([
+        [only.invoice, { code: 'AR2610-01386', sourceType: 'HISTORY_IMPORT', historyInvoiceNo: '00000024', note: 'Xuất bán sổ cũ' }],
+        [only.manual, { code: 'AR2026110100', sourceType: 'MANUAL', historyInvoiceNo: '00000301', note: 'Thêm tay' }],
+        [only.voided, { code: 'AR2610-01390', sourceType: 'HISTORY_IMPORT', historyInvoiceNo: '00000025', voidReason: 'nhập trùng' }],
+      ]),
+      payments: new Map<string, Document>([
+        // Nhập 10/2026: reference = số hóa đơn khi dòng sổ cũ không có số chứng từ.
+        [only.ret, { code: 'PAY2026110001', kind: 'RETURN', mode: 'HISTORY', reference: '00000071', note: 'Trả hàng' }],
+        [only.thu, { code: 'PAY2610-00727', kind: 'RECEIPT', mode: 'HISTORY', method: 'BANK_TRANSFER', reference: 'NTTK00009', historyDocumentNo: 'NTTK00009', note: 'Thu tiền' }],
+        [only.bare, { code: 'PAY2026110002', kind: 'RECEIPT', mode: 'HISTORY', method: 'OTHER', note: 'Thu tiền mặt' }],
+      ]),
+    };
+    const ledgerRows: LedgerRow[] = [
+      row('DEBIT', only.invoice, '2026-01-14', { debit: '141359996.00' }, { code: 'AR2610-01386', documentNo: '', invoiceNo: '00000024', sourceType: 'HISTORY_IMPORT' }),
+      row('DEBIT', only.manual, '2026-01-15', { debit: '1000000.00' }, { code: 'AR2026110100', documentNo: '', invoiceNo: '00000301', sourceType: 'MANUAL' }),
+      row('VOID', only.voided, '2026-01-16', { debit: '-500000.00' }, { code: 'AR2610-01390', documentNo: '', invoiceNo: '00000025', sourceType: 'HISTORY_IMPORT' }),
+      row('RETURN', only.ret, '2026-01-17', { returns: '300000.00' }, { code: 'PAY2026110001', documentNo: '', invoiceNo: '00000071' }),
+      row('RECEIPT', only.thu, '2026-01-26', { receipt: '70680000.00' }, { code: 'PAY2610-00727', documentNo: 'NTTK00009' }),
+      row('RECEIPT', only.bare, '2026-01-27', { receipt: '100000.00' }, { code: 'PAY2026110002', documentNo: '' }),
+    ];
+    const { lines: built } = buildStatementDetailLines(ledgerRows, local);
+    expect(built[0]).toMatchObject({ invoiceNo: '00000024', description: 'Xuất bán sổ cũ', amount: 141359996 });
+    expect(built[0]).not.toHaveProperty('documentNo');
+    expect(built[1]).toMatchObject({ invoiceNo: '00000301' });
+    expect(built[1]).not.toHaveProperty('documentNo');
+    expect(built[2]).toMatchObject({ invoiceNo: '00000025', description: 'Hủy chứng từ HĐ 00000025 作废 — nhập trùng' });
+    expect(built[2]).not.toHaveProperty('documentNo');
+    // Phiếu trả hàng sổ cũ: số hóa đơn sang G, không lặp trong diễn giải.
+    expect(built[3]).toMatchObject({ invoiceNo: '00000071', description: 'Giảm trừ công nợ 减免 — Trả hàng', amount: -300000 });
+    expect(built[3]).not.toHaveProperty('documentNo');
+    expect(built[4]).toMatchObject({ documentNo: 'NTTK00009', description: 'Thu tiền khách hàng Chuyển khoản ngân hàng 货款通过银行转账 — Thu tiền', paid: 70680000 });
+    expect(built[4]).not.toHaveProperty('invoiceNo');
+    // Không số nào: D trống — không lấy mã phiếu PAY của hệ thống.
+    expect(built[5]).not.toHaveProperty('documentNo');
+
+    const workbook = buildStatementDetailWorkbook({ customer: { code: 'KH068', name: 'CÔNG TY TNHH NHÂN VƯỢNG' }, sheetName: 'NV', lines: built, segments: null });
+    const reread = new ExcelJS.Workbook();
+    await reread.xlsx.load(await workbook.xlsx.writeBuffer() as unknown as ArrayBuffer);
+    const sheet = reread.getWorksheet('NV')!;
+    expect(sheet.getCell('D2').value).toBeNull();
+    expect(sheet.getCell('G2').value).toBe('00000024');
+    expect(sheet.getCell('D6').value).toBe('NTTK00009');
+    expect(sheet.getCell('D7').value).toBeNull();
+  });
+
   it('không có nhóm → bỏ (5), (6); tên sheet hợp lệ', () => {
     const workbook = buildStatementDetailWorkbook({ customer: { code: 'KH1', name: 'A' }, sheetName: 'A/B:C*?', lines: [], segments: null });
     const sheet = workbook.worksheets[0]!;

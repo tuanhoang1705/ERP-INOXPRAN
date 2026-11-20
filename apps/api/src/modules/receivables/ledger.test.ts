@@ -41,4 +41,37 @@ describe('buildLedger', () => {
     expect(ledger.rows[3]?.description).toContain('HĐ 00000172');
     expect(ledger.rows[2]?.description).toContain('Phí vận chuyển');
   });
+
+  it('CN-HIST-NO-01: dòng sổ cũ chỉ hiện số chứng từ sổ cũ — không có thì trống, số hóa đơn đi riêng', () => {
+    const ledger = buildLedger(
+      [
+        receivable('h1', '141359996', '2026-01-14', { sourceType: 'HISTORY_IMPORT', historyInvoiceNo: '00000024' }),
+        receivable('h2', '1000', '2026-01-15', { sourceType: 'HISTORY_IMPORT', historyDocumentNo: 'BH2026090062', historyInvoiceNo: '00000307' }),
+        receivable('h3', '2000', '2026-01-16', { sourceType: 'MANUAL', historyInvoiceNo: '00000301', status: 'VOIDED', voidedAt: at('2026-01-17') }),
+        receivable('h4', '3000', '2026-01-18', { sourceType: 'HISTORY_IMPORT' }),
+      ],
+      [
+        payment('p1', '300000', '2026-01-19', 'RETURN', { mode: 'HISTORY', reference: '00000071', note: 'Trả hàng' }),
+        payment('p2', '70680000', '2026-01-26', 'RECEIPT', { mode: 'HISTORY', reference: 'NTTK00009', documentNo: 'NTTK00009', note: 'Thu tiền' }),
+        payment('p3', '100', '2026-01-27', 'RECEIPT', { mode: 'HISTORY', note: 'Thu tiền mặt' }),
+        payment('p4', '200', '2026-01-28', 'RECEIPT', { mode: 'CUSTOMER', reference: 'FT123' }),
+        payment('p5', '300', '2026-01-29', 'RECEIPT', { mode: 'DOCUMENT' }),
+      ],
+    );
+    const byRef = (refId: string, kind = 'DEBIT') => ledger.rows.find((row) => row.refId === refId && row.kind === kind);
+    expect(byRef('h1')).toMatchObject({ documentNo: '', invoiceNo: '00000024', code: 'AR-h1' });
+    expect(byRef('h2')).toMatchObject({ documentNo: 'BH2026090062', invoiceNo: '00000307' });
+    expect(byRef('h3')).toMatchObject({ documentNo: '', invoiceNo: '00000301' });
+    expect(byRef('h3', 'VOID')).toMatchObject({ documentNo: '', invoiceNo: '00000301', description: 'Hủy chứng từ HĐ 00000301' });
+    expect(byRef('h4')?.documentNo).toBe('');
+    expect(byRef('h4')).not.toHaveProperty('invoiceNo');
+    // Phiếu sổ cũ: reference là số hóa đơn khi sổ cũ không có số chứng từ; diễn giải phụ chỉ còn ghi chú.
+    expect(byRef('p1', 'RETURN')).toMatchObject({ documentNo: '', invoiceNo: '00000071', detail: 'Trả hàng' });
+    expect(byRef('p2', 'RECEIPT')).toMatchObject({ documentNo: 'NTTK00009', detail: 'Thu tiền' });
+    expect(byRef('p2', 'RECEIPT')).not.toHaveProperty('invoiceNo');
+    expect(byRef('p3', 'RECEIPT')?.documentNo).toBe('');
+    // Phiếu ERP giữ như cũ: mã giao dịch, không có thì mã phiếu.
+    expect(byRef('p4', 'RECEIPT')).toMatchObject({ documentNo: 'FT123', detail: 'FT123' });
+    expect(byRef('p5', 'RECEIPT')?.documentNo).toBe('PAY-p5');
+  });
 });

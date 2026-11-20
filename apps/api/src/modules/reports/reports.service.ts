@@ -5,11 +5,11 @@ import type { Db, Document, ObjectId } from 'mongodb';
 import { decimal, decimalString, toObjectId, vnParts } from '../../common/domain';
 import { addBodyRow, brandSheet, brandWorkbook, exportedAt, finalize, FORMATS, kpiStrip, noteRow, signatureBlock, tableHeader, titleBlock, toBuffer, totalRow, type BrandColumn, type Kpi } from '../../common/excel-brand';
 import { MONGO_DATABASE } from '../../common/tokens';
+import { periodZh, regionBi, TIER_LABELS, TIER_ZH, tierBi } from './report-labels';
 import { SALE_ONLY_FILTER } from '@inoxpran/contracts';
 import { REVENUE_STATUSES } from '../sales/pricing.service';
 
 const DAY_MS = 86_400_000;
-const TIER_LABELS: Record<string, string> = { TIER_1: 'NPP · Cấp 1', TIER_2: 'Đại lý · Cấp 2', RETAIL: 'Khách lẻ' };
 
 export interface SalesReportFilter {
   from: string;
@@ -272,55 +272,59 @@ export class ReportsService {
 
   /**
    * File Excel doanh số (bảng điều khiển + Báo cáo) theo bộ chuẩn thương hiệu (XLS-01): sheet chi tiết theo khách có cột NV phụ
-   * trách (PV-01, yêu cầu của Ban Giám đốc 30/10/2026), sheet theo nhân viên KD và sheet theo tỉnh / thành.
+   * trách (PV-01, yêu cầu của Ban Giám đốc 30/10/2026), sheet theo nhân viên KD và sheet theo tỉnh / thành. Song ngữ Việt + Trung
+   * (XLS-BI-01, 20/11/2026).
    */
   async salesByDealerWorkbook(filter: SalesReportFilter, preparedBy: string): Promise<Buffer> {
     const report = await this.salesByDealer(filter);
     const workbook = brandWorkbook();
-    const filters = [
-      filter.regionCode ? `Khu vực: ${report.regions.find((row) => row.code === filter.regionCode)?.name ?? filter.regionCode}` : '',
-      filter.salesRepId ? `NVKD: ${report.reps.find((row) => row.id === filter.salesRepId)?.name ?? ''}` : '',
-      filter.tier ? `Cấp: ${TIER_LABELS[filter.tier] ?? filter.tier}` : '',
-    ].filter(Boolean).join(' · ');
+    const region = filter.regionCode ? report.regions.find((row) => row.code === filter.regionCode) : undefined;
+    const regionName = filter.regionCode ? regionBi(filter.regionCode, region?.name ?? filter.regionCode) : '';
+    const repName = filter.salesRepId ? report.reps.find((row) => row.id === filter.salesRepId)?.name ?? '' : '';
+    const filters = {
+      vi: [filter.regionCode ? `Khu vực: ${regionName}` : '', filter.salesRepId ? `NVKD: ${repName}` : '', filter.tier ? `Cấp: ${TIER_LABELS[filter.tier] ?? filter.tier}` : ''].filter(Boolean).join(' · '),
+      zh: [filter.regionCode ? `区域：${regionName}` : '', filter.salesRepId ? `业务员：${repName}` : '', filter.tier ? `级别：${TIER_ZH[filter.tier] ?? filter.tier}` : ''].filter(Boolean).join(' · '),
+    };
+    const at = exportedAt();
     const meta = [
-      `Kỳ báo cáo: ${report.period.label}${filters ? ` · ${filters}` : ''}`,
-      `Người lập: ${preparedBy} · Xuất lúc ${exportedAt()} · Doanh số sau chiết khấu, tính theo ngày giao thành công`,
+      { vi: `Kỳ báo cáo: ${report.period.label}${filters.vi ? ` · ${filters.vi}` : ''}`, zh: `报表期间：${periodZh(report.period.label)}${filters.zh ? ` · ${filters.zh}` : ''}` },
+      { vi: `Người lập: ${preparedBy} · Xuất lúc ${at} · Doanh số sau chiết khấu, tính theo ngày giao thành công`, zh: `制表人：${preparedBy} · 导出时间 ${at} · 销售额为折扣后金额，按成功交货日期统计` },
     ];
     const kpis: Kpi[] = [
-      { label: 'TỔNG DOANH SỐ (Đ)', value: Number(report.summary.revenue), format: FORMATS.money },
-      { label: 'SO VỚI KỲ TRƯỚC', value: report.summary.changePercent === null ? '—' : report.summary.changePercent / 100, format: '+0.0%;-0.0%;0.0%', tone: report.summary.changePercent !== null && report.summary.changePercent < 0 ? 'danger' : 'good' },
-      { label: 'SỐ ĐƠN ĐÃ GIAO', value: report.summary.orders, format: FORMATS.int },
-      { label: 'ĐẠI LÝ PHÁT SINH', value: `${report.summary.activeDealers}/${report.summary.totalDealers}` },
-      { label: 'CÔNG NỢ CUỐI KỲ (Đ)', value: Number(report.totals.closingDebt), format: FORMATS.money },
+      { label: { vi: 'TỔNG DOANH SỐ (Đ)', zh: '销售总额（越南盾）' }, value: Number(report.summary.revenue), format: FORMATS.money },
+      { label: { vi: 'SO VỚI KỲ TRƯỚC', zh: '相比上期' }, value: report.summary.changePercent === null ? '—' : report.summary.changePercent / 100, format: '+0.0%;-0.0%;0.0%', tone: report.summary.changePercent !== null && report.summary.changePercent < 0 ? 'danger' : 'good' },
+      { label: { vi: 'SỐ ĐƠN ĐÃ GIAO', zh: '已交货订单数' }, value: report.summary.orders, format: FORMATS.int },
+      { label: { vi: 'ĐẠI LÝ PHÁT SINH', zh: '有交易的经销商' }, value: `${report.summary.activeDealers}/${report.summary.totalDealers}` },
+      { label: { vi: 'CÔNG NỢ CUỐI KỲ (Đ)', zh: '期末应收（越南盾）' }, value: Number(report.totals.closingDebt), format: FORMATS.money },
     ];
 
     // Sheet 1: chi tiết theo khách hàng.
     const columns: BrandColumn[] = [
-      { key: 'stt', header: 'STT', width: 6, type: 'int' },
-      { key: 'code', header: 'Mã KH', width: 13, type: 'code' },
-      { key: 'name', header: 'Tên đại lý / khách hàng', width: 38, wrap: true },
-      { key: 'region', header: 'Khu vực (tỉnh / thành)', width: 28, wrap: true },
-      { key: 'rep', header: 'NV phụ trách', width: 22 },
-      { key: 'tier', header: 'Cấp', width: 15 },
-      { key: 'orders', header: 'Số đơn', width: 9, type: 'int' },
-      { key: 'revenue', header: 'Doanh số (đ)', width: 18, type: 'money', emphasis: true },
-      { key: 'discount', header: 'Chiết khấu (đ)', width: 15, type: 'money' },
-      { key: 'debt', header: 'Công nợ cuối kỳ (đ)', width: 19, type: 'money' },
-      { key: 'share', header: 'Tỷ trọng', width: 10, type: 'percent' },
+      { key: 'stt', header: 'STT\n序号', width: 6, type: 'int' },
+      { key: 'code', header: 'Mã KH\n客户编号', width: 13, type: 'code' },
+      { key: 'name', header: 'Tên đại lý / khách hàng\n经销商 / 客户名称', width: 38, wrap: true },
+      { key: 'region', header: 'Khu vực (tỉnh / thành)\n区域（省 / 市）', width: 28, wrap: true },
+      { key: 'rep', header: 'NV phụ trách\n负责销售员', width: 22 },
+      { key: 'tier', header: 'Cấp\n级别', width: 26 },
+      { key: 'orders', header: 'Số đơn\n订单数', width: 9, type: 'int' },
+      { key: 'revenue', header: 'Doanh số (đ)\n销售额（越南盾）', width: 18, type: 'money', emphasis: true },
+      { key: 'discount', header: 'Chiết khấu (đ)\n折扣（越南盾）', width: 15, type: 'money' },
+      { key: 'debt', header: 'Công nợ cuối kỳ (đ)\n期末应收（越南盾）', width: 19, type: 'money' },
+      { key: 'share', header: 'Tỷ trọng\n占比', width: 10, type: 'percent' },
     ];
-    const sheet = brandSheet(workbook, 'Doanh số theo khách', columns);
-    let rowNo = titleBlock(sheet, columns.length, 'Báo cáo doanh số theo đại lý & khu vực', meta);
+    const sheet = brandSheet(workbook, 'Doanh số theo khách 按客户', columns, { bilingual: true });
+    let rowNo = titleBlock(sheet, columns.length, { vi: 'Báo cáo doanh số theo đại lý & khu vực', zh: '按经销商与区域的销售报表' }, meta);
     rowNo = kpiStrip(sheet, rowNo, columns.length, kpis);
     const header = rowNo;
     tableHeader(sheet, header, columns);
     report.rows.forEach((row, index) => {
       addBodyRow(sheet, columns, {
-        stt: index + 1, code: row.code, name: row.name, region: row.regionName, rep: row.salesRepName ?? '—', tier: row.tier,
+        stt: index + 1, code: row.code, name: row.name, region: regionBi(row.regionCode, row.regionName), rep: row.salesRepName ?? '—', tier: tierBi(row.tier),
         orders: row.orders, revenue: Number(row.revenue), discount: Number(row.discount), debt: Number(row.closingDebt), share: row.share / 100,
       }, index, { cells: { rep: row.salesRepName ? {} : { color: 'red' } } });
     });
     totalRow(sheet, columns, {
-      name: `TỔNG CỘNG (${report.rows.length} khách hàng phát sinh)`, orders: report.totals.orders, revenue: Number(report.totals.revenue),
+      name: `TỔNG CỘNG (${report.rows.length} khách hàng phát sinh) 合计（${report.rows.length} 家客户有交易）`, orders: report.totals.orders, revenue: Number(report.totals.revenue),
       discount: Number(report.totals.discount), debt: Number(report.totals.closingDebt), share: report.rows.length ? 1 : 0,
     });
     finalize(sheet, header, header + report.rows.length, columns.length, { freezeColumns: 3 });
@@ -328,40 +332,43 @@ export class ReportsService {
 
     // Sheet 2: theo nhân viên kinh doanh.
     const repColumns: BrandColumn[] = [
-      { key: 'stt', header: 'STT', width: 6, type: 'int' },
-      { key: 'name', header: 'Nhân viên kinh doanh', width: 30, type: 'code' },
-      { key: 'customers', header: 'Số khách phát sinh', width: 14, type: 'int' },
-      { key: 'orders', header: 'Số đơn', width: 10, type: 'int' },
-      { key: 'revenue', header: 'Doanh số (đ)', width: 20, type: 'money', emphasis: true },
-      { key: 'debt', header: 'Công nợ cuối kỳ (đ)', width: 20, type: 'money' },
-      { key: 'share', header: 'Tỷ trọng', width: 11, type: 'percent' },
+      { key: 'stt', header: 'STT\n序号', width: 6, type: 'int' },
+      { key: 'name', header: 'Nhân viên kinh doanh\n业务员', width: 30, type: 'code' },
+      { key: 'customers', header: 'Số khách phát sinh\n有交易客户数', width: 14, type: 'int' },
+      { key: 'orders', header: 'Số đơn\n订单数', width: 10, type: 'int' },
+      { key: 'revenue', header: 'Doanh số (đ)\n销售额（越南盾）', width: 20, type: 'money', emphasis: true },
+      { key: 'debt', header: 'Công nợ cuối kỳ (đ)\n期末应收（越南盾）', width: 20, type: 'money' },
+      { key: 'share', header: 'Tỷ trọng\n占比', width: 11, type: 'percent' },
     ];
-    const repSheet = brandSheet(workbook, 'Theo nhân viên KD', repColumns, { portrait: true });
-    const repHeader = titleBlock(repSheet, repColumns.length, 'Doanh số theo nhân viên kinh doanh', meta);
+    const repSheet = brandSheet(workbook, 'Theo nhân viên KD 按业务员', repColumns, { portrait: true, bilingual: true });
+    const repHeader = titleBlock(repSheet, repColumns.length, { vi: 'Doanh số theo nhân viên kinh doanh', zh: '按业务员的销售额' }, meta);
     tableHeader(repSheet, repHeader, repColumns);
     report.reps.forEach((row, index) => {
       addBodyRow(repSheet, repColumns, {
-        stt: index + 1, name: row.name, customers: row.customers, orders: row.orders, revenue: Number(row.revenue), debt: Number(row.closingDebt), share: row.share / 100,
+        stt: index + 1, name: row.id ? row.name : 'Chưa giao NVKD 未分配业务员', customers: row.customers, orders: row.orders, revenue: Number(row.revenue), debt: Number(row.closingDebt), share: row.share / 100,
       }, index, row.id ? {} : { highlight: 'warn' });
     });
     totalRow(repSheet, repColumns, {
-      name: 'TỔNG CỘNG', customers: report.rows.length, orders: report.totals.orders, revenue: Number(report.totals.revenue), debt: Number(report.totals.closingDebt), share: report.reps.length ? 1 : 0,
+      name: 'TỔNG CỘNG 合计', customers: report.rows.length, orders: report.totals.orders, revenue: Number(report.totals.revenue), debt: Number(report.totals.closingDebt), share: report.reps.length ? 1 : 0,
     });
     finalize(repSheet, repHeader, repHeader + report.reps.length, repColumns.length);
-    noteRow(repSheet, repColumns.length, 'NVKD lấy theo người đang phụ trách khách (phân vùng theo tỉnh). Dòng tô vàng: khách chưa giao NVKD.');
+    noteRow(repSheet, repColumns.length, {
+      vi: 'NVKD lấy theo người đang phụ trách khách (phân vùng theo tỉnh). Dòng tô vàng: khách chưa giao NVKD.',
+      zh: '业务员按客户当前的负责人（按省份分区）。黄色行：客户尚未分配业务员。',
+    });
 
     // Sheet 3: theo tỉnh / thành (34 tỉnh mới).
     const regionColumns: BrandColumn[] = [
-      { key: 'stt', header: 'STT', width: 6, type: 'int' },
-      { key: 'name', header: 'Tỉnh / thành', width: 32, type: 'code' },
-      { key: 'revenue', header: 'Doanh số (đ)', width: 22, type: 'money', emphasis: true },
-      { key: 'share', header: 'Tỷ trọng', width: 12, type: 'percent' },
+      { key: 'stt', header: 'STT\n序号', width: 6, type: 'int' },
+      { key: 'name', header: 'Tỉnh / thành\n省 / 市', width: 32, type: 'code', wrap: true },
+      { key: 'revenue', header: 'Doanh số (đ)\n销售额（越南盾）', width: 22, type: 'money', emphasis: true },
+      { key: 'share', header: 'Tỷ trọng\n占比', width: 12, type: 'percent' },
     ];
-    const regionSheet = brandSheet(workbook, 'Theo tỉnh thành', regionColumns, { portrait: true });
-    const regionHeader = titleBlock(regionSheet, regionColumns.length, 'Cơ cấu doanh số theo tỉnh / thành', meta);
+    const regionSheet = brandSheet(workbook, 'Theo tỉnh thành 按省市', regionColumns, { portrait: true, bilingual: true });
+    const regionHeader = titleBlock(regionSheet, regionColumns.length, { vi: 'Cơ cấu doanh số theo tỉnh / thành', zh: '按省 / 市的销售额构成' }, meta);
     tableHeader(regionSheet, regionHeader, regionColumns);
-    report.regions.forEach((row, index) => addBodyRow(regionSheet, regionColumns, { stt: index + 1, name: row.name, revenue: Number(row.revenue), share: row.share / 100 }, index));
-    totalRow(regionSheet, regionColumns, { name: 'TỔNG CỘNG', revenue: Number(report.totals.revenue), share: report.regions.length ? 1 : 0 });
+    report.regions.forEach((row, index) => addBodyRow(regionSheet, regionColumns, { stt: index + 1, name: regionBi(row.code, row.name), revenue: Number(row.revenue), share: row.share / 100 }, index));
+    totalRow(regionSheet, regionColumns, { name: 'TỔNG CỘNG 合计', revenue: Number(report.totals.revenue), share: report.regions.length ? 1 : 0 });
     finalize(regionSheet, regionHeader, regionHeader + report.regions.length, regionColumns.length);
 
     return toBuffer(workbook);
